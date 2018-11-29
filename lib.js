@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const colors = require('colors/safe');
+const semver = require('semver');
 
 function requireLocal(moduleName) {
     // TODO go up the file hierarchy and then require the moduleName if all else fails. rocketh could provide a default
@@ -10,15 +11,14 @@ function requireLocal(moduleName) {
 
 const traverse = function(dir, result = []) {
     fs.readdirSync(dir).forEach((name) => {
+        // console.log('name', name);
         const fPath = path.resolve(dir, name);
         const fileStats = { name, path: fPath };
         if (fs.statSync(fPath).isDirectory()) {
-            fileStats.type = 'dir';
-            fileStats.files = [];
+            // console.log('dir', name);
             result.push(fileStats);
-            return traverse(fPath, fileStats.files)
+            return traverse(fPath, result)
         }
-        fileStats.type = 'file';
         result.push(fileStats);
     });
     return result;
@@ -27,15 +27,20 @@ const traverse = function(dir, result = []) {
 // TODO : config to allow specify non-default paths
 const contractSrcPath = 'src';
 const contractBuildPath = 'build';
-const migrationsPath = 'migrations';
+const stagesPath = 'stages';
+const deploymentsPath = 'deployments';
+let deploymentsFolderCreated = false;
+let contractBuildFolderCreated = false;
 
 let artifacts = {}
 let contractInfos = {}
 let compilationDone = false;
 let initialised = false;
+let provider;
+let deployments = {};
 
 const rocketh = {
-    reRunMigrations: runMigrations,
+    reLaunch: () => runStages(false),
     artifact: (name) => {
         if (!initialised) {
             console.error(colors.red('rocketh is not fully initialised yet, in mocha it can only be used in hooks or it, as describe is run before rocketh can be setup'));
@@ -55,19 +60,26 @@ const rocketh = {
     }
 }
 
-function setupGlobals(addRocketh) {
-    try{
-        ganache = requireLocal('ganache-cli');
-    } catch(e) {
-        console.error(colors.red('you need to install your desired ganache-cli version in your own project: "npm install ganache-cli"'));
-        // TODO config own provider + defaults like nodeUrl, ganache-cli with privateKey signer...
-        process.exit(1);
+function setupGlobals(config) {
+    config = config || {};
+    provider = config.provider;
+    if (!provider) {
+        console.log('Setting UP');
+        try{
+            ganache = requireLocal('ganache-cli');
+            console.log(colors.green('using ganache-cli from dependencies'));
+        } catch(e) {
+            console.error(colors.red('you need to install your desired ganache-cli version in your own project: "npm install ganache-cli"'));
+            // TODO config own provider + defaults like nodeUrl, ganache-cli with privateKey signer...
+            process.exit(1);
+        }
+        provider = ganache.provider();
+        provider.setMaxListeners(200); // TODO is there a leak or do we need to up that limit (warning was at 11)
     }
 
-    global.ethereum = ganache.provider();
-    global.ethereum.setMaxListeners(200); // TODO is there a leak or do we need to up that limit (warning was at 11)
+    global.ethereum = provider;
 
-    if(addRocketh) {
+    if(config.addRocketh) {
         global.rocketh = rocketh;
     }
     return rocketh;
@@ -77,15 +89,16 @@ function compile(solc, resolve, reject, runAsScript) {
     const files = traverse(contractSrcPath);
     const sources = {};
     for (const file of files) {
-        if(file.type === 'file' && file.name.indexOf('.sol') === file.name.length - 4) {
-            sources[file.name] = {
+        if(file.name.indexOf('.sol') === file.name.length - 4) {
+            const relativePath = path.relative(contractSrcPath, file.path).replace(/\\/g, '/');
+            sources[relativePath] = {
                 content: fs.readFileSync(file.path).toString()
             };
         }
     }
 
     // TODO : config // merge from File ? add sources...
-    const solcConfig = JSON.stringify({
+    let solcConfig = JSON.stringify({
         language: "Solidity",
         sources,
         settings: {
@@ -100,10 +113,69 @@ function compile(solc, resolve, reject, runAsScript) {
             }
         }
     });
+
+    const solcVersion = solc.semver();
+    let optimize = undefined;
+    const pre_0_5_0_solc = semver.lt(solcVersion, '0.5.0');
+    const pre_0_4_11_solc = semver.lt(solcVersion, '0.4.11');
+    if (pre_0_4_11_solc) {
+        console.error(colors.red('you are using a too old solc version, rocketh only support solc >= 0.4.11'));
+        process.exit(1);
+
+        // TODO remove ?
+
+        solcConfig = { sources : {} };
+        for (const filePath of Object.keys(sources)) {
+            solcConfig.sources[filePath] = sources[filePath].content;
+        }
+        optimize = 1;
+    }
     
+    console.log(colors.green('using solc : ' + solcVersion));
+
     console.log(colors.green('########################################### COMPILING #############################################################'));
-    const rawOutput = solc.compile(solcConfig);
-    const output = JSON.parse(rawOutput);
+    let rawOutput;
+    if(pre_0_5_0_solc && !pre_0_4_11_solc) {
+        rawOutput = solc.compileStandardWrapper(solcConfig, optimize);
+    } else {
+        rawOutput = solc.compile(solcConfig, optimize);
+    }
+    
+    
+    let output;
+    if (pre_0_4_11_solc) {
+        const simpleOutput  = rawOutput;
+        const contracts = {}
+        for (const contractPath of Object.keys(simpleOutput.contracts)) {
+            const params = contractPath.split(':');
+            const contractFilename = params[0];
+            const contractName = params[1];
+            if (!contracts[contractFilename]) {
+                contracts[contractFilename] = {};
+            }
+            contracts[contractFilename][contractName] = simpleOutput.contracts[contractPath];
+        }
+
+        const errors = [];
+        for (const error of simpleOutput.errors) {
+            let severity = 'error';
+            if(error.indexOf(': Warning:') != -1) {
+                severity = 'warning';
+            }
+            errors.push({
+                severity,
+                formattedMessage: error // TODO
+            });
+        }
+
+        output = {
+            errors,
+            contracts
+        }
+    } else {
+        output = JSON.parse(rawOutput);
+    }
+    
     
     const warnings = [];
     const errors = [];
@@ -126,7 +198,7 @@ function compile(solc, resolve, reject, runAsScript) {
         for (const error of errors) {
             console.log(colors.red(error.formattedMessage));
         }
-        console.log(colors.green('###################################################################################################################'));
+        console.log(colors.red('###################################################################################################################'));
         reject();
     } else {
         for (const warning of warnings) {
@@ -144,6 +216,10 @@ function compile(solc, resolve, reject, runAsScript) {
                     contractName = fileName; // TODO remove extension ?
                 }
                 if (runAsScript) {
+                    if(!contractBuildFolderCreated) {
+                        try { fs.mkdirSync(contractBuildPath); } catch(e) {}
+                        contractBuildFolderCreated = true;
+                    }
                     fs.writeFileSync(contractBuildPath + '/' + contractName + '.json', content);
                 }
                 contractInfos[contractName] = contractInfo;
@@ -155,17 +231,17 @@ function compile(solc, resolve, reject, runAsScript) {
 }
 
 
-async function runMigrations() {
-    // console.log(colors.green('######################################### MIGRATIONS ##############################################################'));
+async function runStages(runAsScript) {
+    // console.log(colors.green('######################################### STAGES ##############################################################'));
     let fileNames;
     try{
-        fileNames = fs.readdirSync(migrationsPath);
+        fileNames = fs.readdirSync(stagesPath);
     } catch(e) {
-        console.log(colors.green('no migrations folder at ./' + migrationsPath));
+        console.log(colors.green('no stages folder at ./' + stagesPath));
         return artifacts;
     }
     fileNames = fileNames.filter((fileName) => {
-        return (!fs.statSync(path.resolve(migrationsPath, fileName)).isDirectory());
+        return (!fs.statSync(path.resolve(stagesPath, fileName)).isDirectory());
     });
     fileNames = fileNames.sort((a,b)=>{
         if(a < b) { return -1; }
@@ -173,25 +249,63 @@ async function runMigrations() {
         return 0;
     });
     artifacts= {};
-    for (const fileName of fileNames) {
-        await require(path.resolve(".") + '/' + migrationsPath + '/' + fileName)({
-            accounts: rocketh.accounts,
-            registerArtifact: (name, artifact, contractInfo, address) => {
-                if(artifacts[name]){
-                    console.error(colors.red('artifcat with same name ('+name+') exists'));
-                } else {
-                    artifacts[name] = artifact;
+    // console.log('running stage with accounts', rocketh.accounts);
+    let argsForStages = [{
+        accounts: rocketh.accounts,
+        networkId: rocketh.networkId,
+        registerArtifact: (name, artifact, deploymentInfo) => {
+            if(artifacts[name]){
+                console.error(colors.red('artifact with same name ('+name+') exists'));
+            } else {
+                artifacts[name] = artifact;
+                if(deploymentInfo) {
+                    const errors = [];
+                    if(!deploymentInfo.contractInfo) {
+                        errors.push(colors.red('deploymentInfo request field "contractInfo" that was for deployment' ));
+                    }
+                    if(!deploymentInfo.arguments) {
+                        errors.push(colors.red('deploymentInfo request field "arguments" that was used for deployment'));
+                    }
+                    if(!deploymentInfo.address) {
+                        errors.push(colors.red('deploymentInfo request field "address" of the deployed contract'));
+                    }
+                    if(errors.length > 0 ){
+                        for(const error of errors) {
+                            console.error(error);
+                        }
+                    } else {
+                        // TODO clone info passed in
+                        deploymentInfo.networks = {};
+                        deploymentInfo.networks[rocketh.networkId] = deploymentInfo.address;
+                        delete deploymentInfo.address
+                        deployments[name] = deploymentInfo;
+                        if (runAsScript) {
+                            console.log('contract ' + name + ' deployed at ' + deploymentInfo.address);
+                            if(!deploymentsFolderCreated) {
+                                try { fs.mkdirSync(deploymentsPath); } catch(e) {}
+                                deploymentsFolderCreated = true;
+                            }
+                            const content = JSON.stringify(deploymentInfo, null, '  ');
+                            fs.writeFileSync(deploymentsPath + '/' + name + '.json', content);
+                        }
+                    }
                 }
-                //TODO deployment saving using contractInfo and address // even if duplicate name error
-            } 
-        });
+            }
+        } 
+    }];
+    
+    for (const fileName of fileNames) {
+        const migrationFilePath = path.resolve(".") + '/' + stagesPath + '/' + fileName;
+        // console.log('running ' + migrationFilePath);
+        const stageFunc = require(migrationFilePath);
+        await stageFunc.apply(null, argsForStages);
     }
     // console.log(colors.green('###################################################################################################################'));
     return artifacts;
 }
 
 function deployContract(contractInfo, arguments) {
-    global.ethereum.send({id:1, method:'eth_sendTransaction', params:[{
+    provider.send({id:1, method:'eth_sendTransaction', params:[{
         from:rocketh.accounts[0],
         gas: options.gas || 0x6691b7, //TODO configure default gas
         value: options.value,
@@ -200,7 +314,7 @@ function deployContract(contractInfo, arguments) {
         if (error) {
             reject(error);
         } else {
-            global.ethereum.send({id:1, method:'eth_sendTransaction', params:[{}]}, (error, receipt) => {
+            provider.send({id:1, method:'eth_sendTransaction', params:[{}]}, (error, receipt) => {
                 //TODO wait until it succeed
                 if (error) {
                     reject(error);
@@ -215,7 +329,7 @@ function deployContract(contractInfo, arguments) {
 
 function fetchAccounts() {
     return new Promise((resolve, reject) => {
-        global.ethereum.send({id:1, method:'eth_accounts', params:[]}, (error, json) => {
+        provider.send({id:1, method:'eth_accounts', params:[]}, (error, json) => {
             if (error) {
                 reject(error);
             } else {
@@ -226,8 +340,21 @@ function fetchAccounts() {
     })
 }
 
+function fetchNetwork() {
+    return new Promise((resolve, reject) => {
+        provider.send({id:2, method:'net_version', params:[]}, (error, json) => {
+            if (error) {
+                reject(error);
+            } else {
+                rocketh.networkId = json.result;
+                resolve(json.result);
+            }
+        })
+    })
+}
+
 let promise
-function setup() {
+function setup(runAsScript) {
     if(promise) {
         throw new Error('already setup in progress');
     }
@@ -242,14 +369,25 @@ function setup() {
             process.exit(1);
         }
         
-        compile(solc, resolve, reject, require.main === module);
+        compile(solc, resolve, reject, runAsScript);
     });
 
     promise = promise.then(fetchAccounts);
 
-    promise = promise.then(runMigrations);
+    promise = promise.then(fetchNetwork);
 
-    promise = promise.then(() => { initialised = true; return rocketh.accounts; })
+    promise = promise.then(() => runStages(runAsScript));
+
+    promise = promise.then(() => { 
+        initialised = true;
+        return {
+            networkId: rocketh.networkId,
+            accounts : rocketh.accounts,
+            deployments,
+            artifacts,
+            contractInfos
+        };
+    })
 
     return promise;
 }
@@ -271,7 +409,7 @@ function waitForMocha(doSomething) {
 module.exports = {
     setup,
     setupGlobals,
-    runMigrations,
+    runStages,
     waitForMocha,
     rocketh,
     requireLocal

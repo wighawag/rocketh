@@ -1,4 +1,4 @@
-require('rocketh');
+// require('rocketh');
 
 //setup dependencies, you are free to use anything you like
 const Web3 = require('web3');
@@ -11,7 +11,7 @@ chai.use(bnChai(BN));
 
 // at that point, rocketh is partially initialised thanks to mocha --delay -r rocketh/mocha
 // unfortunately mocha does not provide a way to trigger before the file is executed and just after mocha initialise fully
-// as such Contract compilation and migrations are not perform directly
+// as such Contract compilation and stages are not perform directly
 // you can only access rocketh.contractInfo(<contractName>) and rocketh.artifact(<artifact name>) in mocha hooks or "it" functions
 const web3 = new Web3(ethereum);
 
@@ -62,7 +62,7 @@ describe('Token', () => {
     });
 
     describe('rerun Migration', () => {
-        before(rocketh.reRunMigrations);
+        before(rocketh.reLaunch);
         
         it('2 transfer from owner to user preseve total supply', async () => {
             const tokenContract = rocketh.artifact('Token');
