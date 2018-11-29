@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 const Web3 = require('web3'); // TODO use lightweight http provider
 const {
     setupGlobals,
