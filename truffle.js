@@ -28,7 +28,8 @@ global.Web3 = Web3; // not in truffle but why not
 
 
 waitForMocha(
-(accounts) =>{
+(result) =>{
+    const accounts = result.accounts;
     let contractFuncs = contractFunctions;
     if(only.length > 0){
         contractFuncs = only;
