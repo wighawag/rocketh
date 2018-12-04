@@ -27,6 +27,7 @@ global.web3 = new Web3(global.ethereum);
 global.Web3 = Web3; // not in truffle but why not
 
 
+console.log('waiting for mocha...');
 waitForMocha(
 (result) =>{
     const accounts = result.accounts;

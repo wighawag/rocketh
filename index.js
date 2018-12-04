@@ -7,17 +7,37 @@ const {
     rocketh
 } = require('./lib');
 
+
 if(require.main === module) {
-    setupGlobals({
-        provider: new Web3.providers.HttpProvider('http://localhost:8545') // TODO pass node uri in arguments
-    });
-    setup(true);
+    const yargs = require('yargs');
+    yargs.command('launch [nodeUrl]', 'run stages on node ', (yargs) => {
+        yargs
+        .positional('nodeUrl', {
+            describe: 'nodeUrl to bind on',
+            default: 'http://localhost:8545'
+        })
+        }, (argv) => {
+            if (argv.verbose) console.info(`connect on :${argv.nodeUrl}`)
+            setupGlobals({
+                provider: new Web3.providers.HttpProvider(argv.nodeUrl) // TODO pass node uri in arguments
+            });
+            setup(true);
+        })
+    .option('verbose', {
+        alias: 'v',
+        default: false
+    })
+    .argv
 } else {
     if (!global.ethereum) { // not setup yet
         rocketh.launch = (nodeUrl) => {
-            setupGlobals({
-                provider: new Web3.providers.HttpProvider(nodeUrl)
-            })
+            if (nodeUrl) {
+                setupGlobals({
+                    provider: new Web3.providers.HttpProvider(nodeUrl)
+                })
+            } else {
+                setupGlobals();
+            }
             return setup(false);
         }
     }

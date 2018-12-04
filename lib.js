@@ -1,3 +1,4 @@
+const Web3 = require('web3'); // TODO use lightweight http provider
 const fs = require('fs');
 const path = require('path');
 const colors = require('colors/safe');
@@ -11,11 +12,10 @@ function requireLocal(moduleName) {
 
 const traverse = function(dir, result = []) {
     fs.readdirSync(dir).forEach((name) => {
-        // console.log('name', name);
         const fPath = path.resolve(dir, name);
-        const fileStats = { name, path: fPath };
-        if (fs.statSync(fPath).isDirectory()) {
-            // console.log('dir', name);
+        const stats = fs.statSync(fPath);
+        const fileStats = { name, path: fPath, mtimeMs: stats.mtimeMs };
+        if (stats.isDirectory()) {
             result.push(fileStats);
             return traverse(fPath, result)
         }
@@ -27,6 +27,9 @@ const traverse = function(dir, result = []) {
 // TODO : config to allow specify non-default paths
 const contractSrcPath = 'src';
 const contractBuildPath = 'build';
+const cachePath = contractBuildPath + '/.compilationOutput.json';
+const cacheCompilationResult = true;
+const showErrorsFromCache = false;
 const stagesPath = 'stages';
 const deploymentsPath = 'deployments';
 let deploymentsFolderCreated = false;
@@ -64,17 +67,23 @@ function setupGlobals(config) {
     config = config || {};
     provider = config.provider;
     if (!provider) {
-        console.log('Setting UP');
-        try{
-            ganache = requireLocal('ganache-cli');
-            console.log(colors.green('using ganache-cli from dependencies'));
-        } catch(e) {
-            console.error(colors.red('you need to install your desired ganache-cli version in your own project: "npm install ganache-cli"'));
-            // TODO config own provider + defaults like nodeUrl, ganache-cli with privateKey signer...
-            process.exit(1);
+        const ethereumNodeURl = process.env.ETHEREUM_NODE_URL
+        if(ethereumNodeURl && ethereumNodeURl !== '') {
+            console.log('connecting to ETHEREUM_NODE_URL=' + ethereumNodeURl);
+            provider = new Web3.providers.HttpProvider(ethereumNodeURl);
+        } else {
+            console.log('ganache...');
+            try{
+                ganache = requireLocal('ganache-cli');
+                console.log(colors.green('using ganache-cli from dependencies'));
+            } catch(e) {
+                console.error(colors.red('you need to install your desired ganache-cli version in your own project: "npm install ganache-cli"'));
+                // TODO config own provider + defaults like nodeUrl, ganache-cli with privateKey signer...
+                process.exit(1);
+            }
+            provider = ganache.provider({debug: true}); //, vmErrorsOnRPCResponse: false}); //, logger: console});
+            provider.setMaxListeners(400); // TODO is there a leak or do we need to up that limit (warning was at 11)
         }
-        provider = ganache.provider();
-        provider.setMaxListeners(200); // TODO is there a leak or do we need to up that limit (warning was at 11)
     }
 
     global.ethereum = provider;
@@ -88,15 +97,20 @@ function setupGlobals(config) {
 function compile(solc, resolve, reject, runAsScript) {
     const files = traverse(contractSrcPath);
     const sources = {};
+    let latestMtimeMs = 0;
     for (const file of files) {
         if(file.name.indexOf('.sol') === file.name.length - 4) {
+            latestMtimeMs = Math.max(latestMtimeMs, file.mtimeMs);
             const relativePath = path.relative(contractSrcPath, file.path).replace(/\\/g, '/');
             sources[relativePath] = {
                 content: fs.readFileSync(file.path).toString()
             };
         }
     }
+    
+    //TODO latestMtimeMs will need to take into account compiler version change / config change ....
 
+    
     // TODO : config // merge from File ? add sources...
     let solcConfig = JSON.stringify({
         language: "Solidity",
@@ -133,54 +147,32 @@ function compile(solc, resolve, reject, runAsScript) {
     
     console.log(colors.green('using solc : ' + solcVersion));
 
-    console.log(colors.green('########################################### COMPILING #############################################################'));
+    
     let rawOutput;
-    if(pre_0_5_0_solc && !pre_0_4_11_solc) {
+    let cachePathMTimeMS = 0;
+    let usingCache = false;
+    try{
+        cachePathMTimeMS = fs.statSync(cachePath).mtimeMs;
+    } catch(e) {}
+    if(latestMtimeMs < cachePathMTimeMS) {
+        console.log(colors.blue('########################################## FROM CACHE ############################################################'));
+        rawOutput = fs.readFileSync(cachePath).toString();
+        usingCache = true;
+    } else {
+        console.log(colors.green('########################################### COMPILING #############################################################'));
+        if(pre_0_5_0_solc && !pre_0_4_11_solc) {
         rawOutput = solc.compileStandardWrapper(solcConfig, optimize);
-    } else {
-        rawOutput = solc.compile(solcConfig, optimize);
+        } else {
+            rawOutput = solc.compile(solcConfig, optimize);
+        }
     }
-    
-    
-    let output;
-    if (pre_0_4_11_solc) {
-        const simpleOutput  = rawOutput;
-        const contracts = {}
-        for (const contractPath of Object.keys(simpleOutput.contracts)) {
-            const params = contractPath.split(':');
-            const contractFilename = params[0];
-            const contractName = params[1];
-            if (!contracts[contractFilename]) {
-                contracts[contractFilename] = {};
-            }
-            contracts[contractFilename][contractName] = simpleOutput.contracts[contractPath];
-        }
 
-        const errors = [];
-        for (const error of simpleOutput.errors) {
-            let severity = 'error';
-            if(error.indexOf(': Warning:') != -1) {
-                severity = 'warning';
-            }
-            errors.push({
-                severity,
-                formattedMessage: error // TODO
-            });
-        }
-
-        output = {
-            errors,
-            contracts
-        }
-    } else {
-        output = JSON.parse(rawOutput);
-    }
-    
+    const output = JSON.parse(rawOutput);    
     
     const warnings = [];
     const errors = [];
     const others = []; // TODO
-    if(output.errors) {
+    if(output.errors && (!usingCache || showErrorsFromCache)) {
         for(const error of output.errors) {
             if(error.severity === 'warning') {
                 //TODO filter warning based on // ignore comments , example "// ignore:26:5: Warning: Function state mutability can be restricted to pure"
@@ -207,13 +199,29 @@ function compile(solc, resolve, reject, runAsScript) {
         for (const other of others) {
             console.log(colors.cyan(other.formattedMessage));
         }
-        console.log(colors.green('###################################################################################################################'));
+        const bar = '###################################################################################################################';
+        if(usingCache) {
+
+            if(showErrorsFromCache) {
+                console.log(colors.blue('########################################## FROM CACHE ############################################################'));
+            }
+        } else {
+            console.log(colors.green(bar));
+        }
+        
         for (const fileName of Object.keys(output.contracts)) {
             for (const contractName of Object.keys(output.contracts[fileName])) {
                 const contractInfo = output.contracts[fileName][contractName];
                 const content = JSON.stringify(contractInfo, null, '  ');
                 if(contractName === "") {
                     contractName = fileName; // TODO remove extension ?
+                }
+                if (cacheCompilationResult) {
+                    if(!contractBuildFolderCreated) {
+                        try { fs.mkdirSync(contractBuildPath); } catch(e) {}
+                        contractBuildFolderCreated = true;
+                    }
+                    fs.writeFileSync(cachePath, rawOutput);
                 }
                 if (runAsScript) {
                     if(!contractBuildFolderCreated) {
@@ -392,18 +400,24 @@ function setup(runAsScript) {
     return promise;
 }
 
-function waitForMocha(doSomething) {
-    let intervalId;
-    intervalId = setInterval(() =>{ // wait for global.run to be available
+function waitForMocha(doSomething) { // TODO rename to setupAndWaitForMocha
+    promise = setup()
+    if(doSomething) {
+        promise = promise.then(doSomething)
+    }
+    promise.then(() => {
         if(global.run) {
-            clearInterval(intervalId);
-            promise = setup()
-            if(doSomething) {
-                promise = promise.then(doSomething)
-            }
-            promise.then(() => global.run());
+            global.run();
+        } else {
+            let intervalId;
+            intervalId = setInterval(() =>{ // wait for global.run to be available
+                if(global.run) {
+                    clearInterval(intervalId);
+                    global.run();
+                }
+            }, 200)
         }
-    }, 200)
+    });
 }
 
 module.exports = {
