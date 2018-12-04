@@ -1,9 +1,12 @@
 const rocketh = require('rocketh');
+const Web3 = require('web3');
 const BN = require('bn.js');
 const chai = require('chai');
 const expect = chai.expect;
 const bnChai = require('bn-chai');
 chai.use(bnChai(BN));
+
+const web3 = new Web3(rocketh.ethereum);
 
 contract('Token', (accounts) => {
     const TokenContractInfo = rocketh.contractInfo('Token');

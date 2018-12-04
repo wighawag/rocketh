@@ -43,7 +43,7 @@ let provider;
 let deployments = {};
 
 const rocketh = {
-    reLaunch: () => runStages(false),
+    runStages: () => runStages(false),
     artifact: (name) => {
         if (!initialised) {
             console.error(colors.red('rocketh is not fully initialised yet, in mocha it can only be used in hooks or it, as describe is run before rocketh can be setup'));
@@ -65,7 +65,7 @@ const rocketh = {
 
 function setupGlobals(config) {
     config = config || {};
-    provider = config.provider;
+    provider = config.provider || provider;
     if (!provider) {
         const ethereumNodeURl = process.env.ETHEREUM_NODE_URL
         if(ethereumNodeURl && ethereumNodeURl !== '') {
@@ -86,6 +86,7 @@ function setupGlobals(config) {
         }
     }
 
+    rocketh.ethereum = provider;
     global.ethereum = provider;
 
     if(config.addRocketh) {

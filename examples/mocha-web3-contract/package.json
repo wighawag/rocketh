@@ -1,5 +1,5 @@
 {
-    "name": "rocketh-examples-simple-web3",
+    "name": "rocketh-examples-mocha-web3-contract",
     "version": "0.1.0",
     "license": "MIT",
     "scripts": {

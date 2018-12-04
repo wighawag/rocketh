@@ -1,16 +1,16 @@
 {
-    "name": "rocketh-examples-simple-web3",
+    "name": "rocketh-examples-tap-web3",
     "version": "0.1.0",
     "license": "MIT",
     "scripts": {
-        "test": "mocha --delay -r rocketh/truffle"
+        "test": "tap test"
     },
     "dependencies": {
         "bn-chai": "^1.0.1",
         "chai": "^4.2.0",
         "ganache-cli": "^6.2.1",
-        "mocha": "^5.2.0",
         "solc": "^0.5.0",
+        "tap": "^12.1.0",
         "web3": "^1.0.0-beta.36"
     }
 }

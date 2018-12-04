@@ -30,6 +30,7 @@ if(require.main === module) {
     .argv
 } else {
     if (!global.ethereum) { // not setup yet
+        setupGlobals();
         rocketh.launch = (nodeUrl) => {
             if (nodeUrl) {
                 setupGlobals({
