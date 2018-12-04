@@ -67,9 +67,9 @@ function setupGlobals(config) {
     config = config || {};
     provider = config.provider || provider;
     if (!provider) {
-        const ethereumNodeURl = process.env.ETHEREUM_NODE_URL
+        const ethereumNodeURl = process.env.ROCKETH_NODE_URL
         if(ethereumNodeURl && ethereumNodeURl !== '') {
-            console.log('connecting to ETHEREUM_NODE_URL=' + ethereumNodeURl);
+            console.log('connecting to ROCKETH_NODE_URL=' + ethereumNodeURl);
             provider = new Web3.providers.HttpProvider(ethereumNodeURl);
         } else {
             console.log('ganache...');
