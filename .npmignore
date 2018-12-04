@@ -1,5 +1,6 @@
 node_modules/
 yarn-error.log
+npm-debug.log
 examples/
 TODO.md
 logo.png
