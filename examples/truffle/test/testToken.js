@@ -1,5 +1,4 @@
-
-//setup dependencies, you are free to use anything you like
+const rocketh = require('rocketh');
 const BN = require('bn.js');
 const chai = require('chai');
 const expect = chai.expect;

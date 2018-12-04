@@ -3,7 +3,7 @@
     "version": "0.1.0",
     "license": "MIT",
     "scripts": {
-        "test": "mocha --delay"
+        "test": "mocha --delay -r rocketh/mocha"
     },
     "dependencies": {
         "bn-chai": "^1.0.1",

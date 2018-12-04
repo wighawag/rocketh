@@ -1,6 +1,4 @@
-// require('rocketh');
-
-//setup dependencies, you are free to use anything you like
+const rocketh = require('rocketh');
 const Web3 = require('web3');
 const BN = require('bn.js');
 const chai = require('chai');
