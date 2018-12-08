@@ -24,14 +24,30 @@ const traverse = function(dir, result = []) {
     return result;
 };
 
+
+
 // TODO : config to allow specify non-default paths
 const contractSrcPath = 'src';
 const contractBuildPath = 'build';
-const cachePath = contractBuildPath + '/.compilationOutput.json';
+const cacheOutputPath = contractBuildPath + '/.compilationOutput.json';
+const cacheInputPath = contractBuildPath + '/.compilationInput.json';
 const cacheCompilationResult = true;
 const showErrorsFromCache = false;
 const stagesPath = 'stages';
 const deploymentsPath = 'deployments';
+let silent = false;
+
+function log(...args) {
+    if(silent) { return; }
+    console.log.apply(console, args);
+}
+
+
+// TODO
+// const showContractWithNoByteCode = false;
+// const doNotIncludeContractWithoutByteCode = false; // TODO better : const excludeEmptyContract (abstract and interface)
+// TODO warn of non-used interface and abstract contract (at least those located in src folder)
+
 let deploymentsFolderCreated = false;
 let contractBuildFolderCreated = false;
 
@@ -65,24 +81,25 @@ const rocketh = {
 
 function setupGlobals(config) {
     config = config || {};
+    silent = config.silent;
     provider = config.provider || provider;
     if (!provider) {
         const ethereumNodeURl = process.env.ROCKETH_NODE_URL
         if(ethereumNodeURl && ethereumNodeURl !== '') {
-            console.log('connecting to ROCKETH_NODE_URL=' + ethereumNodeURl);
+            log('connecting to ROCKETH_NODE_URL=' + ethereumNodeURl);
             provider = new Web3.providers.HttpProvider(ethereumNodeURl);
         } else {
-            console.log('ganache...');
+            log('ganache...');
             try{
                 ganache = requireLocal('ganache-cli');
-                console.log(colors.green('using ganache-cli from dependencies'));
+                log(colors.green('using ganache-cli from dependencies'));
             } catch(e) {
                 console.error(colors.red('you need to install your desired ganache-cli version in your own project: "npm install ganache-cli"'));
                 // TODO config own provider + defaults like nodeUrl, ganache-cli with privateKey signer...
                 process.exit(1);
             }
             provider = ganache.provider({debug: true}); //, vmErrorsOnRPCResponse: false}); //, logger: console});
-            provider.setMaxListeners(400); // TODO is there a leak or do we need to up that limit (warning was at 11)
+            provider.setMaxListeners(1000000); // TODO is there a leak or do we need to up that limit (warning was at 11)
         }
     }
 
@@ -112,9 +129,23 @@ function compile(solc, resolve, reject, runAsScript) {
     //TODO latestMtimeMs will need to take into account compiler version change / config change ....
 
     
+    const solcVersion = solc.semver();
+    const pre_0_5_0_solc = semver.lt(solcVersion, '0.5.0');
+    const pre_0_4_11_solc = semver.lt(solcVersion, '0.4.11');
+    if (pre_0_4_11_solc) {
+        console.error(colors.red('you are using a too old solc version, rocketh only support solc >= 0.4.11'));
+        process.exit(1);
+    }
+    
+    log(colors.green('using solc : ' + solcVersion));
+
     // TODO : config // merge from File ? add sources...
-    let solcConfig = JSON.stringify({
+    const solcConfig = JSON.stringify({
         language: "Solidity",
+        compiler: {
+            name: "solc",
+            version: solcVersion
+        },
         sources,
         settings: {
             optimizer: {
@@ -123,49 +154,43 @@ function compile(solc, resolve, reject, runAsScript) {
             },
             outputSelection: {
                 "*": {
-                    "*": [ "abi", "evm.bytecode" ]
-                }
+                    "*": [ "abi", "evm.bytecode", "metadata" ],
+                    "": [ "ast" ]
+                },
             }
         }
-    });
-
-    const solcVersion = solc.semver();
-    let optimize = undefined;
-    const pre_0_5_0_solc = semver.lt(solcVersion, '0.5.0');
-    const pre_0_4_11_solc = semver.lt(solcVersion, '0.4.11');
-    if (pre_0_4_11_solc) {
-        console.error(colors.red('you are using a too old solc version, rocketh only support solc >= 0.4.11'));
-        process.exit(1);
-
-        // TODO remove ?
-
-        solcConfig = { sources : {} };
-        for (const filePath of Object.keys(sources)) {
-            solcConfig.sources[filePath] = sources[filePath].content;
-        }
-        optimize = 1;
-    }
-    
-    console.log(colors.green('using solc : ' + solcVersion));
-
+    }, null, '  ');
     
     let rawOutput;
     let cachePathMTimeMS = 0;
     let usingCache = false;
     try{
-        cachePathMTimeMS = fs.statSync(cachePath).mtimeMs;
+        cachePathMTimeMS = fs.statSync(cacheOutputPath).mtimeMs;
     } catch(e) {}
     if(latestMtimeMs < cachePathMTimeMS) {
-        console.log(colors.blue('########################################## FROM CACHE ############################################################'));
-        rawOutput = fs.readFileSync(cachePath).toString();
-        usingCache = true;
-    } else {
-        console.log(colors.green('########################################### COMPILING #############################################################'));
-        if(pre_0_5_0_solc && !pre_0_4_11_solc) {
-        rawOutput = solc.compileStandardWrapper(solcConfig, optimize);
+        let lastInput = '';
+        try{ 
+            lastInput = fs.readFileSync(cacheInputPath).toString(); // TODO buffer and stream check checksum
+        } catch(e) {}
+        const sameInput = lastInput === solcConfig;
+        if(!sameInput) {
+            log('config changed...');
         } else {
-            rawOutput = solc.compile(solcConfig, optimize);
+            usingCache = true;
+            // TODO expose the info that cache is being used so that test runner can skip test that did not change
         }
+    }
+
+    if(!usingCache) {
+        log(colors.green('########################################### COMPILING #############################################################'));
+        if(pre_0_5_0_solc && !pre_0_4_11_solc) {
+            rawOutput = solc.compileStandardWrapper(solcConfig);
+        } else {
+            rawOutput = solc.compile(solcConfig);
+        }
+    } else {
+        log(colors.blue('########################################## FROM CACHE ############################################################'));
+        rawOutput = fs.readFileSync(cacheOutputPath).toString();
     }
 
     const output = JSON.parse(rawOutput);    
@@ -189,25 +214,36 @@ function compile(solc, resolve, reject, runAsScript) {
     
     if(errors.length > 0) {
         for (const error of errors) {
-            console.log(colors.red(error.formattedMessage));
+            log(colors.red(error.formattedMessage));
         }
-        console.log(colors.red('###################################################################################################################'));
+        log(colors.red('###################################################################################################################'));
         reject();
     } else {
+        
+        if (cacheCompilationResult) {
+            if(!contractBuildFolderCreated) {
+                try { fs.mkdirSync(contractBuildPath); } catch(e) {}
+                contractBuildFolderCreated = true;
+            }
+            const solcOutput = JSON.parse(rawOutput);
+            fs.writeFileSync(cacheOutputPath, JSON.stringify(solcOutput, null, '  '));
+            fs.writeFileSync(cacheInputPath, solcConfig);
+        }
+
         for (const warning of warnings) {
-            console.log(colors.yellow(warning.formattedMessage));
+            log(colors.yellow(warning.formattedMessage));
         }
         for (const other of others) {
-            console.log(colors.cyan(other.formattedMessage));
+            log(colors.cyan(other.formattedMessage));
         }
         const bar = '###################################################################################################################';
         if(usingCache) {
 
             if(showErrorsFromCache) {
-                console.log(colors.blue('########################################## FROM CACHE ############################################################'));
+                log(colors.blue('########################################## FROM CACHE ############################################################'));
             }
         } else {
-            console.log(colors.green(bar));
+            log(colors.green(bar));
         }
         
         for (const fileName of Object.keys(output.contracts)) {
@@ -217,13 +253,6 @@ function compile(solc, resolve, reject, runAsScript) {
                 if(contractName === "") {
                     contractName = fileName; // TODO remove extension ?
                 }
-                if (cacheCompilationResult) {
-                    if(!contractBuildFolderCreated) {
-                        try { fs.mkdirSync(contractBuildPath); } catch(e) {}
-                        contractBuildFolderCreated = true;
-                    }
-                    fs.writeFileSync(cachePath, rawOutput);
-                }
                 if (runAsScript) {
                     if(!contractBuildFolderCreated) {
                         try { fs.mkdirSync(contractBuildPath); } catch(e) {}
@@ -231,7 +260,13 @@ function compile(solc, resolve, reject, runAsScript) {
                     }
                     fs.writeFileSync(contractBuildPath + '/' + contractName + '.json', content);
                 }
+                // log('' + contractName + ' compiled');
                 contractInfos[contractName] = contractInfo;
+                // if (contractInfo.evm
+                //     && contractInfo.evm.bytecode
+                //     && contractInfo.evm.bytecode.object === '') { // TODO config to skip error
+                //     console.warn(colors.yellow('contract ' + contractName + ' do not have bytecode generated'))
+                // }
             }
         }
         compilationDone = true;
@@ -241,12 +276,12 @@ function compile(solc, resolve, reject, runAsScript) {
 
 
 async function runStages(runAsScript) {
-    // console.log(colors.green('######################################### STAGES ##############################################################'));
+    // log(colors.green('######################################### STAGES ##############################################################'));
     let fileNames;
     try{
         fileNames = fs.readdirSync(stagesPath);
     } catch(e) {
-        console.log(colors.green('no stages folder at ./' + stagesPath));
+        log(colors.green('no stages folder at ./' + stagesPath));
         return artifacts;
     }
     fileNames = fileNames.filter((fileName) => {
@@ -258,7 +293,7 @@ async function runStages(runAsScript) {
         return 0;
     });
     artifacts= {};
-    // console.log('running stage with accounts', rocketh.accounts);
+    // log('running stage with accounts', rocketh.accounts);
     let argsForStages = [{
         accounts: rocketh.accounts,
         networkId: rocketh.networkId,
@@ -289,7 +324,7 @@ async function runStages(runAsScript) {
                         delete deploymentInfo.address
                         deployments[name] = deploymentInfo;
                         if (runAsScript) {
-                            console.log('contract ' + name + ' deployed at ' + deploymentInfo.address);
+                            log('contract ' + name + ' deployed at ' + deploymentInfo.address);
                             if(!deploymentsFolderCreated) {
                                 try { fs.mkdirSync(deploymentsPath); } catch(e) {}
                                 deploymentsFolderCreated = true;
@@ -305,11 +340,11 @@ async function runStages(runAsScript) {
     
     for (const fileName of fileNames) {
         const migrationFilePath = path.resolve(".") + '/' + stagesPath + '/' + fileName;
-        // console.log('running ' + migrationFilePath);
+        // log('running ' + migrationFilePath);
         const stageFunc = require(migrationFilePath);
         await stageFunc.apply(null, argsForStages);
     }
-    // console.log(colors.green('###################################################################################################################'));
+    // log(colors.green('###################################################################################################################'));
     return artifacts;
 }
 

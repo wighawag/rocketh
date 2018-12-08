@@ -30,14 +30,21 @@ if(require.main === module) {
     .argv
 } else {
     if (!global.ethereum) { // not setup yet
-        setupGlobals();
-        rocketh.launch = (nodeUrl) => {
-            if (nodeUrl) {
+        rocketh.launch = (config) => {
+            if(!config) {
+                config = {};
+            } else if(typeof config === 'string') {
+                config = {
+                    nodeUrl: config
+                }
+            }
+            if (config.nodeUrl) {
                 setupGlobals({
-                    provider: new Web3.providers.HttpProvider(nodeUrl)
+                    provider: new Web3.providers.HttpProvider(config.nodeUrl),
+                    slient: config.silent
                 })
             } else {
-                setupGlobals();
+                setupGlobals(config);
             }
             return setup(false);
         }
