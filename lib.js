@@ -36,6 +36,7 @@ const showErrorsFromCache = false;
 const stagesPath = 'stages';
 const deploymentsPath = 'deployments';
 let silent = false;
+const generateTruffleBuildFiles = true;
 
 function log(...args) {
     if(silent) { return; }
@@ -154,7 +155,7 @@ function compile(solc, resolve, reject, runAsScript) {
             },
             outputSelection: {
                 "*": {
-                    "*": [ "abi", "evm.bytecode", "metadata" ],
+                    "*": [ "abi", "evm.bytecode", "metadata", "evm.deployedBytecode"],
                     "": [ "ast" ]
                 },
             }
@@ -246,12 +247,12 @@ function compile(solc, resolve, reject, runAsScript) {
             log(colors.green(bar));
         }
         
-        for (const fileName of Object.keys(output.contracts)) {
-            for (const contractName of Object.keys(output.contracts[fileName])) {
-                const contractInfo = output.contracts[fileName][contractName];
+        for (const filePath of Object.keys(output.contracts)) {
+            for (const contractName of Object.keys(output.contracts[filePath])) {
+                const contractInfo = output.contracts[filePath][contractName];
                 const content = JSON.stringify(contractInfo, null, '  ');
                 if(contractName === "") {
-                    contractName = fileName; // TODO remove extension ?
+                    contractName = filePath.substr(filePath.lastIndexOf('/')); // TODO remove extension?
                 }
                 if (runAsScript) {
                     if(!contractBuildFolderCreated) {
@@ -259,6 +260,22 @@ function compile(solc, resolve, reject, runAsScript) {
                         contractBuildFolderCreated = true;
                     }
                     fs.writeFileSync(contractBuildPath + '/' + contractName + '.json', content);
+                }
+                if(generateTruffleBuildFiles && contractInfo.evm.bytecode.object && contractInfo.evm.bytecode.object != '') {
+                    const truffleBuildFile = {
+                        bytecode: contractInfo.evm.bytecode.object,
+                        sourceMap: contractInfo.evm.bytecode.sourceMap,
+                        deployedBytecode: contractInfo.evm.deployedBytecode.object,
+                        deployedSourceMap: contractInfo.evm.deployedBytecode.sourceMap,
+                        source: sources[filePath].content,
+                        sourcePath: filePath,
+                        ast: output.contracts[filePath].ast,
+                        networks: {}, // TODO 
+                        contractName
+                    };
+                    try { fs.mkdirSync('build'); } catch(e) {}
+                    try { fs.mkdirSync('build/contracts'); } catch(e) {}
+                    fs.writeFileSync('build/contracts/' + contractName + '.json', JSON.stringify(truffleBuildFile, null, '  '));
                 }
                 // log('' + contractName + ' compiled');
                 contractInfos[contractName] = contractInfo;
@@ -305,32 +322,49 @@ async function runStages(runAsScript) {
                 if(deploymentInfo) {
                     const errors = [];
                     if(!deploymentInfo.contractInfo) {
-                        errors.push(colors.red('deploymentInfo request field "contractInfo" that was for deployment' ));
+                        errors.push(colors.red('deploymentInfo requires field "contractInfo" that was for deployment' ));
                     }
                     if(!deploymentInfo.arguments) {
-                        errors.push(colors.red('deploymentInfo request field "arguments" that was used for deployment'));
+                        errors.push(colors.red('deploymentInfo requires field "arguments" that was used for deployment'));
                     }
                     if(!deploymentInfo.address) {
-                        errors.push(colors.red('deploymentInfo request field "address" of the deployed contract'));
+                        errors.push(colors.red('deploymentInfo requires field "address" of the deployed contract'));
                     }
                     if(errors.length > 0 ){
                         for(const error of errors) {
                             console.error(error);
                         }
                     } else {
-                        // TODO clone info passed in
-                        deploymentInfo.networks = {};
-                        deploymentInfo.networks[rocketh.networkId] = deploymentInfo.address;
-                        delete deploymentInfo.address
-                        deployments[name] = deploymentInfo;
+                        const deploymentInfoToSave = {
+                            contractInfo: deploymentInfo.contractInfo,
+                            arguments: deploymentInfo.arguments,
+                            networks: {}
+                        };
+                        deploymentInfoToSave.networks[rocketh.networkId] = deploymentInfo.address;
+                        deployments[name] = deploymentInfoToSave;
                         if (runAsScript) {
                             log('contract ' + name + ' deployed at ' + deploymentInfo.address);
                             if(!deploymentsFolderCreated) {
                                 try { fs.mkdirSync(deploymentsPath); } catch(e) {}
                                 deploymentsFolderCreated = true;
                             }
-                            const content = JSON.stringify(deploymentInfo, null, '  ');
+                            const content = JSON.stringify(deploymentInfoToSave, null, '  ');
                             fs.writeFileSync(deploymentsPath + '/' + name + '.json', content);
+                        }
+                        if(generateTruffleBuildFiles) {
+                            let truffleBuildFile = null;
+                            try{
+                                truffleBuildFile = JSON.parse(fs.readFileSync('build/contracts/' + name + '.json').toString());
+                            } catch(e) {}
+                            if(truffleBuildFile) {
+                                truffleBuildFile.networks[rocketh.networkId] = {
+                                    // "events": {}, // TODO ?
+                                    // "links": {}, // TODO ?
+                                    address: deploymentInfo.address.toLowerCase()
+                                    // transactionHash:  // TODO ?
+                                };
+                                fs.writeFileSync('build/contracts/' + name + '.json', JSON.stringify(truffleBuildFile, null, '  '));
+                            }
                         }
                     }
                 }
