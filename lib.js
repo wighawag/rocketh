@@ -143,10 +143,11 @@ function compile(solc, resolve, reject, runAsScript) {
     // TODO : config // merge from File ? add sources...
     const solcConfig = JSON.stringify({
         language: "Solidity",
-        compiler: {
-            name: "solc",
-            version: solcVersion
-        },
+        //TODO add compiler info in some way to not use cache when compiler version is different // extra fields were fine prior to 0.5.1 or 0.5.2
+        // compiler: {
+        //     name: "solc",
+        //     version: solcVersion
+        // },
         sources,
         settings: {
             optimizer: {
