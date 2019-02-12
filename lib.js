@@ -38,14 +38,9 @@ const traverse = function(dir, result = []) {
 };
 
 
-// TODO : finish config to allow specify non-default paths
-const contractBuildPath = 'build';
-const cacheOutputPath = contractBuildPath + '/.compilationOutput.json';
-const cacheInputPath = contractBuildPath + '/.compilationInput.json';
+// TODO : finish config to allow specify :
 const cacheCompilationResult = true;
 const showErrorsFromCache = false;
-const stagesPath = 'stages';
-const deploymentsPath = 'deployments';
 const generateTruffleBuildFiles = true;
 
 let silent = false;
@@ -130,7 +125,10 @@ function setupGlobals(config) {
 }
 
 function compile(solc, resolve, reject, config) {
-    const contractSrcPath = config.contractSrcPath || 'src';
+    const contractSrcPath = path.join(config.rootPath || './', config.contractSrcPath || 'src');
+    const contractBuildPath = path.join(config.rootPath || './', config.contractBuildPath || 'build');
+    const cacheOutputPath = contractBuildPath + '/.compilationOutput.json';
+    const cacheInputPath = contractBuildPath + '/.compilationInput.json';
     const files = traverse(contractSrcPath);
     const sources = {};
     let latestMtimeMs = 0;
@@ -311,6 +309,9 @@ function compile(solc, resolve, reject, config) {
 
 
 async function runStages(runAsScript) {
+    const config = globalConfig; // TODO remove
+    const stagesPath = path.join(config.rootPath || './', config.stagesPath || 'stages');
+    const deploymentsPath = path.join(config.rootPath || './', config.deploymentsPath || 'deployments');
     // log(colors.green('######################################### STAGES ##############################################################'));
     let fileNames;
     try{
@@ -450,10 +451,12 @@ function fetchNetwork() {
 }
 
 let promise
+let globalConfig // TODO remove
 function setup(config) {
     if(promise) {
         throw new Error('already setup in progress');
     }
+    globalConfig = config;
 
     // compilation :
     promise = new Promise((resolve, reject) => {
@@ -489,7 +492,7 @@ function setup(config) {
 }
 
 function waitForMocha(doSomething) { // TODO rename to setupAndWaitForMocha
-    promise = setup()
+    promise = setup({})
     if(doSomething) {
         promise = promise.then(doSomething)
     }

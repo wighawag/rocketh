@@ -26,14 +26,16 @@ if(require.main === module) {
             }
 
             if(configFromFile) {
-                setupGlobals(configFromFile);
-                setup(configFromFile);
+                setupGlobals(configFromFile || {});
+                setup(configFromFile || {});
             } else {
                 if (argv.verbose) console.info(`connect on :${argv.nodeUrl}`);
-                setupGlobals({
-                    provider: new Web3.providers.HttpProvider(argv.nodeUrl) // TODO pass node uri in arguments
-                });
-                setup({runAsScript: true});
+                const config = {
+                    provider: new Web3.providers.HttpProvider(argv.nodeUrl), // TODO pass node uri in arguments
+                    runAsScript: true
+                }
+                setupGlobals(config);
+                setup(config);
             }
             
         })
