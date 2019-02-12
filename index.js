@@ -17,11 +17,25 @@ if(require.main === module) {
             default: 'http://localhost:8545'
         })
         }, (argv) => {
-            if (argv.verbose) console.info(`connect on :${argv.nodeUrl}`)
-            setupGlobals({
-                provider: new Web3.providers.HttpProvider(argv.nodeUrl) // TODO pass node uri in arguments
-            });
-            setup(true);
+
+            let configFromFile = null;
+            try{
+                configFromFile = require('./rocketh.config.js')
+            } catch(e) {
+
+            }
+
+            if(configFromFile) {
+                setupGlobals(configFromFile);
+                setup(configFromFile);
+            } else {
+                if (argv.verbose) console.info(`connect on :${argv.nodeUrl}`);
+                setupGlobals({
+                    provider: new Web3.providers.HttpProvider(argv.nodeUrl) // TODO pass node uri in arguments
+                });
+                setup({runAsScript: true});
+            }
+            
         })
     .option('verbose', {
         alias: 'v',
@@ -39,14 +53,10 @@ if(require.main === module) {
                 }
             }
             if (config.nodeUrl) {
-                setupGlobals({
-                    provider: new Web3.providers.HttpProvider(config.nodeUrl),
-                    slient: config.silent
-                })
-            } else {
-                setupGlobals(config);
+                config.provider = new Web3.providers.HttpProvider(config.nodeUrl);
             }
-            return setup(false);
+            setupGlobals(config); // TODO merge the two
+            return setup(config);
         }
     }
 }

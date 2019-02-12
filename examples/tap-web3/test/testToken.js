@@ -7,15 +7,15 @@ const expect = chai.expect;
 const bnChai = require('bn-chai');
 chai.use(bnChai(BN));
 
-const web3 = new Web3(rocketh.ethereum);
-
 let 
+web3,
 accounts,
 user1, 
 owner, 
 TokenContractInfo;
 rocketh.launch().then(setup).then(main);
-async function setup() {    
+async function setup() {
+    web3 = new Web3(rocketh.ethereum);
     TokenContractInfo = rocketh.contractInfo('Token'); 
     accounts = await web3.eth.getAccounts();
     owner = Web3.utils.toChecksumAddress(accounts[0]);
