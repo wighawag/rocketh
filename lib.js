@@ -370,7 +370,8 @@ async function runStages(runAsScript) {
                     }
                 }
             }
-        } 
+        },
+        artifact: function(name) {return artifacts[name]}
     }];
     
     for (const fileName of fileNames) {
