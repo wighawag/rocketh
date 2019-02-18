@@ -5,5 +5,5 @@ const {
 } = require('./lib');
 
 
-setupGlobals();
+setupGlobals({});
 waitForMocha();

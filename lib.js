@@ -5,8 +5,21 @@ const colors = require('colors/safe');
 const semver = require('semver');
 
 function requireLocal(moduleName) {
-    // TODO go up the file hierarchy and then require the moduleName if all else fails. rocketh could provide a default
-    return require(path.resolve('./node_modules/' + moduleName));
+    // TODO if all else fails. rocketh could provide a default
+    let currentFolder = path.resolve('./')
+    // console.log('currentFolder', currentFolder);
+    do {
+        try{
+            const nodeModule = path.join(currentFolder,'node_modules', moduleName);
+            // console.log('trying ' + nodeModule + '...');
+            return require(nodeModule);
+        } catch(e) {
+            // console.error(e);
+        }
+        currentFolder = path.relative(currentFolder, '..');
+    } while (path.resolve(['..', currentFolder]) != currentFolder);
+
+    throw(new Error("can't find module " + moduleName));
 }
 
 
@@ -25,18 +38,13 @@ const traverse = function(dir, result = []) {
 };
 
 
-
-// TODO : config to allow specify non-default paths
-const contractSrcPath = 'src';
-const contractBuildPath = 'build';
-const cacheOutputPath = contractBuildPath + '/.compilationOutput.json';
-const cacheInputPath = contractBuildPath + '/.compilationInput.json';
+// TODO : finish config to allow specify :
 const cacheCompilationResult = true;
 const showErrorsFromCache = false;
-const stagesPath = 'stages';
-const deploymentsPath = 'deployments';
-let silent = false;
 const generateTruffleBuildFiles = true;
+
+let silent = false;
+
 
 function log(...args) {
     if(silent) { return; }
@@ -84,13 +92,14 @@ function setupGlobals(config) {
     config = config || {};
     silent = config.silent;
     provider = config.provider || provider;
+    const ganacheOptions = config.ganacheOptions || {debug: true};
     if (!provider) {
         const ethereumNodeURl = process.env.ROCKETH_NODE_URL
         if(ethereumNodeURl && ethereumNodeURl !== '') {
             log('connecting to ROCKETH_NODE_URL=' + ethereumNodeURl);
             provider = new Web3.providers.HttpProvider(ethereumNodeURl);
         } else {
-            log('ganache...');
+            log('ganache...', ganacheOptions);
             try{
                 ganache = requireLocal('ganache-cli');
                 log(colors.green('using ganache-cli from dependencies'));
@@ -99,10 +108,12 @@ function setupGlobals(config) {
                 // TODO config own provider + defaults like nodeUrl, ganache-cli with privateKey signer...
                 process.exit(1);
             }
-            provider = ganache.provider({debug: true}); //, vmErrorsOnRPCResponse: false}); //, logger: console});
+            provider = ganache.provider(ganacheOptions); //, vmErrorsOnRPCResponse: false}); //, logger: console});
             provider.setMaxListeners(1000000); // TODO is there a leak or do we need to up that limit (warning was at 11)
         }
     }
+
+    // console.log(provider);
 
     rocketh.ethereum = provider;
     global.ethereum = provider;
@@ -113,7 +124,11 @@ function setupGlobals(config) {
     return rocketh;
 }
 
-function compile(solc, resolve, reject, runAsScript) {
+function compile(solc, resolve, reject, config) {
+    const contractSrcPath = path.join(config.rootPath || './', config.contractSrcPath || 'src');
+    const contractBuildPath = path.join(config.rootPath || './', config.contractBuildPath || 'build');
+    const cacheOutputPath = contractBuildPath + '/.compilationOutput.json';
+    const cacheInputPath = contractBuildPath + '/.compilationInput.json';
     const files = traverse(contractSrcPath);
     const sources = {};
     let latestMtimeMs = 0;
@@ -255,7 +270,7 @@ function compile(solc, resolve, reject, runAsScript) {
                 if(contractName === "") {
                     contractName = filePath.substr(filePath.lastIndexOf('/')); // TODO remove extension?
                 }
-                if (runAsScript) {
+                if (config.runAsScript) {
                     if(!contractBuildFolderCreated) {
                         try { fs.mkdirSync(contractBuildPath); } catch(e) {}
                         contractBuildFolderCreated = true;
@@ -294,6 +309,9 @@ function compile(solc, resolve, reject, runAsScript) {
 
 
 async function runStages(runAsScript) {
+    const config = globalConfig; // TODO remove
+    const stagesPath = path.join(config.rootPath || './', config.stagesPath || 'stages');
+    const deploymentsPath = path.join(config.rootPath || './', config.deploymentsPath || 'deployments');
     // log(colors.green('######################################### STAGES ##############################################################'));
     let fileNames;
     try{
@@ -434,10 +452,12 @@ function fetchNetwork() {
 }
 
 let promise
-function setup(runAsScript) {
+let globalConfig // TODO remove
+function setup(config) {
     if(promise) {
         throw new Error('already setup in progress');
     }
+    globalConfig = config;
 
     // compilation :
     promise = new Promise((resolve, reject) => {
@@ -449,14 +469,14 @@ function setup(runAsScript) {
             process.exit(1);
         }
         
-        compile(solc, resolve, reject, runAsScript);
+        compile(solc, resolve, reject, config);
     });
 
     promise = promise.then(fetchAccounts);
 
     promise = promise.then(fetchNetwork);
 
-    promise = promise.then(() => runStages(runAsScript));
+    promise = promise.then(() => runStages(config.runAsScript));
 
     promise = promise.then(() => { 
         initialised = true;
@@ -473,7 +493,7 @@ function setup(runAsScript) {
 }
 
 function waitForMocha(doSomething) { // TODO rename to setupAndWaitForMocha
-    promise = setup()
+    promise = setup({})
     if(doSomething) {
         promise = promise.then(doSomething)
     }
