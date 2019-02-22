@@ -7,20 +7,19 @@ const expect = chai.expect;
 const bnChai = require('bn-chai');
 chai.use(bnChai(BN));
 
-let 
-web3,
-accounts,
-user1, 
-owner, 
-TokenContractInfo;
-rocketh.launch().then(setup).then(main);
-async function setup() {
-    web3 = new Web3(rocketh.ethereum);
-    TokenContractInfo = rocketh.contractInfo('Token'); 
-    accounts = await web3.eth.getAccounts();
-    owner = Web3.utils.toChecksumAddress(accounts[0]);
-    user1 = Web3.utils.toChecksumAddress(accounts[1]);
+
+function deployedWeb3Contract(name) {
+    const deployment = rocketh.deployment(name);
+    return new web3.eth.Contract(deployment.contractInfo.abi, deployment.address);
 }
+
+const web3 = new Web3(rocketh.ethereum);
+const accounts = rocketh.accounts;
+const TokenContractInfo = rocketh.contractInfo('Token'); 
+const owner = Web3.utils.toChecksumAddress(accounts[0]);
+const user1 = Web3.utils.toChecksumAddress(accounts[1]);
+
+main();
 async function main() {
     
     t.test('deploy token', async () => {
@@ -32,7 +31,7 @@ async function main() {
     });
 
     t.test('transfer from owner to user preseve total supply', async () => {
-        const tokenContract = rocketh.artifact('Token');
+        const tokenContract = deployedWeb3Contract('Token');
         await tokenContract.methods.transfer(user1, 100).send({from: owner});
         const user1Balance = await tokenContract.methods.balanceOf(user1).call();
         const ownerBalance = await tokenContract.methods.balanceOf(owner).call();
@@ -40,14 +39,14 @@ async function main() {
     });
 
     t.test('transfer 100 again add up to 200', async () => {
-        const tokenContract = rocketh.artifact('Token');
+        const tokenContract = deployedWeb3Contract('Token');
         await tokenContract.methods.transfer(user1, 100).send({from: owner});
         const user1Balance = await tokenContract.methods.balanceOf(user1).call();
         expect(user1Balance).to.eq.BN('200');
     });
 
     t.test('Token2: transfer 100 add up to 100', async () => {
-        const tokenContract = rocketh.artifact('Token2');
+        const tokenContract = deployedWeb3Contract('Token2');
         await tokenContract.methods.transfer(user1, 100).send({from: owner});
         const user1Balance = await tokenContract.methods.balanceOf(user1).call();
         expect(user1Balance).to.eq.BN('100');
@@ -56,7 +55,7 @@ async function main() {
     
     t.test('transfer from owner to user preseve total supply', async () => {
         await rocketh.runStages();
-        const tokenContract = rocketh.artifact('Token');
+        const tokenContract = deployedWeb3Contract('Token');
         await tokenContract.methods.transfer(user1, 100).send({from: owner});
         const user1Balance = await tokenContract.methods.balanceOf(user1).call();
         const ownerBalance = await tokenContract.methods.balanceOf(owner).call();
@@ -64,7 +63,7 @@ async function main() {
     });
 
     t.test('transfer 100 again add up to 200', async () => {
-        const tokenContract = rocketh.artifact('Token');
+        const tokenContract = deployedWeb3Contract('Token');
         await tokenContract.methods.transfer(user1, 100).send({from: owner});
         const user1Balance = await tokenContract.methods.balanceOf(user1).call();
         expect(user1Balance).to.eq.BN('200');

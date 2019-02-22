@@ -1,66 +1,59 @@
 #!/usr/bin/env node
-const Web3 = require('web3'); // TODO use lightweight http provider
-const {
-    setupGlobals,
-    setup,
-    runStages,
-    rocketh
-} = require('./lib');
 
+const {
+    attach,
+    compile,
+    runStages,
+    runNode,
+    rocketh
+} = require('./run');
+
+let config = null;
+try{
+    config = require('./rocketh.config.js')
+} catch(e) {
+    config = {};
+}
 
 if(require.main === module) {
-    const yargs = require('yargs');
-    yargs.command('launch [nodeUrl]', 'run stages on node ', (yargs) => {
-        yargs
-        .positional('nodeUrl', {
-            describe: 'nodeUrl to bind on',
-            default: 'http://localhost:8545'
-        })
-        }, (argv) => {
+    const minimist = require('minimist'); 
+    const spawn = require('cross-spawn');
+    const {onExit} = require('@rauschma/stringio');
 
-            let configFromFile = null;
-            try{
-                configFromFile = require('./rocketh.config.js')
-            } catch(e) {
-
-            }
-
-            if(configFromFile) {
-                setupGlobals(configFromFile || {});
-                setup(configFromFile || {});
-            } else {
-                if (argv.verbose) console.info(`connect on :${argv.nodeUrl}`);
-                const config = {
-                    provider: new Web3.providers.HttpProvider(argv.nodeUrl), // TODO pass node uri in arguments
-                    runAsScript: true
-                }
-                setupGlobals(config);
-                setup(config);
-            }
-            
-        })
-    .option('verbose', {
-        alias: 'v',
-        default: false
-    })
-    .argv
-} else {
-    if (!global.ethereum) { // not setup yet
-        rocketh.launch = (config) => {
-            if(!config) {
-                config = {};
-            } else if(typeof config === 'string') {
-                config = {
-                    nodeUrl: config
-                }
-            }
-            if (config.nodeUrl) {
-                config.provider = new Web3.providers.HttpProvider(config.nodeUrl);
-            }
-            setupGlobals(config); // TODO merge the two
-            return setup(config);
-        }
+    const argv = process.argv.slice(2);
+    const parsedArgv = minimist(argv);
+    const command = parsedArgv._[0];
+    let commandIndex = argv.indexOf(command,0);
+    while(commandIndex % 2 != 0) {
+        commandIndex = argv.indexOf(command, commandIndex+1);
     }
+    
+    execute(argv[commandIndex+1], ...argv.slice(commandIndex+2));
+    
+    async function execute(command, ...args) {
+        const contractInfos = await compile(config);
+        const {chainId, url, accounts} = await runNode(config);
+        console.log('running stages on node at ' + url + ' ...');
+        const result = attach(config, {chainId, url, accounts}, contractInfos);
+        await runStages(result.rocketh.ethereum, config, contractInfos, result.deployments);
+        const childProcess = spawn(
+            command,
+            args,
+            {
+                stdio: [process.stdin, process.stdout, process.stderr],
+                env:{
+                    _ROCKETH_NODE_URL: url,
+                    _ROCKETH_CHAIN_ID: chainId,
+                    _ROCKETH_ACCOUNTS: accounts.join(',')
+                }
+            }
+        );
+        const exitCode = await onExit(childProcess);
+        process.exit(exitCode);
+    }
+
+} else {
+    attach(config, {}); 
 }
 
 module.exports = rocketh;

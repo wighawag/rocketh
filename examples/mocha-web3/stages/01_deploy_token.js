@@ -1,8 +1,7 @@
-const rocketh = require('rocketh');
 const Web3 = require('web3');
 const web3 = new Web3(ethereum);
 
-module.exports = async ({accounts, registerArtifact}) => {
+module.exports = async ({rocketh, accounts, registerArtifact}) => {
   const TokenContractInfo = rocketh.contractInfo('Token');
   const TokenContract = new web3.eth.Contract(TokenContractInfo.abi);
   const arguments = ['1000000000000000000000000'];
