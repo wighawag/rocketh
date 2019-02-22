@@ -5,7 +5,8 @@ const {
     compile,
     runStages,
     runNode,
-    rocketh
+    rocketh,
+    cleanDeployments
 } = require('./run');
 
 let config = null;
@@ -23,17 +24,34 @@ if(require.main === module) {
     const argv = process.argv.slice(2);
     const parsedArgv = minimist(argv);
     const command = parsedArgv._[0];
+    // console.log(argv);
+    // console.log(parsedArgv);
     let commandIndex = argv.indexOf(command,0);
     while(commandIndex % 2 != 0) {
         commandIndex = argv.indexOf(command, commandIndex+1);
     }
+    // console.log('commandIndex', commandIndex);
+
+    const start = parsedArgv._[1];
+    let startIndex = argv.indexOf(start,0);
+    while(startIndex % 2 != 1) {
+        startIndex = argv.indexOf(start, startIndex+1);
+    }
     
-    execute(argv[commandIndex+1], ...argv.slice(commandIndex+2));
+    // console.log('startIndex', startIndex);
+
+    const generalOptions = minimist(argv.slice(0, commandIndex));
+    // console.log('generalOptions', generalOptions);
+    const commandOptions = minimist(argv.slice(commandIndex+1, startIndex));
+    // console.log('commandOptions', commandOptions);
+    
+    execute(argv[startIndex], ...argv.slice(startIndex+1));
     
     async function execute(command, ...args) {
+        // console.log('execute', command, ...args);
         const contractInfos = await compile(config);
         const {chainId, url, accounts} = await runNode(config);
-        console.log('running stages on node at ' + url + ' ...');
+        // console.log('running stages on node at ' + url + ' ...');
         const result = attach(config, {chainId, url, accounts}, contractInfos);
         await runStages(result.rocketh.ethereum, config, contractInfos, result.deployments);
         const childProcess = spawn(
@@ -49,6 +67,7 @@ if(require.main === module) {
             }
         );
         const exitCode = await onExit(childProcess);
+        cleanDeployments();
         process.exit(exitCode);
     }
 

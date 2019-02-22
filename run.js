@@ -4,14 +4,18 @@ const colors = require('colors/safe');
 const semver = require('semver');
 const portfinder = require('portfinder');
 const Web3 = require('web3'); // for provider
+const rimraf = require('rimraf');
 
 const isAlreadyDeployed = (name, bytecode, args) => {
-    const currentDeployments = _deployments[name];
-    const currentDeployment = currentDeployments && currentDeployments[_chainId] ;
+    const currentDeployment = _deployments[name];
     if(currentDeployment && currentDeployment.contractInfo.evm.bytecode.object == bytecode && Web3.utils.soliditySha3(...currentDeployment.args) == Web3.utils.soliditySha3(...args)){
         return true;
     }
 };
+
+const cleanDeployments = () => {
+    rimraf.sync(path.join(deploymentsPath, _chainId));
+}
 
 const registerDeployment = (name, deploymentInfo) => {
     if(currentDeployments[name]){
@@ -37,12 +41,8 @@ const registerDeployment = (name, deploymentInfo) => {
                 args: deploymentInfo.args,
                 address: deploymentInfo.address
             };
-            let existingDeployments = _deployments[name];
-            if(!existingDeployments) {
-                existingDeployments = {};
-            }
-            existingDeployments[_chainId] = deploymentInfo;
-            _deployments[name] = existingDeployments;
+            
+            _deployments[name] = deploymentInfoToSave;
             currentDeployments[name] = deploymentInfoToSave;
             
             // if (runAsScript) {
@@ -51,11 +51,12 @@ const registerDeployment = (name, deploymentInfo) => {
                 // log('contract ' + name + ' deployed at ' + deploymentInfo.address);
                 if(!deploymentsFolderCreated) {
                     try { fs.mkdirSync(deploymentsPath); } catch(e) {}
-                    // try { fs.mkdirSync(path.join(deploymentsPath, _chainId)); } catch(e) {}
+                    try { fs.mkdirSync(path.join(deploymentsPath, _chainId)); } catch(e) {}
                     deploymentsFolderCreated = true;
                 }
-                const content = JSON.stringify(existingDeployments, null, '  ');
-                fs.writeFileSync(path.join(deploymentsPath, /*chainId,*/ name + '.json'), content);
+                const content = JSON.stringify(deploymentInfoToSave, null, '  ');
+                const filepath = path.join(deploymentsPath, _chainId, name + '.json');
+                fs.writeFileSync(filepath, content);
             }
             // }
 
@@ -87,7 +88,6 @@ const unlessAlreadyDeployed = async (name, bytecode, args, deploy) =>{
 function requireLocal(moduleName) {
     // TODO if all else fails. rocketh could provide a default
     let currentFolder = path.resolve('./')
-    // console.log('currentFolder', currentFolder);
     do {
         try{
             const nodeModule = path.join(currentFolder,'node_modules', moduleName);
@@ -123,7 +123,7 @@ const cacheCompilationResult = true;
 const showErrorsFromCache = false;
 const generateTruffleBuildFiles = true;
 
-let silent = false;
+let silent = true;
 
 
 function log(...args) {
@@ -399,7 +399,13 @@ function extractContractInfos(output) {
 
 function extractDeployments(deploymentsPath) {
     const deployments = {};
-    const files = traverse(deploymentsPath);
+
+    let files;
+    try{
+        files = traverse(deploymentsPath);
+    } catch(e) {
+        files = [];
+    }
     for (const file of files) {
         if(file.name.indexOf('.json') === file.name.length - 5) {
             deployments[file.name.substr(0,file.name.length - 5)] = JSON.parse(fs.readFileSync(file.path).toString());
@@ -463,6 +469,7 @@ let disableDeploymentSave;
 async function runStages(provider, config, contractInfos, deployments) {
 
     disableDeploymentSave = !deployments;
+    // if(disableDeploymentSave) {console.log('will not save deployments')}
     _deployments = deployments || {}; // override 
 
     const stagesPath = path.join(config.rootPath || './', config.stagesPath || 'stages');
@@ -515,7 +522,7 @@ let _ethereum;
 const rocketh = {
     runStages: () => runStages(_ethereum, _savedConfig, _contractInfos), // empty deployment for running Stages : blank canvas for testing
     deployment: (name) => {
-        return _deployments[name][_chainId];
+        return _deployments[name];
     },
     contractInfo: (name) => {
         return _contractInfos[name];
@@ -549,18 +556,20 @@ function attach(config, {url, chainId, accounts}, contractInfos, deployments) {
         _contractInfos = extractContractInfos(JSON.parse(fs.readFileSync(cacheOutputPath).toString()), contractBuildPath);
     }
 
+    
+    const ethereumNodeURl = url || process.env._ROCKETH_NODE_URL;
+    rocketh.chainId = _chainId = chainId || process.env._ROCKETH_CHAIN_ID;
+    rocketh.accounts = _accounts = accounts || process.env._ROCKETH_ACCOUNTS.split(',');
+    
+    
     if(!_deployments) {
         _deployments = deployments;
     }
 
     if(!_deployments){
-        // TODO remove duplic :
-        _deployments = extractDeployments(deploymentsPath);
+        _deployments = extractDeployments(path.join(deploymentsPath, _chainId));
     }
 
-    const ethereumNodeURl = url || process.env._ROCKETH_NODE_URL;
-    rocketh.chainId = _chainId = chainId || process.env._ROCKETH_CHAIN_ID;
-    rocketh.accounts = _accounts = accounts || process.env._ROCKETH_ACCOUNTS.split(',');
     let provider;
     if(ethereumNodeURl && ethereumNodeURl !== '') {
         log('connecting to ROCKETH_NODE_URL=' + ethereumNodeURl);
@@ -601,5 +610,6 @@ module.exports = {
     runNode,
     compile,
     attach,
-    rocketh
+    rocketh,
+    cleanDeployments
 }
