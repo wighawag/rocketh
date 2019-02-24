@@ -7,7 +7,8 @@ const deployWeb3ContractIfNew = async (name, contractName, options, ...args) => 
     let contract;
     await rocketh.unlessAlreadyDeployed(name, ContractInfo.evm.bytecode.object, args, async (registerDeployment) => {
         const Contract = new web3.eth.Contract(ContractInfo.abi);
-        contract = await Contract.deploy({data:ContractInfo.evm.bytecode.object, arguments: args}).send(options);
+        contract = await Contract.deploy({data:'0x' + ContractInfo.evm.bytecode.object, arguments: args}).send(options);
+        console.log('contract ' + contractName + ' deployed at ' + contract.options.address);
         registerDeployment(name, { 
             contractInfo: ContractInfo, 
             args, 

@@ -16,6 +16,8 @@ try{
     config = {};
 }
 
+const deploymentChainIds = ['1','3','4','42', '1550250818351']; // TODO config
+
 if(require.main === module) {
     const minimist = require('minimist'); 
     const spawn = require('cross-spawn');
@@ -47,11 +49,36 @@ if(require.main === module) {
     
     execute(argv[startIndex], ...argv.slice(startIndex+1));
     
+    let _chainId;
     async function execute(command, ...args) {
+        process.stdin.resume();//so the program will not close instantly
+
+        function cleanup(exitCode) {
+            if(_chainId && deploymentChainIds.indexOf(chainId) == -1) {
+                cleanDeployments();
+            }
+            process.exit(exitCode);
+        }
+
+        //do something when app is closing
+        process.on('exit', cleanup);
+        //catches ctrl+c event
+        process.on('SIGINT', cleanup);
+        // catches "kill pid" (for example: nodemon restart)
+        process.on('SIGUSR1', cleanup);
+        process.on('SIGUSR2', cleanup);
+        //catches uncaught exceptions
+        process.on('uncaughtException', cleanup);
+
+        if(commandOptions.n) {
+            config.url = commandOptions.n;
+        }
+
         // console.log('execute', command, ...args);
         const contractInfos = await compile(config);
         const {chainId, url, accounts} = await runNode(config);
-        // console.log('running stages on node at ' + url + ' ...');
+        _chainId = chainId;
+        
         const result = attach(config, {chainId, url, accounts}, contractInfos);
         await runStages(result.rocketh.ethereum, config, contractInfos, result.deployments);
         const childProcess = spawn(
@@ -67,8 +94,7 @@ if(require.main === module) {
             }
         );
         const exitCode = await onExit(childProcess);
-        cleanDeployments();
-        process.exit(exitCode);
+        cleanup(exitCode)
     }
 
 } else {

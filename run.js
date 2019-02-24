@@ -3,7 +3,11 @@ const path = require('path');
 const colors = require('colors/safe');
 const semver = require('semver');
 const portfinder = require('portfinder');
-const Web3 = require('web3'); // for provider
+const Web3 = require('web3'); // for provider and solidity-sha3
+const HDWalletProvider = require('truffle-hdwallet-provider'); // fro provider
+const ProviderBridge = require('ethers-web3-bridge'); // for provider
+const ethers = require('ethers'); // for provider
+const Provider = require('./provider');
 const rimraf = require('rimraf');
 
 const isAlreadyDeployed = (name, bytecode, args) => {
@@ -14,7 +18,11 @@ const isAlreadyDeployed = (name, bytecode, args) => {
 };
 
 const cleanDeployments = () => {
-    rimraf.sync(path.join(deploymentsPath, _chainId));
+    try{
+        rimraf.sync(path.join(deploymentsPath, _chainId));
+    }catch(e){
+
+    }
 }
 
 const registerDeployment = (name, deploymentInfo) => {
@@ -166,11 +174,17 @@ function compile(config) {
 }
 
 async function runNode(config) {
-    if(config.url) {
-        return config.url;
+    let url = config.url;
+    let mnemonic;
+    try{
+        mnemonic = fs.readFileSync('./.mnemonic').toString();
+    } catch(e) {}
+
+    if(url) {
     } else {
         const ganacheOptions = config.ganacheOptions || {debug: true};
-        log('ganache...', ganacheOptions);
+        ganacheOptions.mnemonic = mnemonic;
+        log('fireing up ganache...', ganacheOptions);
         try{
             ganache = requireLocal('ganache-cli');
             log(colors.green('using ganache-cli from dependencies'));
@@ -186,17 +200,14 @@ async function runNode(config) {
         });
         const server = ganache.server(ganacheOptions);
         await executeServer(server, port);
-        const url = "http://localhost:" + port;
-
-        const provider = new Web3.providers.HttpProvider(url);
-        _chainId = await fetchChainId(provider);
-        _accounts = await fetchAccounts(provider);
-
-        return {url, chainId: _chainId, accounts: _accounts};
-        // return {url, stop: () => {
-        //     server.
-        // }};
+        url = "http://localhost:" + port;
     }
+    let provider = getProvider(mnemonic, url);
+    
+    _chainId = await fetchChainId(provider);
+    _accounts = await fetchAccounts(provider);
+    
+    return {url, chainId: _chainId, accounts: _accounts};
 }
 
 function compileWithSolc(solc, resolve, reject, config) {
@@ -534,6 +545,22 @@ const rocketh = {
 
 let deploymentsPath;
 
+function getProvider(mnemonic, url) {
+    return new Provider(new Web3.providers.HttpProvider(url), mnemonic);
+    // let provider;
+    // if(mnemonic) {
+    //     // const ethersSigner = ethers.Wallet.fromMnemonic(mnemonic);
+    //     // const ethersProvider = new ethers.providers.JsonRpcProvider(url);
+    //     // provider = new ProviderBridge(ethersProvider, ethersSigner);
+    //     provider = new HDWalletProvider(mnemonic, url, 0, 10, false);
+    // } else {
+    //     // const ethersProvider = new ethers.providers.JsonRpcProvider(url);
+    //     // provider = new ProviderBridge(ethersProvider, null);
+    //     provider = new Web3.providers.HttpProvider(url);
+    // }
+    // return provider;
+}
+
 function attach(config, {url, chainId, accounts}, contractInfos, deployments) {
     
     _savedConfig = config;
@@ -572,8 +599,18 @@ function attach(config, {url, chainId, accounts}, contractInfos, deployments) {
 
     let provider;
     if(ethereumNodeURl && ethereumNodeURl !== '') {
-        log('connecting to ROCKETH_NODE_URL=' + ethereumNodeURl);
-        provider = new Web3.providers.HttpProvider(ethereumNodeURl);
+        if(url) {
+            log('using node at ' + url + ' (' + _chainId + ')' + ' ...');
+        }
+        
+        // TODO remove deuplication (see runNode)
+        let mnemonic;
+        try{
+            mnemonic = fs.readFileSync('./.mnemonic').toString();
+        } catch(e) {
+
+        }
+        provider = getProvider(mnemonic, ethereumNodeURl);
     } else {
         console.error(colors.red('ROCKETH_NODE_URL not set'));
         process.exit(1);
