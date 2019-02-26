@@ -328,8 +328,7 @@ function compileWithSolc(solc, resolve, reject, config) {
                 try { fs.mkdirSync(contractBuildPath); } catch(e) {}
                 contractBuildFolderCreated = true;
             }
-            const solcOutput = JSON.parse(rawOutput);
-            fs.writeFileSync(cacheOutputPath, JSON.stringify(solcOutput, null, '  '));
+            fs.writeFileSync(cacheOutputPath, JSON.stringify(output, null, '  '));
             fs.writeFileSync(cacheInputPath, solcConfig);
         }
 
@@ -390,7 +389,7 @@ function compileWithSolc(solc, resolve, reject, config) {
             }
         }
         compilationDone = true;
-        resolve(contractInfos);
+        resolve({contractInfos, solcOutput: output, solcConfig: JSON.parse(solcConfig)});
     }
 }
 

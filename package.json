@@ -8,6 +8,7 @@
   "license": "MIT",
   "dependencies": {
     "@rauschma/stringio": "^1.4.0",
+    "armlet": "^2.0.1",
     "colors": "^1.3.2",
     "cross-spawn": "^6.0.5",
     "ethers": "^4.0.26",
