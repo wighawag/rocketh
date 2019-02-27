@@ -1,10 +1,20 @@
-    A simple lib to test ethereum smart contract that allow to use whatever web3 lib and test runner you choose.
+A simple test tool for ethereum smart contract that allow to use whatever web3 lib and test runner you choose.
 
-- currently add special support for mocha (since mocha requires it) but can be used with tap (https://www.node-tap.org) easily, see examples
+to use it with mocha for example:
 
-For mocha you need to execute this way:
+```rocketh launch mocha ...```
 
-```mocha --delay -r rocketh/mocha```
+then in your mocha test :
+
+```js
+...
+const rocketh = require('rocketh');
+const web3 = new Web3(rocketh.ethereum)
+const accounts = rocketh.accounts; // shortcuts
+const chainId = rocketh.chainId; // shortcuts
+const deployments = rocketh.deployments(); // get current deployments
+await rocketh.runStages(); // re run the deployments to a new set of contract
+```
 
 By the way rocketh lookup the dependencies (solc and ganache) in the folder you operate. so you'll need solc, ganache-cli as dependencies
 

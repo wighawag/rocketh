@@ -203,6 +203,14 @@ async function runNode(config) {
         console.log('mnemonic', mnemonic);
     }
 
+    _accounts = [];
+    for(let i = 0; i < 10; i++) { // TODO 10 is config of number of accounts
+        const wallet = ethers.Wallet.fromMnemonic(mnemonic, "m/44'/60'/0'/0/"+i);
+        _accounts.push(wallet.address);
+        // console.log(wallet.address);
+    }
+    
+
     let stop = () => {};
 
     if(url) {
@@ -278,13 +286,11 @@ async function runNode(config) {
                 parentHash: "0x0000000000000000000000000000000000000000000000000000000000000000"
             };
 
-            for(let i = 0; i < 10; i++) { // TODO 10 is config of number of accounts
-                const wallet = ethers.Wallet.fromMnemonic(mnemonic, "m/44'/60'/0'/0/"+i);
-                genesis.alloc[wallet.address] = {
+            for(let i = 0; i < _accounts.length; i++) {
+                genesis.alloc[_accounts[i]] = {
                     balance: "0x200000000000000000000000000000000000000000000000000000000000000"
                 };
             }
-            
 
             fs.writeFileSync(genesisPath, JSON.stringify(genesis, null, '  '));
             console.log('Initialising geth using genesis file...');
@@ -381,12 +387,14 @@ async function runNode(config) {
         }
         url = "http://localhost:" + port;
     }
+    
     let provider = getProvider(mnemonic, url);
     
-    _chainId = await fetchChainId(provider);
-    _accounts = await fetchAccounts(provider);
+    try{
+        _chainId = await fetchChainId(provider);
+    }catch(e){console.error('chainId error', e)}
     
-    return {url, chainId: _chainId, accounts: _accounts, stop, exposedMnemonic};
+    return {url, chainId: _chainId, accounts: _accounts, stop, exposedMnemonic: exposedMnemonic};
 }
 
 function compileWithSolc(solc, resolve, reject, config) {
@@ -696,6 +704,7 @@ async function runStages(provider, config, contractInfos, deployments) {
         const migrationFilePath = path.resolve(".") + '/' + stagesPath + '/' + fileName;
         // log('running ' + migrationFilePath);
         const stageFunc = require(migrationFilePath);
+        // console.log('processing ' + fileName + '...', argsForStages);
         await stageFunc.apply(null, argsForStages);
     }
     // log(colors.green('###################################################################################################################'));
