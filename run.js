@@ -713,7 +713,7 @@ const rocketh = {
     deployment: (name) => {
         return _deployments[name];
     },
-    deployments: _deployments, // TODO remove ?
+    deployments: () => _deployments, // TODO remove ?
     contractInfo: (name) => {
         return _contractInfos[name];
     },
