@@ -11,19 +11,36 @@ const {
 
 const fs=require('fs');
 
-let config = null;
-try{
-    config = require('./rocketh.config.js')
-} catch(e) {
-    config = {};
+function onExit(childProcess) {
+    return new Promise((resolve, reject) => {
+        childProcess.once('exit', (code, signal) => {
+        if (code === 0) {
+            resolve();
+        } else {
+            reject({error: new Error('Exit with error code: '+code), code});
+        }
+        });
+        childProcess.once('error', (err) => {
+            reject(err);
+        });
+    });
 }
+
+let configFromFile;
+try{
+    configFromFile = require('./rocketh.config.js')
+} catch(e) {
+    configFromFile = {};
+}
+const config = Object.assign(configFromFile, {
+    node: 'ganache'
+});
 
 const deploymentChainIds = ['1','3','4','42', '1550250818351']; // TODO config
 
 if(require.main === module) {
     const minimist = require('minimist'); 
     const spawn = require('cross-spawn');
-    const {onExit} = require('@rauschma/stringio');
 
     const argv = process.argv.slice(2);
     const parsedArgv = minimist(argv);
@@ -57,12 +74,20 @@ if(require.main === module) {
     
         
         let _chainId;
+        let _stopNode;
+        let _cleaning = false;
         async function execute(command, ...args) {
             process.stdin.resume();//so the program will not close instantly
 
-            function cleanup(exitCode) {
+            async function cleanup(exitCode) {
+                if(_cleaning) {return;}
+                _cleaning = true;
+                
                 if(_chainId && deploymentChainIds.indexOf(chainId) == -1) {
                     cleanDeployments();
+                }
+                if(_stopNode) {
+                    await _stopNode();
                 }
                 process.exit(exitCode);
             }
@@ -83,10 +108,13 @@ if(require.main === module) {
 
             // console.log('execute', command, ...args);
             const {contractInfos} = await compile(config);
-            const {chainId, url, accounts} = await runNode(config);
+
+            const {chainId, url, accounts, stop, exposedMnemonic} = await runNode(config);
+            _exposedMnemonic = exposedMnemonic
             _chainId = chainId;
+            _stopNode = stop;
             
-            const result = attach(config, {chainId, url, accounts}, contractInfos);
+            const result = attach(config, {chainId, url, accounts, mnemonic: _exposedMnemonic}, contractInfos);
             await runStages(result.rocketh.ethereum, config, contractInfos, result.deployments);
             const childProcess = spawn(
                 command,
@@ -96,11 +124,20 @@ if(require.main === module) {
                     env:{
                         _ROCKETH_NODE_URL: url,
                         _ROCKETH_CHAIN_ID: chainId,
-                        _ROCKETH_ACCOUNTS: accounts.join(',')
+                        _ROCKETH_ACCOUNTS: accounts.join(','), // TODO get rif of accounts
+                        _ROCKETH_MNEMONIC: _exposedMnemonic ? _exposedMnemonic.split(' ').join(',') : undefined
                     }
                 }
             );
-            const exitCode = await onExit(childProcess);
+            try{
+                exitCode = await onExit(childProcess);
+            }catch(e) {
+                if(e.code) {
+                    exitCode = e.code;
+                } else {
+                    console.error('ERROR onExit', e);
+                }
+            }
             cleanup(exitCode)
         }
         execute(argv[startIndex], ...argv.slice(startIndex+1));

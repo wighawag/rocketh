@@ -22,7 +22,7 @@ const owner = Web3.utils.toChecksumAddress(accounts[0]);
 const user1 = Web3.utils.toChecksumAddress(accounts[1]);
 const gas = 4000000;
 
-console.log(accounts);
+// console.log(accounts);
 
 
 main();

@@ -2,5 +2,5 @@ node_modules/
 yarn-error.log
 npm-debug.log
 logo.png
-vendor/
 .mythx_credentials
+.mnemonic

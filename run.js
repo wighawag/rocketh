@@ -9,6 +9,11 @@ const ProviderBridge = require('ethers-web3-bridge'); // for provider
 const ethers = require('ethers'); // for provider
 const Provider = require('./provider');
 const rimraf = require('rimraf');
+const spawn = require('cross-spawn');
+const {onExit} = require('@rauschma/stringio');
+const terminate = require('terminate');
+const tmp = require('tmp');
+const bip39 = require('bip39');
 
 const isAlreadyDeployed = (name, bytecode, args) => {
     const currentDeployment = _deployments[name];
@@ -173,33 +178,207 @@ function compile(config) {
     });
 }
 
+function spawnGeth(gethPath, args, hookStd) {
+    return spawn(
+        gethPath,
+        args,
+        {
+            stdio: hookStd ? [process.stdin, process.stdout, process.stderr] : undefined,
+            env:{
+                _GETH_CMD_ARGUMENTS: args.join(' ')
+            }
+        }
+    );
+}
+
 async function runNode(config) {
     let url = config.url;
     let mnemonic;
+    let exposedMnemonic;
     try{
         mnemonic = fs.readFileSync('./.mnemonic').toString();
-    } catch(e) {}
+    } catch(e) {
+        mnemonic = bip39.generateMnemonic()
+        exposedMnemonic = mnemonic;
+        console.log('mnemonic', mnemonic);
+    }
+
+    let stop = () => {};
 
     if(url) {
     } else {
-        const ganacheOptions = config.ganacheOptions || {debug: true};
-        ganacheOptions.mnemonic = mnemonic;
-        log('fireing up ganache...', ganacheOptions);
-        try{
-            ganache = requireLocal('ganache-cli');
-            log(colors.green('using ganache-cli from dependencies'));
-        } catch(e) {
-            // console.error(colors.red('you need to install your desired ganache-cli version in your own project: "npm install ganache-cli"'));
-            console.error(colors.red(e));
-            // TODO config own provider + defaults like nodeUrl, ganache-cli with privateKey signer...
-            reject('you need to install your desired ganache-cli version in your own project: "npm install ganache-cli')
-        }
         const port = await portfinder.getPortPromise({
             port: 8545,    // minimum port
             stopPort: 9999 // maximum port
         });
-        const server = ganache.server(ganacheOptions);
-        await executeServer(server, port);
+
+        if(config.node == 'ganache') {
+            const ganacheOptions = config.ganacheOptions || {debug: true};
+            ganacheOptions.mnemonic = mnemonic;
+            log('fireing up ganache...', ganacheOptions);
+            try{
+                ganache = requireLocal('ganache-cli');
+                log(colors.green('using ganache-cli from dependencies'));
+            } catch(e) {
+                // console.error(colors.red('you need to install your desired ganache-cli version in your own project: "npm install ganache-cli"'));
+                console.error(colors.red(e));
+                // TODO config own provider + defaults like nodeUrl, ganache-cli with privateKey signer...
+                reject('you need to install your desired ganache-cli version in your own project: "npm install ganache-cli')
+            }
+            
+            const server = ganache.server(ganacheOptions);
+            await executeServer(server, port);
+        } else if(config.node == 'geth') {
+            let gethBinary;
+            try{
+                gethBinary = requireLocal('geth-binary');
+            }catch(e) {}
+            let gethPath = gethBinary ? gethBinary.path : 'geth';
+            console.log('geth path', gethPath);
+
+            /*
+            rm -Rf .geth
+            <generate .geth/genesis.json>
+            printf sesame > .geth/pass
+            printf 2bd8fd4e7c04075345677d3127842e737a62db1918beef4cbea6cbc95db0cbdb > .geth/priv
+            geth --datadir .geth init .geth/genesis.json
+            geth --datadir .geth account import --password .geth/pass .geth/priv
+            geth --datadir .geth --syncmode full  --networkid 110 --gasprice 1 --password .geth/pass --unlock 30cb8ee8b1bfacdd5edf8ae9f82e59925263c966 --mine --targetgaslimit 6000000 --rpc --rpcaddr localhost --rpcport 8502 --rpcapi eth,net,web3
+            */
+            
+            var tmpobj = tmp.dirSync();
+            const gethDataPath = tmpobj.name;
+            rimraf.sync(gethDataPath);
+            try { fs.mkdirSync(gethDataPath); } catch(e) {}
+            const genesisPath = path.join(gethDataPath, 'genesis.json');
+            const genesis = {
+                config: {
+                    chainId:Math.floor(Date.now() / 1000),
+                    homesteadBlock: 1,
+                    eip150Block: 2,
+                    eip150Hash: "0x0000000000000000000000000000000000000000000000000000000000000000",
+                    eip155Block: 3,
+                    eip158Block: 3,
+                    byzantiumBlock: 4,
+                    clique: {
+                        period: 0,
+                        epoch: 30000
+                    }
+                },
+                nonce: "0x0000000000000042",
+                timestamp: "0x00",
+                extraData: "0x000000000000000000000000000000000000000000000000000000000000000030cb8ee8b1bfacdd5edf8ae9f82e59925263c9660000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+                gasLimit: "0x59A5380",
+                difficulty: "0x1",
+                mixHash: "0x0000000000000000000000000000000000000000000000000000000000000000",
+                coinbase: "0x0000000000000000000000000000000000000000",
+                alloc: {},
+                number: "0x0",
+                gasUsed: "0x0",
+                parentHash: "0x0000000000000000000000000000000000000000000000000000000000000000"
+            };
+
+            for(let i = 0; i < 10; i++) { // TODO 10 is config of number of accounts
+                const wallet = ethers.Wallet.fromMnemonic(mnemonic, "m/44'/60'/0'/0/"+i);
+                genesis.alloc[wallet.address] = {
+                    balance: "0x200000000000000000000000000000000000000000000000000000000000000"
+                };
+            }
+            
+
+            fs.writeFileSync(genesisPath, JSON.stringify(genesis, null, '  '));
+            console.log('Initialising geth using genesis file...');
+            const initProcess = spawnGeth(
+                gethPath,
+                ['--datadir', gethDataPath, 'init', genesisPath],
+                // true
+            );
+            await onExit(initProcess)
+            
+            const passPath = path.join(gethDataPath, 'pass');
+            fs.writeFileSync(passPath,'sesame');
+
+
+            //////////////////////////////////////////////////////////////////////////////////////////////////////
+            // sealer account is pregenerated :
+
+            // const privPath = path.join(gethDataPath, 'priv');
+            // fs.writeFileSync(privPath,'2bd8fd4e7c04075345677d3127842e737a62db1918beef4cbea6cbc95db0cbdb');
+            // console.log('Initialising account....');
+            // const accountCreationProcess = spawnGeth(
+            //     gethPath,
+            //     ['--datadir', gethDataPath, 'account', 'import', '--password', passPath, privPath],
+            //     // true
+            // );
+            // await onExit(accountCreationProcess)
+
+            const keystorePath = path.join(gethDataPath, 'keystore');
+            keystoreFilepath = path.join(keystorePath, 'UTC--2019-02-26T12-51-20.735389900Z--30cb8ee8b1bfacdd5edf8ae9f82e59925263c966');
+            try { fs.mkdirSync(keystorePath); } catch(e) {}
+            fs.writeFileSync(keystoreFilepath, '{"address":"30cb8ee8b1bfacdd5edf8ae9f82e59925263c966","crypto":{"cipher":"aes-128-ctr","ciphertext":"e1140b6de3997af4605cc378f08bd58f6b2f1637dbc1bfcdbef93a31665fbedb","cipherparams":{"iv":"e9751ae14e68c9327b6aed03654c2eee"},"kdf":"scrypt","kdfparams":{"dklen":32,"n":262144,"p":1,"r":8,"salt":"d00a5afd0b8decca4a65d8da30fa20419bbacc663213b7368d268f4a0997f8bf"},"mac":"e9ba6a86129f9fbd02ea287fd6eea47e9543d5c3257a4440499b5bcb314251ce"},"id":"4ea8a249-40af-44db-ba7a-d56a239add7e","version":3}');
+            //////////////////////////////////////////////////////////////////////////////////////////////////////
+
+            console.log('starting geth on port ' + port);
+            const gethProcess = spawnGeth(
+                gethPath,
+                [
+                    '--datadir',
+                    gethDataPath,
+                    '--syncmode', 'full',
+                    '--networkid', genesis.config.chainId,
+                    '--gasprice', '1',
+                    '--password', passPath,
+                    '--unlock', '30cb8ee8b1bfacdd5edf8ae9f82e59925263c966',
+                    '--mine',
+                    '--targetgaslimit', '6000000',
+                    '--rpc',
+                    '--rpcaddr', 'localhost',
+                    '--rpcport', port,
+                    '--rpcapi', 'eth,net,web3'
+                ],
+                // true // TODO remove
+            );
+            
+            let success = false
+            let provider = getProvider(mnemonic, "http://localhost:" + port);
+            while(!success) {
+                try{
+                    success = await fetchChainId(provider);
+                } catch(e) {}
+            }
+            stop = () => {
+                return new Promise((resolve, reject) => {
+                    try {
+                        terminate(gethProcess.pid, (err) => {
+                            if(err) {
+                                reject(err);
+                            } else {
+                                setTimeout(() => {
+                                    try{rimraf.sync(gethDataPath);}catch(e){console.error(e);}
+                                    resolve();
+                                }, 1000);
+                            }
+                        })
+                    } catch(e) {
+                        reject(e);
+                    }
+                });
+                // const promise = onExit(gethProcess);
+                
+                // gethProcess.kill("SIGINT");
+                // // process.kill(-gethProcess.pid);
+
+                // try{
+                //     await promise;
+                // } catch(e) {
+                //     console.error(e);
+                // }
+            }
+        } else {
+            const message = 'node type not supprted : ' + config.node;
+            console.error(colors.red(message));
+            reject(message)
+        }
         url = "http://localhost:" + port;
     }
     let provider = getProvider(mnemonic, url);
@@ -207,7 +386,7 @@ async function runNode(config) {
     _chainId = await fetchChainId(provider);
     _accounts = await fetchAccounts(provider);
     
-    return {url, chainId: _chainId, accounts: _accounts};
+    return {url, chainId: _chainId, accounts: _accounts, stop, exposedMnemonic};
 }
 
 function compileWithSolc(solc, resolve, reject, config) {
@@ -534,6 +713,7 @@ const rocketh = {
     deployment: (name) => {
         return _deployments[name];
     },
+    deployments: _deployments, // TODO remove ?
     contractInfo: (name) => {
         return _contractInfos[name];
     },
@@ -560,7 +740,7 @@ function getProvider(mnemonic, url) {
     // return provider;
 }
 
-function attach(config, {url, chainId, accounts}, contractInfos, deployments) {
+function attach(config, {url, chainId, accounts, mnemonic}, contractInfos, deployments) {
     
     _savedConfig = config;
     deploymentsPath = path.join(config.rootPath || './', config.deploymentsPath || 'deployments');
@@ -585,7 +765,10 @@ function attach(config, {url, chainId, accounts}, contractInfos, deployments) {
     
     const ethereumNodeURl = url || process.env._ROCKETH_NODE_URL;
     rocketh.chainId = _chainId = chainId || process.env._ROCKETH_CHAIN_ID;
-    rocketh.accounts = _accounts = accounts || process.env._ROCKETH_ACCOUNTS.split(',');
+    rocketh.accounts = _accounts = accounts;
+    if(!rocketh.accounts && process.env._ROCKETH_ACCOUNTS) {
+        rocketh.accounts = _accounts = process.env._ROCKETH_ACCOUNTS.split(',');
+    }
     
     
     if(!_deployments) {
@@ -603,12 +786,14 @@ function attach(config, {url, chainId, accounts}, contractInfos, deployments) {
         }
         
         // TODO remove deuplication (see runNode)
-        let mnemonic;
-        try{
-            mnemonic = fs.readFileSync('./.mnemonic').toString();
-        } catch(e) {
-
+        if(!mnemonic) {
+            try{
+                mnemonic = fs.readFileSync('./.mnemonic').toString();
+            } catch(e) {
+                mnemonic = process.env._ROCKETH_MNEMONIC.split(',').join(' ');
+            }
         }
+        
         provider = getProvider(mnemonic, ethereumNodeURl);
     } else {
         console.error(colors.red('ROCKETH_NODE_URL not set'));
