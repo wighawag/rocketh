@@ -10,6 +10,7 @@
     "@rauschma/stringio": "^1.4.0",
     "armlet": "^2.0.1",
     "bip39": "^2.5.0",
+    "bn.js": "^4.11.8",
     "colors": "^1.3.2",
     "cross-spawn": "^6.0.5",
     "ethers": "^4.0.26",

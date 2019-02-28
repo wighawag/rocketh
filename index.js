@@ -33,7 +33,7 @@ try{
     configFromFile = {};
 }
 const config = Object.assign(configFromFile, {
-    node: 'ganache'
+    node: 'geth'
 });
 
 const deploymentChainIds = ['1','3','4','42', '1550250818351']; // TODO config

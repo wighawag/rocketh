@@ -1,4 +1,5 @@
 const ethers = require('ethers');
+const BN = require('bn.js');
 
 const Provider = function(provider, mnemonic, numWallets) {
     if(!numWallets) {
@@ -61,7 +62,6 @@ Provider.prototype.fetchBalance = function(from) {
 
 Provider.prototype.sendPayload = async function(payload, callback) {
     if(!this.wallets) {
-        console.log('no wallet');
         return this.provider.send(payload, callback);
     }
     // #console.log('send', JSON.stringify(payload, null, '  '));
@@ -84,20 +84,23 @@ Provider.prototype.sendPayload = async function(payload, callback) {
             return callback({
                 id: payload.id,
                 jsonrpc: payload.jsonrpc,
-                message: 'gas not specified'
+                error: { code: -32000, message: 'gas not specified' } // TODO code
             })
         }
 
+        const gasPrice = rawTx.gasPrice || await this.fetchGasPrice();
+        const balanceRequired = new BN(gasPrice).mul(new BN(rawTx.gas));
         const balance = await this.fetchBalance(from);
-        if(balance == "0" || balance == "0x0") { // TODO check balance against gas * gasPrice
+
+        if(new BN(balance).lt(balanceRequired)) {
             return callback({
                 id: payload.id,
                 jsonrpc: payload.jsonrpc,
-                message: 'Not enough balance'
+                error: { code: -32000, message: 'Not enough balance' } // TODO code 
             })
         }
         const nonce = await this.fetchNonce(from);
-        const gasPrice = rawTx.gasPrice || await this.fetchGasPrice();
+        
         const forEthers = {
             to: rawTx.to,
             gasLimit: rawTx.gas,
@@ -114,9 +117,14 @@ Provider.prototype.sendPayload = async function(payload, callback) {
             method: 'eth_sendRawTransaction',
             params: [signedTx],
           }, callback);
-    } else if(payload.method == 'personal_sign') {
-        console.log('PERSONAL SIGN TODO', payload.method);
-        return this.provider.send(payload, callback);
+    } else if(payload.method == 'eth_sign') {
+        const signedMessage = await this.signMessage(payload.params[0], payload.params[1]);
+        // console.log(payload.params, signedMessage);
+        return callback(null, {
+            id: payload.id,
+            jsonrpc: payload.jsonrpc,
+            result: signedMessage
+        });
     } else {
        return this.provider.send(payload, callback);
     }
@@ -138,6 +146,14 @@ Provider.prototype.signTransaction = function(from, rawTx) {
     // console.log('rawTx', rawTx);
     const wallet = this.wallets[from.toLowerCase()];
     return wallet.sign(rawTx);
+}
+
+Provider.prototype.signMessage = function(from, message) {
+    if(message[0] == '0' && message[1] == 'x') { // work arround : if start with 0x interpret it as binary data
+        message = ethers.utils.arrayify(message);
+    }
+    const wallet = this.wallets[from.toLowerCase()];
+    return wallet.signMessage(message);
 }
 
 module.exports = Provider;

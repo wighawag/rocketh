@@ -178,12 +178,24 @@ function compile(config) {
     });
 }
 
-function spawnGeth(gethPath, args, hookStd) {
+function spawnGeth(gethPath, args, hookStd, logFile) {
+
+    let stdio;
+    if(logFile) {
+        fs.writeFileSync(logFile, '');
+        var output = fs.openSync(logFile, 'a');
+        var output2 = fs.openSync(logFile, 'a');
+        stdio = ['ignore', output, output2];
+    } else {
+        if(hookStd) {
+            stdio = [process.stdin, process.stdout, process.stderr]
+        }
+    }
     return spawn(
         gethPath,
         args,
         {
-            stdio: hookStd ? [process.stdin, process.stdout, process.stderr] : undefined,
+            stdio,
             env:{
                 _GETH_CMD_ARGUMENTS: args.join(' ')
             }
@@ -340,9 +352,11 @@ async function runNode(config) {
                     '--rpc',
                     '--rpcaddr', 'localhost',
                     '--rpcport', port,
-                    '--rpcapi', 'eth,net,web3'
+                    '--rpcapi', 'eth,net,web3',
+                    '--vmdebug'
                 ],
-                // true // TODO remove
+                // false,// true // TODO remove
+                // '.geth.log'
             );
             
             let success = false
