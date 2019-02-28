@@ -188,7 +188,10 @@ function spawnGeth(gethPath, args, hookStd, logFile) {
         stdio = ['ignore', output, output2];
     } else {
         if(hookStd) {
-            stdio = [process.stdin, process.stdout, process.stderr]
+            stdio = [process.stdin, process.stdout, process.stderr];
+        } else {
+            // const devnull = require('dev-null');
+            stdio = ['ignore', 'ignore', 'ignore'];
         }
     }
     return spawn(
@@ -232,6 +235,11 @@ async function runNode(config) {
             stopPort: 9999 // maximum port
         });
 
+        const wsPort = await portfinder.getPortPromise({
+            port: port+1,    // minimum port
+            stopPort: 9999 // maximum port
+        });
+
         if(config.node == 'ganache') {
             const ganacheOptions = config.ganacheOptions || {debug: true};
             ganacheOptions.mnemonic = mnemonic;
@@ -271,6 +279,11 @@ async function runNode(config) {
             rimraf.sync(gethDataPath);
             try { fs.mkdirSync(gethDataPath); } catch(e) {}
             const genesisPath = path.join(gethDataPath, 'genesis.json');
+            
+            const gethPort = await portfinder.getPortPromise({
+                port: 30310,    // minimum port
+                stopPort: 39999 // maximum port
+            });
             const genesis = {
                 config: {
                     chainId:Math.floor(Date.now() / 1000),
@@ -336,27 +349,36 @@ async function runNode(config) {
             fs.writeFileSync(keystoreFilepath, '{"address":"30cb8ee8b1bfacdd5edf8ae9f82e59925263c966","crypto":{"cipher":"aes-128-ctr","ciphertext":"e1140b6de3997af4605cc378f08bd58f6b2f1637dbc1bfcdbef93a31665fbedb","cipherparams":{"iv":"e9751ae14e68c9327b6aed03654c2eee"},"kdf":"scrypt","kdfparams":{"dklen":32,"n":262144,"p":1,"r":8,"salt":"d00a5afd0b8decca4a65d8da30fa20419bbacc663213b7368d268f4a0997f8bf"},"mac":"e9ba6a86129f9fbd02ea287fd6eea47e9543d5c3257a4440499b5bcb314251ce"},"id":"4ea8a249-40af-44db-ba7a-d56a239add7e","version":3}');
             //////////////////////////////////////////////////////////////////////////////////////////////////////
 
-            console.log('starting geth on port ' + port);
+            console.log('starting geth on port ' + port + '(' + wsPort + ')');
             const gethProcess = spawnGeth(
                 gethPath,
                 [
-                    '--datadir',
-                    gethDataPath,
+                    '--datadir', gethDataPath,
                     '--syncmode', 'full',
                     '--networkid', genesis.config.chainId,
-                    '--gasprice', '1',
                     '--password', passPath,
                     '--unlock', '30cb8ee8b1bfacdd5edf8ae9f82e59925263c966',
                     '--mine',
-                    '--targetgaslimit', '6000000',
+                    '--gasprice', '1', // 2000000000
+                    '--targetgaslimit', '0x4c4b400000', // 6000000
                     '--rpc',
-                    '--rpcaddr', 'localhost',
-                    '--rpcport', port,
-                    '--rpcapi', 'eth,net,web3',
-                    '--vmdebug'
+                    '--rpcaddr', 'localhost', // 0.0.0.0 for public
+                    // '--rpcvhosts', '*',
+                    '--rpcport', '' + port,
+                    '--rpcapi', 'eth,net,web3,personal,db,txpool,miner,debug',
+                    '--ws',
+                    '--wsaddr', 'localhost', // 0.0.0.0 for public
+                    '--wsport', '' + wsPort,
+                    // '--wsorigins', '*',
+                    '--wsapi', 'eth,net,web3,personal,db,txpool,miner,debug',
+                    // '--vmdebug',
+                    '--nat', 'none',
+                    '--nodiscover',
+                    '--port', '' + gethPort,
+                    '--txpool.journal', "''",
                 ],
-                // false,// true // TODO remove
-                // '.geth.log'
+                false,// true // TODO remove
+                '.geth.log'
             );
             
             let success = false
