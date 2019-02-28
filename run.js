@@ -144,6 +144,9 @@ function log(...args) {
     console.log.apply(console, args);
 }
 
+function errored(...args) {
+    console.error.apply(console, args);
+}
 
 // TODO
 // const showContractWithNoByteCode = false;
@@ -458,8 +461,9 @@ function compileWithSolc(solc, resolve, reject, config) {
     const pre_0_5_0_solc = semver.lt(solcVersion, '0.5.0');
     const pre_0_4_11_solc = semver.lt(solcVersion, '0.4.11');
     if (pre_0_4_11_solc) {
-        console.error(colors.red('you are using a too old solc version, rocketh only support solc >= 0.4.11'));
-        process.exit(1);
+        const message = 'you are using a too old solc version, rocketh only support solc >= 0.4.11';
+        console.error(colors.red(message));
+        reject(message);
     }
     
     log(colors.green('using solc : ' + solcVersion));
@@ -540,10 +544,10 @@ function compileWithSolc(solc, resolve, reject, config) {
     
     if(errors.length > 0) {
         for (const error of errors) {
-            log(colors.red(error.formattedMessage));
+            errored(colors.red(error.formattedMessage));
         }
-        log(colors.red('###################################################################################################################'));
-        reject();
+        errored(colors.red('###################################################################################################################'));
+        reject(errors);
     } else {
         
         if (cacheCompilationResult) {
@@ -741,7 +745,11 @@ async function runStages(provider, config, contractInfos, deployments) {
         // log('running ' + migrationFilePath);
         const stageFunc = require(migrationFilePath);
         // console.log('processing ' + fileName + '...', argsForStages);
-        await stageFunc.apply(null, argsForStages);
+        try{
+            await stageFunc.apply(null, argsForStages);
+        }catch(e) {
+            console.log('ERROR processing ' + migrationFilePath, e);
+        }
     }
     // log(colors.green('###################################################################################################################'));
     return _deployments;

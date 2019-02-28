@@ -112,15 +112,29 @@ if(require.main === module) {
             }
 
             // console.log('execute', command, ...args);
-            const {contractInfos} = await compile(config);
 
+            let compileResult;
+            try{
+                compileResult = await compile(config);
+            }catch(compileError) {
+                // console.log(compileError);
+                process.exit();
+            }
+
+             const {contractInfos} = compileResult;
             const {chainId, url, accounts, stop, exposedMnemonic} = await runNode(config);
             _exposedMnemonic = exposedMnemonic
             _chainId = chainId;
             _stopNode = stop;
             
             const result = attach(config, {chainId, url, accounts, mnemonic: _exposedMnemonic}, contractInfos);
-            await runStages(result.rocketh.ethereum, config, contractInfos, result.deployments);
+            try{
+                await runStages(result.rocketh.ethereum, config, contractInfos, result.deployments);
+            }catch(stageError) {
+                console.log(stageError);
+                process.exit(1);
+            }
+            
             const childProcess = spawn(
                 command,
                 args,
