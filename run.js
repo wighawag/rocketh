@@ -377,8 +377,8 @@ async function runNode(config) {
                     '--port', '' + gethPort,
                     '--txpool.journal', "''",
                 ],
-                false,// true // TODO remove
-                '.geth.log'
+                // false,// true // TODO remove
+                // '.geth.log'
             );
             
             let success = false

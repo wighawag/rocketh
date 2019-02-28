@@ -33,7 +33,7 @@ try{
     configFromFile = {};
 }
 const config = Object.assign(configFromFile, {
-    node: 'geth'
+    node: 'ganache'
 });
 
 const deploymentChainIds = ['1','3','4','42', '1550250818351']; // TODO config
@@ -103,7 +103,12 @@ if(require.main === module) {
             process.on('uncaughtException', cleanup);
 
             if(commandOptions.n) {
-                config.url = commandOptions.n;
+                if(['geth', 'ganache'].indexOf(commandOptions.n) != -1) {
+                    config.node = commandOptions.n;
+                } else {
+                    config.url = commandOptions.n;
+                }
+                
             }
 
             // console.log('execute', command, ...args);
