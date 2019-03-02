@@ -777,8 +777,8 @@ const rocketh = {
 
 let deploymentsPath;
 
-function getProvider(mnemonic, url) {
-    return new Provider(new Web3.providers.HttpProvider(url), mnemonic);
+function getProvider(mnemonic, url, contractInfos, compilationInput, srcPath) {
+    return new Provider(new Web3.providers.HttpProvider(url), mnemonic, 10, contractInfos, compilationInput, srcPath);
     // let provider;
     // if(mnemonic) {
     //     // const ethersSigner = ethers.Wallet.fromMnemonic(mnemonic);
@@ -808,14 +808,18 @@ function attach(config, {url, chainId, accounts, mnemonic}, contractInfos, deplo
         _contractInfos = contractInfos;
     }
 
+    let compilationInput;
     if(!_contractInfos){
         // TODO remove duplic :
         const contractBuildPath = path.join(config.rootPath || './', config.contractBuildPath || 'build');
         const cacheOutputPath = contractBuildPath + '/.compilationOutput.json';
         _contractInfos = extractContractInfos(JSON.parse(fs.readFileSync(cacheOutputPath).toString()), contractBuildPath);
+
+        const intputPath = contractBuildPath + '/.compilationInput.json';
+        compilationInput = JSON.parse(fs.readFileSync(intputPath).toString());
     }
 
-    
+       
     const ethereumNodeURl = url || process.env._ROCKETH_NODE_URL;
     rocketh.chainId = _chainId = chainId || process.env._ROCKETH_CHAIN_ID;
     rocketh.accounts = _accounts = accounts;
@@ -847,7 +851,7 @@ function attach(config, {url, chainId, accounts, mnemonic}, contractInfos, deplo
             }
         }
         
-        provider = getProvider(mnemonic, ethereumNodeURl);
+        provider = getProvider(mnemonic, ethereumNodeURl); // TODO for sol-trace _contractInfos, compilationInput, config.rootPath || './', config.contractSrcdPath || 'src');
     } else {
         console.error(colors.red('ROCKETH_NODE_URL not set'));
         process.exit(1);
