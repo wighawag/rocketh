@@ -38,6 +38,12 @@ const config = Object.assign(configFromFile, {
 
 const deploymentChainIds = ['1','3','4','42', '1550250818351']; // TODO config
 
+
+let _chainId;
+let _accounts;
+let _url;
+let _exposedMnemonic;
+
 if(require.main === module) {
     const minimist = require('minimist'); 
     const spawn = require('cross-spawn');
@@ -72,8 +78,6 @@ if(require.main === module) {
         const commandOptions = minimist(argv.slice(commandIndex+1, startIndex));
         // console.log('commandOptions', commandOptions);
     
-        
-        let _chainId;
         let _stopNode;
         let _cleaning = false;
         async function execute(command, ...args) {
@@ -125,6 +129,8 @@ if(require.main === module) {
             const {chainId, url, accounts, stop, exposedMnemonic} = await runNode(config);
             _exposedMnemonic = exposedMnemonic
             _chainId = chainId;
+            _accounts = accounts;
+            _url = url;
             _stopNode = stop;
             
             const result = attach(config, {chainId, url, accounts, mnemonic: _exposedMnemonic}, contractInfos);
@@ -222,7 +228,7 @@ if(require.main === module) {
         }
     }
 } else {
-    attach(config, {}); 
+    attach(config, {chainId: _chainId, url: _url, accounts: _accounts, mnemonic: _exposedMnemonic}); 
 }
 
 module.exports = rocketh;
