@@ -40,8 +40,6 @@ const deploymentChainIds = ['1','3','4','42', '1550250818351']; // TODO config
 
 
 let _chainId;
-let _accounts;
-let _url;
 let _exposedMnemonic;
 
 if(require.main === module) {
@@ -134,8 +132,13 @@ if(require.main === module) {
             const {chainId, url, accounts, stop, exposedMnemonic} = await runNode(config);
             _exposedMnemonic = exposedMnemonic
             _chainId = chainId;
-            _accounts = accounts;
-            _url = url;
+
+            // TODO better (execute runStages in its own process)
+            global._rocketh_chainId = chainId;
+            global._rocketh_url = url;
+            global._rocketh_accounts = accounts;
+            global._rocketh_exposedMnemonic = exposedMnemonic;
+            
             _stopNode = stop;
             
             if(config.log) {
@@ -236,8 +239,8 @@ if(require.main === module) {
         }
     }
 } else {
-    console.log('direct attaching', {chainId: _chainId, url: _url, accounts: _accounts, mnemonic: _exposedMnemonic});
-    attach(config, {chainId: _chainId, url: _url, accounts: _accounts, mnemonic: _exposedMnemonic}); 
+    // TODO better than useing global (runStages in a process)
+    attach(config, {chainId: global._rocketh_chainId, url: global._rocketh_url, accounts: global._rocketh_accounts, mnemonic: global._rocketh_exposedMnemonic});
 }
 
 module.exports = rocketh;
