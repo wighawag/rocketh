@@ -244,17 +244,25 @@ async function runNode(config) {
         });
 
         if(config.node == 'ganache') {
-            const ganacheOptions = config.ganacheOptions || {debug: true};
+            const ganacheOptions = config.ganacheOptions || {debug: true, vmErrorsOnRPCResponse: true};
             ganacheOptions.mnemonic = mnemonic;
-            log('fireing up ganache...', ganacheOptions);
+         
+            let ganache;
             try{
-                ganache = requireLocal('ganache-cli');
-                log(colors.green('using ganache-cli from dependencies'));
-            } catch(e) {
-                // console.error(colors.red('you need to install your desired ganache-cli version in your own project: "npm install ganache-cli"'));
-                console.error(colors.red(e));
-                // TODO config own provider + defaults like nodeUrl, ganache-cli with privateKey signer...
-                reject('you need to install your desired ganache-cli version in your own project: "npm install ganache-cli')
+                ganache = requireLocal('ganache-core');
+                log(colors.green('using ganache-core from dependencies'));
+                console.log('fireing up ganache-core...', ganacheOptions);
+            }catch(e){}
+
+            if(!ganache) {
+                try{
+                    ganache = requireLocal('ganache-cli');
+                    log(colors.green('using ganache-cli from dependencies'));
+                    console.log('fireing up ganache-cli...', ganacheOptions);
+                } catch(e) {
+                    console.error(colors.red(e));
+                    reject('you need to install your desired ganache-core version in your own project: "npm install ganache-core')
+                }
             }
             
             const server = ganache.server(ganacheOptions);

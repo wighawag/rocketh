@@ -41,12 +41,13 @@ ProviderEngine.prototype.sendPayload = async function(payload, callback) {
                 } else if(self.fallbackProvider.sendAsync) {
                     self.fallbackProvider.sendAsync(payload, end);
                 } else {
+                    // console.log('send payload');
                     self.fallbackProvider.send(payload, (error, json) => {
                         if(error) {
-                            console.log('error from fallback', error);
-                            end(error);
+                            // console.log('error from fallback', error);
+                            end(error, json.result);
                         } else {
-                            end(null, json.result);
+                            end(json.error, json.result);
                         }
                     });
                 }
@@ -97,9 +98,11 @@ ProviderEngine.prototype.sendPayload = async function(payload, callback) {
                 message: error.stack || error.message || error,
                 code: -32000 // TODO different code
             }
+            // console.log('error', error, resultObj, payload);
             // respond with both error formats
             callback(error, resultObj)
         } else {
+            // console.log('result', resultObj, payload);
             callback(null, resultObj)
         }
     }
