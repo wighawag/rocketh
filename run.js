@@ -838,6 +838,9 @@ function attach(config, {url, chainId, accounts, mnemonic}, contractInfos, deplo
     }
 
     if(!_deployments){
+        if(config.log){
+            console.log(deploymentsPath, _chainId, chainId, process.env._ROCKETH_CHAIN_ID);
+        }
         _deployments = extractDeployments(path.join(deploymentsPath, _chainId));
     }
 

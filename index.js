@@ -115,6 +115,11 @@ if(require.main === module) {
                 
             }
 
+            // TODO remove
+            if(commandOptions.l) {
+                config.log = true;
+            }
+
             // console.log('execute', command, ...args);
 
             let compileResult;
@@ -133,6 +138,9 @@ if(require.main === module) {
             _url = url;
             _stopNode = stop;
             
+            if(config.log) {
+                console.log('attaching with ', {chainId, url, accounts, mnemonic: _exposedMnemonic});
+            }
             const result = attach(config, {chainId, url, accounts, mnemonic: _exposedMnemonic}, contractInfos);
             try{
                 await runStages(result.rocketh.ethereum, config, contractInfos, result.deployments);
@@ -228,6 +236,7 @@ if(require.main === module) {
         }
     }
 } else {
+    console.log('direct attaching', {chainId: _chainId, url: _url, accounts: _accounts, mnemonic: _exposedMnemonic});
     attach(config, {chainId: _chainId, url: _url, accounts: _accounts, mnemonic: _exposedMnemonic}); 
 }
 
