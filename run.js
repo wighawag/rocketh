@@ -739,7 +739,7 @@ async function runStages(provider, config, contractInfos, deployments) {
     let argsForStages = [{
         contractInfo: (name) => contractInfos[name],
         accounts: _accounts,
-        networkId: _chainId,
+        chainId: _chainId,
         registerDeployment,
         deployment: function(name) {return currentDeployments[name]},
         isAlreadyDeployed,
@@ -800,7 +800,6 @@ function getProvider(mnemonic, url, contractInfos, compilationInput, srcPath) {
 }
 
 function attach(config, {url, chainId, accounts, mnemonic}, contractInfos, deployments) {
-    
     _savedConfig = config;
     deploymentsPath = path.join(config.rootPath || './', config.deploymentsPath || 'deployments');
     

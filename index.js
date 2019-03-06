@@ -121,7 +121,7 @@ if(require.main === module) {
                 process.exit();
             }
 
-             const {contractInfos} = compileResult;
+            const {contractInfos} = compileResult;
             const {chainId, url, accounts, stop, exposedMnemonic} = await runNode(config);
             _exposedMnemonic = exposedMnemonic
             _chainId = chainId;
