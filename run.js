@@ -56,7 +56,7 @@ const registerDeployment = (name, deploymentInfo) => {
                 address: deploymentInfo.address
             };
             
-            _deployments[name] = deploymentInfoToSave;
+            global._rocketh_deployments[name] = deploymentInfoToSave;
             global._rocketh_currentDeployments[name] = deploymentInfoToSave;
             if(_savedConfigOnRunStages.log) {
                 console.log('saved ' +  name + '...');
@@ -719,7 +719,7 @@ async function runStages(provider, config, contractInfos, deployments) {
     _savedConfigOnRunStages = config;
     disableDeploymentSave = !deployments;
     // if(disableDeploymentSave) {console.log('will not save deployments')}
-    _deployments = deployments || {}; // override 
+    global._rocketh_deployments = deployments || {}; // override 
 
     const stagesPath = path.join(config.rootPath || './', config.stagesPath || 'stages');
     // log(colors.green('######################################### STAGES ##############################################################'));
@@ -769,21 +769,20 @@ async function runStages(provider, config, contractInfos, deployments) {
         }
     }
     // log(colors.green('###################################################################################################################'));
-    return _deployments;
+    return global._rocketh_deployments;
 }
 
 
 let _savedConfig;
 let _contractInfos;
-let _deployments;
 let _ethereum;
 
 const rocketh = {
     runStages: () => runStages(_ethereum, _savedConfig, _contractInfos), // empty deployment for running Stages : blank canvas for testing
     deployment: (name) => {
-        return _deployments[name];
+        return global._rocketh_deployments[name];
     },
-    deployments: () => _deployments, // TODO remove ?
+    deployments: () => global._rocketh_deployments, // TODO remove ?
     contractInfo: (name) => {
         return _contractInfos[name];
     },
@@ -846,15 +845,15 @@ function attach(config, {url, chainId, accounts, mnemonic}, contractInfos, deplo
     }
     
     
-    if(!_deployments) {
-        _deployments = deployments;
+    if(!global._rocketh_deployments) {
+        global._rocketh_deployments = deployments;
     }
 
-    if(!_deployments){
+    if(!global._rocketh_deployments){
         if(config.log){
             console.log(deploymentsPath, _chainId, chainId, process.env._ROCKETH_CHAIN_ID);
         }
-        _deployments = extractDeployments(path.join(deploymentsPath, _chainId));
+        global._rocketh_deployments = extractDeployments(path.join(deploymentsPath, _chainId));
     }
 
     let provider;
@@ -900,7 +899,7 @@ function attach(config, {url, chainId, accounts, mnemonic}, contractInfos, deplo
     attached = {
         rocketh,
         contractInfos: _contractInfos,
-        deployments: _deployments
+        deployments: global._rocketh_deployments
     };
 
     return attached;
