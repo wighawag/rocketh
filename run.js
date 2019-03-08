@@ -14,7 +14,7 @@ const tmp = require('tmp');
 const bip39 = require('bip39');
 
 const isAlreadyDeployed = (name, bytecode, args) => {
-    const currentDeployment = _deployments[name];
+    const currentDeployment = global._rocketh_currentDeployments[name];
     if(currentDeployment && currentDeployment.contractInfo.evm.bytecode.object == bytecode && Web3.utils.soliditySha3(...currentDeployment.args) == Web3.utils.soliditySha3(...args)){
         return true;
     }
@@ -29,7 +29,7 @@ const cleanDeployments = () => {
 }
 
 const registerDeployment = (name, deploymentInfo) => {
-    if(currentDeployments[name]){
+    if(global._rocketh_currentDeployments[name]){
         console.error(colors.red('deployment with same name ('+name+') exists'));
     } else {
         const errors = [];
@@ -54,7 +54,7 @@ const registerDeployment = (name, deploymentInfo) => {
             };
             
             _deployments[name] = deploymentInfoToSave;
-            currentDeployments[name] = deploymentInfoToSave;
+            global._rocketh_currentDeployments[name] = deploymentInfoToSave;
             
             // if (runAsScript) {
             if(!disableDeploymentSave) {
@@ -707,7 +707,6 @@ function fetchChainId(provider) {
 // cache
 let _chainId;
 let _accounts;
-let currentDeployments = {};
 let disableDeploymentSave;
 async function runStages(provider, config, contractInfos, deployments) {
 
@@ -733,7 +732,7 @@ async function runStages(provider, config, contractInfos, deployments) {
         return 0;
     });
 
-    currentDeployments = {};
+    global._rocketh_currentDeployments = {};
 
     // log('running stage with accounts', accounts);
     let argsForStages = [{
@@ -741,7 +740,7 @@ async function runStages(provider, config, contractInfos, deployments) {
         accounts: _accounts,
         chainId: _chainId,
         registerDeployment,
-        deployment: function(name) {return currentDeployments[name]},
+        deployment: function(name) {return global._rocketh_currentDeployments[name]},
         isAlreadyDeployed,
         unlessAlreadyDeployed
     }];
@@ -885,7 +884,7 @@ function attach(config, {url, chainId, accounts, mnemonic}, contractInfos, deplo
     if(config.addRocketh) {
         global.rocketh = rocketh;
     }
-    
+
     attached = {
         rocketh,
         contractInfos: _contractInfos,
