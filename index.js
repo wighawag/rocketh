@@ -239,8 +239,15 @@ if(require.main === module) {
         }
     }
 } else {
+    if(config.log) {
+        console.log('attaching direct : ', {chainId: global._rocketh_chainId, url: global._rocketh_url, accounts: global._rocketh_accounts, mnemonic: global._rocketh_exposedMnemonic});
+    }
     // TODO better than useing global (runStages in a process)
     attach(config, {chainId: global._rocketh_chainId, url: global._rocketh_url, accounts: global._rocketh_accounts, mnemonic: global._rocketh_exposedMnemonic});
+}
+
+if(config.log) {
+    console.log('rocketh : ', !!rocketh);
 }
 
 module.exports = rocketh;

@@ -799,14 +799,16 @@ function getProvider(mnemonic, url, contractInfos, compilationInput, srcPath) {
     // return provider;
 }
 
+let attached;
+
 function attach(config, {url, chainId, accounts, mnemonic}, contractInfos, deployments) {
     _savedConfig = config;
     deploymentsPath = path.join(config.rootPath || './', config.deploymentsPath || 'deployments');
     
-    if(rocketh.ethereum) {
+    if(attached) {
         //already setup
         log('aleready setup');
-        return rocketh;
+        return attached;
     }
 
     if(!_contractInfos) {
@@ -883,11 +885,14 @@ function attach(config, {url, chainId, accounts, mnemonic}, contractInfos, deplo
     if(config.addRocketh) {
         global.rocketh = rocketh;
     }
-    return {
+    
+    attached = {
         rocketh,
         contractInfos: _contractInfos,
         deployments: _deployments
     };
+
+    return attached;
 }
 
 
