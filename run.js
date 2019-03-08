@@ -29,6 +29,9 @@ const cleanDeployments = () => {
 }
 
 const registerDeployment = (name, deploymentInfo) => {
+    if(_savedConfigOnRunStages.log) {
+        console.log('Resgistering ' +  name + '...');
+    }
     if(global._rocketh_currentDeployments[name]){
         console.error(colors.red('deployment with same name ('+name+') exists'));
     } else {
@@ -55,6 +58,9 @@ const registerDeployment = (name, deploymentInfo) => {
             
             _deployments[name] = deploymentInfoToSave;
             global._rocketh_currentDeployments[name] = deploymentInfoToSave;
+            if(_savedConfigOnRunStages.log) {
+                console.log('saved ' +  name + '...');
+            }
             
             // if (runAsScript) {
             if(!disableDeploymentSave) {
@@ -708,8 +714,9 @@ function fetchChainId(provider) {
 let _chainId;
 let _accounts;
 let disableDeploymentSave;
+let _savedConfigOnRunStages;
 async function runStages(provider, config, contractInfos, deployments) {
-
+    _savedConfigOnRunStages = config;
     disableDeploymentSave = !deployments;
     // if(disableDeploymentSave) {console.log('will not save deployments')}
     _deployments = deployments || {}; // override 
@@ -733,6 +740,9 @@ async function runStages(provider, config, contractInfos, deployments) {
     });
 
     global._rocketh_currentDeployments = {};
+    if(config.log) {
+        console.log('reset current deployments');
+    }
 
     // log('running stage with accounts', accounts);
     let argsForStages = [{
@@ -749,7 +759,9 @@ async function runStages(provider, config, contractInfos, deployments) {
         const migrationFilePath = path.resolve(".") + '/' + stagesPath + '/' + fileName;
         // log('running ' + migrationFilePath);
         const stageFunc = require(migrationFilePath);
-        // console.log('processing ' + fileName + '...', argsForStages);
+        if(config.log) {
+            console.log('processing ' + fileName + '...', argsForStages);
+        }
         try{
             await stageFunc.apply(null, argsForStages);
         }catch(e) {
