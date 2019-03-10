@@ -29,12 +29,27 @@ try{
     configFromFile = {};
 }
 const config = Object.assign(configFromFile, {
-    node: 'ganache'
+    node: 'ganache',
+    deploymentChainIds: ['1','3','4','42', '1550250818351'],
+    showErrorsFromCache: false,
+    generateTruffleBuildFiles: false,
+    cacheCompilationResult: true,
+    accounts: {
+        type: 'mnemonic',
+        num: 10
+    }
 });
 
-log.setSlient(typeof config.silent != undefined);
+/*
+accounts: {
+    type: 'bitski'
+}
+accounts: {
+    type: 'privateKeys'
+}
+*/
 
-const deploymentChainIds = ['1','3','4','42', '1550250818351']; // TODO config
+log.setSlient(typeof config.silent != undefined);
 
 if(require.main === module) {
     const minimist = require('minimist'); 
@@ -79,7 +94,7 @@ if(require.main === module) {
                 if(_cleaning) {return;}
                 _cleaning = true;
                 
-                if(session.chainId && deploymentChainIds.indexOf(session.chainId) == -1) {
+                if(session.chainId && config.deploymentChainIds.indexOf(session.chainId) == -1) {
                     cleanDeployments();
                 }
                 if(_stopNode) {
@@ -123,13 +138,12 @@ if(require.main === module) {
             const {contractInfos} = compileResult;
             const {chainId, url, accounts, stop, exposedMnemonic} = await runNode(config);
             
-            session.exposedMnemonic = exposedMnemonic
             session.chainId = chainId;
             session.url = url;
             session.accounts = accounts;
             
             _stopNode = stop;
-            const result = attach(config, {chainId, url, accounts, mnemonic: exposedMnemonic}, contractInfos);
+            const result = attach(config, {chainId, url, accounts}, contractInfos);
             try{
                 await runStages(config, contractInfos, result.deployments);
             }catch(stageError) {
@@ -225,7 +239,7 @@ if(require.main === module) {
     }
 } else {
     const session = global._rocketh_session;
-    attach(config, {chainId: session.chainId, url: session.url, accounts: session.accounts, mnemonic: session.exposedMnemonic});
+    attach(config, {chainId: session.chainId, url: session.url, accounts: session.accounts});
 }
 
 module.exports = rocketh;

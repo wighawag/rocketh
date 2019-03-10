@@ -1,9 +1,6 @@
 const ProviderEngine = require('./providerengine');
-const WalletSubprovider = require('./walletprovider');
 
-const Provider = function(provider, mnemonic, numWallets, contractInfos, compilationInput, srcPath) {
-
-    const subproviders = [];
+const Provider = function(provider, subproviders) {
 
     // TODO : support sourcemap for source line debugging
     // if(contractInfos && compilationInput && srcPath) {
@@ -53,8 +50,6 @@ const Provider = function(provider, mnemonic, numWallets, contractInfos, compila
     //     const revertTraceSubprovider = new RevertTraceSubprovider(artifactAdapter, defaultFromAddress);
     //     subproviders.push(revertTraceSubprovider);
     // }
-
-    subproviders.push(new WalletSubprovider(mnemonic, numWallets));
     ProviderEngine.call(this, provider, subproviders);
 }
 

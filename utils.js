@@ -14,8 +14,8 @@ function requireLocal(moduleName) {
         } catch(e) {
             // console.error(e);
         }
-        currentFolder = path.relative(currentFolder, '..');
-    } while (path.resolve(['..', currentFolder]) != currentFolder);
+        currentFolder = path.resolve(currentFolder, '..');
+    } while (path.resolve(currentFolder, '..') != currentFolder);
 
     throw(new Error("can't find module " + moduleName));
 }

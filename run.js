@@ -9,6 +9,9 @@ const rimraf = require('rimraf');
 const bip39 = require('bip39');
 const geth = require('./geth_test_server');
 const runGanache = require('./run_ganache');
+const tmp = require('tmp');
+const ethers = require('ethers');
+const WalletSubprovider = require('./walletprovider');
 
 const {
     requireLocal,
@@ -16,7 +19,6 @@ const {
     traverse,
     fetchChainId,
     fetchTransaction,
-    getAccountsFromMnemonic,
 } = require('./utils');
 
 if(!global._rocketh_session) {
@@ -95,16 +97,6 @@ const registerDeployment = (name, deploymentInfo) => {
 };
 
 
-// TODO : finish config to allow specify :
-const cacheCompilationResult = true;
-const showErrorsFromCache = false;
-const generateTruffleBuildFiles = true;
-
-// TODO
-// const showContractWithNoByteCode = false;
-// const doNotIncludeContractWithoutByteCode = false; // TODO better : const excludeEmptyContract (abstract and interface)
-// TODO warn of non-used interface and abstract contract (at least those located in src folder)
-
 let deploymentsFolderCreated = false;
 let contractBuildFolderCreated = false;
 
@@ -114,7 +106,7 @@ function compile(config) {
         try{
             solc = requireLocal('solc');
         } catch(e) {
-            reject('you need to install your desired solc compiler in your own project: "npm install solc');
+            reject('you need to install your desired solc (>= 0.4.11) compiler in your own project: "npm install solc');
             return;
         }
         compileWithSolc(solc, resolve, reject, config);
@@ -122,25 +114,17 @@ function compile(config) {
 }
 
 async function runNode(config) {
-    let url = config.url;
-    let mnemonic;
-    let exposedMnemonic;
-    try{
-        mnemonic = fs.readFileSync('./.mnemonic').toString();
-    } catch(e) {
-        mnemonic = bip39.generateMnemonic()
-        exposedMnemonic = mnemonic;
-        log.log('exposed mnemonic', mnemonic);
-    }
+    let url = config.url; 
+    let requireTesting = false;
 
-    _accounts = getAccountsFromMnemonic(mnemonic, 10); // TODO 10
+    const result = getAccountsFromConfig(config);
+    _accounts = result.accounts;
+    const privateKeys = result.privateKeys;
+    const exposedMnemonic = result.exposedMnemonic;
 
     let stop = () => {};
 
-    let provider;
-    if(url) {
-        provider = getProvider(mnemonic, url);
-    } else {
+    if(!url) {
         const port = await portfinder.getPortPromise({
             port: 8545,    // minimum port
             stopPort: 9999 // maximum port
@@ -153,10 +137,17 @@ async function runNode(config) {
 
         if(config.node == 'ganache') {
             const ganacheOptions = config.ganacheOptions || {debug: true, vmErrorsOnRPCResponse: true};
-            ganacheOptions.mnemonic = mnemonic;
+            const ganacheAccounts = [];
+            for(let i = 0; i < privateKeys.length; i ++) {
+                ganacheAccounts.push({
+                    balance: "0x200000000000000000000000000000000000000000000000000000000000000", // TODO config
+                    secretKey: privateKeys[i]
+                });
+            }
+            ganacheOptions.accounts = ganacheAccounts;
             await runGanache(port, wsPort, ganacheOptions);
         } else if(config.node == 'geth') {
-            const runningGeth = await geth.serve(port, wsPort, mnemonic);
+            const runningGeth = await geth.serve(port, wsPort, _accounts);
             stop = runningGeth.stop;
         } else {
             const message = 'node type not supprted : ' + config.node;
@@ -164,22 +155,25 @@ async function runNode(config) {
             reject(message)
         }
         url = "http://localhost:" + port;
+        requireTesting = true;
+    }
 
+    const provider = getProvider(config, url);
+
+    if(requireTesting) {
         let success = false
-        provider = getProvider(mnemonic, url);
+        
         while(!success) {
             try{
-                success = await fetchChainId(provider);
+                _chainId = await fetchChainId(provider);
+                success = true;
             } catch(e) {}
         } // TODO timeout
-        
+    } else {
+        _chainId = await fetchChainId(provider);
     }
     
-    try{
-        _chainId = await fetchChainId(provider);
-    }catch(e){console.error('chainId error', e)}
-    
-    return {url, chainId: _chainId, accounts: _accounts, stop, exposedMnemonic: exposedMnemonic};
+    return {url, chainId: _chainId, accounts: _accounts, stop, exposedMnemonic};
 }
 
 function compileWithSolc(solc, resolve, reject, config) {
@@ -274,7 +268,7 @@ function compileWithSolc(solc, resolve, reject, config) {
     const warnings = [];
     const errors = [];
     const others = []; // TODO
-    if(output.errors && (!usingCache || showErrorsFromCache)) {
+    if(output.errors && (!usingCache || config.showErrorsFromCache)) {
         for(const error of output.errors) {
             if(error.severity === 'warning') {
                 //TODO filter warning based on // ignore comments , example "// ignore:26:5: Warning: Function state mutability can be restricted to pure"
@@ -296,7 +290,7 @@ function compileWithSolc(solc, resolve, reject, config) {
         reject(errors);
     } else {
         
-        if (cacheCompilationResult) {
+        if (config.cacheCompilationResult) {
             if(!contractBuildFolderCreated) {
                 try { fs.mkdirSync(contractBuildPath); } catch(e) {}
                 contractBuildFolderCreated = true;
@@ -314,7 +308,7 @@ function compileWithSolc(solc, resolve, reject, config) {
         const bar = '###################################################################################################################';
         if(usingCache) {
 
-            if(showErrorsFromCache) {
+            if(config.showErrorsFromCache) {
                 log.blue('########################################## FROM CACHE ############################################################');
             }
         } else {
@@ -329,14 +323,14 @@ function compileWithSolc(solc, resolve, reject, config) {
                 if(contractName === "") {
                     contractName = filePath.substr(filePath.lastIndexOf('/')); // TODO remove extension?
                 }
-                // if (config.runAsScript) {
-                    if(!contractBuildFolderCreated) {
-                        try { fs.mkdirSync(contractBuildPath); } catch(e) {}
-                        contractBuildFolderCreated = true;
-                    }
-                    fs.writeFileSync(contractBuildPath + '/' + contractName + '.json', content);
-                // }
-                if(generateTruffleBuildFiles && contractInfo.evm.bytecode.object && contractInfo.evm.bytecode.object != '') {
+                
+                if(!contractBuildFolderCreated) {
+                    try { fs.mkdirSync(contractBuildPath); } catch(e) {}
+                    contractBuildFolderCreated = true;
+                }
+                fs.writeFileSync(contractBuildPath + '/' + contractName + '.json', content);
+                
+                if(config.generateTruffleBuildFiles && contractInfo.evm.bytecode.object && contractInfo.evm.bytecode.object != '') {
                     const truffleBuildFile = {
                         bytecode: contractInfo.evm.bytecode.object,
                         sourceMap: contractInfo.evm.bytecode.sourceMap,
@@ -465,15 +459,73 @@ const rocketh = {
 
 let deploymentsPath;
 
-function getProvider(mnemonic, url, contractInfos, compilationInput, srcPath) {
-    return new Provider(new Web3.providers.HttpProvider(url), mnemonic, 10, contractInfos, compilationInput, srcPath);
+
+let _accountsUsed;
+function getAccountsFromConfig(config) {
+    if(_accountsUsed) {
+        return _accountsUsed;
+    }
+    
+    let mnemonic;
+    let accounts;
+    let privateKeys;
+    
+    const type = config.accounts.type;
+    let numWallets = 10; // TODO config
+    if(type == 'mnemonic') {
+        numWallets = config.accounts.num;
+        try{
+            mnemonic = fs.readFileSync('./.mnemonic').toString();
+        } catch(e) {}
+    } else if(type == 'privateKeys') {
+        privateKeys = JSON.parse(fs.readFileSync('./.priv').toString());
+        accounts = [];
+        for(let i = 0; i < privateKeys.length; i++) {
+            const wallet = new ethers.Wallet(privateKeys[i]);
+            accounts.push(wallet.address);
+        }
+    }
+    
+    let exposedMnemonic;
+    if((!accounts ||  accounts.length == 0) && !mnemonic) {
+        if(process.env._ROCKETH_MNEMONIC && process.env._ROCKETH_MNEMONIC != "") {
+            mnemonic = process.env._ROCKETH_MNEMONIC.split(',').join(' ');
+        } else {
+            mnemonic = bip39.generateMnemonic()
+            exposedMnemonic = mnemonic;
+        }
+    }
+
+    if(mnemonic) {
+        privateKeys = [];
+        accounts = [];
+        for(let i = 0; i < numWallets; i++) {
+            const wallet = ethers.Wallet.fromMnemonic(mnemonic, "m/44'/60'/0'/0/"+i);
+            accounts.push(wallet.address);
+            privateKeys.push(wallet.privateKey);
+        }
+    }
+
+    _accountsUsed =  {exposedMnemonic, privateKeys, accounts};
+    return _accountsUsed;
+}
+
+function getProvider(config, url) {
+    const {privateKeys} = getAccountsFromConfig(config);
+    const walletProvider = new WalletSubprovider(privateKeys);
+    return new Provider(new Web3.providers.HttpProvider(url), [walletProvider]);
 }
 
 let attached;
 
-function attach(config, {url, chainId, accounts, mnemonic}, contractInfos, deployments) {
+function attach(config, {url, chainId, accounts}, contractInfos, deployments) {
     _savedConfig = config;
-    deploymentsPath = path.join(config.rootPath || './', config.deploymentsPath || 'deployments');
+    if(config.deploymentChainIds.indexOf(session.chainId) != -1) {
+        deploymentsPath = path.join(config.rootPath || './', config.deploymentsPath || 'deployments');
+    } else {
+        const tmpobj = tmp.dirSync();
+        deploymentsPath = tmpobj.name;
+    }
     
     if(attached) {
         //already setup
@@ -518,16 +570,7 @@ function attach(config, {url, chainId, accounts, mnemonic}, contractInfos, deplo
             log.log('using node at ' + url + ' (' + _chainId + ')' + ' ...');
         }
         
-        // TODO remove deuplication (see runNode)
-        if(!mnemonic) {
-            try{
-                mnemonic = fs.readFileSync('./.mnemonic').toString();
-            } catch(e) {
-                mnemonic = process.env._ROCKETH_MNEMONIC.split(',').join(' ');
-            }
-        }
-        
-        provider = getProvider(mnemonic, ethereumNodeURl); // TODO for sol-trace _contractInfos, compilationInput, config.rootPath || './', config.contractSrcdPath || 'src');
+        provider = getProvider(config, ethereumNodeURl); // TODO for sol-trace _contractInfos, compilationInput, config.rootPath || './', config.contractSrcdPath || 'src');
     } else {
         console.error(colors.red('ROCKETH_NODE_URL not set'));
         process.exit(1);

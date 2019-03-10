@@ -1,17 +1,14 @@
 const ethers = require('ethers');
 const BN = require('bn.js');
 
-const WalletSubProvider = function(mnemonic, numWallets) {
-    if(!numWallets) {
-        numWallets = 10;
-    }
+const WalletSubProvider = function(privateKeys) {
     this.lastId = 0;
    
-    if(mnemonic){
+    if(privateKeys){
         this.accounts = [];
         this.wallets = {};    
-        for(let i = 0; i < numWallets; i++) {
-            const wallet = ethers.Wallet.fromMnemonic(mnemonic, "m/44'/60'/0'/0/"+i);
+        for(let i = 0; i < privateKeys.length; i++) {
+            const wallet = new ethers.Wallet(privateKeys[i]);
             this.wallets[wallet.address.toLowerCase()] = wallet;
             this.accounts.push(wallet.address);
         }

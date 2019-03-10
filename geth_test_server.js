@@ -9,7 +9,6 @@ const portfinder = require('portfinder');
 
 const {
     requireLocal,
-    getAccountsFromMnemonic,
 } = require('./utils');
 
 
@@ -41,9 +40,13 @@ function spawnGeth(gethPath, args, hookStd, logFile) {
     );
 }
 
-async function serve(port, wsPort, mnemonic) {
+async function serve(port, wsPort, accounts) {
     let gethBinary;
-    gethBinary = requireLocal('geth-binary');
+    try{
+        gethBinary = requireLocal('geth-binary');
+    } catch(e) {
+        throw new Error('In order to use geth as a provider you need to install your desired geth-binary in your own project: "npm install geth-binary');
+    }
     
     let gethPath = gethBinary ? gethBinary.path : 'geth';
     // console.log('geth path', gethPath);
@@ -95,10 +98,9 @@ async function serve(port, wsPort, mnemonic) {
         parentHash: "0x0000000000000000000000000000000000000000000000000000000000000000"
     };
 
-    const accounts = getAccountsFromMnemonic(mnemonic, 10); // TODO 10
     for(let i = 0; i < accounts.length; i++) {
         genesis.alloc[accounts[i]] = {
-            balance: "0x200000000000000000000000000000000000000000000000000000000000000"
+            balance: "0x200000000000000000000000000000000000000000000000000000000000000"  // TODO config
         };
     }
 
