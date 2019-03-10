@@ -9,22 +9,18 @@ const {
     cleanDeployments
 } = require('./run');
 
+const {
+    log,
+    onExit
+} = require('./utils');
+
 const fs=require('fs');
 
-function onExit(childProcess) {
-    return new Promise((resolve, reject) => {
-        childProcess.once('exit', (code, signal) => {
-        if (code === 0) {
-            resolve();
-        } else {
-            reject({error: new Error('Exit with error code: '+code), code});
-        }
-        });
-        childProcess.once('error', (err) => {
-            reject(err);
-        });
-    });
+if(!global._rocketh_session) {
+    global._rocketh_session = {};
 }
+const session = global._rocketh_session;
+
 
 let configFromFile;
 try{
@@ -36,11 +32,9 @@ const config = Object.assign(configFromFile, {
     node: 'ganache'
 });
 
+log.setSlient(typeof config.silent != undefined);
+
 const deploymentChainIds = ['1','3','4','42', '1550250818351']; // TODO config
-
-
-let _chainId;
-let _exposedMnemonic;
 
 if(require.main === module) {
     const minimist = require('minimist'); 
@@ -85,7 +79,7 @@ if(require.main === module) {
                 if(_cleaning) {return;}
                 _cleaning = true;
                 
-                if(_chainId && deploymentChainIds.indexOf(chainId) == -1) {
+                if(session.chainId && deploymentChainIds.indexOf(session.chainId) == -1) {
                     cleanDeployments();
                 }
                 if(_stopNode) {
@@ -115,40 +109,31 @@ if(require.main === module) {
 
             // TODO remove
             if(commandOptions.l) {
-                config.log = true;
+                log.setSlient(false);
             }
-
-            // console.log('execute', command, ...args);
 
             let compileResult;
             try{
                 compileResult = await compile(config);
             }catch(compileError) {
-                // console.log(compileError);
-                process.exit();
+                // console.error(compileError); // TODO compile error shown by compile itself ?
+                process.exit(1);
             }
 
             const {contractInfos} = compileResult;
             const {chainId, url, accounts, stop, exposedMnemonic} = await runNode(config);
-            _exposedMnemonic = exposedMnemonic
-            _chainId = chainId;
-
-            // TODO better (execute runStages in its own process)
-            global._rocketh_chainId = chainId;
-            global._rocketh_url = url;
-            global._rocketh_accounts = accounts;
-            global._rocketh_exposedMnemonic = exposedMnemonic;
+            
+            session.exposedMnemonic = exposedMnemonic
+            session.chainId = chainId;
+            session.url = url;
+            session.accounts = accounts;
             
             _stopNode = stop;
-            
-            if(config.log) {
-                console.log('attaching with ', {chainId, url, accounts, mnemonic: _exposedMnemonic});
-            }
-            const result = attach(config, {chainId, url, accounts, mnemonic: _exposedMnemonic}, contractInfos);
+            const result = attach(config, {chainId, url, accounts, mnemonic: exposedMnemonic}, contractInfos);
             try{
-                await runStages(result.rocketh.ethereum, config, contractInfos, result.deployments);
+                await runStages(config, contractInfos, result.deployments);
             }catch(stageError) {
-                console.log(stageError);
+                console.error(stageError);
                 process.exit(1);
             }
             
@@ -161,7 +146,7 @@ if(require.main === module) {
                         _ROCKETH_NODE_URL: url,
                         _ROCKETH_CHAIN_ID: chainId,
                         _ROCKETH_ACCOUNTS: accounts.join(','), // TODO get rif of accounts
-                        _ROCKETH_MNEMONIC: _exposedMnemonic ? _exposedMnemonic.split(' ').join(',') : undefined
+                        _ROCKETH_MNEMONIC: exposedMnemonic ? exposedMnemonic.split(' ').join(',') : undefined
                     }
                 }
             );
@@ -239,15 +224,8 @@ if(require.main === module) {
         }
     }
 } else {
-    if(config.log) {
-        console.log('attaching direct : ', {chainId: global._rocketh_chainId, url: global._rocketh_url, accounts: global._rocketh_accounts, mnemonic: global._rocketh_exposedMnemonic});
-    }
-    // TODO better than useing global (runStages in a process)
-    attach(config, {chainId: global._rocketh_chainId, url: global._rocketh_url, accounts: global._rocketh_accounts, mnemonic: global._rocketh_exposedMnemonic});
-}
-
-if(config.log) {
-    console.log('rocketh : ', !!rocketh);
+    const session = global._rocketh_session;
+    attach(config, {chainId: session.chainId, url: session.url, accounts: session.accounts, mnemonic: session.exposedMnemonic});
 }
 
 module.exports = rocketh;

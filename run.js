@@ -4,18 +4,28 @@ const colors = require('colors/safe');
 const semver = require('semver');
 const portfinder = require('portfinder');
 const Web3 = require('web3'); // for provider and solidity-sha3
-const ethers = require('ethers'); // for provider
 const Provider = require('./provider');
 const rimraf = require('rimraf');
-const spawn = require('cross-spawn');
-const {onExit} = require('@rauschma/stringio');
-const terminate = require('terminate');
-const tmp = require('tmp');
 const bip39 = require('bip39');
+const geth = require('./geth_test_server');
+const runGanache = require('./run_ganache');
+
+const {
+    requireLocal,
+    log,
+    traverse,
+    fetchChainId,
+    getAccountsFromMnemonic,
+} = require('./utils');
+
+if(!global._rocketh_session) {
+    global._rocketh_session = {};
+}
+const session = global._rocketh_session;
 
 const isAlreadyDeployed = (name, bytecode, args) => {
-    const currentDeployment = global._rocketh_currentDeployments[name];
-    if(currentDeployment && currentDeployment.contractInfo.evm.bytecode.object == bytecode && Web3.utils.soliditySha3(...currentDeployment.args) == Web3.utils.soliditySha3(...args)){
+    const deployment = session.deployments[name];
+    if(deployment && deployment.contractInfo.evm.bytecode.object == bytecode && Web3.utils.soliditySha3(...deployment.args) == Web3.utils.soliditySha3(...args)){
         return true;
     }
 };
@@ -29,10 +39,7 @@ const cleanDeployments = () => {
 }
 
 const registerDeployment = (name, deploymentInfo) => {
-    if(_savedConfigOnRunStages.log) {
-        console.log('Resgistering ' +  name + '...');
-    }
-    if(global._rocketh_currentDeployments[name]){
+    if(session.currentDeployments[name]){
         console.error(colors.red('deployment with same name ('+name+') exists'));
     } else {
         const errors = [];
@@ -56,16 +63,10 @@ const registerDeployment = (name, deploymentInfo) => {
                 address: deploymentInfo.address
             };
             
-            global._rocketh_deployments[name] = deploymentInfoToSave;
-            global._rocketh_currentDeployments[name] = deploymentInfoToSave;
-            if(_savedConfigOnRunStages.log) {
-                console.log('saved ' +  name + '...');
-            }
+            session.deployments[name] = deploymentInfoToSave;
+            session.currentDeployments[name] = deploymentInfoToSave;
             
-            // if (runAsScript) {
             if(!disableDeploymentSave) {
-                // TODO different folder for test blockchain
-                // log('contract ' + name + ' deployed at ' + deploymentInfo.address);
                 if(!deploymentsFolderCreated) {
                     try { fs.mkdirSync(deploymentsPath); } catch(e) {}
                     try { fs.mkdirSync(path.join(deploymentsPath, _chainId)); } catch(e) {}
@@ -75,7 +76,6 @@ const registerDeployment = (name, deploymentInfo) => {
                 const filepath = path.join(deploymentsPath, _chainId, name + '.json');
                 fs.writeFileSync(filepath, content);
             }
-            // }
 
             // if(generateTruffleBuildFiles) {
             //     let truffleBuildFile = null;
@@ -102,55 +102,10 @@ const unlessAlreadyDeployed = async (name, bytecode, args, deploy) =>{
     }
 };
 
-function requireLocal(moduleName) {
-    // TODO if all else fails. rocketh could provide a default
-    let currentFolder = path.resolve('./')
-    do {
-        try{
-            const nodeModule = path.join(currentFolder,'node_modules', moduleName);
-            // console.log('trying ' + nodeModule + '...');
-            return require(nodeModule);
-        } catch(e) {
-            // console.error(e);
-        }
-        currentFolder = path.relative(currentFolder, '..');
-    } while (path.resolve(['..', currentFolder]) != currentFolder);
-
-    throw(new Error("can't find module " + moduleName));
-}
-
-
-const traverse = function(dir, result = []) {
-    fs.readdirSync(dir).forEach((name) => {
-        const fPath = path.resolve(dir, name);
-        const stats = fs.statSync(fPath);
-        const fileStats = { name, path: fPath, mtimeMs: stats.mtimeMs };
-        if (stats.isDirectory()) {
-            result.push(fileStats);
-            return traverse(fPath, result)
-        }
-        result.push(fileStats);
-    });
-    return result;
-};
-
-
 // TODO : finish config to allow specify :
 const cacheCompilationResult = true;
 const showErrorsFromCache = false;
 const generateTruffleBuildFiles = true;
-
-let silent = true;
-
-
-function log(...args) {
-    if(silent) { return; }
-    console.log.apply(console, args);
-}
-
-function errored(...args) {
-    console.error.apply(console, args);
-}
 
 // TODO
 // const showContractWithNoByteCode = false;
@@ -159,18 +114,6 @@ function errored(...args) {
 
 let deploymentsFolderCreated = false;
 let contractBuildFolderCreated = false;
-
-function executeServer(server, port) {
-    return new Promise((resolve, reject) => {
-        server.listen(port, function(err, blockchain) {
-            if(err) {
-                reject(err);     
-            } else {
-                resolve(blockchain)
-            }
-        });
-    });
-}
 
 function compile(config) {
     return new Promise((resolve, reject) => {
@@ -185,34 +128,6 @@ function compile(config) {
     });
 }
 
-function spawnGeth(gethPath, args, hookStd, logFile) {
-
-    let stdio;
-    if(logFile) {
-        fs.writeFileSync(logFile, '');
-        var output = fs.openSync(logFile, 'a');
-        var output2 = fs.openSync(logFile, 'a');
-        stdio = ['ignore', output, output2];
-    } else {
-        if(hookStd) {
-            stdio = [process.stdin, process.stdout, process.stderr];
-        } else {
-            // const devnull = require('dev-null');
-            stdio = ['ignore', 'ignore', 'ignore'];
-        }
-    }
-    return spawn(
-        gethPath,
-        args,
-        {
-            stdio,
-            env:{
-                _GETH_CMD_ARGUMENTS: args.join(' ')
-            }
-        }
-    );
-}
-
 async function runNode(config) {
     let url = config.url;
     let mnemonic;
@@ -222,20 +137,16 @@ async function runNode(config) {
     } catch(e) {
         mnemonic = bip39.generateMnemonic()
         exposedMnemonic = mnemonic;
-        console.log('mnemonic', mnemonic);
+        log.log('exposed mnemonic', mnemonic);
     }
 
-    _accounts = [];
-    for(let i = 0; i < 10; i++) { // TODO 10 is config of number of accounts
-        const wallet = ethers.Wallet.fromMnemonic(mnemonic, "m/44'/60'/0'/0/"+i);
-        _accounts.push(wallet.address);
-        // console.log(wallet.address);
-    }
-    
+    _accounts = getAccountsFromMnemonic(mnemonic, 10); // TODO 10
 
     let stop = () => {};
 
+    let provider;
     if(url) {
+        provider = getProvider(mnemonic, url);
     } else {
         const port = await portfinder.getPortPromise({
             port: 8545,    // minimum port
@@ -250,196 +161,26 @@ async function runNode(config) {
         if(config.node == 'ganache') {
             const ganacheOptions = config.ganacheOptions || {debug: true, vmErrorsOnRPCResponse: true};
             ganacheOptions.mnemonic = mnemonic;
-         
-            let ganache;
-            try{
-                ganache = requireLocal('ganache-core');
-                log(colors.green('using ganache-core from dependencies'));
-                console.log('fireing up ganache-core...', ganacheOptions);
-            }catch(e){}
-
-            if(!ganache) {
-                try{
-                    ganache = requireLocal('ganache-cli');
-                    log(colors.green('using ganache-cli from dependencies'));
-                    console.log('fireing up ganache-cli...', ganacheOptions);
-                } catch(e) {
-                    console.error(colors.red(e));
-                    reject('you need to install your desired ganache-core version in your own project: "npm install ganache-core')
-                }
-            }
-            
-            const server = ganache.server(ganacheOptions);
-            await executeServer(server, port);
+            await runGanache(port, wsPort, ganacheOptions);
         } else if(config.node == 'geth') {
-            let gethBinary;
-            try{
-                gethBinary = requireLocal('geth-binary');
-            }catch(e) {}
-            let gethPath = gethBinary ? gethBinary.path : 'geth';
-            console.log('geth path', gethPath);
-
-            /*
-            rm -Rf .geth
-            <generate .geth/genesis.json>
-            printf sesame > .geth/pass
-            printf 2bd8fd4e7c04075345677d3127842e737a62db1918beef4cbea6cbc95db0cbdb > .geth/priv
-            geth --datadir .geth init .geth/genesis.json
-            geth --datadir .geth account import --password .geth/pass .geth/priv
-            geth --datadir .geth --syncmode full  --networkid 110 --gasprice 1 --password .geth/pass --unlock 30cb8ee8b1bfacdd5edf8ae9f82e59925263c966 --mine --targetgaslimit 6000000 --rpc --rpcaddr localhost --rpcport 8502 --rpcapi eth,net,web3
-            */
-            
-            var tmpobj = tmp.dirSync();
-            const gethDataPath = tmpobj.name;
-            rimraf.sync(gethDataPath);
-            try { fs.mkdirSync(gethDataPath); } catch(e) {}
-            const genesisPath = path.join(gethDataPath, 'genesis.json');
-            
-            const gethPort = await portfinder.getPortPromise({
-                port: 30310,    // minimum port
-                stopPort: 39999 // maximum port
-            });
-            const genesis = {
-                config: {
-                    chainId:Math.floor(Date.now() / 1000),
-                    homesteadBlock: 1,
-                    eip150Block: 2,
-                    eip150Hash: "0x0000000000000000000000000000000000000000000000000000000000000000",
-                    eip155Block: 3,
-                    eip158Block: 3,
-                    byzantiumBlock: 4,
-                    clique: {
-                        period: 0,
-                        epoch: 30000
-                    }
-                },
-                nonce: "0x0000000000000042",
-                timestamp: "0x00",
-                extraData: "0x000000000000000000000000000000000000000000000000000000000000000030cb8ee8b1bfacdd5edf8ae9f82e59925263c9660000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-                gasLimit: "0x59A5380",
-                difficulty: "0x1",
-                mixHash: "0x0000000000000000000000000000000000000000000000000000000000000000",
-                coinbase: "0x0000000000000000000000000000000000000000",
-                alloc: {},
-                number: "0x0",
-                gasUsed: "0x0",
-                parentHash: "0x0000000000000000000000000000000000000000000000000000000000000000"
-            };
-
-            for(let i = 0; i < _accounts.length; i++) {
-                genesis.alloc[_accounts[i]] = {
-                    balance: "0x200000000000000000000000000000000000000000000000000000000000000"
-                };
-            }
-
-            fs.writeFileSync(genesisPath, JSON.stringify(genesis, null, '  '));
-            console.log('Initialising geth using genesis file...');
-            const initProcess = spawnGeth(
-                gethPath,
-                ['--datadir', gethDataPath, 'init', genesisPath],
-                // true
-            );
-            await onExit(initProcess)
-            
-            const passPath = path.join(gethDataPath, 'pass');
-            fs.writeFileSync(passPath,'sesame');
-
-
-            //////////////////////////////////////////////////////////////////////////////////////////////////////
-            // sealer account is pregenerated :
-
-            // const privPath = path.join(gethDataPath, 'priv');
-            // fs.writeFileSync(privPath,'2bd8fd4e7c04075345677d3127842e737a62db1918beef4cbea6cbc95db0cbdb');
-            // console.log('Initialising account....');
-            // const accountCreationProcess = spawnGeth(
-            //     gethPath,
-            //     ['--datadir', gethDataPath, 'account', 'import', '--password', passPath, privPath],
-            //     // true
-            // );
-            // await onExit(accountCreationProcess)
-
-            const keystorePath = path.join(gethDataPath, 'keystore');
-            keystoreFilepath = path.join(keystorePath, 'UTC--2019-02-26T12-51-20.735389900Z--30cb8ee8b1bfacdd5edf8ae9f82e59925263c966');
-            try { fs.mkdirSync(keystorePath); } catch(e) {}
-            fs.writeFileSync(keystoreFilepath, '{"address":"30cb8ee8b1bfacdd5edf8ae9f82e59925263c966","crypto":{"cipher":"aes-128-ctr","ciphertext":"e1140b6de3997af4605cc378f08bd58f6b2f1637dbc1bfcdbef93a31665fbedb","cipherparams":{"iv":"e9751ae14e68c9327b6aed03654c2eee"},"kdf":"scrypt","kdfparams":{"dklen":32,"n":262144,"p":1,"r":8,"salt":"d00a5afd0b8decca4a65d8da30fa20419bbacc663213b7368d268f4a0997f8bf"},"mac":"e9ba6a86129f9fbd02ea287fd6eea47e9543d5c3257a4440499b5bcb314251ce"},"id":"4ea8a249-40af-44db-ba7a-d56a239add7e","version":3}');
-            //////////////////////////////////////////////////////////////////////////////////////////////////////
-
-            console.log('starting geth on port ' + port + '(' + wsPort + ')');
-            const gethProcess = spawnGeth(
-                gethPath,
-                [
-                    '--datadir', gethDataPath,
-                    '--syncmode', 'full',
-                    '--networkid', genesis.config.chainId,
-                    '--password', passPath,
-                    '--unlock', '30cb8ee8b1bfacdd5edf8ae9f82e59925263c966',
-                    '--mine',
-                    '--gasprice', '1', // 2000000000
-                    '--targetgaslimit', '0x4c4b400000', // 6000000
-                    '--rpc',
-                    '--rpcaddr', 'localhost', // 0.0.0.0 for public
-                    // '--rpcvhosts', '*',
-                    '--rpcport', '' + port,
-                    '--rpcapi', 'eth,net,web3,personal,db,txpool,miner,debug',
-                    '--ws',
-                    '--wsaddr', 'localhost', // 0.0.0.0 for public
-                    '--wsport', '' + wsPort,
-                    // '--wsorigins', '*',
-                    '--wsapi', 'eth,net,web3,personal,db,txpool,miner,debug',
-                    // '--vmdebug',
-                    '--nat', 'none',
-                    '--nodiscover',
-                    '--port', '' + gethPort,
-                    '--txpool.journal', "''",
-                ],
-                // false,// true // TODO remove
-                // '.geth.log'
-            );
-            
-            let success = false
-            let provider = getProvider(mnemonic, "http://localhost:" + port);
-            while(!success) {
-                try{
-                    success = await fetchChainId(provider);
-                } catch(e) {}
-            }
-            stop = () => {
-                return new Promise((resolve, reject) => {
-                    try {
-                        terminate(gethProcess.pid, (err) => {
-                            if(err) {
-                                reject(err);
-                            } else {
-                                setTimeout(() => {
-                                    try{rimraf.sync(gethDataPath);}catch(e){console.error(e);}
-                                    resolve();
-                                }, 1000);
-                            }
-                        })
-                    } catch(e) {
-                        reject(e);
-                    }
-                });
-                // const promise = onExit(gethProcess);
-                
-                // gethProcess.kill("SIGINT");
-                // // process.kill(-gethProcess.pid);
-
-                // try{
-                //     await promise;
-                // } catch(e) {
-                //     console.error(e);
-                // }
-            }
+            const runningGeth = await geth.serve(port, wsPort, mnemonic);
+            stop = runningGeth.stop;
         } else {
             const message = 'node type not supprted : ' + config.node;
             console.error(colors.red(message));
             reject(message)
         }
         url = "http://localhost:" + port;
+
+        let success = false
+        provider = getProvider(mnemonic, url);
+        while(!success) {
+            try{
+                success = await fetchChainId(provider);
+            } catch(e) {}
+        } // TODO timeout
+        
     }
-    
-    let provider = getProvider(mnemonic, url);
     
     try{
         _chainId = await fetchChainId(provider);
@@ -478,7 +219,7 @@ function compileWithSolc(solc, resolve, reject, config) {
         reject(message);
     }
     
-    log(colors.green('using solc : ' + solcVersion));
+    log.green('using solc : ' + solcVersion);
 
     // TODO : config // merge from File ? add sources...
     const solcConfig = JSON.stringify({
@@ -516,7 +257,7 @@ function compileWithSolc(solc, resolve, reject, config) {
         } catch(e) {}
         const sameInput = lastInput === solcConfig;
         if(!sameInput) {
-            log('config changed...');
+            log.log('config changed...');
         } else {
             usingCache = true;
             // TODO expose the info that cache is being used so that test runner can skip test that did not change
@@ -524,14 +265,14 @@ function compileWithSolc(solc, resolve, reject, config) {
     }
 
     if(!usingCache) {
-        log(colors.green('########################################### COMPILING #############################################################'));
+        log.green('########################################### COMPILING #############################################################');
         if(pre_0_5_0_solc && !pre_0_4_11_solc) {
             rawOutput = solc.compileStandardWrapper(solcConfig);
         } else {
             rawOutput = solc.compile(solcConfig);
         }
     } else {
-        log(colors.blue('########################################## FROM CACHE ############################################################'));
+        log.blue('########################################## FROM CACHE ############################################################');
         rawOutput = fs.readFileSync(cacheOutputPath).toString();
     }
 
@@ -556,9 +297,9 @@ function compileWithSolc(solc, resolve, reject, config) {
     
     if(errors.length > 0) {
         for (const error of errors) {
-            errored(colors.red(error.formattedMessage));
+            log.red(error.formattedMessage);
         }
-        errored(colors.red('###################################################################################################################'));
+        log.red('###################################################################################################################');
         reject(errors);
     } else {
         
@@ -572,19 +313,19 @@ function compileWithSolc(solc, resolve, reject, config) {
         }
 
         for (const warning of warnings) {
-            log(colors.yellow(warning.formattedMessage));
+            log.yellow(warning.formattedMessage);
         }
         for (const other of others) {
-            log(colors.cyan(other.formattedMessage));
+            log.cyan(other.formattedMessage);
         }
         const bar = '###################################################################################################################';
         if(usingCache) {
 
             if(showErrorsFromCache) {
-                log(colors.blue('########################################## FROM CACHE ############################################################'));
+                log.blue('########################################## FROM CACHE ############################################################');
             }
         } else {
-            log(colors.green(bar));
+            log.green(bar);
         }
         
         const contractInfos = {};
@@ -618,7 +359,6 @@ function compileWithSolc(solc, resolve, reject, config) {
                     try { fs.mkdirSync('build/contracts'); } catch(e) {}
                     fs.writeFileSync('build/contracts/' + contractName + '.json', JSON.stringify(truffleBuildFile, null, '  '));
                 }
-                // log('' + contractName + ' compiled');
                 contractInfos[contractName] = contractInfo;
                 // if (contractInfo.evm
                 //     && contractInfo.evm.bytecode
@@ -663,71 +403,22 @@ function extractDeployments(deploymentsPath) {
     return deployments;
 }
 
-
-function fetchAccounts(provider) {
-    return new Promise((resolve, reject) => {
-        try{
-            provider.send({id:1, method:'eth_accounts', params:[]}, (error, json) => {
-                if (error) {
-                    reject(error);
-                } else {
-                    resolve(json.result);
-                }
-            })
-        } catch(e) { // to work with old provider
-            provider.sendAsync({id:1, method:'eth_accounts', params:[]}, (error, json) => {
-                if (error) {
-                    reject(error);
-                } else {
-                    resolve(json.result);
-                }
-            })
-        }
-        
-    })
-}
-
-function fetchChainId(provider) {
-    return new Promise((resolve, reject) => {
-        try{
-            provider.send({id:2, method:'net_version', params:[]}, (error, json) => {
-                if (error) {
-                    reject(error);
-                } else {
-                    resolve(json.result);
-                }
-            })
-        }catch(e) {  // to work with old provider
-            provider.sendAsync({id:2, method:'net_version', params:[]}, (error, json) => {
-                if (error) {
-                    reject(error);
-                } else {
-                    resolve(json.result);
-                }
-            })
-        }
-        
-    })
-}
-
 // cache
 let _chainId;
 let _accounts;
 let disableDeploymentSave;
-let _savedConfigOnRunStages;
-async function runStages(provider, config, contractInfos, deployments) {
-    _savedConfigOnRunStages = config;
+async function runStages(config, contractInfos, deployments) {
     disableDeploymentSave = !deployments;
-    // if(disableDeploymentSave) {console.log('will not save deployments')}
-    global._rocketh_deployments = deployments || {}; // override 
+
+    session.deployments = deployments || {}; // override 
 
     const stagesPath = path.join(config.rootPath || './', config.stagesPath || 'stages');
-    // log(colors.green('######################################### STAGES ##############################################################'));
+    // log.green('######################################### STAGES ##############################################################');
     let fileNames;
     try{
         fileNames = fs.readdirSync(stagesPath);
     } catch(e) {
-        log(colors.green('no stages folder at ./' + stagesPath));
+        log.green('no stages folder at ./' + stagesPath);
         return artifacts;
     }
     fileNames = fileNames.filter((fileName) => {
@@ -739,37 +430,30 @@ async function runStages(provider, config, contractInfos, deployments) {
         return 0;
     });
 
-    global._rocketh_currentDeployments = {};
-    if(config.log) {
-        console.log('reset current deployments');
-    }
+    session.currentDeployments = {};
 
-    // log('running stage with accounts', accounts);
     let argsForStages = [{
         contractInfo: (name) => contractInfos[name],
         accounts: _accounts,
         chainId: _chainId,
         registerDeployment,
-        deployment: function(name) {return global._rocketh_currentDeployments[name]},
+        deployment: function(name) {return session.currentDeployments[name]},
         isAlreadyDeployed,
         unlessAlreadyDeployed
     }];
     
     for (const fileName of fileNames) {
         const migrationFilePath = path.resolve(".") + '/' + stagesPath + '/' + fileName;
-        // log('running ' + migrationFilePath);
+        log.log('running ' + migrationFilePath);
         const stageFunc = require(migrationFilePath);
-        if(config.log) {
-            console.log('processing ' + fileName + '...', argsForStages);
-        }
         try{
             await stageFunc.apply(null, argsForStages);
         }catch(e) {
-            console.log('ERROR processing ' + migrationFilePath, e);
+            console.error('ERROR processing ' + migrationFilePath, e);
         }
     }
-    // log(colors.green('###################################################################################################################'));
-    return global._rocketh_deployments;
+    // log.green('###################################################################################################################');
+    return session.deployments;
 }
 
 
@@ -778,11 +462,11 @@ let _contractInfos;
 let _ethereum;
 
 const rocketh = {
-    runStages: () => runStages(_ethereum, _savedConfig, _contractInfos), // empty deployment for running Stages : blank canvas for testing
+    runStages: () => runStages(_savedConfig, _contractInfos), // empty deployment for running Stages : blank canvas for testing
     deployment: (name) => {
-        return global._rocketh_deployments[name];
+        return session.deployments[name];
     },
-    deployments: () => global._rocketh_deployments, // TODO remove ?
+    deployments: () => session.deployments, // TODO remove ?
     contractInfo: (name) => {
         return _contractInfos[name];
     },
@@ -795,18 +479,6 @@ let deploymentsPath;
 
 function getProvider(mnemonic, url, contractInfos, compilationInput, srcPath) {
     return new Provider(new Web3.providers.HttpProvider(url), mnemonic, 10, contractInfos, compilationInput, srcPath);
-    // let provider;
-    // if(mnemonic) {
-    //     // const ethersSigner = ethers.Wallet.fromMnemonic(mnemonic);
-    //     // const ethersProvider = new ethers.providers.JsonRpcProvider(url);
-    //     // provider = new ProviderBridge(ethersProvider, ethersSigner);
-    //     provider = new HDWalletProvider(mnemonic, url, 0, 10, false);
-    // } else {
-    //     // const ethersProvider = new ethers.providers.JsonRpcProvider(url);
-    //     // provider = new ProviderBridge(ethersProvider, null);
-    //     provider = new Web3.providers.HttpProvider(url);
-    // }
-    // return provider;
 }
 
 let attached;
@@ -817,7 +489,6 @@ function attach(config, {url, chainId, accounts, mnemonic}, contractInfos, deplo
     
     if(attached) {
         //already setup
-        log('aleready setup');
         return attached;
     }
 
@@ -845,21 +516,18 @@ function attach(config, {url, chainId, accounts, mnemonic}, contractInfos, deplo
     }
     
     
-    if(!global._rocketh_deployments) {
-        global._rocketh_deployments = deployments;
+    if(!session.deployments) {
+        session.deployments = deployments;
     }
 
-    if(!global._rocketh_deployments){
-        if(config.log){
-            console.log(deploymentsPath, _chainId, chainId, process.env._ROCKETH_CHAIN_ID);
-        }
-        global._rocketh_deployments = extractDeployments(path.join(deploymentsPath, _chainId));
+    if(!session.deployments){
+        session.deployments = extractDeployments(path.join(deploymentsPath, _chainId));
     }
 
     let provider;
     if(ethereumNodeURl && ethereumNodeURl !== '') {
         if(url) {
-            log('using node at ' + url + ' (' + _chainId + ')' + ' ...');
+            log.log('using node at ' + url + ' (' + _chainId + ')' + ' ...');
         }
         
         // TODO remove deuplication (see runNode)
@@ -875,17 +543,6 @@ function attach(config, {url, chainId, accounts, mnemonic}, contractInfos, deplo
     } else {
         console.error(colors.red('ROCKETH_NODE_URL not set'));
         process.exit(1);
-        // log('ganache...', ganacheOptions);
-        // try{
-        //     ganache = requireLocal('ganache-cli');
-        //     log(colors.green('using ganache-cli from dependencies'));
-        // } catch(e) {
-        //     console.error(colors.red('you need to install your desired ganache-cli version in your own project: "npm install ganache-cli"'));
-        //     // TODO config own provider + defaults like nodeUrl, ganache-cli with privateKey signer...
-        //     process.exit(1);
-        // }
-        // provider = ganache.provider(ganacheOptions); //, vmErrorsOnRPCResponse: false}); //, logger: console});
-        // provider.setMaxListeners(1000000); // TODO is there a leak or do we need to up that limit (warning was at 11)
     }
 
     _ethereum = provider;
@@ -899,7 +556,7 @@ function attach(config, {url, chainId, accounts, mnemonic}, contractInfos, deplo
     attached = {
         rocketh,
         contractInfos: _contractInfos,
-        deployments: global._rocketh_deployments
+        deployments: session.deployments
     };
 
     return attached;
