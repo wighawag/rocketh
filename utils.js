@@ -56,6 +56,29 @@ function onExit(childProcess) {
     });
 }
 
+function fetchTransaction(provider, hash) {
+    return new Promise((resolve, reject) => {
+        try{
+            provider.send({id:1, method:'eth_getTransactionByHash', params:[hash]}, (error, json) => {
+                if (error) {
+                    reject(error);
+                } else {
+                    resolve(json.result);
+                }
+            })
+        } catch(e) { // to work with old provider
+            provider.sendAsync({id:1, method:'eth_getTransactionByHash', params:[hash]}, (error, json) => {
+                if (error) {
+                    reject(error);
+                } else {
+                    resolve(json.result);
+                }
+            })
+        }
+        
+    })
+}
+
 function fetchAccounts(provider) {
     return new Promise((resolve, reject) => {
         try{
@@ -131,6 +154,7 @@ module.exports = {
     executeServer,
     fetchAccounts,
     fetchChainId,
+    fetchTransaction,
     getAccountsFromMnemonic,
     log : {
         setSlient: (s) => silent = s,

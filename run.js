@@ -15,6 +15,7 @@ const {
     log,
     traverse,
     fetchChainId,
+    fetchTransaction,
     getAccountsFromMnemonic,
 } = require('./utils');
 
@@ -22,13 +23,6 @@ if(!global._rocketh_session) {
     global._rocketh_session = {};
 }
 const session = global._rocketh_session;
-
-const isAlreadyDeployed = (name, bytecode, args) => {
-    const deployment = session.deployments[name];
-    if(deployment && deployment.contractInfo.evm.bytecode.object == bytecode && Web3.utils.soliditySha3(...deployment.args) == Web3.utils.soliditySha3(...args)){
-        return true;
-    }
-};
 
 const cleanDeployments = () => {
     try{
@@ -52,6 +46,9 @@ const registerDeployment = (name, deploymentInfo) => {
         if(!deploymentInfo.address) {
             errors.push(colors.red('deploymentInfo requires field "address" of the deployed contract'));
         }
+        if(!deploymentInfo.transactionHash) {
+            errors.push(colors.red('deploymentInfo requires field "transactionHash" of the deployed contract'));
+        }
         if(errors.length > 0 ){
             for(const error of errors) {
                 console.error(error);
@@ -60,7 +57,8 @@ const registerDeployment = (name, deploymentInfo) => {
             const deploymentInfoToSave = {
                 contractInfo: deploymentInfo.contractInfo,
                 args: deploymentInfo.args,
-                address: deploymentInfo.address
+                address: deploymentInfo.address,
+                transactionHash: deploymentInfo.transactionHash,
             };
             
             session.deployments[name] = deploymentInfoToSave;
@@ -96,11 +94,6 @@ const registerDeployment = (name, deploymentInfo) => {
     }
 };
 
-const unlessAlreadyDeployed = async (name, bytecode, args, deploy) =>{
-    if(!isAlreadyDeployed(name, bytecode, args)) {
-        await deploy(registerDeployment);
-    }
-};
 
 // TODO : finish config to allow specify :
 const cacheCompilationResult = true;
@@ -437,9 +430,7 @@ async function runStages(config, contractInfos, deployments) {
         accounts: _accounts,
         chainId: _chainId,
         registerDeployment,
-        deployment: function(name) {return session.currentDeployments[name]},
-        isAlreadyDeployed,
-        unlessAlreadyDeployed
+        deployment: function(name) {return session.currentDeployments[name]}
     }];
     
     for (const fileName of fileNames) {
@@ -459,7 +450,6 @@ async function runStages(config, contractInfos, deployments) {
 
 let _savedConfig;
 let _contractInfos;
-let _ethereum;
 
 const rocketh = {
     runStages: () => runStages(_savedConfig, _contractInfos), // empty deployment for running Stages : blank canvas for testing
@@ -470,8 +460,6 @@ const rocketh = {
     contractInfo: (name) => {
         return _contractInfos[name];
     },
-    unlessAlreadyDeployed,
-    isAlreadyDeployed,
     registerDeployment
 }
 
@@ -545,7 +533,6 @@ function attach(config, {url, chainId, accounts, mnemonic}, contractInfos, deplo
         process.exit(1);
     }
 
-    _ethereum = provider;
     rocketh.ethereum = provider;
     global.ethereum = provider;
 
