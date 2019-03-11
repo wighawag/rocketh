@@ -45,7 +45,7 @@ const config = Object.assign(configFromFile, {
 
 // TODO allow arguments from command line to be passed to rocketh via ENV
 
-log.setSlient(typeof config.silent != undefined ? config.silent : true);
+log.setSlient(typeof config.silent != 'undefined' ? config.silent : true);
 
 log.log(config);
 
