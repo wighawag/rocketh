@@ -117,7 +117,12 @@ async function runNode(config) {
     let url = config.url; 
     let requireTesting = false;
 
-    const result = getAccountsFromConfig(config);
+    _chainId = null;
+    if(url) {
+        _chainId = await fetchChainId(new Web3.providers.HttpProvider(url));
+    }
+
+    const result = getAccountsFromConfig(config, _chainId);
     _accounts = result.accounts;
     const privateKeys = result.privateKeys;
     const exposedMnemonic = result.exposedMnemonic;
@@ -158,7 +163,7 @@ async function runNode(config) {
         requireTesting = true;
     }
 
-    const provider = getProvider(config, url);
+    const provider = getProvider(config, url, _chainId);
 
     if(requireTesting) {
         let success = false
@@ -461,7 +466,7 @@ let deploymentsPath;
 
 
 let _accountsUsed;
-function getAccountsFromConfig(config) {
+function getAccountsFromConfig(config, chainId) {
     if(_accountsUsed) {
         return _accountsUsed;
     }
@@ -470,10 +475,17 @@ function getAccountsFromConfig(config) {
     let accounts;
     let privateKeys;
     
-    const type = config.accounts.type;
+    let accountsConfig;
+    if(chainId && config.accounts[""+ chainId]) {
+        accountsConfig = config.accounts[""+ chainId];
+    } else {
+        accountsConfig = config.accounts["default"];
+    }
+    const type = accountsConfig.type
+
     let numWallets = 10; // TODO config
     if(type == 'mnemonic') {
-        numWallets = config.accounts.num;
+        numWallets = accountsConfig.num;
         try{
             mnemonic = fs.readFileSync('./.mnemonic').toString();
         } catch(e) {}
@@ -484,6 +496,9 @@ function getAccountsFromConfig(config) {
             const wallet = new ethers.Wallet(privateKeys[i]);
             accounts.push(wallet.address);
         }
+    } else if(type == 'bitski') {
+        const bitskiConfig = JSON.parse(fs.readFileSync('./.bitski').toString());
+        accounts = bitskiConfig.accounts;
     }
     
     let exposedMnemonic;
@@ -510,22 +525,56 @@ function getAccountsFromConfig(config) {
     return _accountsUsed;
 }
 
-function getProvider(config, url) {
-    const {privateKeys} = getAccountsFromConfig(config);
-    const walletProvider = new WalletSubprovider(privateKeys);
-    return new Provider(new Web3.providers.HttpProvider(url), [walletProvider]);
+function getProvider(config, url, chainId) {
+    let accountsConfig;
+    if(chainId && config.accounts[""+ chainId]) {
+        accountsConfig = config.accounts[""+ chainId];
+    } else {
+        accountsConfig = config.accounts["default"];
+    }
+    const type = accountsConfig.type
+
+    const subProviders = [];
+    if(type == "bitski") {
+        const bitskiConfig = JSON.parse(fs.readFileSync('./.bitski').toString());
+
+        const BitskiSubProvider = require('./bitski_subprovider');
+        const bitskiWalletSubProvider = new BitskiSubProvider(
+            bitskiConfig.clientID,
+            bitskiConfig.credentials.ID,
+            bitskiConfig.credentials.secret,
+            bitskiConfig.accounts
+        );
+        subProviders.push(bitskiWalletSubProvider)
+    } else {
+        const {privateKeys} = getAccountsFromConfig(config);
+        const walletProvider = new WalletSubprovider(privateKeys);
+        subProviders.push(walletProvider)
+    }
+    
+    return new Provider(new Web3.providers.HttpProvider(url), subProviders);
 }
 
 let attached;
 
 function attach(config, {url, chainId, accounts}, contractInfos, deployments) {
+    const ethereumNodeURl = url || process.env._ROCKETH_NODE_URL;
+    rocketh.chainId = _chainId = chainId || process.env._ROCKETH_CHAIN_ID;
+    rocketh.accounts = _accounts = accounts;
+    if(!rocketh.accounts && process.env._ROCKETH_ACCOUNTS) {
+        rocketh.accounts = _accounts = process.env._ROCKETH_ACCOUNTS.split(',');
+    }
+
+    log.log('using deployments at ' + deploymentsPath);
     _savedConfig = config;
-    if(config.deploymentChainIds.indexOf(session.chainId) != -1) {
+    if(config.deploymentChainIds.indexOf('' + _chainId) != -1) {
         deploymentsPath = path.join(config.rootPath || './', config.deploymentsPath || 'deployments');
     } else {
-        const tmpobj = tmp.dirSync();
+        const tmpobj = tmp.dirSync({keep:true});
         deploymentsPath = tmpobj.name;
     }
+
+    log.log('using deployments at ' + deploymentsPath);
     
     if(attached) {
         //already setup
@@ -546,21 +595,15 @@ function attach(config, {url, chainId, accounts}, contractInfos, deployments) {
         const intputPath = contractBuildPath + '/.compilationInput.json';
         compilationInput = JSON.parse(fs.readFileSync(intputPath).toString());
     }
-
-       
-    const ethereumNodeURl = url || process.env._ROCKETH_NODE_URL;
-    rocketh.chainId = _chainId = chainId || process.env._ROCKETH_CHAIN_ID;
-    rocketh.accounts = _accounts = accounts;
-    if(!rocketh.accounts && process.env._ROCKETH_ACCOUNTS) {
-        rocketh.accounts = _accounts = process.env._ROCKETH_ACCOUNTS.split(',');
-    }
     
-    
+    log.log('deployments', session.deployments);
     if(!session.deployments) {
+        log.log('no deployments', deployments);
         session.deployments = deployments;
     }
 
     if(!session.deployments){
+        log.log('extracting deployments for chainId', _chainId);
         session.deployments = extractDeployments(path.join(deploymentsPath, _chainId));
     }
 
@@ -570,7 +613,7 @@ function attach(config, {url, chainId, accounts}, contractInfos, deployments) {
             log.log('using node at ' + url + ' (' + _chainId + ')' + ' ...');
         }
         
-        provider = getProvider(config, ethereumNodeURl); // TODO for sol-trace _contractInfos, compilationInput, config.rootPath || './', config.contractSrcdPath || 'src');
+        provider = getProvider(config, ethereumNodeURl, _chainId); // TODO for sol-trace _contractInfos, compilationInput, config.rootPath || './', config.contractSrcdPath || 'src');
     } else {
         console.error(colors.red('ROCKETH_NODE_URL not set'));
         process.exit(1);

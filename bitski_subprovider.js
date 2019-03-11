@@ -1,25 +1,26 @@
 const ethers = require('ethers');
 const BN = require('bn.js');
+const Bitski = require("bitski-node");
 
-const WalletSubProvider = function(privateKeys) {
+const BitskiSubProvider = function(clientID, credentialID, secret, accounts) {
     this.lastId = 0;
-   
-    if(privateKeys){
-        this.accounts = [];
-        this.wallets = {};    
-        for(let i = 0; i < privateKeys.length; i++) {
-            const wallet = new ethers.Wallet(privateKeys[i]);
-            this.wallets[wallet.address.toLowerCase()] = wallet;
-            this.accounts.push(wallet.address);
+    const options = {
+        credentials: {
+          id: credentialID,
+          secret
         }
-    }
+    };
+      
+    // Pass options with the provider
+    this.bitskiProvider = Bitski.getProvider(clientID, options);
+    this.accounts = accounts;
 }
 
-WalletSubProvider.prototype.setEngine = function(engine) {
+BitskiSubProvider.prototype.setEngine = function(engine) {
     this.engine = engine;
 }
 
-WalletSubProvider.prototype.fetchGasPrice = function() {
+BitskiSubProvider.prototype.fetchGasPrice = function() {
     const self = this;
     return new Promise((resolve, reject) => {
         self.engine.sendAsync({id: ++this.lastId, method: 'eth_gasPrice'}, (error, json) =>{
@@ -32,7 +33,7 @@ WalletSubProvider.prototype.fetchGasPrice = function() {
     })
 }
 
-WalletSubProvider.prototype.fetchNonce = function(from) {
+BitskiSubProvider.prototype.fetchNonce = function(from) {
     const self = this;
     return new Promise((resolve, reject) => {
         self.engine.sendAsync({ id: ++this.lastId, method: 'eth_getTransactionCount', params: [from, 'latest'] }, (error, json) =>{
@@ -45,7 +46,7 @@ WalletSubProvider.prototype.fetchNonce = function(from) {
     })
 }
 
-WalletSubProvider.prototype.fetchBalance = function(from) {
+BitskiSubProvider.prototype.fetchBalance = function(from) {
     const self = this;
     return new Promise((resolve, reject) => {
         self.engine.sendAsync({ id: ++self.lastId, method: 'eth_getBalance', params: [from, 'latest'] }, (error, json) =>{
@@ -58,7 +59,7 @@ WalletSubProvider.prototype.fetchBalance = function(from) {
     })
 }
 
-WalletSubProvider.prototype.handleRequest = async function(payload, next, end) {
+BitskiSubProvider.prototype.handleRequest = async function(payload, next, end) {
     const self = this;
     if (payload.method === 'eth_accounts' && this.accounts) {
         return end(null, this.accounts);
@@ -122,18 +123,32 @@ WalletSubProvider.prototype.handleRequest = async function(payload, next, end) {
     }
 }
 
-WalletSubProvider.prototype.signTransaction = function(from, rawTx) {
-    // console.log('rawTx', rawTx);
-    const wallet = this.wallets[from.toLowerCase()];
-    return wallet.sign(rawTx);
+BitskiSubProvider.prototype.signTransaction = function(from, rawTx) {
+    self = this;
+    self.engine.sendAsync({ id: ++this.lastId, method: 'eth_getTransactionCount', params: [from, 'latest'] }, (error, json) =>{
+        if(error) {
+            reject(error);
+        } else {
+            resolve(json.result);
+        }
+    });
+    return new Promise((resolve, reject) => {
+        bitskiProvider.send({
+            id: ++self.lastId,
+            method: 'eth_signTransaction',
+            params: [rawTx]
+        }, function(error, json) {
+            if(error) {
+                reject(error);
+            } else {
+                resolve(json.result);
+            }
+        })
+    })
 }
 
-WalletSubProvider.prototype.signMessage = function(from, message) {
-    if(message[0] == '0' && message[1] == 'x') { // work arround : if start with 0x interpret it as binary data
-        message = ethers.utils.arrayify(message);
-    }
-    const wallet = this.wallets[from.toLowerCase()];
-    return wallet.signMessage(message);
+BitskiSubProvider.prototype.signMessage = function(from, message) {
+    // TODO
 }
 
-module.exports = WalletSubProvider;
+module.exports = BitskiSubProvider;

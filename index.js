@@ -15,6 +15,7 @@ const {
 } = require('./utils');
 
 const fs=require('fs');
+const path=require('path');
 
 if(!global._rocketh_session) {
     global._rocketh_session = {};
@@ -24,8 +25,9 @@ const session = global._rocketh_session;
 
 let configFromFile;
 try{
-    configFromFile = require('./rocketh.config.js')
+    configFromFile = require(path.resolve('./rocketh.config.js'));
 } catch(e) {
+    console.error(e);
     configFromFile = {};
 }
 const config = Object.assign(configFromFile, {
@@ -34,11 +36,19 @@ const config = Object.assign(configFromFile, {
     showErrorsFromCache: false,
     generateTruffleBuildFiles: false,
     cacheCompilationResult: true,
-    accounts: {
-        type: 'mnemonic',
-        num: 10
-    }
+    accounts: Object.assign(configFromFile.accounts || {}, {
+        "default": {
+            type: 'mnemonic',
+            num: 10
+        }
+    })
 });
+
+// TODO allow arguments from command line to be passed to rocketh via ENV
+
+log.setSlient(typeof config.silent != undefined ? config.silent : true);
+
+log.log(config);
 
 /*
 accounts: {
@@ -49,7 +59,7 @@ accounts: {
 }
 */
 
-log.setSlient(typeof config.silent != undefined);
+
 
 if(require.main === module) {
     const minimist = require('minimist'); 
@@ -239,6 +249,7 @@ if(require.main === module) {
     }
 } else {
     const session = global._rocketh_session;
+    console.log('attaching to ', session)
     attach(config, {chainId: session.chainId, url: session.url, accounts: session.accounts});
 }
 
