@@ -27,7 +27,6 @@ let configFromFile;
 try{
     configFromFile = require(path.resolve('./rocketh.config.js'));
 } catch(e) {
-    console.error(e);
     configFromFile = {};
 }
 const config = Object.assign(configFromFile, {
