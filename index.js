@@ -248,7 +248,6 @@ if(require.main === module) {
     }
 } else {
     const session = global._rocketh_session;
-    console.log('attaching to ', session)
     attach(config, {chainId: session.chainId, url: session.url, accounts: session.accounts});
 }
 
