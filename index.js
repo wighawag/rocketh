@@ -169,7 +169,8 @@ if(require.main === module) {
                         _ROCKETH_NODE_URL: url,
                         _ROCKETH_CHAIN_ID: chainId,
                         _ROCKETH_ACCOUNTS: accounts.join(','), // TODO get rif of accounts
-                        _ROCKETH_MNEMONIC: exposedMnemonic ? exposedMnemonic.split(' ').join(',') : undefined
+                        _ROCKETH_MNEMONIC: exposedMnemonic ? exposedMnemonic.split(' ').join(',') : undefined,
+                        _ROCKETH_DEPLOYMENTS: result.deploymentsPath
                     }
                 }
             );

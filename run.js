@@ -564,15 +564,19 @@ function attach(config, {url, chainId, accounts}, contractInfos, deployments) {
     if(!rocketh.accounts && process.env._ROCKETH_ACCOUNTS) {
         rocketh.accounts = _accounts = process.env._ROCKETH_ACCOUNTS.split(',');
     }
+    deploymentsPath = (process.env._ROCKETH_DEPLOYMENTS && process.env._ROCKETH_DEPLOYMENTS) != "" ? process.env._ROCKETH_DEPLOYMENTS : undefined;
 
     log.log('using deployments at ' + deploymentsPath);
     _savedConfig = config;
-    if(config.deploymentChainIds.indexOf('' + _chainId) != -1) {
-        deploymentsPath = path.join(config.rootPath || './', config.deploymentsPath || 'deployments');
-    } else {
-        const tmpobj = tmp.dirSync({keep:true});
-        deploymentsPath = tmpobj.name;
+    if(!deploymentsPath) {
+        if(config.deploymentChainIds.indexOf('' + _chainId) != -1) {
+            deploymentsPath = path.join(config.rootPath || './', config.deploymentsPath || 'deployments');
+        } else {
+            const tmpobj = tmp.dirSync({keep:true});
+            deploymentsPath = tmpobj.name;
+        }
     }
+    
 
     log.log('using deployments at ' + deploymentsPath);
     
@@ -629,7 +633,8 @@ function attach(config, {url, chainId, accounts}, contractInfos, deployments) {
     attached = {
         rocketh,
         contractInfos: _contractInfos,
-        deployments: session.deployments
+        deployments: session.deployments,
+        deploymentsPath
     };
 
     return attached;
