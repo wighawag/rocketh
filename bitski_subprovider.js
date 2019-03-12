@@ -2,17 +2,28 @@ const ethers = require('ethers');
 const BN = require('bn.js');
 const Bitski = require("bitski-node");
 
-const BitskiSubProvider = function(clientID, credentialID, secret, accounts) {
+const BitskiSubProvider = function(clientID, credentialID, secret, accounts, chainId) {
+    let network = 'mainnet';
+    if(chainId == 4) {
+        network = 'rinkeby';
+    } else if (chainId == 42) {
+        network = 'kovan';
+    } // else if (chainId == 3) {
+    //     network = 'ropsten';
+    // }
+
     this.lastId = 0;
     const options = {
         credentials: {
           id: credentialID,
-          secret
-        }
+          secret,
+        },
+        network,
     };
       
     // Pass options with the provider
     this.bitskiProvider = Bitski.getProvider(clientID, options);
+    this.bitskiProvider._blockTracker.stop()
     this.accounts = accounts;
 }
 
@@ -100,22 +111,44 @@ BitskiSubProvider.prototype.handleRequest = async function(payload, next, end) {
             value: rawTx.value,
             chainId: rawTx.chainId
         }
-        const signedTx = await this.signTransaction(from, forEthers);
-        
-        return this.engine.sendAsync({
-            id: payload.id,
-            jsonrpc: payload.jsonrpc,
-            method: 'eth_sendRawTransaction',
-            params: [signedTx],
-          }, function(error, json) {
-                if(error) {
-                    return end(error);
-                }
-                return end(null, json.result);
-          });
 
-    } else if(payload.method == 'eth_sign') {
-        const signedMessage = await this.signMessage(payload.params[0], payload.params[1]);
+        let result;
+        try{
+            rawTx.gasPrice = gasPrice;
+            rawTx.nonce = nonce;
+            // console.log(rawTx);
+            result = await this.sendTransaction(rawTx);
+        }catch(e) {
+            return end(e);
+        }
+        return end(null, result);
+
+        // let signedTx;
+        // try{
+        //     signedTx = await this.signTransaction(from, forEthers);
+        // } catch(e) {
+        //     return end(e);
+        // }
+        
+        // return this.engine.sendAsync({
+        //     id: payload.id,
+        //     jsonrpc: payload.jsonrpc,
+        //     method: 'eth_sendRawTransaction',
+        //     params: [signedTx],
+        //   }, function(error, json) {
+        //         if(error) {
+        //             return end(error);
+        //         }
+        //         return end(null, json.result);
+        //   });
+
+    } else if(payload.method == 'eth_sign') { 
+        let signedMessage;
+        try{
+            signedMessage = await this.signMessage(payload.params[0], payload.params[1]);
+        } catch(e) {
+            return end(e);
+        }
         // console.log(payload.params, signedMessage);
         return end(null, signedMessage);
     } else {
@@ -125,18 +158,29 @@ BitskiSubProvider.prototype.handleRequest = async function(payload, next, end) {
 
 BitskiSubProvider.prototype.signTransaction = function(from, rawTx) {
     self = this;
-    self.engine.sendAsync({ id: ++this.lastId, method: 'eth_getTransactionCount', params: [from, 'latest'] }, (error, json) =>{
-        if(error) {
-            reject(error);
-        } else {
-            resolve(json.result);
-        }
-    });
+    // return self.bitskiProvider.send('eth_signTransaction',rawTx);
     return new Promise((resolve, reject) => {
-        bitskiProvider.send({
+        self.bitskiProvider.send({
             id: ++self.lastId,
             method: 'eth_signTransaction',
             params: [rawTx]
+        }, function(error, json) {
+            if(error) {
+                reject(error);
+            } else {
+                resolve(json.result);
+            }
+        })
+    })
+}
+
+BitskiSubProvider.prototype.sendTransaction = function(tx) {
+    self = this;
+    return new Promise((resolve, reject) => {
+        self.bitskiProvider.send({
+            id: ++self.lastId,
+            method: 'eth_sendTransaction',
+            params: [tx]
         }, function(error, json) {
             if(error) {
                 reject(error);

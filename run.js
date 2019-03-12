@@ -543,7 +543,8 @@ function getProvider(config, url, chainId) {
             bitskiConfig.clientID,
             bitskiConfig.credentials.ID,
             bitskiConfig.credentials.secret,
-            bitskiConfig.accounts
+            bitskiConfig.accounts,
+            chainId,
         );
         subProviders.push(bitskiWalletSubProvider)
     } else {
