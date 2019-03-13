@@ -429,7 +429,8 @@ async function runStages(config, contractInfos, deployments) {
         accounts: _accounts,
         chainId: _chainId,
         registerDeployment,
-        deployment: function(name) {return session.currentDeployments[name]}
+        deployment: function(name) {return session.currentDeployments[name]},
+        namedAccounts: rocketh.namedAccounts
     }];
     
     for (const fileName of fileNames) {
@@ -559,6 +560,7 @@ function getProvider(config, url, chainId) {
 let attached;
 
 function attach(config, {url, chainId, accounts}, contractInfos, deployments) {
+
     const ethereumNodeURl = url || process.env._ROCKETH_NODE_URL;
     rocketh.chainId = _chainId = chainId || process.env._ROCKETH_CHAIN_ID;
     rocketh.accounts = _accounts = accounts;
@@ -567,19 +569,77 @@ function attach(config, {url, chainId, accounts}, contractInfos, deployments) {
     }
     deploymentsPath = (process.env._ROCKETH_DEPLOYMENTS && process.env._ROCKETH_DEPLOYMENTS) != "" ? process.env._ROCKETH_DEPLOYMENTS : undefined;
 
+    const isDeploymentChainId = config.deploymentChainIds.indexOf('' + _chainId) != -1;
     log.log('using deployments at ' + deploymentsPath);
     _savedConfig = config;
     if(!deploymentsPath) {
-        if(config.deploymentChainIds.indexOf('' + _chainId) != -1) {
+        if(isDeploymentChainId) {
             deploymentsPath = path.join(config.rootPath || './', config.deploymentsPath || 'deployments');
         } else {
             const tmpobj = tmp.dirSync({keep:true});
             deploymentsPath = tmpobj.name;
         }
     }
-    
-
     log.log('using deployments at ' + deploymentsPath);
+
+
+    const namedAccounts = {}
+    if(config.namedAccounts) {
+        log.log('namedAccount')
+        const nameConfig = config.namedAccounts;
+        const accountNames = Object.keys(nameConfig);
+        function parseSpec(spec) {
+            let address;
+            switch(typeof spec) {
+                case "string":
+                    if(spec.slice(0,5) == "from:") {
+                        const from = parseInt(spec.substr(5));
+                        address = [];
+                        for(let j = from; j < _accounts.length; j++) {
+                            address.push(_accounts[j]);
+                        }
+                    } else if(spec.slice(0,2).toLowerCase() == "0x") {
+                        address = spec;
+                    } else {
+                        address = parseSpec(nameConfig[spec])
+                    }
+                break;
+                case "number":
+                    address = _accounts[spec];
+                break;
+                case "undefined":
+                break;
+                case "object":
+                    if(spec) {
+                        if(Array.isArray(spec)) {
+                            address = [];
+                            for(let j = 0; j < spec.length; j++) {
+                                address.push(parseSpec(spec[j]));
+                            }   
+                        } else if(spec[""+_chainId]) {
+                            if(spec[""+_chainId] != "") {
+                                address = parseSpec(spec[""+_chainId]);
+                            }
+                        } else if(isDeploymentChainId && spec['deployments']) {
+                            if(spec['deployments'] != "") {
+                                address = parseSpec(spec['deployments']);
+                            }
+                        } else {
+                            address = parseSpec(spec['default']);
+                        }
+                    }
+                break;
+            }
+            return address;
+        }
+
+        for(let i = 0; i < accountNames.length; i++) {
+            const accountName = accountNames[i];
+            const spec = nameConfig[accountName];
+            namedAccounts[accountName] = parseSpec(spec);
+        }
+    }
+    rocketh.namedAccounts = namedAccounts;
     
     if(attached) {
         //already setup

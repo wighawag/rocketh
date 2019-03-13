@@ -27,6 +27,7 @@ let configFromFile;
 try{
     configFromFile = require(path.resolve('./rocketh.config.js'));
 } catch(e) {
+    // console.error(e); // TODO check existence and show error if exists
     configFromFile = {};
 }
 const config = Object.assign(configFromFile, {
