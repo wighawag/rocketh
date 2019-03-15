@@ -611,7 +611,9 @@ function attach(config, {url, chainId, accounts}, contractInfos, deployments) {
                 break;
                 case "object":
                     if(spec) {
-                        if(Array.isArray(spec)) {
+                        if(spec.type == 'object') {
+                            address = spec;
+                        } else if(Array.isArray(spec)) {
                             address = [];
                             for(let j = 0; j < spec.length; j++) {
                                 address.push(parseSpec(spec[j]));
