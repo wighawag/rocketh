@@ -31,6 +31,7 @@ try{
     configFromFile = {};
 }
 const config = Object.assign(configFromFile, {
+    silent: true,
     node: 'ganache',
     deploymentChainIds: ['1','3','4','42', '1550250818351'],
     showErrorsFromCache: false,
@@ -38,63 +39,72 @@ const config = Object.assign(configFromFile, {
     cacheCompilationResult: true,
     accounts: Object.assign(configFromFile.accounts || {}, {
         "default": {
-            type: 'mnemonic',
+            type: 'mnemonic', // TODO default type : "node" that make rocketh use unlocked accounts
             num: 10
         }
     })
 });
 
-// TODO allow arguments from command line to be passed to rocketh via ENV
+const minimist = require('minimist');
+const argv = (process.env._ROCKETH_ARGS && process.env._ROCKETH_ARGS != "") ? process.env._ROCKETH_ARGS.split(',') : process.argv.slice(2);
+
+const parsedArgv = minimist(argv);
+const command = parsedArgv._[0];
+// console.log('COMMAND', command);
+// console.log(argv);
+// console.log(parsedArgv);
+let commandIndex = argv.indexOf(command,0);
+while(commandIndex % 2 != 0) {
+    commandIndex = argv.indexOf(command, commandIndex+1);
+}
+// console.log('commandIndex', commandIndex);
+
+let start
+if(parsedArgv._.length > 1) {
+    start = parsedArgv._[1];
+}
+let startIndex = argv.indexOf(start,0);
+while(startIndex % 2 != 1) {
+    startIndex = argv.indexOf(start, startIndex+1);
+}
+
+// console.log('startIndex', startIndex);
+
+const generalOptions = minimist(argv.slice(0, commandIndex));
+// console.log('generalOptions', generalOptions);
+const commandOptions = minimist(argv.slice(commandIndex+1, startIndex));
+// console.log('commandOptions', commandOptions);
+
+if(command == 'launch') {    
+    if(commandOptions.n) {
+        if(['geth', 'ganache'].indexOf(commandOptions.n) != -1) {
+            config.node = commandOptions.n;
+        } else {
+            config.url = commandOptions.n;
+        }
+        
+    }
+
+    // TODO remove :
+    if(typeof commandOptions.l != 'undefined') {
+        config.silent = commandOptions.l;
+    }
+}
+
+if(typeof generalOptions.l != 'undefined') {
+    config.silent = generalOptions.l;
+}
 
 log.setSlient(typeof config.silent != 'undefined' ? config.silent : true);
 
 log.log(config);
 
-/*
-accounts: {
-    type: 'bitski'
-}
-accounts: {
-    type: 'privateKeys'
-}
-*/
-
-
 
 if(require.main === module) {
-    const minimist = require('minimist'); 
+    
     const spawn = require('cross-spawn');
 
-    const argv = process.argv.slice(2);
-    const parsedArgv = minimist(argv);
-    const command = parsedArgv._[0];
-    // console.log('COMMAND', command);
-    // console.log(argv);
-    // console.log(parsedArgv);
-    
     if(command == 'launch') {
-        let commandIndex = argv.indexOf(command,0);
-        while(commandIndex % 2 != 0) {
-            commandIndex = argv.indexOf(command, commandIndex+1);
-        }
-        // console.log('commandIndex', commandIndex);
-
-        let start
-        if(parsedArgv._.length > 1) {
-            start = parsedArgv._[1];
-        }
-        let startIndex = argv.indexOf(start,0);
-        while(startIndex % 2 != 1) {
-            startIndex = argv.indexOf(start, startIndex+1);
-        }
-        
-        // console.log('startIndex', startIndex);
-
-        const generalOptions = minimist(argv.slice(0, commandIndex));
-        // console.log('generalOptions', generalOptions);
-        const commandOptions = minimist(argv.slice(commandIndex+1, startIndex));
-        // console.log('commandOptions', commandOptions);
-    
         let _stopNode;
         let _cleaning = false;
         async function execute(command, ...args) {
@@ -123,20 +133,7 @@ if(require.main === module) {
             //catches uncaught exceptions
             process.on('uncaughtException', cleanup);
 
-            if(commandOptions.n) {
-                if(['geth', 'ganache'].indexOf(commandOptions.n) != -1) {
-                    config.node = commandOptions.n;
-                } else {
-                    config.url = commandOptions.n;
-                }
-                
-            }
-
-            // TODO remove
-            if(commandOptions.l) {
-                log.setSlient(false);
-            }
-
+            
             let compileResult;
             try{
                 compileResult = await compile(config);
@@ -171,7 +168,8 @@ if(require.main === module) {
                         _ROCKETH_CHAIN_ID: chainId,
                         _ROCKETH_ACCOUNTS: accounts.join(','), // TODO get rif of accounts
                         _ROCKETH_MNEMONIC: exposedMnemonic ? exposedMnemonic.split(' ').join(',') : undefined,
-                        _ROCKETH_DEPLOYMENTS: result.deploymentsPath
+                        _ROCKETH_DEPLOYMENTS: result.deploymentsPath,
+                        _ROCKETH_ARGS: argv.join(','),
                     }
                 }
             );

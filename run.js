@@ -19,6 +19,7 @@ const {
     traverse,
     fetchChainId,
     fetchTransaction,
+    fetchAccounts,
 } = require('./utils');
 
 if(!global._rocketh_session) {
@@ -484,8 +485,10 @@ function getAccountsFromConfig(config, chainId) {
     }
     const type = accountsConfig.type
 
-    let numWallets = 10; // TODO config
-    if(type == 'mnemonic') {
+    let numWallets = 10; // default mnemonic when taken form _ROCKETH_MNEMONIC env (see below)
+    if(type == 'node') {
+        //TODO
+    }else if(type == 'mnemonic') {
         numWallets = accountsConfig.num;
         try{
             mnemonic = fs.readFileSync('./.mnemonic').toString();
