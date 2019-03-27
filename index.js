@@ -63,12 +63,17 @@ let start
 if(parsedArgv._.length > 1) {
     start = parsedArgv._[1];
 }
+// console.log('START', start);
 let startIndex = argv.indexOf(start,0);
-while(startIndex % 2 != 1) {
-    startIndex = argv.indexOf(start, startIndex+1);
-}
 
+if(start) {
+    while(startIndex % 2 != 1) {
+        startIndex = argv.indexOf(start, startIndex+1);
+    }
+}
+startIndex = argv.length;
 // console.log('startIndex', startIndex);
+
 
 const generalOptions = minimist(argv.slice(0, commandIndex));
 // console.log('generalOptions', generalOptions);
@@ -76,7 +81,10 @@ const commandOptions = minimist(argv.slice(commandIndex+1, startIndex));
 // console.log('commandOptions', commandOptions);
 
 if(command == 'launch') {    
-    if(commandOptions.n) {
+    if(commandOptions.k) {
+        config.keepRunning = commandOptions.k == 'true' ? true : commandOptions.k;
+        config.chainId = commandOptions.c;
+    } else if(commandOptions.n) {
         if(['geth', 'ganache'].indexOf(commandOptions.n) != -1) {
             config.node = commandOptions.n;
         } else {
@@ -157,32 +165,43 @@ if(require.main === module) {
                 console.error(stageError);
                 process.exit(1);
             }
-            
-            const childProcess = spawn(
-                command,
-                args,
-                {
-                    stdio: [process.stdin, process.stdout, process.stderr],
-                    env:{
-                        _ROCKETH_NODE_URL: url,
-                        _ROCKETH_CHAIN_ID: chainId,
-                        _ROCKETH_ACCOUNTS: accounts.join(','), // TODO get rif of accounts
-                        _ROCKETH_MNEMONIC: exposedMnemonic ? exposedMnemonic.split(' ').join(',') : undefined,
-                        _ROCKETH_DEPLOYMENTS: result.deploymentsPath,
-                        _ROCKETH_ARGS: argv.join(','),
+
+            if(config.keepRunning) {
+                console.log('node running at ' + url);
+                const deployments = rocketh.deployments();
+                for (const name of Object.keys(deployments)) {
+                    const deploymentInfo = deployments[name];
+                    const address = deploymentInfo.address;
+                    console.log('CONTRACT ' + name + ' DEPLOYED AT : ' + address);
+                }
+            } else {
+                const childProcess = spawn(
+                    command,
+                    args,
+                    {
+                        stdio: [process.stdin, process.stdout, process.stderr],
+                        env:{
+                            _ROCKETH_NODE_URL: url,
+                            _ROCKETH_CHAIN_ID: chainId,
+                            _ROCKETH_ACCOUNTS: accounts.join(','), // TODO get rif of accounts
+                            _ROCKETH_MNEMONIC: exposedMnemonic ? exposedMnemonic.split(' ').join(',') : undefined,
+                            _ROCKETH_DEPLOYMENTS: result.deploymentsPath,
+                            _ROCKETH_ARGS: argv.join(','),
+                        }
+                    }
+                );
+                try{
+                    exitCode = await onExit(childProcess);
+                }catch(e) {
+                    if(e.code) {
+                        exitCode = e.code;
+                    } else {
+                        console.error('ERROR onExit', e);
                     }
                 }
-            );
-            try{
-                exitCode = await onExit(childProcess);
-            }catch(e) {
-                if(e.code) {
-                    exitCode = e.code;
-                } else {
-                    console.error('ERROR onExit', e);
-                }
+                cleanup(exitCode)    
             }
-            cleanup(exitCode)
+            
         }
         execute(argv[startIndex], ...argv.slice(startIndex+1));
     } else if(command == "verify") {

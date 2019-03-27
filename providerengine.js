@@ -109,10 +109,12 @@ ProviderEngine.prototype.sendPayload = async function(payload, callback) {
 }
 
 ProviderEngine.prototype.subscribe = function() {
+    console.error('Subscriptions are not supported yet');
     throw new Error('Subscriptions are not supported yet');
 }
 
 ProviderEngine.prototype.unsubscribe = function() {
+    console.error('Subscriptions are not supported yet');
     throw new Error('Subscriptions are not supported yet');
 }
 

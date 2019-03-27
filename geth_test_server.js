@@ -40,7 +40,7 @@ function spawnGeth(gethPath, args, hookStd, logFile) {
     );
 }
 
-async function serve(port, wsPort, accounts) {
+async function serve(port, wsPort, accounts, chainId) {
     let gethBinary;
     try{
         gethBinary = requireLocal('geth-binary');
@@ -73,7 +73,7 @@ async function serve(port, wsPort, accounts) {
     });
     const genesis = {
         config: {
-            chainId:Math.floor(Date.now() / 1000),
+            chainId: chainId || Math.floor(Date.now() / 1000),
             homesteadBlock: 1,
             eip150Block: 2,
             eip150Hash: "0x0000000000000000000000000000000000000000000000000000000000000000",
@@ -100,7 +100,7 @@ async function serve(port, wsPort, accounts) {
 
     for(let i = 0; i < accounts.length; i++) {
         genesis.alloc[accounts[i]] = {
-            balance: "0x200000000000000000000000000000000000000000000000000000000000000"  // TODO config
+            balance: "0x56BC75E2D63100000"  // TODO config
         };
     }
 

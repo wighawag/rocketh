@@ -143,17 +143,20 @@ async function runNode(config) {
 
         if(config.node == 'ganache') {
             const ganacheOptions = config.ganacheOptions || {debug: true, vmErrorsOnRPCResponse: true};
+            if(config.chainId) {
+                ganacheOptions.network_id = config.chainId;
+            }
             const ganacheAccounts = [];
             for(let i = 0; i < privateKeys.length; i ++) {
                 ganacheAccounts.push({
-                    balance: "0x200000000000000000000000000000000000000000000000000000000000000", // TODO config
+                    balance: "0x56BC75E2D63100000", // TODO config
                     secretKey: privateKeys[i]
                 });
             }
             ganacheOptions.accounts = ganacheAccounts;
             await runGanache(port, wsPort, ganacheOptions);
         } else if(config.node == 'geth') {
-            const runningGeth = await geth.serve(port, wsPort, _accounts);
+            const runningGeth = await geth.serve(port, wsPort, _accounts, config.chainId);
             stop = runningGeth.stop;
         } else {
             const message = 'node type not supprted : ' + config.node;
@@ -579,8 +582,12 @@ function attach(config, {url, chainId, accounts}, contractInfos, deployments) {
         if(isDeploymentChainId) {
             deploymentsPath = path.join(config.rootPath || './', config.deploymentsPath || 'deployments');
         } else {
-            const tmpobj = tmp.dirSync({keep:true});
-            deploymentsPath = tmpobj.name;
+            if(typeof config.keepRunning == 'string') {
+                deploymentsPath = config.keepRunning;
+            } else {
+                const tmpobj = tmp.dirSync({keep:true});
+                deploymentsPath = tmpobj.name;
+            }
         }
     }
     log.log('using deployments at ' + deploymentsPath);
