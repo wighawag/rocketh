@@ -29,7 +29,7 @@ const session = global._rocketh_session;
 
 const cleanDeployments = () => {
     try{
-        rimraf.sync(path.join(deploymentsPath, _chainId));
+        rimraf.sync(path.join(deploymentsPath, deploymentsSubPath));
     }catch(e){
 
     }
@@ -70,11 +70,11 @@ const registerDeployment = (name, deploymentInfo) => {
             if(!disableDeploymentSave) {
                 if(!deploymentsFolderCreated) {
                     try { fs.mkdirSync(deploymentsPath); } catch(e) {}
-                    try { fs.mkdirSync(path.join(deploymentsPath, _chainId)); } catch(e) {}
+                    try { fs.mkdirSync(path.join(deploymentsPath, deploymentsSubPath)); } catch(e) {}
                     deploymentsFolderCreated = true;
                 }
                 const content = JSON.stringify(deploymentInfoToSave, null, '  ');
-                const filepath = path.join(deploymentsPath, _chainId, name + '.json');
+                const filepath = path.join(deploymentsPath, deploymentsSubPath, name + '.json');
                 fs.writeFileSync(filepath, content);
             }
 
@@ -468,6 +468,7 @@ const rocketh = {
 }
 
 let deploymentsPath;
+let deploymentsSubPath;
 
 
 let _accountsUsed;
@@ -565,6 +566,7 @@ function getProvider(config, url, chainId) {
 
 let attached;
 
+
 function attach(config, {url, chainId, accounts}, contractInfos, deployments) {
 
     const ethereumNodeURl = url || process.env._ROCKETH_NODE_URL;
@@ -574,9 +576,10 @@ function attach(config, {url, chainId, accounts}, contractInfos, deployments) {
         rocketh.accounts = _accounts = process.env._ROCKETH_ACCOUNTS.split(',');
     }
     deploymentsPath = (process.env._ROCKETH_DEPLOYMENTS && process.env._ROCKETH_DEPLOYMENTS) != "" ? process.env._ROCKETH_DEPLOYMENTS : undefined;
+    deploymentsSubPath = _chainId;
 
     const isDeploymentChainId = config.deploymentChainIds.indexOf('' + _chainId) != -1;
-    log.log('using deployments at ' + deploymentsPath);
+    
     _savedConfig = config;
     if(!deploymentsPath) {
         if(isDeploymentChainId) {
@@ -584,13 +587,14 @@ function attach(config, {url, chainId, accounts}, contractInfos, deployments) {
         } else {
             if(typeof config.keepRunning == 'string') {
                 deploymentsPath = config.keepRunning;
+                deploymentsSubPath = '';
             } else {
                 const tmpobj = tmp.dirSync({keep:true});
                 deploymentsPath = tmpobj.name;
             }
         }
     }
-    log.log('using deployments at ' + deploymentsPath);
+    log.log('using deployments at ' + deploymentsPath, deploymentsSubPath);
 
 
     const namedAccounts = {}
@@ -681,7 +685,7 @@ function attach(config, {url, chainId, accounts}, contractInfos, deployments) {
 
     if(!session.deployments){
         log.log('extracting deployments for chainId', _chainId);
-        session.deployments = extractDeployments(path.join(deploymentsPath, _chainId));
+        session.deployments = extractDeployments(path.join(deploymentsPath, deploymentsSubPath));
     }
 
     let provider;

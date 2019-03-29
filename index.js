@@ -59,48 +59,45 @@ while(commandIndex % 2 != 0) {
 }
 // console.log('commandIndex', commandIndex);
 
-let start
-if(parsedArgv._.length > 1) {
-    start = parsedArgv._[1];
-}
-// console.log('START', start);
-let startIndex = argv.indexOf(start,0);
-
-if(start) {
-    while(startIndex % 2 != 1) {
-        startIndex = argv.indexOf(start, startIndex+1);
-    }
-}
-startIndex = argv.length;
-// console.log('startIndex', startIndex);
-
-
 const generalOptions = minimist(argv.slice(0, commandIndex));
 // console.log('generalOptions', generalOptions);
-const commandOptions = minimist(argv.slice(commandIndex+1, startIndex));
+
+const commandOptions = {
+    
+};
+
+let i = commandIndex+1
+for(; i < argv.length; i ++) {
+    if(argv[i] == '-k') {
+        commandOptions.k = argv[i+1];
+        i++;
+    } else if(argv[i] == '-n') {
+        commandOptions.n = argv[i+1];
+        i++;
+    } else {
+        break;
+    }
+}
 // console.log('commandOptions', commandOptions);
+commandIndex = i;
+const execution = argv.slice(commandIndex, argv.length);
+// console.log(execution);
+
 
 if(command == 'launch') {    
     if(commandOptions.k) {
         config.keepRunning = commandOptions.k == 'true' ? true : commandOptions.k;
-        config.chainId = commandOptions.c;
     } else if(commandOptions.n) {
         if(['geth', 'ganache'].indexOf(commandOptions.n) != -1) {
             config.node = commandOptions.n;
         } else {
             config.url = commandOptions.n;
         }
-        
-    }
-
-    // TODO remove :
-    if(typeof commandOptions.l != 'undefined') {
-        config.silent = commandOptions.l;
     }
 }
 
 if(typeof generalOptions.l != 'undefined') {
-    config.silent = generalOptions.l;
+    config.silent = !generalOptions.l;
 }
 
 log.setSlient(typeof config.silent != 'undefined' ? config.silent : true);
@@ -203,7 +200,7 @@ if(require.main === module) {
             }
             
         }
-        execute(argv[startIndex], ...argv.slice(startIndex+1));
+        execute(execution[0], ...execution.slice(1));
     } else if(command == "verify") {
         let mythx_credentials;
         try{
