@@ -406,6 +406,7 @@ let disableDeploymentSave;
 async function runStages(config, contractInfos, deployments) {
     disableDeploymentSave = !deployments;
 
+    const initialRun = typeof deployments != 'undefined';
     session.deployments = deployments || {}; // override 
 
     const stagesPath = path.join(config.rootPath || './', config.stagesPath || 'stages');
@@ -434,7 +435,8 @@ async function runStages(config, contractInfos, deployments) {
         chainId: _chainId,
         registerDeployment,
         deployment: function(name) {return session.currentDeployments[name]},
-        namedAccounts: rocketh.namedAccounts
+        namedAccounts: rocketh.namedAccounts,
+        initialRun,
     }];
     
     for (const fileName of fileNames) {
