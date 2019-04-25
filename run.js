@@ -600,6 +600,7 @@ function attach(config, {url, chainId, accounts}, contractInfos, deployments) {
 
 
     const namedAccounts = {}
+    // TODO transform into checksum  address
     if(config.namedAccounts) {
         log.log('namedAccount')
         const nameConfig = config.namedAccounts;

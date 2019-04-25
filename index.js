@@ -81,7 +81,7 @@ for(; i < argv.length; i ++) {
 // console.log('commandOptions', commandOptions);
 commandIndex = i;
 const execution = argv.slice(commandIndex, argv.length);
-// console.log(execution);
+// console.log({execution});
 
 
 if(command == 'launch') {    
@@ -156,8 +156,9 @@ if(require.main === module) {
             
             _stopNode = stop;
             const result = attach(config, {chainId, url, accounts}, contractInfos);
+            let newDeployments;
             try{
-                await runStages(config, contractInfos, result.deployments);
+                newDeployments = await runStages(config, contractInfos, result.deployments);
             }catch(stageError) {
                 console.error(stageError);
                 process.exit(1);
@@ -171,7 +172,7 @@ if(require.main === module) {
                     const address = deploymentInfo.address;
                     console.log('CONTRACT ' + name + ' DEPLOYED AT : ' + address);
                 }
-            } else {
+            } else if(command) {
                 const childProcess = spawn(
                     command,
                     args,
@@ -196,7 +197,14 @@ if(require.main === module) {
                         console.error('ERROR onExit', e);
                     }
                 }
-                cleanup(exitCode)    
+                cleanup(exitCode);
+            } else {
+                for (const name of Object.keys(newDeployments)) {
+                    const deploymentInfo = newDeployments[name];
+                    const address = deploymentInfo.address;
+                    console.log('CONTRACT ' + name + ' DEPLOYED AT : ' + address);
+                }                 
+                cleanup(0); 
             }
             
         }
