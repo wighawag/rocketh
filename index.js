@@ -199,11 +199,11 @@ if(require.main === module) {
                 }
                 cleanup(exitCode);
             } else {
-                for (const name of Object.keys(newDeployments)) {
-                    const deploymentInfo = newDeployments[name];
-                    const address = deploymentInfo.address;
-                    console.log('CONTRACT ' + name + ' DEPLOYED AT : ' + address);
-                }                 
+                // for (const name of Object.keys(newDeployments)) {
+                //     const deploymentInfo = newDeployments[name];
+                //     const address = deploymentInfo.address;
+                //     console.log('CONTRACT ' + name + ' DEPLOYED AT : ' + address);
+                // }                 
                 cleanup(0); 
             }
             

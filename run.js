@@ -76,6 +76,11 @@ const registerDeployment = (name, deploymentInfo) => {
                 const content = JSON.stringify(deploymentInfoToSave, null, '  ');
                 const filepath = path.join(deploymentsPath, deploymentsSubPath, name + '.json');
                 fs.writeFileSync(filepath, content);
+
+                if(initialRun) {
+                    const address = deploymentInfoToSave.address;
+                    console.log('CONTRACT ' + name + ' DEPLOYED AT : ' + address);
+                }
             }
 
             // if(generateTruffleBuildFiles) {
@@ -403,10 +408,11 @@ function extractDeployments(deploymentsPath) {
 let _chainId;
 let _accounts;
 let disableDeploymentSave;
+let initialRun;
 async function runStages(config, contractInfos, deployments) {
     disableDeploymentSave = !deployments;
 
-    const initialRun = typeof deployments != 'undefined';
+    initialRun = typeof deployments != 'undefined';
     session.deployments = deployments || {}; // override 
 
     const stagesPath = path.join(config.rootPath || './', config.stagesPath || 'stages');
