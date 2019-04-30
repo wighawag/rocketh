@@ -30,13 +30,15 @@ try{
     // console.error(e); // TODO check existence and show error if exists
     configFromFile = {};
 }
+
+// TODO improve :
 const config = Object.assign(configFromFile, {
-    silent: true,
-    node: 'ganache',
-    deploymentChainIds: ['1','3','4','42', '1550250818351'],
-    showErrorsFromCache: false,
-    generateTruffleBuildFiles: false,
-    cacheCompilationResult: true,
+    silent: typeof configFromFile.silent != 'undefined' ? configFromFile.silent : true,
+    node: typeof configFromFile.node != 'undefined' ? configFromFile.node : 'ganache',
+    deploymentChainIds: typeof configFromFile.deploymentChainIds != 'undefined' ? configFromFile.deploymentChainIds : ['1','3','4','42'],
+    showErrorsFromCache: typeof configFromFile.showErrorsFromCache != 'undefined' ? configFromFile.showErrorsFromCache : false,
+    generateTruffleBuildFiles: typeof configFromFile.generateTruffleBuildFiles != 'undefined' ? configFromFile.generateTruffleBuildFiles : false,
+    cacheCompilationResult: typeof configFromFile.cacheCompilationResult != 'undefined' ? configFromFile.cacheCompilationResult : true,
     accounts: Object.assign(configFromFile.accounts || {}, {
         "default": {
             type: 'mnemonic', // TODO default type : "node" that make rocketh use unlocked accounts
