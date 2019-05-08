@@ -191,20 +191,36 @@ async function runNode(config) {
 }
 
 function compileWithSolc(solc, resolve, reject, config) {
-    const contractSrcPath = path.join(config.rootPath || './', config.contractSrcPath || 'src');
-    const contractBuildPath = path.join(config.rootPath || './', config.contractBuildPath || 'build');
+    const rootPath = config.rootPath || './';
+    let contractSrcPaths;
+    if(typeof config.contractSrcPath == 'undefined') {
+        contractSrcPaths = ['src'];
+    } else if (typeof config.contractSrcPath == 'string') {
+        contractSrcPaths = [config.contractSrcPath];
+    } else {
+        contractSrcPaths = config.contractSrcPath;
+    }
+    contractSrcPaths = contractSrcPaths.map((elem) => path.join(rootPath, elem));
+    // console.log({contractSrcPaths});
+
+    const contractBuildPath = path.join(rootPath, config.contractBuildPath || 'build');
     const cacheOutputPath = contractBuildPath + '/.compilationOutput.json';
     const cacheInputPath = contractBuildPath + '/.compilationInput.json';
-    const files = traverse(contractSrcPath);
+
     const sources = {};
     let latestMtimeMs = 0;
-    for (const file of files) {
-        if(file.name.indexOf('.sol') === file.name.length - 4) {
-            latestMtimeMs = Math.max(latestMtimeMs, file.mtimeMs);
-            const relativePath = path.relative(contractSrcPath, file.path).replace(/\\/g, '/');
-            sources[relativePath] = {
-                content: fs.readFileSync(file.path).toString()
-            };
+    for(let contractSrcPath of contractSrcPaths) {
+        // console.log(contractSrcPath);
+        const files = traverse(contractSrcPath);
+        for (const file of files) {
+            if(file.name.indexOf('.sol') === file.name.length - 4) {
+                latestMtimeMs = Math.max(latestMtimeMs, file.mtimeMs);
+                const relativePath = path.relative(rootPath, file.path).replace(/\\/g, '/');
+                // console.log(relativePath);
+                sources[relativePath] = {
+                    content: fs.readFileSync(file.path).toString()
+                };
+            }
         }
     }
     
@@ -265,12 +281,35 @@ function compileWithSolc(solc, resolve, reject, config) {
         }
     }
 
+    const imports = {}; // TODO import saving to import.json or .compilationInput.json
+    function findImport(importPath) {
+        // console.log('trying to import : ' + importPath);
+        
+        if(path.isAbsolute(importPath)) {
+            return { error: 'Absolute path not supported : ' + importPath };
+        }
+        try {
+            const data = { contents: fs.readFileSync(importPath).toString() };
+            imports[importPath] = data;
+            return data;
+        } catch(e) {
+            try{
+                const modulePath = path.join('./node_modules', importPath);
+                const data = { contents: fs.readFileSync(modulePath).toString() };
+                imports[importPath] = data;
+                return data;
+            } catch(e) {
+                return { error: 'File not found ' + importPath };
+            }
+        }
+    }
+
     if(!usingCache) {
         log.green('########################################### COMPILING #############################################################');
         if(pre_0_5_0_solc && !pre_0_4_11_solc) {
             rawOutput = solc.compileStandardWrapper(solcConfig);
         } else {
-            rawOutput = solc.compile(solcConfig);
+            rawOutput = solc.compile(solcConfig, findImport);
         }
     } else {
         log.blue('########################################## FROM CACHE ############################################################');
