@@ -461,7 +461,7 @@ async function runStages(config, contractInfos, deployments) {
         fileNames = fs.readdirSync(stagesPath);
     } catch(e) {
         log.green('no stages folder at ./' + stagesPath);
-        return artifacts;
+        return session.deployments;
     }
     fileNames = fileNames.filter((fileName) => {
         return (!fs.statSync(path.resolve(stagesPath, fileName)).isDirectory());
