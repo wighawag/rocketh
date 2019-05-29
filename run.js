@@ -681,9 +681,15 @@ function attach(config, {url, chainId, accounts}, contractInfos, deployments) {
                             for(let j = 0; j < spec.length; j++) {
                                 address.push(parseSpec(spec[j]));
                             }   
-                        } else if(spec[""+_chainId]) {
-                            if(spec[""+_chainId] != "") {
-                                address = parseSpec(spec[""+_chainId]);
+                        } else if(typeof spec[""+_chainId] != 'undefined') {
+                            const newSpec = spec[""+_chainId];
+                            if(!(typeof newSpec == 'string' && newSpec == "")) {
+                                address = parseSpec(newSpec);
+                            }
+                        } else if(typeof spec[_chainId] != 'undefined') {
+                            const newSpec = spec[_chainId];
+                            if(!(typeof newSpec == 'string' && newSpec == "")) {
+                                address = parseSpec(newSpec);
                             }
                         } else if(isDeploymentChainId && spec['deployments']) {
                             if(spec['deployments'] != "") {
