@@ -34,7 +34,7 @@ BitskiSubProvider.prototype.setEngine = function(engine) {
 BitskiSubProvider.prototype.fetchGasPrice = function() {
     const self = this;
     return new Promise((resolve, reject) => {
-        self.engine.sendAsync({id: ++this.lastId, method: 'eth_gasPrice'}, (error, json) =>{
+        self.engine.sendAsync({id: ++this.lastId, method: 'eth_gasPrice', jsonrpc: '2.0'}, (error, json) =>{
             if(error) {
                 reject(error);
             } else {
@@ -47,7 +47,7 @@ BitskiSubProvider.prototype.fetchGasPrice = function() {
 BitskiSubProvider.prototype.fetchNonce = function(from) {
     const self = this;
     return new Promise((resolve, reject) => {
-        self.engine.sendAsync({ id: ++this.lastId, method: 'eth_getTransactionCount', params: [from, 'latest'] }, (error, json) =>{
+        self.engine.sendAsync({ id: ++this.lastId, method: 'eth_getTransactionCount', params: [from, 'latest'], jsonrpc: '2.0'}, (error, json) =>{
             if(error) {
                 reject(error);
             } else {
@@ -60,7 +60,7 @@ BitskiSubProvider.prototype.fetchNonce = function(from) {
 BitskiSubProvider.prototype.fetchBalance = function(from) {
     const self = this;
     return new Promise((resolve, reject) => {
-        self.engine.sendAsync({ id: ++self.lastId, method: 'eth_getBalance', params: [from, 'latest'] }, (error, json) =>{
+        self.engine.sendAsync({ id: ++self.lastId, method: 'eth_getBalance', params: [from, 'latest'], jsonrpc: '2.0'}, (error, json) =>{
             if(error) {
                 reject(error);
             } else {
@@ -135,6 +135,7 @@ BitskiSubProvider.prototype.handleRequest = async function(payload, next, end) {
         //     jsonrpc: payload.jsonrpc,
         //     method: 'eth_sendRawTransaction',
         //     params: [signedTx],
+        //     jsonrpc: '2.0',
         //   }, function(error, json) {
         //         if(error) {
         //             return end(error);
@@ -163,7 +164,8 @@ BitskiSubProvider.prototype.signTransaction = function(from, rawTx) {
         self.bitskiProvider.send({
             id: ++self.lastId,
             method: 'eth_signTransaction',
-            params: [rawTx]
+            params: [rawTx],
+            jsonrpc: '2.0',
         }, function(error, json) {
             if(error) {
                 reject(error);
@@ -180,7 +182,8 @@ BitskiSubProvider.prototype.sendTransaction = function(tx) {
         self.bitskiProvider.send({
             id: ++self.lastId,
             method: 'eth_sendTransaction',
-            params: [tx]
+            params: [tx],
+            jsonrpc: '2.0',
         }, function(error, json) {
             if(error) {
                 reject(error);

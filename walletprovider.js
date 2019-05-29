@@ -22,7 +22,7 @@ WalletSubProvider.prototype.setEngine = function(engine) {
 WalletSubProvider.prototype.fetchGasPrice = function() {
     const self = this;
     return new Promise((resolve, reject) => {
-        self.engine.sendAsync({id: ++this.lastId, method: 'eth_gasPrice'}, (error, json) =>{
+        self.engine.sendAsync({id: ++this.lastId, method: 'eth_gasPrice', jsonrpc: '2.0'}, (error, json) =>{
             if(error) {
                 reject(error);
             } else {
@@ -35,7 +35,7 @@ WalletSubProvider.prototype.fetchGasPrice = function() {
 WalletSubProvider.prototype.fetchNonce = function(from) {
     const self = this;
     return new Promise((resolve, reject) => {
-        self.engine.sendAsync({ id: ++this.lastId, method: 'eth_getTransactionCount', params: [from, 'latest'] }, (error, json) =>{
+        self.engine.sendAsync({ id: ++this.lastId, method: 'eth_getTransactionCount', params: [from, 'latest'], jsonrpc: '2.0'}, (error, json) =>{
             if(error) {
                 reject(error);
             } else {
@@ -48,7 +48,7 @@ WalletSubProvider.prototype.fetchNonce = function(from) {
 WalletSubProvider.prototype.fetchBalance = function(from) {
     const self = this;
     return new Promise((resolve, reject) => {
-        self.engine.sendAsync({ id: ++self.lastId, method: 'eth_getBalance', params: [from, 'latest'] }, (error, json) =>{
+        self.engine.sendAsync({ id: ++self.lastId, method: 'eth_getBalance', params: [from, 'latest'], jsonrpc: '2.0'}, (error, json) =>{
             if(error) {
                 reject(error);
             } else {
@@ -106,6 +106,7 @@ WalletSubProvider.prototype.handleRequest = async function(payload, next, end) {
             jsonrpc: payload.jsonrpc,
             method: 'eth_sendRawTransaction',
             params: [signedTx],
+            jsonrpc: '2.0',
           }, function(error, json) {
                 if(error) {
                     return end(error);

@@ -482,6 +482,7 @@ async function runStages(config, contractInfos, deployments) {
         deployment: function(name) {return session.currentDeployments[name]},
         namedAccounts: rocketh.namedAccounts,
         initialRun,
+        isDeploymentChainId: config.deploymentChainIds.indexOf('' + _chainId) != -1,
     }];
     
     for (const fileName of fileNames) {
@@ -772,5 +773,6 @@ module.exports = {
     compile,
     attach,
     rocketh,
-    cleanDeployments
+    cleanDeployments,
+    extractDeployments,
 }

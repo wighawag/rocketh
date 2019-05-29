@@ -59,7 +59,7 @@ function onExit(childProcess) {
 function fetchTransaction(provider, hash) {
     return new Promise((resolve, reject) => {
         try{
-            provider.send({id:1, method:'eth_getTransactionByHash', params:[hash]}, (error, json) => {
+            provider.send({id:1, method:'eth_getTransactionByHash', params:[hash], jsonrpc: '2.0'}, (error, json) => {
                 if (error) {
                     reject(error);
                 } else {
@@ -67,7 +67,7 @@ function fetchTransaction(provider, hash) {
                 }
             })
         } catch(e) { // to work with old provider
-            provider.sendAsync({id:1, method:'eth_getTransactionByHash', params:[hash]}, (error, json) => {
+            provider.sendAsync({id:1, method:'eth_getTransactionByHash', params:[hash], jsonrpc: '2.0'}, (error, json) => {
                 if (error) {
                     reject(error);
                 } else {
@@ -82,7 +82,7 @@ function fetchTransaction(provider, hash) {
 function fetchAccounts(provider) {
     return new Promise((resolve, reject) => {
         try{
-            provider.send({id:1, method:'eth_accounts', params:[]}, (error, json) => {
+            provider.send({id:1, method:'eth_accounts', params:[], jsonrpc: '2.0'}, (error, json) => {
                 if (error) {
                     reject(error);
                 } else {
@@ -90,7 +90,7 @@ function fetchAccounts(provider) {
                 }
             })
         } catch(e) { // to work with old provider
-            provider.sendAsync({id:1, method:'eth_accounts', params:[]}, (error, json) => {
+            provider.sendAsync({id:1, method:'eth_accounts', params:[], jsonrpc: '2.0'}, (error, json) => {
                 if (error) {
                     reject(error);
                 } else {
@@ -105,7 +105,7 @@ function fetchAccounts(provider) {
 function fetchChainId(provider) {
     return new Promise((resolve, reject) => {
         try{
-            provider.send({id:2, method:'net_version', params:[]}, (error, json) => {
+            provider.send({id:2, method:'net_version', params:[], jsonrpc: '2.0'}, (error, json) => {
                 if (error) {
                     reject(error);
                 } else {
@@ -113,7 +113,7 @@ function fetchChainId(provider) {
                 }
             })
         }catch(e) {  // to work with old provider
-            provider.sendAsync({id:2, method:'net_version', params:[]}, (error, json) => {
+            provider.sendAsync({id:2, method:'net_version', params:[], jsonrpc: '2.0'}, (error, json) => {
                 if (error) {
                     reject(error);
                 } else {

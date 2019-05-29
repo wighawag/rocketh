@@ -6,7 +6,8 @@ const {
     runStages,
     runNode,
     rocketh,
-    cleanDeployments
+    cleanDeployments,
+    extractDeployments,
 } = require('./run');
 
 const {
@@ -16,6 +17,7 @@ const {
 
 const fs=require('fs');
 const path=require('path');
+const rimraf = require('rimraf');
 
 if(!global._rocketh_session) {
     global._rocketh_session = {};
@@ -35,7 +37,9 @@ try{
 const config = Object.assign(configFromFile, {
     silent: typeof configFromFile.silent != 'undefined' ? configFromFile.silent : true,
     node: typeof configFromFile.node != 'undefined' ? configFromFile.node : 'ganache',
-    deploymentChainIds: typeof configFromFile.deploymentChainIds != 'undefined' ? configFromFile.deploymentChainIds : ['1','3','4','42'],
+    deploymentChainIds: typeof configFromFile.deploymentChainIds != 'undefined' ? configFromFile.deploymentChainIds : [
+        '1','3','4','5','6','30','31','42','60','61','62','77','99','100','108',
+    ],
     showErrorsFromCache: typeof configFromFile.showErrorsFromCache != 'undefined' ? configFromFile.showErrorsFromCache : false,
     generateTruffleBuildFiles: typeof configFromFile.generateTruffleBuildFiles != 'undefined' ? configFromFile.generateTruffleBuildFiles : false,
     cacheCompilationResult: typeof configFromFile.cacheCompilationResult != 'undefined' ? configFromFile.cacheCompilationResult : true,
@@ -76,6 +80,9 @@ for(; i < argv.length; i ++) {
     } else if(argv[i] == '-n') {
         commandOptions.n = argv[i+1];
         i++;
+    } else if(argv[i] == '-q') {
+        commandOptions.q = argv[i+1];
+        i++;
     } else {
         break;
     }
@@ -87,9 +94,16 @@ const execution = argv.slice(commandIndex, argv.length);
 
 
 if(command == 'launch') {    
+    if(commandOptions.q) {
+        config.keepRunning = true;
+        config.exportChains = commandOptions.q;
+    }
+
     if(commandOptions.k) {
         config.keepRunning = commandOptions.k == 'true' ? true : commandOptions.k;
-    } else if(commandOptions.n) {
+    }
+    
+    if(commandOptions.n) {
         if(['geth', 'ganache'].indexOf(commandOptions.n) != -1) {
             config.node = commandOptions.n;
         } else {
@@ -124,6 +138,13 @@ if(require.main === module) {
                 if(session.chainId && config.deploymentChainIds.indexOf(session.chainId) == -1) {
                     cleanDeployments();
                 }
+                if(config.exportChains) {
+                    try{
+                        rimraf.sync(config.exportChains);
+                    }catch(e){
+                
+                    }
+                }
                 if(_stopNode) {
                     await _stopNode();
                 }
@@ -145,7 +166,7 @@ if(require.main === module) {
             try{
                 compileResult = await compile(config);
             }catch(compileError) {
-                // console.error(compileError); // TODO compile error shown by compile itself ?
+                console.error(compileError); // TODO compile error shown by compile itself ?
                 process.exit(1);
             }
 
@@ -166,13 +187,38 @@ if(require.main === module) {
                 process.exit(1);
             }
 
+            if(config.exportChains) {
+                const savedDeploymentPath = path.join(config.rootPath || './', config.deploymentsPath || 'deployments');
+                const chainFolders = [];
+                try{
+                    fs.readdirSync(savedDeploymentPath).forEach((name) => {
+                        const fPath = path.resolve(savedDeploymentPath, name);
+                        const stats = fs.statSync(fPath);
+                        if (name != chainId && stats.isDirectory()) {
+                            chainFolders.push({path:fPath, chainId: name});
+                        }
+                    });
+                } catch(e) {
+                    // console.error(e);
+                }
+                const chainDeployments = {};
+                for(let folder of chainFolders) {
+                    chainDeployments[folder.chainId] = extractDeployments(folder.path);
+                }
+                chainDeployments[chainId] = newDeployments;
+                
+                const content = JSON.stringify(chainDeployments, null, '  ');
+                fs.writeFileSync(config.exportChains, content);
+                console.log('contracts info saved at ' + config.exportChains);
+            }
+        
             if(config.keepRunning) {
                 console.log('node running at ' + url);
                 const deployments = rocketh.deployments();
                 for (const name of Object.keys(deployments)) {
                     const deploymentInfo = deployments[name];
                     const address = deploymentInfo.address;
-                    console.log('CONTRACT ' + name + ' DEPLOYED AT : ' + address);
+                    // console.log('CONTRACT ' + name + ' DEPLOYED AT : ' + address);
                 }
             } else if(command) {
                 const childProcess = spawn(
