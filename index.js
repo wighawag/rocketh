@@ -226,14 +226,14 @@ if(require.main === module) {
                     args,
                     {
                         stdio: [process.stdin, process.stdout, process.stderr],
-                        env:{
+                        env: Object.assign(Object.assign({}, process.env), {
                             _ROCKETH_NODE_URL: url,
                             _ROCKETH_CHAIN_ID: chainId,
                             _ROCKETH_ACCOUNTS: accounts.join(','), // TODO get rif of accounts
                             _ROCKETH_MNEMONIC: exposedMnemonic ? exposedMnemonic.split(' ').join(',') : undefined,
                             _ROCKETH_DEPLOYMENTS: result.deploymentsPath,
                             _ROCKETH_ARGS: argv.join(','),
-                        }
+                        })
                     }
                 );
                 try{
