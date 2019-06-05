@@ -55,13 +55,13 @@ const minimist = require('minimist');
 const argv = (process.env._ROCKETH_ARGS && process.env._ROCKETH_ARGS != "") ? process.env._ROCKETH_ARGS.split(',') : process.argv.slice(2);
 
 const parsedArgv = minimist(argv);
-const command = parsedArgv._[0];
-// console.log('COMMAND', command);
+const rockethCommand = parsedArgv._[0];
+// console.log('COMMAND', rockethCommand);
 // console.log(argv);
 // console.log(parsedArgv);
-let commandIndex = argv.indexOf(command,0);
+let commandIndex = argv.indexOf(rockethCommand,0);
 while(commandIndex % 2 != 0) {
-    commandIndex = argv.indexOf(command, commandIndex+1);
+    commandIndex = argv.indexOf(rockethCommand, commandIndex+1);
 }
 // console.log('commandIndex', commandIndex);
 
@@ -93,7 +93,7 @@ const execution = argv.slice(commandIndex, argv.length);
 // console.log({execution});
 
 
-if(command == 'launch') {    
+if(rockethCommand == 'launch') {    
     if(commandOptions.q) {
         config.keepRunning = true;
         config.exportChains = commandOptions.q;
@@ -112,6 +112,16 @@ if(command == 'launch') {
     }
 }
 
+// TODO remove duplication
+if(rockethCommand == 'attach') {
+    if(!commandOptions.n) {
+        console.error('require to specify node via -n <nodeUrl>')
+        process.exit(1);
+    } else {
+        config.url = commandOptions.n;
+    }
+}
+
 if(typeof generalOptions.l != 'undefined') {
     config.silent = !generalOptions.l;
 }
@@ -125,7 +135,7 @@ if(require.main === module) {
     
     const spawn = require('cross-spawn');
 
-    if(command == 'launch') {
+    if(rockethCommand == 'launch' || rockethCommand == 'attach') {
         let _stopNode;
         let _cleaning = false;
         async function execute(command, ...args) {
@@ -179,39 +189,42 @@ if(require.main === module) {
             
             _stopNode = stop;
             const result = attach(config, {chainId, url, accounts}, contractInfos);
-            let newDeployments;
-            try{
-                newDeployments = await runStages(config, contractInfos, result.deployments);
-            }catch(stageError) {
-                console.error(stageError);
-                process.exit(1);
+            
+            if(rockethCommand == 'launch') {
+                let newDeployments;
+                try{
+                    newDeployments = await runStages(config, contractInfos, result.deployments);
+                }catch(stageError) {
+                    console.error(stageError);
+                    process.exit(1);
+                }
+
+                if(config.exportChains) {
+                    const savedDeploymentPath = path.join(config.rootPath || './', config.deploymentsPath || 'deployments');
+                    const chainFolders = [];
+                    try{
+                        fs.readdirSync(savedDeploymentPath).forEach((name) => {
+                            const fPath = path.resolve(savedDeploymentPath, name);
+                            const stats = fs.statSync(fPath);
+                            if (name != chainId && stats.isDirectory()) {
+                                chainFolders.push({path:fPath, chainId: name});
+                            }
+                        });
+                    } catch(e) {
+                        // console.error(e);
+                    }
+                    const chainDeployments = {};
+                    for(let folder of chainFolders) {
+                        chainDeployments[folder.chainId] = extractDeployments(folder.path);
+                    }
+                    chainDeployments[chainId] = newDeployments;
+                    
+                    const content = JSON.stringify(chainDeployments, null, '  ');
+                    fs.writeFileSync(config.exportChains, content);
+                    console.log('contracts info saved at ' + config.exportChains);
+                }
             }
 
-            if(config.exportChains) {
-                const savedDeploymentPath = path.join(config.rootPath || './', config.deploymentsPath || 'deployments');
-                const chainFolders = [];
-                try{
-                    fs.readdirSync(savedDeploymentPath).forEach((name) => {
-                        const fPath = path.resolve(savedDeploymentPath, name);
-                        const stats = fs.statSync(fPath);
-                        if (name != chainId && stats.isDirectory()) {
-                            chainFolders.push({path:fPath, chainId: name});
-                        }
-                    });
-                } catch(e) {
-                    // console.error(e);
-                }
-                const chainDeployments = {};
-                for(let folder of chainFolders) {
-                    chainDeployments[folder.chainId] = extractDeployments(folder.path);
-                }
-                chainDeployments[chainId] = newDeployments;
-                
-                const content = JSON.stringify(chainDeployments, null, '  ');
-                fs.writeFileSync(config.exportChains, content);
-                console.log('contracts info saved at ' + config.exportChains);
-            }
-        
             if(config.keepRunning) {
                 console.log('node running at ' + url);
                 const deployments = rocketh.deployments();
@@ -257,7 +270,7 @@ if(require.main === module) {
             
         }
         execute(execution[0], ...execution.slice(1));
-    } else if(command == "verify") {
+    } else if(rockethCommand == "verify") {
         let mythx_credentials;
         try{
             mythx_credentials = JSON.parse(fs.readFileSync('./.mythx_credentials').toString());
