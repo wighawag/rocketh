@@ -250,7 +250,33 @@ function compileWithSolc(solc, resolve, reject, config) {
         settings: {
             optimizer: {
                 enabled: true,
-                runs: 2000
+                runs: 2000,
+                 // TODO allow to configure it
+                // details: {
+                //     // The peephole optimizer is always on if no details are given, use details to switch it off.
+                //     "peephole": true,
+                //     // The unused jumpdest remover is always on if no details are given, use details to switch it off.
+                //     "jumpdestRemover": true,
+                //     // Sometimes re-orders literals in commutative operations.
+                //     "orderLiterals": false,
+                //     // Removes duplicate code blocks
+                //     "deduplicate": false,
+                //     // Common subexpression elimination, this is the most complicated step but
+                //     // can also provide the largest gain.
+                //     "cse": false,
+                //     // Optimize representation of literal numbers and strings in code.
+                //     "constantOptimizer": false,
+                //     // The new Yul optimizer. Mostly operates on the code of ABIEncoderV2.
+                //     // It can only be activated through the details here.
+                //     // This feature is still considered experimental.
+                //     "yul": true,
+                //     // Tuning options for the Yul optimizer.
+                //     "yulDetails": {
+                //     // Improve allocation of stack slots for variables, can free up stack slots early.
+                //     // Activated by default if the Yul optimizer is activated.
+                //     "stackAllocation": true
+                //     }
+                // },
             },
             outputSelection: {
                 "*": {
@@ -553,8 +579,12 @@ function getAccountsFromConfig(config, chainId) {
             accounts.push(wallet.address);
         }
     } else if(type == 'bitski') {
-        const bitskiConfig = JSON.parse(fs.readFileSync('./.bitski').toString());
-        accounts = bitskiConfig.accounts;
+        try{
+            const bitskiConfig = JSON.parse(fs.readFileSync('./.bitski').toString());
+            accounts = bitskiConfig.accounts;
+        }catch(e){
+            log.error('cannot read .bitski');
+        }
     }
     
     let exposedMnemonic;
@@ -591,19 +621,27 @@ function getProvider(config, url, chainId) {
     const type = accountsConfig.type
 
     const subProviders = [];
+    let subProvidersConfigured = false;
     if(type == "bitski") {
-        const bitskiConfig = JSON.parse(fs.readFileSync('./.bitski').toString());
+        try{
+            const bitskiConfig = JSON.parse(fs.readFileSync('./.bitski').toString());
 
-        const BitskiSubProvider = require('./bitski_subprovider');
-        const bitskiWalletSubProvider = new BitskiSubProvider(
-            bitskiConfig.clientID,
-            bitskiConfig.credentials.ID,
-            bitskiConfig.credentials.secret,
-            bitskiConfig.accounts,
-            chainId,
-        );
-        subProviders.push(bitskiWalletSubProvider)
-    } else {
+            const BitskiSubProvider = require('./bitski_subprovider');
+            const bitskiWalletSubProvider = new BitskiSubProvider(
+                bitskiConfig.clientID,
+                bitskiConfig.credentials.ID,
+                bitskiConfig.credentials.secret,
+                bitskiConfig.accounts,
+                chainId,
+            );
+            subProviders.push(bitskiWalletSubProvider);
+            subProvidersConfigured = true;
+        }catch(e){
+            log.error('cannot read .bitski');
+        }
+    }
+    
+    if(!subProvidersConfigured){
         const {privateKeys} = getAccountsFromConfig(config);
         const walletProvider = new WalletSubprovider(privateKeys);
         subProviders.push(walletProvider)
