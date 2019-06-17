@@ -45,8 +45,7 @@ const config = Object.assign(configFromFile, {
     cacheCompilationResult: typeof configFromFile.cacheCompilationResult != 'undefined' ? configFromFile.cacheCompilationResult : true,
     accounts: Object.assign(configFromFile.accounts || {}, {
         "default": {
-            type: 'mnemonic', // TODO default type : "node" that make rocketh use unlocked accounts
-            num: 10
+            type: 'node'
         }
     })
 });

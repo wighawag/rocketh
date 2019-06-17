@@ -108,6 +108,23 @@ let contractBuildFolderCreated = false;
 
 function compile(config) {
     return new Promise((resolve, reject) => {
+        const rootPath = config.rootPath || './';
+        let contractSrcPaths;
+        if(typeof config.contractSrcPath == 'undefined') {
+            contractSrcPaths = ['src'];
+        } else if (typeof config.contractSrcPath == 'string') {
+            contractSrcPaths = [config.contractSrcPath];
+        } else {
+            contractSrcPaths = config.contractSrcPath;
+        }
+        contractSrcPaths = contractSrcPaths.map((elem) => path.join(rootPath, elem));
+
+        contractSrcPaths = contractSrcPaths.filter(fs.existsSync);
+        if(contractSrcPaths.length == 0) {
+            resolve({contractInfos:{}, solcOutput: null, solcConfig: null});
+            return;
+        }
+
         let solc;
         try{
             solc = requireLocal('solc');
@@ -115,7 +132,7 @@ function compile(config) {
             reject('you need to install your desired solc (>= 0.4.11) compiler in your own project: "npm install solc');
             return;
         }
-        compileWithSolc(solc, resolve, reject, config);
+        compileWithSolc(solc, contractSrcPaths, resolve, reject, config);
     });
 }
 
@@ -128,11 +145,19 @@ async function runNode(config) {
         _chainId = await fetchChainId(new Web3.providers.HttpProvider(url));
     }
 
-    const result = getAccountsFromConfig(config, _chainId);
-    _accounts = result.accounts;
-    const privateKeys = result.privateKeys;
-    const exposedMnemonic = result.exposedMnemonic;
+    const forceAccounts = !url;
 
+    const result = getAccountsFromConfig(config, _chainId, forceAccounts);
+    let privateKeys;
+    let exposedMnemonic;
+    if(result.accounts) {
+        _accounts = result.accounts;
+        privateKeys = result.privateKeys;
+        exposedMnemonic = result.exposedMnemonic;
+    } else {
+        _accounts = await fetchAccounts(new Web3.providers.HttpProvider(url))
+    }
+    
     let stop = () => {};
 
     if(!url) {
@@ -172,7 +197,7 @@ async function runNode(config) {
         requireTesting = true;
     }
 
-    const provider = getProvider(config, url, _chainId);
+    const provider = getProvider(config, url, _chainId, forceAccounts);
 
     if(requireTesting) {
         let success = false
@@ -190,17 +215,9 @@ async function runNode(config) {
     return {url, chainId: _chainId, accounts: _accounts, stop, exposedMnemonic};
 }
 
-function compileWithSolc(solc, resolve, reject, config) {
+function compileWithSolc(solc, contractSrcPaths, resolve, reject, config) {
     const rootPath = config.rootPath || './';
-    let contractSrcPaths;
-    if(typeof config.contractSrcPath == 'undefined') {
-        contractSrcPaths = ['src'];
-    } else if (typeof config.contractSrcPath == 'string') {
-        contractSrcPaths = [config.contractSrcPath];
-    } else {
-        contractSrcPaths = config.contractSrcPath;
-    }
-    contractSrcPaths = contractSrcPaths.map((elem) => path.join(rootPath, elem));
+    
     // console.log({contractSrcPaths});
 
     const contractBuildPath = path.join(rootPath, config.contractBuildPath || 'build');
@@ -546,7 +563,7 @@ let deploymentsSubPath;
 
 
 let _accountsUsed;
-function getAccountsFromConfig(config, chainId) {
+function getAccountsFromConfig(config, chainId, forceAccounts) {
     if(_accountsUsed) {
         return _accountsUsed;
     }
@@ -562,10 +579,14 @@ function getAccountsFromConfig(config, chainId) {
         accountsConfig = config.accounts["default"];
     }
     const type = accountsConfig.type
-
+    
     let numWallets = 10; // default mnemonic when taken form _ROCKETH_MNEMONIC env (see below)
+    
+    forceAccounts = forceAccounts || (process.env._ROCKETH_MNEMONIC && process.env._ROCKETH_MNEMONIC != "");
     if(type == 'node') {
-        //TODO
+        if(!forceAccounts) {
+            return {};
+        }
     }else if(type == 'mnemonic') {
         numWallets = accountsConfig.num;
         try{
@@ -611,7 +632,7 @@ function getAccountsFromConfig(config, chainId) {
     return _accountsUsed;
 }
 
-function getProvider(config, url, chainId) {
+function getProvider(config, url, chainId, forceAccounts) {
     let accountsConfig;
     if(chainId && config.accounts[""+ chainId]) {
         accountsConfig = config.accounts[""+ chainId];
@@ -642,9 +663,11 @@ function getProvider(config, url, chainId) {
     }
     
     if(!subProvidersConfigured){
-        const {privateKeys} = getAccountsFromConfig(config);
-        const walletProvider = new WalletSubprovider(privateKeys);
-        subProviders.push(walletProvider)
+        const {privateKeys} = getAccountsFromConfig(config, undefined, forceAccounts);
+        if(privateKeys) {
+            const walletProvider = new WalletSubprovider(privateKeys);
+            subProviders.push(walletProvider)
+        }
     }
     
     return new Provider(new Web3.providers.HttpProvider(url), subProviders);
@@ -762,12 +785,16 @@ function attach(config, {url, chainId, accounts}, contractInfos, deployments) {
     let compilationInput;
     if(!_contractInfos){
         // TODO remove duplic :
-        const contractBuildPath = path.join(config.rootPath || './', config.contractBuildPath || 'build');
-        const cacheOutputPath = contractBuildPath + '/.compilationOutput.json';
-        _contractInfos = extractContractInfos(JSON.parse(fs.readFileSync(cacheOutputPath).toString()), contractBuildPath);
+        try{
+            const contractBuildPath = path.join(config.rootPath || './', config.contractBuildPath || 'build');
+            const cacheOutputPath = contractBuildPath + '/.compilationOutput.json';
+            _contractInfos = extractContractInfos(JSON.parse(fs.readFileSync(cacheOutputPath).toString()), contractBuildPath);
 
-        const intputPath = contractBuildPath + '/.compilationInput.json';
-        compilationInput = JSON.parse(fs.readFileSync(intputPath).toString());
+            const intputPath = contractBuildPath + '/.compilationInput.json';
+            compilationInput = JSON.parse(fs.readFileSync(intputPath).toString());
+        } catch(e) {
+            console.log('no contracts');
+        }
     }
     
     log.log('deployments', session.deployments);
