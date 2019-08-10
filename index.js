@@ -43,11 +43,11 @@ const config = Object.assign(configFromFile, {
     showErrorsFromCache: typeof configFromFile.showErrorsFromCache != 'undefined' ? configFromFile.showErrorsFromCache : false,
     generateTruffleBuildFiles: typeof configFromFile.generateTruffleBuildFiles != 'undefined' ? configFromFile.generateTruffleBuildFiles : false,
     cacheCompilationResult: typeof configFromFile.cacheCompilationResult != 'undefined' ? configFromFile.cacheCompilationResult : true,
-    accounts: Object.assign(configFromFile.accounts || {}, {
+    accounts: Object.assign({
         "default": {
             type: 'node'
         }
-    })
+    }, configFromFile.accounts || {})
 });
 
 const minimist = require('minimist');
@@ -120,6 +120,16 @@ if(rockethCommand == 'attach') {
         config.url = commandOptions.n;
     }
 }
+
+// console.log({
+//     rockethCommand,
+//     commandOptions,
+//     execution,
+//     argv,
+//     generalOptions,
+//     parsedArgv,
+// })
+// process.exit(0);
 
 if(typeof generalOptions.l != 'undefined') {
     config.silent = !generalOptions.l;
@@ -280,9 +290,20 @@ if(require.main === module) {
             process.exit(1);
         }
 
-        verify();
+        if(execution && execution.length > 0) {
+            if(execution.length > 1) {
+                console.log("only one contract at a time");
+                process.exit(1);
+            } else {
+                verify(execution[0]); // TODO use option for main
+            }
+        } else {
+            console.log("need to specify contract name");
+            process.exit(1);
+        }
+        
 
-        async function verify() {
+        async function verify(contractName, pathToMain) {
             const armlet = require('armlet');
             const {contractInfos, solcConfig} = await compile(config);
             const sourceList =  Object.keys(solcConfig.sources);
@@ -294,40 +315,49 @@ if(require.main === module) {
                 };
             }
             const client = new armlet.Client(mythx_credentials);
-            const contractNames = Object.keys(contractInfos);
-            for(let i = 0; i < contractNames.length; i++) {
-                const contractName = contractNames[i];
-                // TODO remove
-                // if(contractName != 'Sand') {
-                //     continue;
-                // }
-                const contractInfo = contractInfos[contractName];
-                if(!contractInfo.evm || !contractInfo.evm.bytecode || !contractInfo.evm.bytecode.object || contractInfo.evm.bytecode.object == "") {
-                    continue;
-                }
-                console.log('verifying ' + contractName + ' ...');
-                const data = {
-                    contractName,
-                    abi: contractInfo.abi,
-                    bytecode: '0x' + contractInfo.evm.bytecode.object,
-                    deployedBytecode: '0x' + contractInfo.evm.deployedBytecode.object,
-                    sourceMap: contractInfo.evm.bytecode.sourceMap,
-                    deployedSourceMap: contractInfo.evm.deployedBytecode.sourceMap,
-                    sourceList,
-                    sources,
-                    analysisMode: 'full',
-                };
-                try{
-                    const issues = await client.analyzeWithStatus({
-                        data,
-                        timeout: 10*60*1000,
-                        clientToolName: 'rocketh'
-                    });
-                    console.log('issues', JSON.stringify(issues, null, '  '));
-                } catch(e) {
-                    console.log('err', e)
-                }
+            // const contractNames = Object.keys(contractInfos);
+            // for(let i = 0; i < contractNames.length; i++) {
+            //     const contractName = contractNames[i];
+            const contractInfo = contractInfos[contractName];
+            if(!contractInfo) {
+                console.log('no contract with name : ' + contractName);
+                process.exit(1);
             }
+            if(!contractInfo.evm || !contractInfo.evm.bytecode || !contractInfo.evm.bytecode.object || contractInfo.evm.bytecode.object == "") {
+                // continue;
+                console.log('no evm code for ' + contractName);
+                process.exit(1);
+            }
+            console.log('verifying ' + contractName + ' ...');
+            const data = {
+                mainSource: pathToMain || ('src/' + contractName + '.sol'), // TODO use root src ...
+                contractName,
+                abi: contractInfo.abi,
+                bytecode: '0x' + contractInfo.evm.bytecode.object,
+                deployedBytecode: '0x' + contractInfo.evm.deployedBytecode.object,
+                sourceMap: contractInfo.evm.bytecode.sourceMap,
+                deployedSourceMap: contractInfo.evm.deployedBytecode.sourceMap,
+                sourceList,
+                sources,
+                analysisMode: 'full',
+                // solcVersion: '0.5.9', // TODO use package present
+            };
+            
+            // console.log(JSON.stringify(data,null,'  '));
+            // console.log(JSON.stringify(data.sources,null,'  '));
+            // process.exit(0);
+
+            try{
+                const issues = await client.analyzeWithStatus({
+                    data,
+                    timeout: 10*60*1000,
+                    clientToolName: 'rocketh'
+                });
+                console.log('issues', JSON.stringify(issues, null, '  '));
+            } catch(e) {
+                console.log('err', e)
+            }
+            // }
         }
     }
 } else {
