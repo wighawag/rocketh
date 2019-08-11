@@ -24,6 +24,9 @@ if(!global._rocketh_session) {
 }
 const session = global._rocketh_session;
 
+function pause(duration) {
+    return new Promise((res) => setTimeout(res, duration * 1000));
+}
 
 let configFromFile;
 try{
@@ -82,7 +85,10 @@ for(; i < argv.length; i ++) {
     } else if(argv[i] == '-q') {
         commandOptions.q = argv[i+1];
         i++;
-    } else {
+    } else if(argv[i] == '-u') {
+        commandOptions.u = argv[i+1];
+        i++;
+    }else {
         break;
     }
 }
@@ -290,74 +296,126 @@ if(require.main === module) {
             process.exit(1);
         }
 
-        if(execution && execution.length > 0) {
-            if(execution.length > 1) {
-                console.log("only one contract at a time");
-                process.exit(1);
-            } else {
-                verify(execution[0]); // TODO use option for main
-            }
-        } else {
-            console.log("need to specify contract name");
-            process.exit(1);
-        }
+        const MythX = require('mythxjs');
+        const client = new MythX.Client(mythx_credentials.ethAddress, mythx_credentials.password, 'rocketh');
         
-
-        async function verify(contractName, pathToMain) {
-            const armlet = require('armlet');
-            const {contractInfos, solcConfig} = await compile(config);
-            const sourceList =  Object.keys(solcConfig.sources);
-            const sources = {};
-            for(let i = 0; i < sourceList.length; i++) {
-                const source = solcConfig.sources[sourceList[i]].content;
-                sources[sourceList[i]] = {
-                    source
-                };
-            }
-            const client = new armlet.Client(mythx_credentials);
-            // const contractNames = Object.keys(contractInfos);
-            // for(let i = 0; i < contractNames.length; i++) {
-            //     const contractName = contractNames[i];
-            const contractInfo = contractInfos[contractName];
-            if(!contractInfo) {
-                console.log('no contract with name : ' + contractName);
-                process.exit(1);
-            }
-            if(!contractInfo.evm || !contractInfo.evm.bytecode || !contractInfo.evm.bytecode.object || contractInfo.evm.bytecode.object == "") {
-                // continue;
-                console.log('no evm code for ' + contractName);
-                process.exit(1);
-            }
-            console.log('verifying ' + contractName + ' ...');
-            const data = {
-                mainSource: pathToMain || ('src/' + contractName + '.sol'), // TODO use root src ...
-                contractName,
-                abi: contractInfo.abi,
-                bytecode: '0x' + contractInfo.evm.bytecode.object,
-                deployedBytecode: '0x' + contractInfo.evm.deployedBytecode.object,
-                sourceMap: contractInfo.evm.bytecode.sourceMap,
-                deployedSourceMap: contractInfo.evm.deployedBytecode.sourceMap,
-                sourceList,
-                sources,
-                analysisMode: 'full',
-                // solcVersion: '0.5.9', // TODO use package present
-            };
-            
-            // console.log(JSON.stringify(data,null,'  '));
-            // console.log(JSON.stringify(data.sources,null,'  '));
-            // process.exit(0);
-
-            try{
-                const issues = await client.analyzeWithStatus({
-                    data,
-                    timeout: 10*60*1000,
-                    clientToolName: 'rocketh'
-                });
-                console.log('issues', JSON.stringify(issues, null, '  '));
+        runVerify();
+        
+        async function runVerify() {
+            let tokens;
+            try {
+                tokens = await client.login();
             } catch(e) {
-                console.log('err', e)
+                console.log('error logging in ', e);
+                process.exit(1);
             }
-            // }
+            // console.log({commandOptions});
+            if(commandOptions.u) {
+                await checkUUID(commandOptions.u);
+            } else {
+                if(execution && execution.length > 0) {
+                    if(execution.length > 1) {
+                        console.log("only one contract at a time");
+                        process.exit(1);
+                    } else {
+                        verify(execution[0]); // TODO use option for main
+                    }
+                } else {
+                    console.log("need to specify contract name");
+                    process.exit(1);
+                }
+            }
+            
+            async function checkUUID(uuid) {
+                console.log('uuid : ' + uuid);
+                    
+                let status;
+                while(status !== 'Finished' && status !== 'Error') {
+                    let statusResponse;
+                    try {
+                        statusResponse = await client.getAnalysisStatus(uuid);
+                    } catch(e) {
+                        console.error(e);
+                        await client.login();
+                    }
+                    if (statusResponse) {
+                        if(status !== statusResponse.status) {
+                            status = statusResponse.status;
+                            console.log(status);
+                        }
+                    }
+                    if(status !== 'Finished' && status !== 'Error') {
+                        await pause(60);
+                        //TODO
+                        // try{
+                        //     await client.refreshToken();    
+                        // } catch(e) {
+                        //     console.error(e);
+                        // }
+                        
+                    } else {
+                        console.log(status);
+                    }
+                }
+                console.log('fetching issues...');
+                const issues = await client.getDetectedIssues(uuid);
+                console.log('issues', JSON.stringify(issues, null, '  '));
+            }
+            
+
+            async function verify(contractName, pathToMain) {
+                const {contractInfos, solcConfig, solcVersion, contractSrcPaths} = await compile(config);
+                const sourceList =  Object.keys(solcConfig.sources);
+                const sources = {};
+                for(let i = 0; i < sourceList.length; i++) {
+                    const source = solcConfig.sources[sourceList[i]].content;
+                    sources[sourceList[i]] = {
+                        source
+                    };
+                }
+                // const contractNames = Object.keys(contractInfos);
+                // for(let i = 0; i < contractNames.length; i++) {
+                //     const contractName = contractNames[i];
+                const contractInfo = contractInfos[contractName];
+                if(!contractInfo) {
+                    console.log('no contract with name : ' + contractName);
+                    process.exit(1);
+                }
+                if(!contractInfo.evm || !contractInfo.evm.bytecode || !contractInfo.evm.bytecode.object || contractInfo.evm.bytecode.object == "") {
+                    // continue;
+                    console.log('no evm code for ' + contractName);
+                    process.exit(1);
+                }
+                console.log('verifying ' + contractName + ' ...');
+                const data = {
+                    toolName: 'rocketh',
+                    mainSource: pathToMain || (contractSrcPaths[0] + '/' + contractName + '.sol'),
+                    contractName,
+                    abi: contractInfo.abi,
+                    bytecode: '0x' + contractInfo.evm.bytecode.object,
+                    deployedBytecode: '0x' + contractInfo.evm.deployedBytecode.object,
+                    sourceMap: contractInfo.evm.bytecode.sourceMap,
+                    deployedSourceMap: contractInfo.evm.deployedBytecode.sourceMap,
+                    sourceList,
+                    sources,
+                    analysisMode: 'full',
+                    // solcVersion, // TODO use package present
+                };
+                
+                console.log({solcVersion});
+                // console.log(JSON.stringify(data,null,'  '));
+                // console.log(JSON.stringify(data.sources,null,'  '));
+                // process.exit(0);
+
+                try{
+                    const response = await client.analyze(data);
+                    const uuid = response.uuid;
+                    await checkUUID(uuid)
+                } catch(e) {
+                    console.log('err', e)
+                }
+                // }
+            }
         }
     }
 } else {

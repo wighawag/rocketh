@@ -451,7 +451,7 @@ function compileWithSolc(solc, contractSrcPaths, resolve, reject, config) {
             }
         }
         compilationDone = true;
-        resolve({contractInfos, solcOutput: output, solcConfig: JSON.parse(solcConfig)});
+        resolve({contractInfos, solcOutput: output, solcConfig: JSON.parse(solcConfig), solcVersion, contractSrcPaths});
     }
 }
 
