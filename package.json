@@ -1,6 +1,6 @@
 {
   "name": "rocketh",
-  "version": "0.2.42",
+  "version": "0.2.43",
   "main": "index.js",
   "bin": {
     "rocketh": "index.js"
