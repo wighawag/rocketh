@@ -267,36 +267,10 @@ function compileWithSolc(solc, contractSrcPaths, resolve, reject, config) {
         //     version: solcVersion
         // },
         sources,
-        settings: {
+        settings: config.solcSettings || {
             optimizer: {
                 enabled: true,
-                runs: 2000,
-                // TODO allow to configure it
-                // details: {
-                //     // The peephole optimizer is always on if no details are given, use details to switch it off.
-                //     "peephole": true,
-                //     // The unused jumpdest remover is always on if no details are given, use details to switch it off.
-                //     "jumpdestRemover": true,
-                //     // Sometimes re-orders literals in commutative operations.
-                //     "orderLiterals": false,
-                //     // Removes duplicate code blocks
-                //     "deduplicate": false,
-                //     // Common subexpression elimination, this is the most complicated step but
-                //     // can also provide the largest gain.
-                //     "cse": false,
-                //     // Optimize representation of literal numbers and strings in code.
-                //     "constantOptimizer": false,
-                //     // The new Yul optimizer. Mostly operates on the code of ABIEncoderV2.
-                //     // It can only be activated through the details here.
-                //     // This feature is still considered experimental.
-                //     "yul": true,
-                //     // Tuning options for the Yul optimizer.
-                //     "yulDetails": {
-                //     // Improve allocation of stack slots for variables, can free up stack slots early.
-                //     // Activated by default if the Yul optimizer is activated.
-                //     "stackAllocation": true
-                //     }
-                // },
+                runs: config.solcOptimizerRuns || 2000,
             },
             outputSelection: {
                 "*": {
@@ -489,6 +463,19 @@ function extractDeployments(deploymentsPath) {
     return deployments;
 }
 
+function chainConfig(config, object, chainId) {
+    const isDeploymentChainId = config.deploymentChainIds && config.deploymentChainIds.indexOf('' + chainId) != -1;
+    if (typeof object["" + chainId] != 'undefined') {
+        return object["" + _chainId];
+    } else if (typeof object[_chainId] != 'undefined') {
+        return object[_chainId];
+    } else if (isDeploymentChainId && typeof object['deployments'] != 'undefined') {
+        return object['deployments'];
+    } else {
+        return object['default'];
+    }
+}
+
 // cache
 let _chainId;
 let _accounts;
@@ -509,8 +496,28 @@ async function runStages(config, contractInfos, deployments) {
         log.green('no stages folder at ./' + stagesPath);
         return session.deployments;
     }
+
+    let stages;
+    if (config.stages) {
+        stages = chainConfig(config, config.stages, _chainId);
+        if(stages === 'all') {
+            stages = undefined;
+        }
+    }
     fileNames = fileNames.filter((fileName) => {
-        return (!fs.statSync(path.resolve(stagesPath, fileName)).isDirectory());
+        let matches = true;
+        if(stages) {
+            if(stages.matchRule === 'startsWith') {
+                matches = false;
+                for (let elem of stages.list) {
+                    if(fileName.startsWith(elem)){
+                        matches = true;
+                        break;
+                    }
+                }
+            } // TODO more rules
+        }
+        return matches && (!fs.statSync(path.resolve(stagesPath, fileName)).isDirectory());
     });
     fileNames = fileNames.sort((a, b) => {
         if (a < b) { return -1; }
@@ -748,22 +755,11 @@ function attach(config, { url, chainId, accounts }, contractInfos, deployments) 
                             for (let j = 0; j < spec.length; j++) {
                                 address.push(parseSpec(spec[j]));
                             }
-                        } else if (typeof spec["" + _chainId] != 'undefined') {
-                            const newSpec = spec["" + _chainId];
-                            if (!(typeof newSpec == 'string' && newSpec == "")) {
-                                address = parseSpec(newSpec);
-                            }
-                        } else if (typeof spec[_chainId] != 'undefined') {
-                            const newSpec = spec[_chainId];
-                            if (!(typeof newSpec == 'string' && newSpec == "")) {
-                                address = parseSpec(newSpec);
-                            }
-                        } else if (isDeploymentChainId && spec['deployments']) {
-                            if (spec['deployments'] != "") {
-                                address = parseSpec(spec['deployments']);
-                            }
                         } else {
-                            address = parseSpec(spec['default']);
+                            const newSpec = chainConfig(config, spec, _chainId);
+                            if(typeof newSpec != 'undefined') {
+                                address = parseSpec(newSpec);
+                            }
                         }
                     }
                     break;
