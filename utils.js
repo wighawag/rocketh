@@ -56,76 +56,38 @@ function onExit(childProcess) {
     });
 }
 
-function fetchTransaction(provider, hash) {
-    return new Promise((resolve, reject) => {
-        try{
-            provider.send({id:1, method:'eth_getTransactionByHash', params:[hash], jsonrpc: '2.0'}, (error, json) => {
-                if (error) {
-                    reject(error);
-                } else {
-                    resolve(json.result);
-                }
-            })
-        } catch(e) { // to work with old provider
-            provider.sendAsync({id:1, method:'eth_getTransactionByHash', params:[hash], jsonrpc: '2.0'}, (error, json) => {
-                if (error) {
-                    reject(error);
-                } else {
-                    resolve(json.result);
-                }
-            })
-        }
-        
-    })
+function fetchTransaction(url, hash) {
+    console.log('fetchTransaction...');
+    const provider = new ethers.providers.JsonRpcProvider(url);
+    return provider.send('eth_getTransactionByHash',[hash]);
 }
 
-function fetchAccounts(provider) {
-    return new Promise((resolve, reject) => {
-        try{
-            provider.send({id:1, method:'eth_accounts', params:[], jsonrpc: '2.0'}, (error, json) => {
-                if (error) {
-                    reject(error);
-                } else {
-                    resolve(json.result);
-                }
-            })
-        } catch(e) { // to work with old provider
-            provider.sendAsync({id:1, method:'eth_accounts', params:[], jsonrpc: '2.0'}, (error, json) => {
-                if (error) {
-                    reject(error);
-                } else {
-                    resolve(json.result);
-                }
-            })
-        }
-        
-    })
+function fetchAccounts(url) {
+    console.log('fetchAccounts...');
+    const provider = new ethers.providers.JsonRpcProvider(url);
+    return provider.send('eth_accounts',[]);
 }
 
-function fetchChainId(provider) {
-    return new Promise((resolve, reject) => {
-        try{
-            provider.send({id:2, method:'net_version', params:[], jsonrpc: '2.0'}, (error, json) => {
-                if (error) {
-                    reject(error);
-                } else {
-                    resolve(json.result);
-                }
-            })
-        }catch(e) {  // to work with old provider
-            provider.sendAsync({id:2, method:'net_version', params:[], jsonrpc: '2.0'}, (error, json) => {
-                if (error) {
-                    reject(error);
-                } else {
-                    resolve(json.result);
-                }
-            })
-        }
-        
-    })
+function fetchChainId(url) {
+    console.log('fetchChainId...');
+    const provider = new ethers.providers.JsonRpcProvider(url);
+    return provider.send('net_version',[]).then((chainId) => {
+        console.log({chainid});
+        return chainId;
+    }) // TODO eth_chainId
 }
 
-
+function fetchChainIdViaWeb3Provider(provider) { // TODO remove
+    return new Promise((resolve, reject) => {
+        provider.send({id:1, method:'net_version', params:[], jsonrpc: '2.0'}, (error, json) => {
+            if (error) {
+                reject(error);
+            } else {
+                resolve(json.result);
+            }
+        })
+    });
+}
 
 const traverse = function(dir, result = []) {
     fs.readdirSync(dir).forEach((name) => {
@@ -154,6 +116,7 @@ module.exports = {
     executeServer,
     fetchAccounts,
     fetchChainId,
+    fetchChainIdViaWeb3Provider,
     fetchTransaction,
     getAccountsFromMnemonic,
     log : {

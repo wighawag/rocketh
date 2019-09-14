@@ -3,7 +3,6 @@ const path = require('path');
 const colors = require('colors/safe');
 const semver = require('semver');
 const portfinder = require('portfinder');
-const Web3 = require('web3'); // for provider and solidity-sha3
 const Provider = require('./provider');
 const rimraf = require('rimraf');
 const bip39 = require('bip39');
@@ -20,6 +19,7 @@ const {
     fetchChainId,
     fetchTransaction,
     fetchAccounts,
+    fetchChainIdViaWeb3Provider,
 } = require('./utils');
 
 if (!global._rocketh_session) {
@@ -142,7 +142,7 @@ async function runNode(config) {
 
     _chainId = null;
     if (url) {
-        _chainId = await fetchChainId(new Web3.providers.HttpProvider(url));
+        _chainId = await fetchChainId(url);
     }
 
     const forceAccounts = !url;
@@ -155,7 +155,7 @@ async function runNode(config) {
         privateKeys = result.privateKeys;
         exposedMnemonic = result.exposedMnemonic;
     } else {
-        _accounts = await fetchAccounts(new Web3.providers.HttpProvider(url))
+        _accounts = await fetchAccounts(url)
     }
 
     let stop = () => { };
@@ -200,19 +200,19 @@ async function runNode(config) {
         requireTesting = true;
     }
 
-    const provider = getProvider(config, url, _chainId, forceAccounts);
+    const provider = getWeb3Provider(config, url, _chainId, forceAccounts);
 
     if (requireTesting) {
         let success = false
 
         while (!success) {
             try {
-                _chainId = await fetchChainId(provider);
+                _chainId = await fetchChainIdViaWeb3Provider(provider);
                 success = true;
             } catch (e) { }
         } // TODO timeout
     } else {
-        _chainId = await fetchChainId(provider);
+        _chainId = await fetchChainIdViaWeb3Provider(provider);
     }
 
     return { url, chainId: _chainId, accounts: _accounts, stop, exposedMnemonic };
@@ -529,6 +529,9 @@ async function runStages(config, contractInfos, deployments) {
         namedAccounts: rocketh.namedAccounts,
         initialRun,
         isDeploymentChainId: config.deploymentChainIds.indexOf('' + _chainId) != -1,
+        deployAndRegister: () => { throw new Error('TODO deployAndRegister'); }, // deploy and register, saving txHash as partial deployment
+        deployIfDifferentAndRegister: () => { throw new Error('TODO deployIfDifferentAndRegister'); },  // deploy and register only if different, saving txHash as partial deployment
+        fetchIfDifferent: () => { throw new Error('TODO fetchIfDifferent'); }, // will take the tx hash and recompose the contract
     }];
 
     for (const fileName of fileNames) {
@@ -635,7 +638,7 @@ function getAccountsFromConfig(config, chainId, forceAccounts) {
     return _accountsUsed;
 }
 
-function getProvider(config, url, chainId, forceAccounts) {
+function getWeb3Provider(config, url, chainId, forceAccounts) {
     let accountsConfig;
     if (chainId && config.accounts["" + chainId]) {
         accountsConfig = config.accounts["" + chainId];
@@ -673,7 +676,7 @@ function getProvider(config, url, chainId, forceAccounts) {
         }
     }
 
-    return new Provider(new Web3.providers.HttpProvider(url), subProviders);
+    return new Provider(url, subProviders);
 }
 
 let attached;
@@ -817,7 +820,7 @@ function attach(config, { url, chainId, accounts }, contractInfos, deployments) 
             log.log('using node at ' + url + ' (' + _chainId + ')' + ' ...');
         }
 
-        provider = getProvider(config, ethereumNodeURl, _chainId); // TODO for sol-trace _contractInfos, compilationInput, config.rootPath || './', config.contractSrcdPath || 'src');
+        provider = getWeb3Provider(config, ethereumNodeURl, _chainId); // TODO for sol-trace _contractInfos, compilationInput, config.rootPath || './', config.contractSrcdPath || 'src');
     } else {
         console.error(colors.red('ROCKETH_NODE_URL not set'));
         process.exit(1);

@@ -49,7 +49,6 @@ async function serve(port, wsPort, accounts, chainId) {
     }
     
     let gethPath = gethBinary ? gethBinary.path : 'geth';
-    // console.log('geth path', gethPath);
 
     /*
     rm -Rf .geth
@@ -105,7 +104,6 @@ async function serve(port, wsPort, accounts, chainId) {
     }
 
     fs.writeFileSync(genesisPath, JSON.stringify(genesis, null, '  '));
-    console.log('Initialising geth using genesis file...');
     const initProcess = spawnGeth(
         gethPath,
         ['--datadir', gethDataPath, 'init', genesisPath],
@@ -136,7 +134,6 @@ async function serve(port, wsPort, accounts, chainId) {
     fs.writeFileSync(keystoreFilepath, '{"address":"30cb8ee8b1bfacdd5edf8ae9f82e59925263c966","crypto":{"cipher":"aes-128-ctr","ciphertext":"e1140b6de3997af4605cc378f08bd58f6b2f1637dbc1bfcdbef93a31665fbedb","cipherparams":{"iv":"e9751ae14e68c9327b6aed03654c2eee"},"kdf":"scrypt","kdfparams":{"dklen":32,"n":262144,"p":1,"r":8,"salt":"d00a5afd0b8decca4a65d8da30fa20419bbacc663213b7368d268f4a0997f8bf"},"mac":"e9ba6a86129f9fbd02ea287fd6eea47e9543d5c3257a4440499b5bcb314251ce"},"id":"4ea8a249-40af-44db-ba7a-d56a239add7e","version":3}');
     //////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    console.log('starting geth on port ' + port + '(' + wsPort + ')');
     const gethProcess = spawnGeth(
         gethPath,
         [

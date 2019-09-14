@@ -1,8 +1,11 @@
+const ethers = require('ethers');
 
-const ProviderEngine = function(fallbackProvider, providers) {
+const ProviderEngine = function(fallbackURL, providers) {
     this.lastId = 0;
-    this.fallbackProvider = fallbackProvider;
-    this.providers = providers;
+    if(fallbackURL) {
+        this.fallbackProvider = new ethers.providers.JsonRpcProvider(fallbackURL);
+    }
+    this.providers = providers || [];
     for(let i = 0; i < providers.length; i++) {
         providers[i].setEngine(this);
     }
@@ -30,27 +33,16 @@ ProviderEngine.prototype.sendPayload = async function(payload, callback) {
         stack.unshift(after);
         if (currentProvider >= self.providers.length) {
             if(self.fallbackProvider) {
-                if(self.fallbackProvider.isEIP1193) {
-                    self.fallbackProvider.send(payload.method, payload.params)
-                    .then((result) => {
-                        callback(null, result);
-                    })
-                    .catch((err) => {
-                        callback(err);
-                    });
-                } else if(self.fallbackProvider.sendAsync) {
-                    self.fallbackProvider.sendAsync(payload, end);
-                } else {
-                    // console.log('send payload');
-                    self.fallbackProvider.send(payload, (error, json) => {
-                        if(error) {
-                            // console.log('error from fallback', error);
-                            end(error, json.result);
-                        } else {
-                            end(json.error, json.result);
-                        }
-                    });
-                }
+                // console.log('calling ', payload.method, payload.params);
+                self.fallbackProvider.send(payload.method, payload.params)
+                .then((result) => {
+                    // console.log('result ', result);
+                    callback(null, {id: payload.id, result: result, jsonrpc: payload.jsonrpc});
+                })
+                .catch((err) => {
+                    // console.log('err ', err);
+                    callback({id: payload.id, error: err, jsonrpc: payload.jsonrpc});
+                });
             } else {
                 end(new Error('Request for method "' + payload.method + '" not handled by any subprovider. Please check your subprovider configuration to ensure this method is handled.'))
             }

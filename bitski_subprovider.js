@@ -23,7 +23,7 @@ const BitskiSubProvider = function(clientID, credentialID, secret, accounts, cha
       
     // Pass options with the provider
     this.bitskiProvider = Bitski.getProvider(clientID, options);
-    this.bitskiProvider._blockTracker.stop()
+    this.bitskiProvider._blockTracker.stop();
     this.accounts = accounts;
 }
 
@@ -101,48 +101,15 @@ BitskiSubProvider.prototype.handleRequest = async function(payload, next, end) {
         }
 
         const nonce = await this.fetchNonce(from);
-        
-        const forEthers = {
-            to: rawTx.to,
-            gasLimit: rawTx.gas,
-            gasPrice,
-            nonce,
-            data: rawTx.data,// ? (rawTx.data[1].toLowerCase() == 'x' ? rawTx.data : '0x' + rawTx.data) : undefined,
-            value: rawTx.value,
-            chainId: rawTx.chainId
-        }
-
         let result;
         try{
             rawTx.gasPrice = gasPrice;
             rawTx.nonce = nonce;
-            // console.log(rawTx);
             result = await this.sendTransaction(rawTx);
         }catch(e) {
             return end(e);
         }
         return end(null, result);
-
-        // let signedTx;
-        // try{
-        //     signedTx = await this.signTransaction(from, forEthers);
-        // } catch(e) {
-        //     return end(e);
-        // }
-        
-        // return this.engine.sendAsync({
-        //     id: payload.id,
-        //     jsonrpc: payload.jsonrpc,
-        //     method: 'eth_sendRawTransaction',
-        //     params: [signedTx],
-        //     jsonrpc: '2.0',
-        //   }, function(error, json) {
-        //         if(error) {
-        //             return end(error);
-        //         }
-        //         return end(null, json.result);
-        //   });
-
     } else if(payload.method == 'eth_sign') { 
         let signedMessage;
         try{
@@ -150,7 +117,6 @@ BitskiSubProvider.prototype.handleRequest = async function(payload, next, end) {
         } catch(e) {
             return end(e);
         }
-        // console.log(payload.params, signedMessage);
         return end(null, signedMessage);
     } else {
        next();
@@ -159,7 +125,6 @@ BitskiSubProvider.prototype.handleRequest = async function(payload, next, end) {
 
 BitskiSubProvider.prototype.signTransaction = function(from, rawTx) {
     self = this;
-    // return self.bitskiProvider.send('eth_signTransaction',rawTx);
     return new Promise((resolve, reject) => {
         self.bitskiProvider.send({
             id: ++self.lastId,
@@ -195,7 +160,7 @@ BitskiSubProvider.prototype.sendTransaction = function(tx) {
 }
 
 BitskiSubProvider.prototype.signMessage = function(from, message) {
-    // TODO
+    throw new Error('rocketh TODO: sign Message not implemented in bitski provider');
 }
 
 module.exports = BitskiSubProvider;

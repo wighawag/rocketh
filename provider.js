@@ -1,6 +1,6 @@
 const ProviderEngine = require('./providerengine');
 
-const Provider = function(provider, subproviders) {
+const Provider = function(fallbackURL, subproviders) {
 
     // TODO : support sourcemap for source line debugging
     // if(contractInfos && compilationInput && srcPath) {
@@ -50,7 +50,7 @@ const Provider = function(provider, subproviders) {
     //     const revertTraceSubprovider = new RevertTraceSubprovider(artifactAdapter, defaultFromAddress);
     //     subproviders.push(revertTraceSubprovider);
     // }
-    ProviderEngine.call(this, provider, subproviders);
+    ProviderEngine.call(this, fallbackURL, subproviders);
 }
 
 Provider.prototype = ProviderEngine.prototype;
