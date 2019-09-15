@@ -142,7 +142,17 @@ async function runNode(config) {
 
     _chainId = null;
     if (url) {
-        _chainId = await fetchChainId(url);
+        try {
+            _chainId = await fetchChainId(url, config.useNetVersionAsChainId);
+        } catch(e) {
+            console.error('failed to get chainId from ' + url);
+            if(!config.useNetVersionAsChainId) {
+                console.log('trying with net_version...');
+                config.useNetVersionAsChainId = true;
+                _chainId = await fetchChainId(url, config.useNetVersionAsChainId);
+            }
+        }
+        
     }
 
     const forceAccounts = !url;
@@ -204,15 +214,22 @@ async function runNode(config) {
 
     if (requireTesting) {
         let success = false
-
+        // TODO failed after few tries ?
         while (!success) {
             try {
-                _chainId = await fetchChainIdViaWeb3Provider(provider);
+                _chainId = await fetchChainIdViaWeb3Provider(provider, config.useNetVersionAsChainId);
                 success = true;
-            } catch (e) { }
+            } catch (e) {
+                if(e.message && e.message.indexOf('eth_chainId not supported') != -1) {
+                    if(!config.useNetVersionAsChainId) {
+                        console.log('eth_chainId not supported, falling back to net_version...');
+                        config.useNetVersionAsChainId = true;
+                    }
+                }
+            }
         } // TODO timeout
     } else {
-        _chainId = await fetchChainIdViaWeb3Provider(provider);
+        _chainId = await fetchChainIdViaWeb3Provider(provider, config.useNetVersionAsChainId);
     }
 
     return { url, chainId: _chainId, accounts: _accounts, stop, exposedMnemonic };

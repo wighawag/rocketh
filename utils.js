@@ -57,29 +57,27 @@ function onExit(childProcess) {
 }
 
 function fetchTransaction(url, hash) {
-    console.log('fetchTransaction...');
     const provider = new ethers.providers.JsonRpcProvider(url);
     return provider.send('eth_getTransactionByHash',[hash]);
 }
 
 function fetchAccounts(url) {
-    console.log('fetchAccounts...');
     const provider = new ethers.providers.JsonRpcProvider(url);
     return provider.send('eth_accounts',[]);
 }
 
-function fetchChainId(url) {
-    console.log('fetchChainId...');
+function fetchChainId(url, use_net_version) {
+    const method = use_net_version ? 'net_version' : 'eth_chainId';
     const provider = new ethers.providers.JsonRpcProvider(url);
-    return provider.send('net_version',[]).then((chainId) => {
-        console.log({chainid});
+    return provider.send(method,[]).then((chainId) => {
         return chainId;
-    }) // TODO eth_chainId
+    });
 }
 
-function fetchChainIdViaWeb3Provider(provider) { // TODO remove
+function fetchChainIdViaWeb3Provider(provider, use_net_version) { // TODO remove
+    const method = use_net_version ? 'net_version' : 'eth_chainId';
     return new Promise((resolve, reject) => {
-        provider.send({id:1, method:'net_version', params:[], jsonrpc: '2.0'}, (error, json) => {
+        provider.send({id:1, method, params:[], jsonrpc: '2.0'}, (error, json) => {
             if (error) {
                 reject(error);
             } else {

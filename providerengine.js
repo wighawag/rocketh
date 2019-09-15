@@ -40,8 +40,18 @@ ProviderEngine.prototype.sendPayload = async function(payload, callback) {
                     callback(null, {id: payload.id, result: result, jsonrpc: payload.jsonrpc});
                 })
                 .catch((err) => {
-                    // console.log('err ', err);
-                    callback({id: payload.id, error: err, jsonrpc: payload.jsonrpc});
+                    let actualError = err;
+                    if(err.responseText) {
+                        try {
+                            actualError = JSON.parse(err.responseText);
+                            if(actualError.error) {
+                                actualError = actualError.error;
+                            }
+                        } catch(e) {
+                            actualError = err;
+                        }
+                    }
+                    callback(actualError);
                 });
             } else {
                 end(new Error('Request for method "' + payload.method + '" not handled by any subprovider. Please check your subprovider configuration to ensure this method is handled.'))
