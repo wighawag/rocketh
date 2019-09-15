@@ -53,381 +53,358 @@ const config = Object.assign(configFromFile, {
     }, configFromFile.accounts || {})
 });
 
-const minimist = require('minimist');
-const argv = (process.env._ROCKETH_ARGS && process.env._ROCKETH_ARGS != "") ? process.env._ROCKETH_ARGS.split(',') : process.argv.slice(2);
 
-const parsedArgv = minimist(argv);
-const rockethCommand = parsedArgv._[0];
-// console.log('COMMAND', rockethCommand);
-// console.log(argv);
-// console.log(parsedArgv);
-let commandIndex = argv.indexOf(rockethCommand, 0);
-while (commandIndex % 2 != 0) {
-    commandIndex = argv.indexOf(rockethCommand, commandIndex + 1);
-}
-// console.log('commandIndex', commandIndex);
-
-const generalOptions = minimist(argv.slice(0, commandIndex));
-// console.log('generalOptions', generalOptions);
-
-const commandOptions = {
-
-};
-
-let i = commandIndex + 1
-for (; i < argv.length; i++) {
-    if (argv[i] == '-k') {
-        commandOptions.k = argv[i + 1];
-        i++;
-    } else if (argv[i] == '-n') {
-        commandOptions.n = argv[i + 1];
-        i++;
-    } else if (argv[i] == '-q') {
-        commandOptions.q = argv[i + 1];
-        i++;
-    } else if (argv[i] == '-u') {
-        commandOptions.u = argv[i + 1];
-        i++;
-    } else if (argv[i] == '-b') {
-        commandOptions.b = argv[i + 1];
-        i++;
-    } else {
-        break;
-    }
-}
-// console.log('commandOptions', commandOptions);
-commandIndex = i;
-const execution = argv.slice(commandIndex, argv.length);
-// console.log({execution});
-
-
-if (rockethCommand == 'launch') {
-    if (commandOptions.q) {
-        config.keepRunning = true;
-        config.exportChains = commandOptions.q;
-    }
-
-    if (commandOptions.k) {
-        config.keepRunning = commandOptions.k == 'true' ? true : commandOptions.k;
-    }
-
-    if (commandOptions.n) {
-        if (['geth', 'ganache'].indexOf(commandOptions.n) != -1) {
-            config.node = commandOptions.n;
+function setupAnd(func) {
+    return (...args) => {
+        // const cmdObj = args[args.length-1];
+        config.silent = !program.verbose;
+        log.setSlient(config.silent);
+        log.log(config);
+        if (require.main === module) {
+            func(...args);
         } else {
-            config.url = commandOptions.n;
+            const session = global._rocketh_session;
+            attach(config, { chainId: session.chainId, url: session.url, accounts: session.accounts });
         }
     }
-
-    if (commandOptions.b) {
-        config.blockTime = parseInt(commandOptions.b);
-    }
 }
 
-// TODO remove duplication
-if (rockethCommand == 'attach') {
-    if (!commandOptions.n) {
-        console.error('require to specify node via -n <nodeUrl>')
-        process.exit(1);
-    } else {
-        config.url = commandOptions.n;
-    }
-}
-
-// console.log({
-//     rockethCommand,
-//     commandOptions,
-//     execution,
-//     argv,
-//     generalOptions,
-//     parsedArgv,
-// })
-// process.exit(0);
-
-if (typeof generalOptions.l != 'undefined') {
-    config.silent = !generalOptions.l;
-}
-
-log.setSlient(typeof config.silent != 'undefined' ? config.silent : true);
-
-log.log(config);
-
-
-if (require.main === module) {
-
+function executeOrAttach(execution, willRunStages) {
     const spawn = require('cross-spawn');
+    let _stopNode;
+    let _cleaning = false;
+    async function execute(command, ...args) {
+        process.stdin.resume();//so the program will not close instantly
 
-    if (rockethCommand == 'launch' || rockethCommand == 'attach') {
-        let _stopNode;
-        let _cleaning = false;
-        async function execute(command, ...args) {
-            process.stdin.resume();//so the program will not close instantly
+        async function cleanup(exitCode) {
+            if (_cleaning) { return; }
+            _cleaning = true;
 
-            async function cleanup(exitCode) {
-                if (_cleaning) { return; }
-                _cleaning = true;
-
-                if (session.chainId && config.deploymentChainIds.indexOf(session.chainId) == -1) {
-                    cleanDeployments();
-                }
-                if (config.exportChains) {
-                    try {
-                        rimraf.sync(config.exportChains);
-                    } catch (e) {
-
-                    }
-                }
-                if (_stopNode) {
-                    await _stopNode();
-                }
-                process.exit(exitCode);
+            if (session.chainId && config.deploymentChainIds.indexOf(session.chainId) == -1) {
+                cleanDeployments();
             }
+            // if (config.exportContracts) {
+            //     try {
+            //         rimraf.sync(config.exportContracts);
+            //     } catch (e) {
 
-            //do something when app is closing
-            process.on('exit', cleanup);
-            //catches ctrl+c event
-            process.on('SIGINT', cleanup);
-            // catches "kill pid" (for example: nodemon restart)
-            process.on('SIGUSR1', cleanup);
-            process.on('SIGUSR2', cleanup);
-            //catches uncaught exceptions
-            process.on('uncaughtException', cleanup);
-
-
-            let compileResult;
-            try {
-                compileResult = await compile(config);
-            } catch (compileError) {
-                console.error(compileError); // TODO compile error shown by compile itself ?
-                process.exit(1);
+            //     }
+            // }
+            if (_stopNode) {
+                await _stopNode();
             }
-
-            const { contractInfos } = compileResult;
-            const { chainId, url, accounts, stop, exposedMnemonic } = await runNode(config);
-
-            session.chainId = chainId;
-            session.url = url;
-            session.accounts = accounts;
-
-            _stopNode = stop;
-            const result = attach(config, { chainId, url, accounts }, contractInfos);
-
-            if (rockethCommand == 'launch') {
-                let newDeployments;
-                try {
-                    newDeployments = await runStages(config, contractInfos, result.deployments);
-                } catch (stageError) {
-                    console.error(stageError);
-                    process.exit(1);
-                }
-
-                if (config.exportChains) {
-                    const savedDeploymentPath = path.join(config.rootPath || './', config.deploymentsPath || 'deployments');
-                    const chainFolders = [];
-                    try {
-                        fs.readdirSync(savedDeploymentPath).forEach((name) => {
-                            const fPath = path.resolve(savedDeploymentPath, name);
-                            const stats = fs.statSync(fPath);
-                            if (name != chainId && stats.isDirectory()) {
-                                chainFolders.push({ path: fPath, chainId: name });
-                            }
-                        });
-                    } catch (e) {
-                        // console.error(e);
-                    }
-                    const chainDeployments = {};
-                    for (let folder of chainFolders) {
-                        chainDeployments[folder.chainId] = extractDeployments(folder.path);
-                    }
-                    chainDeployments[chainId] = newDeployments;
-
-                    const content = JSON.stringify(chainDeployments, null, '  ');
-                    fs.writeFileSync(config.exportChains, content);
-                    console.log('contracts info saved at ' + config.exportChains);
-                }
-            }
-
-            if (config.keepRunning) {
-                console.log('node running at ' + url);
-                const deployments = rocketh.deployments();
-                for (const name of Object.keys(deployments)) {
-                    const deploymentInfo = deployments[name];
-                    const address = deploymentInfo.address;
-                    // console.log('CONTRACT ' + name + ' DEPLOYED AT : ' + address);
-                }
-            } else if (command) {
-                const childProcess = spawn(
-                    command,
-                    args,
-                    {
-                        stdio: [process.stdin, process.stdout, process.stderr],
-                        env: Object.assign(Object.assign({}, process.env), {
-                            _ROCKETH_NODE_URL: url,
-                            _ROCKETH_CHAIN_ID: chainId,
-                            _ROCKETH_ACCOUNTS: accounts.join(','), // TODO get rif of accounts
-                            _ROCKETH_MNEMONIC: exposedMnemonic ? exposedMnemonic.split(' ').join(',') : undefined,
-                            _ROCKETH_DEPLOYMENTS: result.deploymentsPath,
-                            _ROCKETH_ARGS: argv.join(','),
-                        })
-                    }
-                );
-                try {
-                    exitCode = await onExit(childProcess);
-                } catch (e) {
-                    if (e.code) {
-                        exitCode = e.code;
-                    } else {
-                        console.error('ERROR onExit', e);
-                    }
-                }
-                cleanup(exitCode);
-            } else {
-                // for (const name of Object.keys(newDeployments)) {
-                //     const deploymentInfo = newDeployments[name];
-                //     const address = deploymentInfo.address;
-                //     console.log('CONTRACT ' + name + ' DEPLOYED AT : ' + address);
-                // }                 
-                cleanup(0);
-            }
-
+            process.exit(exitCode);
         }
-        execute(execution[0], ...execution.slice(1));
-    } else if (rockethCommand == "verify") {
-        let mythx_credentials;
-        try {
-            mythx_credentials = JSON.parse(fs.readFileSync('./.mythx_credentials').toString());
-        } catch (e) { console.error(e) }
 
-        if (!mythx_credentials) {
-            console.log(".mythx_credentials not found");
+        //do something when app is closing
+        process.on('exit', cleanup);
+        //catches ctrl+c event
+        process.on('SIGINT', cleanup);
+        // catches "kill pid" (for example: nodemon restart)
+        process.on('SIGUSR1', cleanup);
+        process.on('SIGUSR2', cleanup);
+        //catches uncaught exceptions
+        process.on('uncaughtException', cleanup);
+
+
+        let compileResult;
+        try {
+            compileResult = await compile(config);
+        } catch (compileError) {
+            console.error(compileError); // TODO compile error shown by compile itself ?
             process.exit(1);
         }
 
-        const MythX = require('mythxjs');
-        const client = new MythX.Client(mythx_credentials.ethAddress, mythx_credentials.password, 'rocketh');
+        const { contractInfos } = compileResult;
+        const { chainId, url, accounts, stop, exposedMnemonic } = await runNode(config);
 
-        runVerify();
+        session.chainId = chainId;
+        session.url = url;
+        session.accounts = accounts;
 
-        async function runVerify() {
-            let tokens;
+        _stopNode = stop;
+        const result = attach(config, { chainId, url, accounts }, contractInfos);
+
+        let newDeployments = {};
+        if (willRunStages) {
+            
             try {
-                tokens = await client.login();
-            } catch (e) {
-                console.log('error logging in ', e);
+                // console.log('running stages...');
+                newDeployments = await runStages(config, contractInfos, result.deployments);
+            } catch (stageError) {
+                console.error(stageError);
                 process.exit(1);
             }
-            // console.log({commandOptions});
-            if (commandOptions.u) {
-                await checkUUID(commandOptions.u);
-            } else {
-                if (execution && execution.length > 0) {
-                    if (execution.length > 1) {
-                        console.log("only one contract at a time");
-                        process.exit(1);
-                    } else {
-                        verify(execution[0]); // TODO use option for main
+        }
+
+        if (config.exportContracts) {
+            const savedDeploymentPath = path.join(config.rootPath || './', config.deploymentsPath || 'deployments');
+            const chainFolders = [];
+            try {
+                fs.readdirSync(savedDeploymentPath).forEach((name) => {
+                    const fPath = path.resolve(savedDeploymentPath, name);
+                    const stats = fs.statSync(fPath);
+                    if (name != chainId && stats.isDirectory()) {
+                        chainFolders.push({ path: fPath, chainId: name });
                     }
+                });
+            } catch (e) {
+                // console.error(e);
+            }
+            const chainDeployments = {};
+            for (let folder of chainFolders) {
+                chainDeployments[folder.chainId] = extractDeployments(folder.path);
+            }
+            chainDeployments[chainId] = newDeployments;
+
+            const content = JSON.stringify(chainDeployments, null, '  ');
+            fs.writeFileSync(config.exportContracts, content);
+            console.log('contracts info saved at ' + config.exportContracts);
+        }
+
+       
+        let exitCode = 0;
+        if (command) {
+            const childProcess = spawn(
+                command,
+                args,
+                {
+                    stdio: [process.stdin, process.stdout, process.stderr],
+                    env: Object.assign(Object.assign({}, process.env), {
+                        _ROCKETH_NODE_URL: url,
+                        _ROCKETH_CHAIN_ID: chainId,
+                        _ROCKETH_ACCOUNTS: accounts.join(','), // TODO get rif of accounts
+                        _ROCKETH_MNEMONIC: exposedMnemonic ? exposedMnemonic.split(' ').join(',') : undefined,
+                        _ROCKETH_DEPLOYMENTS: result.deploymentsPath,
+                        _ROCKETH_ARGS: argv.join(','),
+                    })
+                }
+            );
+            try {
+                exitCode = await onExit(childProcess);
+            } catch (e) {
+                if (e.code) {
+                    exitCode = e.code;
                 } else {
-                    console.log("need to specify contract name");
-                    process.exit(1);
+                    console.error('ERROR onExit', e);
                 }
             }
+        }
 
-            async function checkUUID(uuid) {
-                console.log('uuid : ' + uuid);
+        if (config.keepRunning) {
+            console.log('node running at ' + url);
+        } else {
+            cleanup(exitCode);
+        }
+    }
+    if(execution && execution.length > 0) {
+        execute(execution[0], ...execution.slice(1));
+    } else {
+        execute();
+    }
+    
+}
 
-                let status;
-                while (status !== 'Finished' && status !== 'Error') {
-                    let statusResponse;
-                    try {
-                        statusResponse = await client.getAnalysisStatus(uuid);
-                    } catch (e) {
-                        console.error(e);
-                        await client.login();
-                    }
-                    if (statusResponse) {
-                        if (status !== statusResponse.status) {
-                            status = statusResponse.status;
-                            console.log(status);
-                        }
-                    }
-                    if (status !== 'Finished' && status !== 'Error') {
-                        await pause(60);
-                        //TODO
-                        // try{
-                        //     await client.refreshToken();    
-                        // } catch(e) {
-                        //     console.error(e);
-                        // }
+function verify(contractNameOrUUID, willCheckUUID) {
+    let mythx_credentials;
+    try {
+        mythx_credentials = JSON.parse(fs.readFileSync('./.mythx_credentials').toString());
+    } catch (e) { console.error(e) }
 
-                    } else {
+    if (!mythx_credentials) {
+        console.log(".mythx_credentials not found");
+        process.exit(1);
+    }
+
+    const MythX = require('mythxjs');
+    const client = new MythX.Client(mythx_credentials.ethAddress, mythx_credentials.password, 'rocketh');
+
+    runVerify();
+
+    async function runVerify() {
+        let tokens;
+        try {
+            tokens = await client.login();
+        } catch (e) {
+            console.log('error logging in ', e);
+            process.exit(1);
+        }
+        if (willCheckUUID) {
+            await checkUUID(contractNameOrUUID);
+        } else {
+            if (contractNameOrUUID) {
+                verify(contractNameOrUUID); // TODO use option for main
+            } else {
+                console.log("need to specify contract name");
+                process.exit(1);
+            }
+        }
+
+        async function checkUUID(uuid) {
+            console.log('uuid : ' + uuid);
+
+            let status;
+            while (status !== 'Finished' && status !== 'Error') {
+                let statusResponse;
+                try {
+                    statusResponse = await client.getAnalysisStatus(uuid);
+                } catch (e) {
+                    console.error(e);
+                    await client.login();
+                }
+                if (statusResponse) {
+                    if (status !== statusResponse.status) {
+                        status = statusResponse.status;
                         console.log(status);
                     }
                 }
-                console.log('fetching issues...');
-                const issues = await client.getDetectedIssues(uuid);
-                console.log('issues', JSON.stringify(issues, null, '  '));
+                if (status !== 'Finished' && status !== 'Error') {
+                    await pause(60);
+                    //TODO
+                    // try{
+                    //     await client.refreshToken();    
+                    // } catch(e) {
+                    //     console.error(e);
+                    // }
+
+                } else {
+                    console.log(status);
+                }
             }
+            console.log('fetching issues...');
+            const issues = await client.getDetectedIssues(uuid);
+            console.log('issues', JSON.stringify(issues, null, '  '));
+        }
 
 
-            async function verify(contractName, pathToMain) {
-                const { contractInfos, solcConfig, solcVersion, contractSrcPaths } = await compile(config);
-                const sourceList = Object.keys(solcConfig.sources);
-                const sources = {};
-                for (let i = 0; i < sourceList.length; i++) {
-                    const source = solcConfig.sources[sourceList[i]].content;
-                    sources[sourceList[i]] = {
-                        source
-                    };
-                }
-                // const contractNames = Object.keys(contractInfos);
-                // for(let i = 0; i < contractNames.length; i++) {
-                //     const contractName = contractNames[i];
-                const contractInfo = contractInfos[contractName];
-                if (!contractInfo) {
-                    console.log('no contract with name : ' + contractName);
-                    process.exit(1);
-                }
-                if (!contractInfo.evm || !contractInfo.evm.bytecode || !contractInfo.evm.bytecode.object || contractInfo.evm.bytecode.object == "") {
-                    // continue;
-                    console.log('no evm code for ' + contractName);
-                    process.exit(1);
-                }
-                console.log('verifying ' + contractName + ' ...');
-                const data = {
-                    toolName: 'rocketh',
-                    mainSource: pathToMain || (contractSrcPaths[0] + '/' + contractName + '.sol'),
-                    contractName,
-                    abi: contractInfo.abi,
-                    bytecode: '0x' + contractInfo.evm.bytecode.object,
-                    deployedBytecode: '0x' + contractInfo.evm.deployedBytecode.object,
-                    sourceMap: contractInfo.evm.bytecode.sourceMap,
-                    deployedSourceMap: contractInfo.evm.deployedBytecode.sourceMap,
-                    sourceList,
-                    sources,
-                    analysisMode: 'full',
-                    // solcVersion, // TODO use package present
+        async function verify(contractName, pathToMain) {
+            const { contractInfos, solcConfig, solcVersion, contractSrcPaths } = await compile(config);
+            const sourceList = Object.keys(solcConfig.sources);
+            const sources = {};
+            for (let i = 0; i < sourceList.length; i++) {
+                const source = solcConfig.sources[sourceList[i]].content;
+                sources[sourceList[i]] = {
+                    source
                 };
-
-                console.log({ solcVersion });
-                // console.log(JSON.stringify(data,null,'  '));
-                // console.log(JSON.stringify(data.sources,null,'  '));
-                // process.exit(0);
-
-                try {
-                    const response = await client.analyze(data);
-                    const uuid = response.uuid;
-                    await checkUUID(uuid)
-                } catch (e) {
-                    console.log('err', e)
-                }
-                // }
             }
+            // const contractNames = Object.keys(contractInfos);
+            // for(let i = 0; i < contractNames.length; i++) {
+            //     const contractName = contractNames[i];
+            const contractInfo = contractInfos[contractName];
+            if (!contractInfo) {
+                console.log('no contract with name : ' + contractName);
+                process.exit(1);
+            }
+            if (!contractInfo.evm || !contractInfo.evm.bytecode || !contractInfo.evm.bytecode.object || contractInfo.evm.bytecode.object == "") {
+                // continue;
+                console.log('no evm code for ' + contractName);
+                process.exit(1);
+            }
+            console.log('verifying ' + contractName + ' ...');
+            const data = {
+                toolName: 'rocketh',
+                mainSource: pathToMain || (contractSrcPaths[0] + '/' + contractName + '.sol'),
+                contractName,
+                abi: contractInfo.abi,
+                bytecode: '0x' + contractInfo.evm.bytecode.object,
+                deployedBytecode: '0x' + contractInfo.evm.deployedBytecode.object,
+                sourceMap: contractInfo.evm.bytecode.sourceMap,
+                deployedSourceMap: contractInfo.evm.deployedBytecode.sourceMap,
+                sourceList,
+                sources,
+                analysisMode: 'full',
+                // solcVersion, // TODO use package present
+            };
+
+            console.log({ solcVersion });
+            // console.log(JSON.stringify(data,null,'  '));
+            // console.log(JSON.stringify(data.sources,null,'  '));
+            // process.exit(0);
+
+            try {
+                const response = await client.analyze(data);
+                const uuid = response.uuid;
+                await checkUUID(uuid)
+            } catch (e) {
+                console.log('err', e)
+            }
+            // }
         }
     }
-} else {
-    const session = global._rocketh_session;
-    attach(config, { chainId: session.chainId, url: session.url, accounts: session.accounts });
 }
+
+const program = require('commander');
+const pkg = require('./package.json')
+program.version(pkg.version);
+let argv;
+if (process.env._ROCKETH_ARGS && process.env._ROCKETH_ARGS != "") {
+    argv = process.env._ROCKETH_ARGS.split(',');
+} else {
+    argv = process.argv;
+}
+
+program.option("-v, --verbose", 'more verbose output');
+
+program.command('launch [cmd]')
+.description('launch a node and execute cmd')
+.option('-n, --node <node>', 'specify a node type (geth|ganache) or a url')
+.option('-q, --export-contracts <path>', 'export contractsInfo in <path>')
+.option('-k, --keep-running', 'do not stop the node once stages executed (not for url)')
+.option('-b, --block-time <blockTime>', 'specify a block time at which the node launched (not for url) will be mining')
+.action(setupAnd(function(cmd, cmdObj){
+    // if(!cmdObj) {
+    //     console.error('launch cmd argument missing ')
+    //     process.exit(1);
+    // }
+
+    if(cmdObj.keepRunning) {
+        config.keepRunning = true;
+    }
+    
+    if (['geth', 'ganache'].indexOf(cmdObj.node) != -1) {
+        config.node = cmdObj.node;
+        if(cmdObj.blockTime) {
+            config.blockTime = parseInt(cmdObj.blockTime);
+        }
+    } else {
+        config.url = cmdObj.node;
+        config.keepRunning = false;
+    }
+
+    if(cmdObj.exportContracts) {
+        config.exportContracts = cmdObj.exportContracts;
+    }
+    
+    executeOrAttach(cmd ? cmd.split(' ') : undefined, true); // TODO split even with more spaces
+}));
+
+program.command('attach <url> [cmd]')
+.description('attach to a url and execute cmd')
+.option('-q, --export-contracts <path>', 'export contractsInfo in <path>')
+.action(setupAnd(function(url, cmd, cmdObj){
+    config.url = url;
+    if(cmdObj.exportContracts) {
+        config.exportContracts = cmdObj.exportContracts;
+    }
+    executeOrAttach(cmd ? cmd.split(' ') : undefined, false); // TODO split even with more spaces
+}));
+
+program.command('verify <contractName>')
+.action(setupAnd(function(contractName, cmdObj){
+    verify(contractName, false);
+}));
+
+program.command('verifyStatus <uuid>')
+.action(setupAnd(function(uuid, cmdObj){
+    verify(uuid, true);
+}));
+
+program.on('command:*', function () {
+    console.error('Invalid command: %s\nSee --help for a list of available commands.', program.args.join(' '));
+    process.exit(1);
+});
+
+
+program.parse(argv);
 
 module.exports = rocketh;

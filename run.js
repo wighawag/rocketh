@@ -569,7 +569,7 @@ async function runStages(config, contractInfos, deployments) {
         try {
             await stageFunc.apply(null, argsForStages);
         } catch (e) {
-            console.error('ERROR processing ' + migrationFilePath, e);
+            throw 'ERROR processing ' + migrationFilePath + ':\n' + (e.stack || e);            
         }
     }
     // log.green('###################################################################################################################');
@@ -728,8 +728,8 @@ function attach(config, { url, chainId, accounts }, contractInfos, deployments) 
         if (isDeploymentChainId) {
             deploymentsPath = path.join(config.rootPath || './', config.deploymentsPath || 'deployments');
         } else {
-            if (typeof config.keepRunning == 'string') {
-                deploymentsPath = config.keepRunning;
+            if (config.deploymentsPath) {
+                deploymentsPath = config.deploymentsPath;
                 deploymentsSubPath = '';
             } else {
                 const tmpobj = tmp.dirSync({ keep: true });
