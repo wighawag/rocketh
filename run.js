@@ -489,42 +489,46 @@ async function runStages(config, contractInfos, deployments) {
 
     const stagesPath = path.join(config.rootPath || './', config.stagesPath || 'stages');
     // log.green('######################################### STAGES ##############################################################');
-    let fileNames;
+    
+    let filesStats;
     try {
-        fileNames = fs.readdirSync(stagesPath);
+        filesStats = traverse(stagesPath);
     } catch (e) {
         log.green('no stages folder at ./' + stagesPath);
         return session.deployments;
     }
 
-    let stages;
+    let stagesFilter;
     if (config.stages) {
-        stages = chainConfig(config, config.stages, _chainId);
-        if(stages === 'all') {
-            stages = undefined;
+        stagesFilter = chainConfig(config, config.stages, _chainId);
+        if(stagesFilter === 'all') {
+            stagesFilter = undefined;
         }
     }
-    fileNames = fileNames.filter((fileName) => {
+    filesStats = filesStats.filter((fileStat) => {
+        const filepath =  fileStat.relativePath.replace(/\\/g, '/');
         let matches = true;
-        if(stages) {
-            if(stages.matchRule === 'startsWith') {
+        if(stagesFilter) {
+            if(stagesFilter.matchRule === 'startsWith') {
                 matches = false;
-                for (let elem of stages.list) {
-                    if(fileName.startsWith(elem)){
+                for (let elem of stagesFilter.list) {
+                    if(filepath.startsWith(elem)){
+                        
                         matches = true;
                         break;
                     }
                 }
             } // TODO more rules
         }
-        return matches && (!fs.statSync(path.resolve(stagesPath, fileName)).isDirectory());
+        return matches && !fileStat.directory;
     });
+    let fileNames = filesStats.map(a => a.relativePath);
     fileNames = fileNames.sort((a, b) => {
         if (a < b) { return -1; }
         if (a > b) { return 1; }
         return 0;
     });
-
+    
     session.currentDeployments = {};
 
     let argsForStages = [{

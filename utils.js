@@ -89,14 +89,14 @@ function fetchChainIdViaWeb3Provider(provider) { // TODO remove
     });
 }
 
-const traverse = function(dir, result = []) {
+const traverse = function(dir, result = [], topDir) {
     fs.readdirSync(dir).forEach((name) => {
         const fPath = path.resolve(dir, name);
         const stats = fs.statSync(fPath);
-        const fileStats = { name, path: fPath, mtimeMs: stats.mtimeMs };
-        if (stats.isDirectory()) {
+        const fileStats = { name, path: fPath, relativePath: path.relative(topDir || dir, fPath), mtimeMs: stats.mtimeMs, directory: stats.isDirectory() };
+        if (fileStats.directory) {
             result.push(fileStats);
-            return traverse(fPath, result)
+            return traverse(fPath, result, topDir || dir)
         }
         result.push(fileStats);
     });
