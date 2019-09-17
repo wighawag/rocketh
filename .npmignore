@@ -7,3 +7,5 @@ logo.png
 logo.svg
 .mythx_credentials
 .mnemonic
+ _config.yml
+ CNAME

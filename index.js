@@ -361,13 +361,18 @@ program.command('launch [cmd]')
         config.keepRunning = true;
     }
     
-    if (['geth', 'ganache'].indexOf(cmdObj.node) != -1) {
-        config.node = cmdObj.node;
-        if(cmdObj.blockTime) {
-            config.blockTime = parseInt(cmdObj.blockTime);
+    if(typeof cmdObj.node != 'undefined') {
+        if (['geth', 'ganache'].indexOf(cmdObj.node) != -1) {
+            config.node = cmdObj.node;
+            if(cmdObj.blockTime) {
+                config.blockTime = parseInt(cmdObj.blockTime);
+            }
+        } else {
+            config.url = cmdObj.node;
         }
-    } else {
-        config.url = cmdObj.node;
+    }
+    
+    if(config.url) {
         config.keepRunning = false;
     }
 
