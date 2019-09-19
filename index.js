@@ -63,6 +63,7 @@ function setupAnd(func) {
         if (require.main === module) {
             func(...args);
         } else {
+            log.log('attaching ...')
             const session = global._rocketh_session;
             attach(config, { chainId: session.chainId, url: session.url, accounts: session.accounts });
         }

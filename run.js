@@ -732,11 +732,13 @@ function attach(config, { url, chainId, accounts }, contractInfos, deployments) 
             deploymentsPath = path.join(config.rootPath || './', config.deploymentsPath || 'deployments');
             
         }
-    }
-    writeDeploymentsPath = deploymentsPath;
-    if (!isDeploymentChainId) {
-        const tmpobj = tmp.dirSync({ keep: true });
-        writeDeploymentsPath = tmpobj.name;
+        writeDeploymentsPath = deploymentsPath;
+        if (!isDeploymentChainId) {
+            const tmpobj = tmp.dirSync({ keep: true });
+            writeDeploymentsPath = tmpobj.name;
+        }
+    } else {
+        writeDeploymentsPath = deploymentsPath;    
     }
     log.log('using deployments at ' + deploymentsPath, deploymentsSubPath, 'writing at ' + writeDeploymentsPath);
     
@@ -829,6 +831,20 @@ function attach(config, { url, chainId, accounts }, contractInfos, deployments) 
     if (!session.deployments) {
         log.log('extracting deployments for chainId', _chainId);
         session.deployments = extractDeployments(path.join(deploymentsPath, deploymentsSubPath));
+    }
+
+    if(writeDeploymentsPath != deploymentsPath) {
+        let deploymentsFolderCreated = false;
+        for (let name of Object.keys(session.deployments)) {
+            if (!deploymentsFolderCreated) {
+                try { fs.mkdirSync(writeDeploymentsPath); } catch (e) { }
+                try { fs.mkdirSync(path.join(writeDeploymentsPath, deploymentsSubPath)); } catch (e) { }
+                deploymentsFolderCreated = true;
+            }
+            const content = JSON.stringify(session.deployments[name], null, '  ');
+            const filepath = path.join(writeDeploymentsPath, deploymentsSubPath, name + '.json');
+            fs.writeFileSync(filepath, content);
+        }
     }
 
     let provider;
