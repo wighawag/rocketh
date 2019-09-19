@@ -46,7 +46,8 @@ const unRegisterDeployment = (name) => {
 }
 
 const registerDeployment = (name, deploymentInfo, force) => {
-    if (!force && session.currentDeployments[name]) {
+    const conflict = !force && session.currentDeployments[name] && !(deploymentInfo.transactionHash == session.currentDeployments[name].transactionHash);
+    if (conflict) {
         console.error(colors.red('deployment with same name (' + name + ') exists'));
     } else {
         const errors = [];
