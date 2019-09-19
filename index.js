@@ -192,7 +192,7 @@ function executeOrAttach(execution, willRunStages) {
         }
 
         if (config.keepRunning) {
-            console.log('node running at ' + url);
+            console.log('node running at ' + url + ' (chainId: ' + chainId + ' )');
         } else {
             cleanup(exitCode);
         }

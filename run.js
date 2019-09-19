@@ -29,7 +29,7 @@ const session = global._rocketh_session;
 
 const cleanDeployments = () => {
     try {
-        rimraf.sync(path.join(deploymentsPath, deploymentsSubPath));
+        rimraf.sync(path.join(writeDeploymentsPath, deploymentsSubPath));
     } catch (e) {
 
     }
@@ -69,12 +69,12 @@ const registerDeployment = (name, deploymentInfo) => {
 
             if (!disableDeploymentSave) {
                 if (!deploymentsFolderCreated) {
-                    try { fs.mkdirSync(deploymentsPath); } catch (e) { }
-                    try { fs.mkdirSync(path.join(deploymentsPath, deploymentsSubPath)); } catch (e) { }
+                    try { fs.mkdirSync(writeDeploymentsPath); } catch (e) { }
+                    try { fs.mkdirSync(path.join(writeDeploymentsPath, deploymentsSubPath)); } catch (e) { }
                     deploymentsFolderCreated = true;
                 }
                 const content = JSON.stringify(deploymentInfoToSave, null, '  ');
-                const filepath = path.join(deploymentsPath, deploymentsSubPath, name + '.json');
+                const filepath = path.join(writeDeploymentsPath, deploymentsSubPath, name + '.json');
                 fs.writeFileSync(filepath, content);
 
                 if (initialRun) {
@@ -593,6 +593,7 @@ const rocketh = {
 }
 
 let deploymentsPath;
+let writeDeploymentsPath;
 let deploymentsSubPath;
 
 
@@ -720,26 +721,25 @@ function attach(config, { url, chainId, accounts }, contractInfos, deployments) 
     }
     deploymentsPath = (process.env._ROCKETH_DEPLOYMENTS && process.env._ROCKETH_DEPLOYMENTS) != "" ? process.env._ROCKETH_DEPLOYMENTS : undefined;
     deploymentsSubPath = _chainId;
-
     const isDeploymentChainId = config.deploymentChainIds.indexOf('' + _chainId) != -1;
 
     _savedConfig = config;
     if (!deploymentsPath) {
-        if (isDeploymentChainId) {
-            deploymentsPath = path.join(config.rootPath || './', config.deploymentsPath || 'deployments');
+        if (config.deploymentsPath) {
+            deploymentsPath = config.deploymentsPath;
+            deploymentsSubPath = '';
         } else {
-            if (config.deploymentsPath) {
-                deploymentsPath = config.deploymentsPath;
-                deploymentsSubPath = '';
-            } else {
-                const tmpobj = tmp.dirSync({ keep: true });
-                deploymentsPath = tmpobj.name;
-            }
+            deploymentsPath = path.join(config.rootPath || './', config.deploymentsPath || 'deployments');
+            
         }
     }
-    log.log('using deployments at ' + deploymentsPath, deploymentsSubPath);
-
-
+    writeDeploymentsPath = deploymentsPath;
+    if (!isDeploymentChainId) {
+        const tmpobj = tmp.dirSync({ keep: true });
+        writeDeploymentsPath = tmpobj.name;
+    }
+    log.log('using deployments at ' + deploymentsPath, deploymentsSubPath, 'writing at ' + writeDeploymentsPath);
+    
     const namedAccounts = {}
     // TODO transform into checksum  address
     if (config.namedAccounts) {
@@ -854,7 +854,7 @@ function attach(config, { url, chainId, accounts }, contractInfos, deployments) 
         rocketh,
         contractInfos: _contractInfos,
         deployments: session.deployments,
-        deploymentsPath
+        deploymentsPath: writeDeploymentsPath,
     };
 
     return attached;
