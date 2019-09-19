@@ -96,11 +96,24 @@ function fetchAccounts(url) {
     return provider.send('eth_accounts',[]);
 }
 
+function parseChainId(chainId) {
+    if (typeof chainId === 'string') {
+        if(chainId.startsWith('0x') || chainId.startsWith('0X')) {
+            return '' + parseInt(chainId.substr(2),16);
+        } else {
+            return chainId;
+        }
+    } else if(typeof chainId === 'number') {
+        return '' + chainId;
+    }
+    return null;
+}
+
 function fetchChainId(url, use_net_version) {
     const method = use_net_version ? 'net_version' : 'eth_chainId';
     const provider = new ethers.providers.JsonRpcProvider(url);
     return provider.send(method,[]).then((chainId) => {
-        return chainId;
+        return parseChainId(chainId);
     });
 }
 
@@ -111,7 +124,12 @@ function fetchChainIdViaWeb3Provider(provider, use_net_version) { // TODO remove
             if (error) {
                 reject(error);
             } else {
-                resolve(json.result);
+                const result = parseChainId(json.result);
+                if(result) {
+                    resolve(result);
+                } else {
+                    reject({message: 'could not decode chainId'});
+                }
             }
         })
     });

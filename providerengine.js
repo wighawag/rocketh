@@ -36,7 +36,6 @@ ProviderEngine.prototype.sendPayload = async function(payload, callback) {
                 // console.log('calling ', payload.method, payload.params);
                 self.fallbackProvider.send(payload.method, payload.params)
                 .then((result) => {
-                    // console.log('result ', result);
                     callback(null, {id: payload.id, result: result, jsonrpc: payload.jsonrpc});
                 })
                 .catch((err) => {
@@ -44,9 +43,11 @@ ProviderEngine.prototype.sendPayload = async function(payload, callback) {
                     if(err.responseText) {
                         try {
                             actualError = JSON.parse(err.responseText);
-                            if(actualError.error) {
-                                actualError = actualError.error;
-                            }
+                            // if(actualError.error) {
+                            //     console.log('error ', (typeof actualError.error), actualError.error);
+                            //     // actualError = { data : actualError.error }; // wrap in data for web3.js error handling
+                            //     actualError = actualError.error;
+                            // }
                         } catch(e) {
                             actualError = err;
                         }
@@ -54,7 +55,7 @@ ProviderEngine.prototype.sendPayload = async function(payload, callback) {
                     callback(actualError);
                 });
             } else {
-                end(new Error('Request for method "' + payload.method + '" not handled by any subprovider. Please check your subprovider configuration to ensure this method is handled.'))
+                callback(new Error('Request for method "' + payload.method + '" not handled by any subprovider. Please check your subprovider configuration to ensure this method is handled.'))
             }
         } else {
             try {
@@ -98,7 +99,7 @@ ProviderEngine.prototype.sendPayload = async function(payload, callback) {
         if (error != null) {
             resultObj.error = {
                 message: error.stack || error.message || error,
-                code: -32000 // TODO different code
+                code: error.code || -32000 // TODO different code
             }
             // console.log('error', error, resultObj, payload);
             // respond with both error formats

@@ -1,6 +1,9 @@
 const ethers = require('ethers');
 const BN = require('bn.js');
 const Bitski = require("bitski-node");
+const {
+    log
+} = require('./utils');
 
 const BitskiSubProvider = function(clientID, credentialID, secret, accounts, chainId) {
     let network = 'mainnet';
@@ -144,12 +147,14 @@ BitskiSubProvider.prototype.signTransaction = function(from, rawTx) {
 BitskiSubProvider.prototype.sendTransaction = function(tx) {
     self = this;
     return new Promise((resolve, reject) => {
+        // log.log('sending transaction...')
         self.bitskiProvider.send({
             id: ++self.lastId,
             method: 'eth_sendTransaction',
             params: [tx],
             jsonrpc: '2.0',
         }, function(error, json) {
+            // log.log('reply ', error, json);
             if(error) {
                 reject(error);
             } else {

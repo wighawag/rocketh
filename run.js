@@ -655,6 +655,8 @@ function getAccountsFromConfig(config, chainId, forceAccounts) {
     if (_accountsUsed) {
         return _accountsUsed;
     }
+    
+    // log.log('getting account for chainId ' + chainId);
 
     let mnemonic;
     let accounts;
@@ -672,15 +674,18 @@ function getAccountsFromConfig(config, chainId, forceAccounts) {
 
     forceAccounts = forceAccounts || (process.env._ROCKETH_MNEMONIC && process.env._ROCKETH_MNEMONIC != "");
     if (type == 'node') {
+        log.log('using node\'s accounts');
         if (!forceAccounts) {
             return {};
         }
     } else if (type == 'mnemonic') {
-        numWallets = accountsConfig.num;
+        log.log('using mnemonic');
+        numWallets = accountsConfig.num || 10;
         try {
             mnemonic = fs.readFileSync('./.mnemonic').toString();
         } catch (e) { }
     } else if (type == 'privateKeys') {
+        log.log('using privateKeys');
         privateKeys = JSON.parse(fs.readFileSync('./.priv').toString());
         accounts = [];
         for (let i = 0; i < privateKeys.length; i++) {
@@ -688,6 +693,7 @@ function getAccountsFromConfig(config, chainId, forceAccounts) {
             accounts.push(wallet.address);
         }
     } else if (type == 'bitski') {
+        log.log('using bitski');
         try {
             const bitskiConfig = JSON.parse(fs.readFileSync('./.bitski').toString());
             accounts = bitskiConfig.accounts;
