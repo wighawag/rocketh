@@ -3,6 +3,12 @@ const fs = require('fs');
 const colors = require('colors/safe');
 const ethers = require('ethers');
 
+function pause(s) {
+    return new Promise((resolve, reject) => {
+        setTimeout(resolve, s*1000);
+    });
+}
+
 function requireLocal(moduleName) {
     // TODO if all else fails. rocketh could provide a default
     let currentFolder = path.resolve('./')
@@ -61,6 +67,30 @@ function fetchTransaction(url, hash) {
     return provider.send('eth_getTransactionByHash',[hash]);
 }
 
+function fetchTransactionViaWeb3Provider(provider, hash) { // TODO remove
+    return new Promise((resolve, reject) => {
+        provider.send({id:1, method: 'eth_getTransactionByHash', params:[hash], jsonrpc: '2.0'}, (error, json) => {
+            if (error) {
+                reject(error);
+            } else {
+                resolve(json.result);
+            }
+        })
+    });
+}
+
+function fetchReceiptViaWeb3Provider(provider, hash) { // TODO remove
+    return new Promise((resolve, reject) => {
+        provider.send({id:1, method: 'eth_getTransactionReceipt', params:[hash], jsonrpc: '2.0'}, (error, json) => {
+            if (error) {
+                reject(error);
+            } else {
+                resolve(json.result);
+            }
+        })
+    });
+}
+
 function fetchAccounts(url) {
     const provider = new ethers.providers.JsonRpcProvider(url);
     return provider.send('eth_accounts',[]);
@@ -116,7 +146,10 @@ module.exports = {
     fetchChainId,
     fetchChainIdViaWeb3Provider,
     fetchTransaction,
+    fetchTransactionViaWeb3Provider,
+    fetchReceiptViaWeb3Provider,
     getAccountsFromMnemonic,
+    pause,
     log : {
         setSlient: (s) => silent = s,
         log : (...args) => log(...args),

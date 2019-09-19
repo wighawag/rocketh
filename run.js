@@ -17,9 +17,10 @@ const {
     log,
     traverse,
     fetchChainId,
-    fetchTransaction,
+    fetchReceiptViaWeb3Provider,
     fetchAccounts,
     fetchChainIdViaWeb3Provider,
+    pause,
 } = require('./utils');
 
 if (!global._rocketh_session) {
@@ -35,8 +36,17 @@ const cleanDeployments = () => {
     }
 }
 
-const registerDeployment = (name, deploymentInfo) => {
-    if (session.currentDeployments[name]) {
+const unRegisterDeployment = (name) => {
+    const filepath = path.join(writeDeploymentsPath, deploymentsSubPath, name + '.json');
+    try {
+        fs.unlinkSync(filepath);
+    } catch(e) {
+        console.error('could not delete ' + filepath);
+    }
+}
+
+const registerDeployment = (name, deploymentInfo, force) => {
+    if (!force && session.currentDeployments[name]) {
         console.error(colors.red('deployment with same name (' + name + ') exists'));
     } else {
         const errors = [];
@@ -46,9 +56,9 @@ const registerDeployment = (name, deploymentInfo) => {
         if (!deploymentInfo.args) {
             errors.push(colors.red('deploymentInfo requires field "args" that was used for deployment'));
         }
-        if (!deploymentInfo.address) {
-            errors.push(colors.red('deploymentInfo requires field "address" of the deployed contract'));
-        }
+        // if (!deploymentInfo.address) {
+        //     errors.push(colors.red('deploymentInfo requires field "address" of the deployed contract'));
+        // }
         if (!deploymentInfo.transactionHash) {
             errors.push(colors.red('deploymentInfo requires field "transactionHash" of the deployed contract'));
         }
@@ -77,10 +87,12 @@ const registerDeployment = (name, deploymentInfo) => {
                 const filepath = path.join(writeDeploymentsPath, deploymentsSubPath, name + '.json');
                 fs.writeFileSync(filepath, content);
 
-                if (initialRun) {
-                    const address = deploymentInfoToSave.address;
-                    console.log('CONTRACT ' + name + ' DEPLOYED AT : ' + address);
-                }
+                // if (initialRun) {
+                //     const address = deploymentInfoToSave.address;
+                //     if(address) {
+                //         console.log('CONTRACT ' + name + ' DEPLOYED AT : ' + address);
+                //     }
+                // }
             }
 
             // if(generateTruffleBuildFiles) {
@@ -501,6 +513,35 @@ let initialRun;
 async function runStages(config, contractInfos, deployments) {
     disableDeploymentSave = !deployments;
 
+    session.currentDeployments = {};
+
+    if(deployments) {
+        for(let contractName of Object.keys(deployments)) {
+            const deployment = deployments[contractName];
+            if(deployment.transactionHash && !deployment.address) {
+                console.log('waiting for transaction ' + deployment.transactionHash + ' to be mined');
+                let contractAddress;
+                while(!contractAddress) {
+                    const receipt = await fetchReceiptViaWeb3Provider(global.ethereum, deployment.transactionHash);
+                    if(typeof receipt.status != 'undefined' && receipt.status == 0) {
+                        console.log('transaction ' + deployment.transactionHash + ' failed.');
+                        unRegisterDeployment(contractName);
+                        break;
+                    } else if(receipt.contractAddress) {
+                        contractAddress = receipt.contractAddress;
+                        break;
+                    }
+                    await pause(2);
+                }
+                if(contractAddress) {
+                    deployment.address = contractAddress;
+                    console.log(' transaction ' + deployment.transactionHash + ' successful');
+                    registerDeployment(contractName, deployment, true);
+                } 
+            }
+        }
+    }
+
     initialRun = typeof deployments != 'undefined';
     session.deployments = deployments || {}; // override 
 
@@ -546,7 +587,6 @@ async function runStages(config, contractInfos, deployments) {
         return 0;
     });
     
-    session.currentDeployments = {};
 
     let argsForStages = [{
         contractInfo: (name) => contractInfos[name],

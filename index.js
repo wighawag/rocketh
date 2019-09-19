@@ -365,9 +365,6 @@ program.command('launch [cmd]')
     if(typeof cmdObj.node != 'undefined') {
         if (['geth', 'ganache'].indexOf(cmdObj.node) != -1) {
             config.node = cmdObj.node;
-            if(cmdObj.blockTime) {
-                config.blockTime = parseInt(cmdObj.blockTime);
-            }
         } else {
             config.url = cmdObj.node;
         }
@@ -375,6 +372,10 @@ program.command('launch [cmd]')
     
     if(config.url) {
         config.keepRunning = false;
+    } else {
+        if(cmdObj.blockTime) {
+            config.blockTime = parseInt(cmdObj.blockTime);
+        }
     }
 
     if(cmdObj.exportContracts) {
