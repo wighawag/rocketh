@@ -133,7 +133,6 @@ BitskiSubProvider.prototype.signTransaction = async function(from, rawTx) {
 }
 
 BitskiSubProvider.prototype.sendTransaction = async function(tx) {
-    console.log(JSON.stringify(tx, null, '  '));
     return this.bitskiProvider.send('eth_sendTransaction', tx);
 }
 
