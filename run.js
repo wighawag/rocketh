@@ -657,7 +657,9 @@ async function runStages(config, contractInfos, deployments) {
 
     for (const fileName of fileNames) {
         const migrationFilePath = path.resolve(".") + '/' + stagesPath + '/' + fileName;
-        log.log('running ' + migrationFilePath);
+        if (initialRun) {
+            log.log('running ' + migrationFilePath);
+        }
         const stageFunc = require(migrationFilePath);
         let skip = false;
         if (stageFunc.skip) {
@@ -674,7 +676,9 @@ async function runStages(config, contractInfos, deployments) {
                 throw 'ERROR processing ' + migrationFilePath + ':\n' + (e.stack || e);            
             }
         } else {
-            log.log('skipping ' + migrationFilePath);
+            if (initialRun) {
+                log.log('skipping ' + migrationFilePath);
+            }
         }
     }
     // log.green('###################################################################################################################');
