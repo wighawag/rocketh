@@ -256,11 +256,14 @@ async function runNode(config) {
                 _chainId = await fetchChainIdViaWeb3Provider(provider, config.useNetVersionAsChainId);
                 success = true;
             } catch (e) {
-                if(e.message && e.message.indexOf('eth_chainId not supported') != -1) {
+                const errorMessage = e.message || e.error ? e.error.message : undefined;
+                if(errorMessage && errorMessage.indexOf('eth_chainId not supported') != -1) {
                     if(!config.useNetVersionAsChainId) {
                         console.log('eth_chainId not supported, falling back to net_version...');
                         config.useNetVersionAsChainId = true;
                     }
+                } else {
+                    // log.error(e);
                 }
             }
         } // TODO timeout

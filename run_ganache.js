@@ -20,6 +20,7 @@ async function runGanache(port, wsPort, ganacheOptions) {
     }
 
     const server = ganache.server(ganacheOptions);
+    // log.log('execute server on port ' + port);
     await executeServer(server, port);
 }
 
