@@ -333,7 +333,7 @@ function compileWithSolc(solc, contractSrcPaths, resolve, reject, config) {
                     "*": [
                         'abi',
                         // 'devdoc',
-                        // 'userdoc',
+                        'userdoc',
                         'metadata',
                         // 'evm.assembly',
                         // 'evm.legacyAssembly',
