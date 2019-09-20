@@ -329,8 +329,8 @@ function compileWithSolc(solc, contractSrcPaths, resolve, reject, config) {
                 runs: 200,
             },
             outputSelection: {
-                "*": {
-                    "*": [
+                '*': {
+                    '*': [
                         'abi',
                         // 'devdoc',
                         'userdoc',
