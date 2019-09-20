@@ -5,11 +5,11 @@ const {
     log
 } = require('./utils');
 
-const BitskiSubProvider = function(clientID, credentialID, secret, accounts, chainId) {
+const BitskiSubProvider = function(clientID, credentialID, secret, accounts, chainId, config) {
     let network = 'mainnet';
-    if(chainId == 4) {
+    if(chainId === '4') {
         network = 'rinkeby';
-    } else if (chainId == 42) {
+    } else if (chainId === '42') {
         network = 'kovan';
     } // else if (chainId == 3) {
     //     network = 'ropsten';
@@ -22,11 +22,13 @@ const BitskiSubProvider = function(clientID, credentialID, secret, accounts, cha
           secret,
         },
         network,
+        debug: config.debug,
+        disableBlockTracking: true,
     };
       
     // Pass options with the provider
     this.bitskiProvider = Bitski.getProvider(clientID, options);
-    this.bitskiProvider._blockTracker.stop();
+    // this.bitskiProvider._blockTracker.stop();
     this.accounts = accounts;
 }
 
@@ -126,42 +128,13 @@ BitskiSubProvider.prototype.handleRequest = async function(payload, next, end) {
     }
 }
 
-BitskiSubProvider.prototype.signTransaction = function(from, rawTx) {
-    self = this;
-    return new Promise((resolve, reject) => {
-        self.bitskiProvider.send({
-            id: ++self.lastId,
-            method: 'eth_signTransaction',
-            params: [rawTx],
-            jsonrpc: '2.0',
-        }, function(error, json) {
-            if(error) {
-                reject(error);
-            } else {
-                resolve(json.result);
-            }
-        })
-    })
+BitskiSubProvider.prototype.signTransaction = async function(from, rawTx) {
+    return this.bitskiProvider.send('eth_signTransaction', rawTx);
 }
 
-BitskiSubProvider.prototype.sendTransaction = function(tx) {
-    self = this;
-    return new Promise((resolve, reject) => {
-        // log.log('sending transaction...')
-        self.bitskiProvider.send({
-            id: ++self.lastId,
-            method: 'eth_sendTransaction',
-            params: [tx],
-            jsonrpc: '2.0',
-        }, function(error, json) {
-            // log.log('reply ', error, json);
-            if(error) {
-                reject(error);
-            } else {
-                resolve(json.result);
-            }
-        })
-    })
+BitskiSubProvider.prototype.sendTransaction = async function(tx) {
+    console.log(JSON.stringify(tx, null, '  '));
+    return this.bitskiProvider.send('eth_sendTransaction', tx);
 }
 
 BitskiSubProvider.prototype.signMessage = function(from, message) {

@@ -748,6 +748,7 @@ function getWeb3Provider(config, url, chainId, forceAccounts) {
                 bitskiConfig.credentials.secret,
                 bitskiConfig.accounts,
                 chainId,
+                config,
             );
             subProviders.push(bitskiWalletSubProvider);
             subProvidersConfigured = true;
