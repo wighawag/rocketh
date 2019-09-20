@@ -21,6 +21,7 @@ const {
     fetchAccounts,
     fetchChainIdViaWeb3Provider,
     pause,
+    mergeConfig,
 } = require('./utils');
 
 if (!global._rocketh_session) {
@@ -86,7 +87,28 @@ const registerDeployment = (name, deploymentInfo, force) => {
                 }
                 const content = JSON.stringify(deploymentInfoToSave, null, '  ');
                 const filepath = path.join(writeDeploymentsPath, deploymentsSubPath, name + '.json');
+                
+                let inputString;
+                let solcVersion;
+                if (deploymentInfoToSave.contractInfo.metadata) {
+                    const metadata = JSON.parse(deploymentInfoToSave.contractInfo.metadata);
+                    const settings = metadata.settings;
+                    delete settings.compilationTarget;
+                    inputString = JSON.stringify({
+                        language: metadata.language,
+                        settings,
+                        sources: metadata.sources,
+                    });
+                    solcVersion = metadata.compiler ? metadata.compiler.version : '';
+                    if(!inputFolderCreated) {
+                        try { fs.mkdirSync(path.join(writeDeploymentsPath, deploymentsSubPath, 'inputs')); } catch (e) { }
+                        inputFolderCreated = true;
+                    }
+                }
                 fs.writeFileSync(filepath, content);
+                if(inputString) {
+                    fs.writeFileSync(path.join(writeDeploymentsPath, deploymentsSubPath, 'inputs', name + '_' + solcVersion + '.json'), inputString);
+                }
 
                 // if (initialRun) {
                 //     const address = deploymentInfoToSave.address;
@@ -117,6 +139,7 @@ const registerDeployment = (name, deploymentInfo, force) => {
 
 
 let deploymentsFolderCreated = false;
+let inputFolderCreated = false;
 let contractBuildFolderCreated = false;
 
 function compile(config) {
@@ -289,7 +312,7 @@ function compileWithSolc(solc, contractSrcPaths, resolve, reject, config) {
     log.green('using solc : ' + solcVersion);
 
     // TODO : config // merge from File ? add sources...
-    const solcConfig = JSON.stringify({
+    const solcConfigObj = {
         language: "Solidity",
         //TODO add compiler info in some way to not use cache when compiler version is different // extra fields were fine prior to 0.5.1 or 0.5.2
         // compiler: {
@@ -297,20 +320,46 @@ function compileWithSolc(solc, contractSrcPaths, resolve, reject, config) {
         //     version: solcVersion
         // },
         sources,
-        settings: config.solcSettings || {
+        settings: mergeConfig({
             optimizer: {
                 enabled: true,
-                runs: config.solcOptimizerRuns || 2000,
+                runs: 200,
             },
             outputSelection: {
                 "*": {
-                    "*": ["abi", "evm.bytecode", "metadata", "evm.deployedBytecode"],
-                    "": ["ast"]
+                    "*": [
+                        'abi',
+                        // 'devdoc',
+                        // 'userdoc',
+                        'metadata',
+                        // 'evm.assembly',
+                        // 'evm.legacyAssembly',
+                        'evm.bytecode',
+                        'evm.deployedBytecode',
+                        'evm.methodIdentifiers',
+                        // 'evm.gasEstimates',
+                        // 'ir', fails with the following:
+                        // { component: 'general',
+                        //     formattedMessage:
+                        //     'UnimplementedFeatureError: Array conversion not implemented.\n',
+                        //    message:
+                        //     'Unimplemented feature (/root/project/libsolidity/codegen/YulUtilFunctions.cpp:819):Array conversion not implemented.',
+                        //    severity: 'error',
+                        //    type: 'UnimplementedFeatureError' }
+                    ],
+                    // "": ["ast", "legacyAST"]
                 },
-            }
-        }
-    }, null, '  ');
+            },
+            metadata: {
+                useLiteralContent: true
+            },
+        }, config.solcSettings)
+    };
+    // TODO check for evm.bytecode as it is required for rocketh
+    
+    const solcConfig = JSON.stringify(solcConfigObj, null, '  ');
 
+    
     let rawOutput;
     let cachePathMTimeMS = 0;
     let usingCache = false;

@@ -12,7 +12,8 @@ const {
 
 const {
     log,
-    onExit
+    onExit,
+    mergeConfig
 } = require('./utils');
 
 const fs = require('fs');
@@ -36,30 +37,28 @@ try {
     configFromFile = {};
 }
 
-// TODO improve :
-const config = Object.assign(configFromFile, {
-    silent: typeof configFromFile.silent != 'undefined' ? configFromFile.silent : true,
-    node: typeof configFromFile.node != 'undefined' ? configFromFile.node : 'ganache',
-    deploymentChainIds: typeof configFromFile.deploymentChainIds != 'undefined' ? configFromFile.deploymentChainIds : [
+const config = mergeConfig({
+    silent: true,
+    node: 'ganache',
+    deploymentChainIds: [
         '1', '3', '4', '5', '6', '30', '31', '42', '60', '61', '62', '77', '99', '100', '108',
     ],
-    showErrorsFromCache: typeof configFromFile.showErrorsFromCache != 'undefined' ? configFromFile.showErrorsFromCache : false,
-    generateTruffleBuildFiles: typeof configFromFile.generateTruffleBuildFiles != 'undefined' ? configFromFile.generateTruffleBuildFiles : false,
-    cacheCompilationResult: typeof configFromFile.cacheCompilationResult != 'undefined' ? configFromFile.cacheCompilationResult : true,
-    accounts: Object.assign({
+    showErrorsFromCache: false,
+    generateTruffleBuildFiles: false,
+    cacheCompilationResult: true,
+    accounts: {
         "default": {
             type: 'node'
         }
-    }, configFromFile.accounts || {})
-});
-
+    }
+}, configFromFile);
 
 function setupAnd(func) {
     return (...args) => {
         // const cmdObj = args[args.length-1];
         config.silent = !program.verbose;
         log.setSlient(config.silent);
-        log.log(config);
+        log.log(JSON.stringify(config, null, '  '));
         if (require.main === module) {
             func(...args);
         } else {

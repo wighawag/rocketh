@@ -2,6 +2,7 @@ const path = require('path');
 const fs = require('fs');
 const colors = require('colors/safe');
 const ethers = require('ethers');
+const deepmerge = require('deepmerge');
 
 function pause(s) {
     return new Promise((resolve, reject) => {
@@ -155,6 +156,8 @@ function log(...args) {
     console.log.apply(console, args);
 }
 
+const overwriteMerge = (destinationArray, sourceArray, options) => sourceArray
+
 module.exports = {
     onExit,
     traverse,
@@ -168,6 +171,7 @@ module.exports = {
     fetchReceiptViaWeb3Provider,
     getAccountsFromMnemonic,
     pause,
+    mergeConfig: (base, extra) => deepmerge(base, extra, { arrayMerge: overwriteMerge }),
     log : {
         setSlient: (s) => silent = s,
         log : (...args) => log(...args),
