@@ -576,7 +576,9 @@ async function runStages(config, contractInfos, deployments) {
                 let contractAddress;
                 while(!contractAddress) {
                     const receipt = await fetchReceiptViaWeb3Provider(global.ethereum, deployment.transactionHash);
-                    if(typeof receipt.status != 'undefined' && receipt.status == 0) {
+                    if(!receipt) {
+                        log.log('no receipt yet for ' + deployment.transactionHash);
+                    } else if(typeof receipt.status != 'undefined' && receipt.status == 0) {
                         console.log('transaction ' + deployment.transactionHash + ' failed.');
                         unRegisterDeployment(contractName);
                         break;
