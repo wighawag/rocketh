@@ -129,11 +129,11 @@ BitskiSubProvider.prototype.handleRequest = async function(payload, next, end) {
 }
 
 BitskiSubProvider.prototype.signTransaction = async function(from, rawTx) {
-    return this.bitskiProvider.send('eth_signTransaction', rawTx);
+    return this.bitskiProvider.send('eth_signTransaction', [rawTx]);
 }
 
 BitskiSubProvider.prototype.sendTransaction = async function(tx) {
-    return this.bitskiProvider.send('eth_sendTransaction', tx);
+    return this.bitskiProvider.send('eth_sendTransaction', [tx]);
 }
 
 BitskiSubProvider.prototype.signMessage = function(from, message) {
