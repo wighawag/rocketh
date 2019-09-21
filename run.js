@@ -356,7 +356,7 @@ function compileWithSolc(solc, contractSrcPaths, resolve, reject, config) {
             metadata: {
                 useLiteralContent: true
             },
-        }, config.solcSettings)
+        }, config.solcSettings || {})
     };
     // TODO check for evm.bytecode as it is required for rocketh
     
