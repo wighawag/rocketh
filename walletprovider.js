@@ -58,6 +58,18 @@ WalletSubProvider.prototype.fetchBalance = function(from) {
     })
 }
 
+function ensureEvenLength(hexString, debug) {
+    const l = hexString.length - 2;
+    if(debug) {
+        console.log(debug, {l})
+    }
+    if(l)
+    if(l % 2 === 1) {
+        return ethers.utils.hexZeroPad(hexString, (l+1) / 2);
+    }
+    return hexString;
+}
+
 WalletSubProvider.prototype.handleRequest = async function(payload, next, end) {
     const self = this;
     if (payload.method === 'eth_accounts' && this.accounts) {
@@ -70,10 +82,10 @@ WalletSubProvider.prototype.handleRequest = async function(payload, next, end) {
             return end(new Error('gas not specified'));
         }
 
-        const gasPrice = ethers.utils.hexlify(rawTx.gasPrice || await this.fetchGasPrice());
-        const gas = ethers.utils.hexlify(rawTx.gas);
-        const balance = ethers.utils.hexlify(await this.fetchBalance(from));
-
+        const gasPrice = ethers.utils.hexlify(rawTx.gasPrice || await this.fetchGasPrice(), { allowOddLength: true });
+        const gas = ethers.utils.hexlify(rawTx.gas, { allowOddLength: true });
+        const balance = ethers.utils.hexlify(await this.fetchBalance(from), { allowOddLength: true });
+        
         const balanceBN = new BN(balance.slice(2), 'hex');
         
         const gasPriceBN = new BN(gasPrice.slice(2), 'hex');
@@ -88,13 +100,18 @@ WalletSubProvider.prototype.handleRequest = async function(payload, next, end) {
                 + ' ) > ' + balanceBN.toString(10)));
         }
 
-        const nonce = await this.fetchNonce(from);
-        
+        const rawNonce = await this.fetchNonce(from);
+        const nonce = ethers.utils.hexlify(rawNonce, { allowOddLength: true });
+        if(typeof rawTx.value === 'undefined') {
+            rawTx.value = '0x00'; // TODO fix ethers
+        } else {
+            rawTx.value = ethers.utils.hexlify(rawTx.value, { allowOddLength: true });
+        }
         const forEthers = {
             to: rawTx.to,
-            gasLimit: rawTx.gas,
-            gasPrice,
-            nonce,
+            gasLimit: ensureEvenLength(rawTx.gas),
+            gasPrice: ensureEvenLength(gasPrice),
+            nonce: ensureEvenLength(nonce),
             data: rawTx.data,// ? (rawTx.data[1].toLowerCase() == 'x' ? rawTx.data : '0x' + rawTx.data) : undefined,
             value: rawTx.value,
             chainId: rawTx.chainId
@@ -126,7 +143,7 @@ WalletSubProvider.prototype.handleRequest = async function(payload, next, end) {
 WalletSubProvider.prototype.signTransaction = function(from, rawTx) {
     // console.log('rawTx', rawTx);
     const wallet = this.wallets[from.toLowerCase()];
-    return wallet.sign(rawTx);
+    return wallet.signTransaction(rawTx);
 }
 
 WalletSubProvider.prototype.signMessage = function(from, message) {

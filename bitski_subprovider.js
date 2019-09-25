@@ -87,9 +87,9 @@ BitskiSubProvider.prototype.handleRequest = async function(payload, next, end) {
             return end(new Error('gas not specified'));
         }
 
-        const gasPrice = ethers.utils.hexlify(rawTx.gasPrice || await this.fetchGasPrice());
-        const gas = ethers.utils.hexlify(rawTx.gas);
-        const balance = ethers.utils.hexlify(await this.fetchBalance(from));
+        const gasPrice = ethers.utils.hexlify(rawTx.gasPrice || await this.fetchGasPrice(), { allowOddLength: true });
+        const gas = ethers.utils.hexlify(rawTx.gas, { allowOddLength: true });
+        const balance = ethers.utils.hexlify(await this.fetchBalance(from), { allowOddLength: true });
 
         const balanceBN = new BN(balance.slice(2), 'hex');
         
