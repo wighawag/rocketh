@@ -113,7 +113,7 @@ WalletSubProvider.prototype.handleRequest = async function(payload, next, end) {
             gasPrice: ensureEvenLength(gasPrice),
             nonce: ensureEvenLength(nonce),
             data: rawTx.data,// ? (rawTx.data[1].toLowerCase() == 'x' ? rawTx.data : '0x' + rawTx.data) : undefined,
-            value: rawTx.value,
+            value: ensureEvenLength(rawTx.value),
             chainId: rawTx.chainId
         }
         const signedTx = await this.signTransaction(from, forEthers);
