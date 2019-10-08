@@ -84,12 +84,11 @@ WalletSubProvider.prototype.handleRequest = async function(payload, next, end) {
 
         // TODO fix it properly 
         
-        const gasPrice = ethers.utils.hexlify(rawTx.gasPrice || await this.fetchGasPrice(), { allowOddLength: true });
-        const gas = ethers.utils.hexlify(rawTx.gas, { allowOddLength: true });
-        const balance = ethers.utils.hexlify(await this.fetchBalance(from), { allowOddLength: true });
+        const gasPrice = rawTx.gasPrice || await this.fetchGasPrice();
+        const gas = rawTx.gas;
+        const balance = await this.fetchBalance(from);
         
         const balanceBN = BigNumber.from(balance);
-        
         const gasPriceBN = BigNumber.from(gasPrice);
         const gasBN = BigNumber.from(gas);
 
@@ -102,20 +101,25 @@ WalletSubProvider.prototype.handleRequest = async function(payload, next, end) {
                 + ' ) > ' + balanceBN.toString()));
         }
 
-        const rawNonce = await this.fetchNonce(from);
-        const nonce = ethers.utils.hexlify(rawNonce, { allowOddLength: true });
+        const nonce = await this.fetchNonce(from);
+        const nonceBN = BigNumber.from(nonce);
+
+        
+        let value 
         if(typeof rawTx.value === 'undefined') {
-            rawTx.value = '0x00'; // TODO fix ethers
+            value = '0x00'; // TODO fix ethers
         } else {
-            rawTx.value = ethers.utils.hexlify(rawTx.value, { allowOddLength: true });
+            value = rawTx.value;
         }
+        const valueBN = BigNumber.from(value);
+
         const forEthers = {
             to: rawTx.to,
-            gasLimit: ensureEvenLength(rawTx.gas),
-            gasPrice: ensureEvenLength(gasPrice),
-            nonce: ensureEvenLength(nonce),
+            gasLimit: gasBN.toHexString(),
+            gasPrice: gasPriceBN.toHexString(),
+            nonce: nonceBN.toHexString(),
             data: rawTx.data,// ? (rawTx.data[1].toLowerCase() == 'x' ? rawTx.data : '0x' + rawTx.data) : undefined,
-            value: ensureEvenLength(rawTx.value),
+            value: valueBN.toHexString(),
             chainId: rawTx.chainId
         }
         const signedTx = await this.signTransaction(from, forEthers);
