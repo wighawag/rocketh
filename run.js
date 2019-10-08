@@ -951,7 +951,7 @@ function attach(config, { url, chainId, accounts }, contractInfos, deployments) 
         session.deployments = extractDeployments(path.join(deploymentsPath, deploymentsSubPath));
     }
 
-    if(writeDeploymentsPath != deploymentsPath) {
+    if(writeDeploymentsPath != deploymentsPath || isDeploymentChainId) {
         let deploymentsFolderCreated = false;
         for (let name of Object.keys(session.deployments)) {
             if (!deploymentsFolderCreated) {
