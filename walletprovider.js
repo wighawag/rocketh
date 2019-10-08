@@ -1,5 +1,5 @@
 const ethers = require('ethers');
-const BN = require('bn.js');
+const {BigNumber} = ethers;
 
 const WalletSubProvider = function(privateKeys) {
     this.lastId = 0;
@@ -82,22 +82,24 @@ WalletSubProvider.prototype.handleRequest = async function(payload, next, end) {
             return end(new Error('gas not specified'));
         }
 
+        // TODO fix it properly 
+        
         const gasPrice = ethers.utils.hexlify(rawTx.gasPrice || await this.fetchGasPrice(), { allowOddLength: true });
         const gas = ethers.utils.hexlify(rawTx.gas, { allowOddLength: true });
         const balance = ethers.utils.hexlify(await this.fetchBalance(from), { allowOddLength: true });
         
-        const balanceBN = new BN(balance.slice(2), 'hex');
+        const balanceBN = BigNumber.from(balance);
         
-        const gasPriceBN = new BN(gasPrice.slice(2), 'hex');
-        const gasBN = new BN(gas.slice(2), 'hex');
+        const gasPriceBN = BigNumber.from(gasPrice);
+        const gasBN = BigNumber.from(gas);
 
         const balanceRequiredBN = gasPriceBN.mul(gasBN);
         
         if(balanceBN.lt(balanceRequiredBN)) {
             return end(new Error('Not enough balance: ' 
-                + balanceRequiredBN.toString(10)
-                + '( '  + gasBN.toString(10)  + ' gas x ' + gasPriceBN.toString(10) + ' gasPrice'
-                + ' ) > ' + balanceBN.toString(10)));
+                + balanceRequiredBN.toString()
+                + '( '  + gasBN.toString()  + ' gas x ' + gasPriceBN.toString() + ' gasPrice'
+                + ' ) > ' + balanceBN.toString()));
         }
 
         const rawNonce = await this.fetchNonce(from);
