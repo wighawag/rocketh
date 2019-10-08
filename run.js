@@ -533,7 +533,7 @@ function extractDeployments(deploymentsPath) {
 
     let files;
     try {
-        files = traverse(deploymentsPath);
+        files = traverse(deploymentsPath, [], null, (name, stats) => name != 'inputs');
     } catch (e) {
         files = [];
     }
