@@ -644,6 +644,8 @@ async function runStages(config, contractInfos, deployments) {
     
 
     let argsForStages = [{
+        ethereum,
+        rocketh,
         contractInfo: (name) => contractInfos[name],
         accounts: _accounts,
         chainId: _chainId,
@@ -655,7 +657,9 @@ async function runStages(config, contractInfos, deployments) {
         deploy,
         deployIfNeverDeployed,
         deployIfDifferent,
-        fetchIfDifferent
+        fetchIfDifferent,
+        getDeployedContract,
+        registerContract,
     }];
 
     for (const fileName of fileNames) {
@@ -698,6 +702,7 @@ const rocketh = {
         return session.deployments[name];
     },
     deployments: () => session.deployments, // TODO remove ?
+    getDeployedContract: getDeployedContract,
     contractInfo: (name) => {
         return _contractInfos[name];
     },
@@ -705,7 +710,6 @@ const rocketh = {
 }
 
 let ethersProvider;
-let ethersSigner;
 
 let deploymentsPath;
 let writeDeploymentsPath;
@@ -985,7 +989,6 @@ function attach(config, { url, chainId, accounts }, contractInfos, deployments) 
     global.ethereum = provider;
 
     ethersProvider = new ethers.providers.Web3Provider(rocketh.ethereum);
-    ethersSigner = ethersProvider.getSigner();
 
     if (config.addRocketh) {
         global.rocketh = rocketh;
@@ -1001,6 +1004,25 @@ function attach(config, { url, chainId, accounts }, contractInfos, deployments) 
     return attached;
 }
 
+function getIndex(from) {
+    let i = 0;
+    for (const account of rocketh.accounts) {
+        if(account.toLowerCase() == from.toLowerCase()) {
+            return i;
+        }
+        i++;
+    }
+    throw new Error('no account found for ' + from);
+}
+
+function getEthersSigner(from) {
+    let accountIndex = 0;
+    if(from) {
+        accountIndex = getIndex(from);
+    }
+    return ethersProvider.getSigner(accountIndex);
+}
+
 async function deploy(name, options, contractName, ...args) {
     let register = true;
     if (typeof name != 'string') {
@@ -1011,19 +1033,17 @@ async function deploy(name, options, contractName, ...args) {
     }
     const ContractInfo = rocketh.contractInfo(contractName);
     const abi = ContractInfo.abi;
-    const factory = new ethers.ContractFactory(abi, '0x' + ContractInfo.evm.bytecode.object, ethersSigner);
-    const deployTx = factory.getDeployTransaction(...args);
+    const factory = new ethers.ContractFactory(abi, '0x' + ContractInfo.evm.bytecode.object, getEthersSigner(options.from));
+    
     const txReq = {
-        from: options.from,
         gas: options.gas,
         gasprice: options.gasPrice,
         value: options.value,
         nonce: options.nonce,
         chainId: options.chainId,
     }
-    console.log({txReq});
-    txReq.data = deployTx.data;
-    const tx = await ethersProvider.sendTransaction(txReq);
+    const ethersContract = await factory.deploy(...args, txReq);
+    const tx = ethersContract.deployTransaction;
     const transactionHash = tx.hash;
     if (register) {
         rocketh.registerDeployment(name, {
@@ -1067,7 +1087,7 @@ async function fetchIfDifferent(fieldsToCompare, name, options, contractName, ..
         if (transaction) {
             const ContractInfo = rocketh.contractInfo(contractName);
             const abi = ContractInfo.abi;
-            const factory = new ethers.ContractFactory(abi, '0x' + ContractInfo.evm.bytecode.object, ethersSigner);
+            const factory = new ethers.ContractFactory(abi, '0x' + ContractInfo.evm.bytecode.object, getEthersSigner(options.from));
 
             const compareOnData = fieldsToCompare.indexOf('data') != -1;
             const compareOnInput = fieldsToCompare.indexOf('input') != -1;
@@ -1113,7 +1133,7 @@ async function deployIfDifferent(fieldsToCompare, name, options, contractName, .
 };
 
 function fromDeployment(deployment) {
-    return { address: deployment.address, abi: deployment.contractInfo.abi, _ethersContract: new ethers.Contract(deployment.address, deployment.contractInfo.abi, signer) };
+    return { address: deployment.address, abi: deployment.contractInfo.abi};
 }
 
 async function getDeployedContractWithTransactionHash(name) {
