@@ -652,9 +652,10 @@ async function runStages(config, contractInfos, deployments) {
         namedAccounts: rocketh.namedAccounts,
         initialRun,
         isDeploymentChainId: config.deploymentChainIds.indexOf('' + _chainId) != -1,
-        deployAndRegister: () => { throw new Error('TODO deployAndRegister'); }, // deploy and register, saving txHash as partial deployment
-        deployIfDifferentAndRegister: () => { throw new Error('TODO deployIfDifferentAndRegister'); },  // deploy and register only if different, saving txHash as partial deployment
-        fetchIfDifferent: () => { throw new Error('TODO fetchIfDifferent'); }, // will take the tx hash and recompose the contract
+        deploy,
+        deployIfNeverDeployed,
+        deployIfDifferent,
+        fetchIfDifferent
     }];
 
     for (const fileName of fileNames) {
@@ -702,6 +703,9 @@ const rocketh = {
     },
     registerDeployment
 }
+
+let ethersProvider;
+let ethersSigner;
 
 let deploymentsPath;
 let writeDeploymentsPath;
@@ -980,6 +984,9 @@ function attach(config, { url, chainId, accounts }, contractInfos, deployments) 
     rocketh.ethereum = provider;
     global.ethereum = provider;
 
+    ethersProvider = new ethers.providers.Web3Provider(rocketh.ethereum);
+    ethersSigner = ethersProvider.getSigner();
+
     if (config.addRocketh) {
         global.rocketh = rocketh;
     }
@@ -994,6 +1001,148 @@ function attach(config, { url, chainId, accounts }, contractInfos, deployments) 
     return attached;
 }
 
+async function deploy(name, options, contractName, ...args) {
+    let register = true;
+    if (typeof name != 'string') {
+        register = false;
+        args.unshift(contractName);
+        contractName = options;
+        options = name;
+    }
+    const ContractInfo = rocketh.contractInfo(contractName);
+    const abi = ContractInfo.abi;
+    const factory = new ethers.ContractFactory(abi, '0x' + ContractInfo.evm.bytecode.object, ethersSigner);
+    const deployTx = factory.getDeployTransaction(...args);
+    const txReq = {
+        from: options.from,
+        gas: options.gas,
+        gasprice: options.gasPrice,
+        value: options.value,
+        nonce: options.nonce,
+        chainId: options.chainId,
+    }
+    console.log({txReq});
+    txReq.data = deployTx.data;
+    const tx = await ethersProvider.sendTransaction(txReq);
+    const transactionHash = tx.hash;
+    if (register) {
+        rocketh.registerDeployment(name, {
+            contractInfo: ContractInfo,
+            transactionHash,
+            args
+        });
+    }
+    const receipt = await tx.wait();
+    const address = receipt.contractAddress;
+    const contract = {address, abi};
+
+    if (register) {
+        rocketh.registerDeployment(name, {
+            contractInfo: ContractInfo,
+            address: contract.address,
+            transactionHash,
+            args
+        });
+    }
+    return {
+        contract,
+        transactionHash,
+        receipt
+    };
+}
+
+async function deployIfNeverDeployed(name, options, contractName, ...args) {
+    const deployment = rocketh.deployment(name);
+    if (!deployment) {
+        return deploy(name, options, contractName, ...args);
+    } else {
+        return getDeployedContractWithTransactionHash(name);
+    }
+}
+
+async function fetchIfDifferent(fieldsToCompare, name, options, contractName, ...args) {
+    const deployment = rocketh.deployment(name);
+    if (deployment) {
+        const transaction = await ethersProvider.getTransaction(deployment.transactionHash);
+        if (transaction) {
+            const ContractInfo = rocketh.contractInfo(contractName);
+            const abi = ContractInfo.abi;
+            const factory = new ethers.ContractFactory(abi, '0x' + ContractInfo.evm.bytecode.object, ethersSigner);
+
+            const compareOnData = fieldsToCompare.indexOf('data') != -1;
+            const compareOnInput = fieldsToCompare.indexOf('input') != -1;
+
+            let data;
+            if (compareOnData || compareOnInput) {
+                data = factory.getDeployTransaction(...args);
+                console.log(JSON.stringify(data, null, '  '));
+            }
+            const newTransaction = {
+                data: compareOnData ? data : undefined,
+                input: compareOnInput ? data : undefined,
+                gas: options.gas,
+                gasPrice: options.gasPrice,
+                value: options.value,
+                from: options.from
+            };
+
+            transaction.data = transaction.input;
+            for (let i = 0; i < fieldsToCompare.length; i++) {
+                const field = fieldsToCompare[i];
+                if (typeof newTransaction[field] == 'undefined') {
+                    throw new Error('field ' + field + ' not specified in new transaction, cant compare');
+                }
+                if (transaction[field] != newTransaction[field]) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+    return true;
+}
+
+async function deployIfDifferent(fieldsToCompare, name, options, contractName, ...args) {
+    const differences = await fetchIfDifferent(fieldsToCompare, name, options, contractName, ...args);
+    if (differences) {
+        return deploy(name, options, contractName, ...args);
+    } else {
+        return getDeployedContractWithTransactionHash(name);
+    }
+
+};
+
+function fromDeployment(deployment) {
+    return { address: deployment.address, abi: deployment.contractInfo.abi, _ethersContract: new ethers.Contract(deployment.address, deployment.contractInfo.abi, signer) };
+}
+
+async function getDeployedContractWithTransactionHash(name) {
+    const deployment = rocketh.deployment(name);
+    if (!deployment) {
+        return null;
+    }
+    const receipt = await fetchReceipt(deployment.transactionHash);
+    return { contract: fromDeployment(deployment), transactionHash: deployment.transactionHash, receipt };
+}
+
+function getDeployedContract(name) {
+    const deployment = rocketh.deployment(name);
+    if (!deployment) {
+        return null;
+    }
+    return fromDeployment(deployment)
+}
+
+function registerContract(name, address, txHash, contractName, ...args) {
+    const ContractInfo = rocketh.contractInfo(contractName);
+    rocketh.registerDeployment(name, {
+        contractInfo: ContractInfo,
+        address,
+        transactionHash: txHash,
+        args
+    });
+    return { addresss, abi: ContractInfo.abi };
+}
 
 module.exports = {
     runStages,
