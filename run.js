@@ -881,8 +881,10 @@ function attach(config, { url, chainId, accounts }, contractInfos, deployments) 
                     if (spec.slice(0, 5) == "from:") {
                         const from = parseInt(spec.substr(5));
                         address = [];
-                        for (let j = from; j < _accounts.length; j++) {
-                            address.push(_accounts[j]);
+                        if (_accounts) {
+                            for (let j = from; j < _accounts.length; j++) {
+                                address.push(_accounts[j]);
+                            }
                         }
                     } else if (spec.slice(0, 2).toLowerCase() == "0x") {
                         address = spec;
@@ -891,7 +893,9 @@ function attach(config, { url, chainId, accounts }, contractInfos, deployments) 
                     }
                     break;
                 case "number":
-                    address = _accounts[spec];
+                    if (_accounts) {
+                        address = _accounts[spec];
+                    }
                     break;
                 case "undefined":
                     break;
