@@ -91,7 +91,7 @@ BitskiSubProvider.prototype.handleRequest = async function(payload, next, end) {
         const gas = BigNumber.from(rawTx.gas);
         const balance = BigNumber.from(await this.fetchBalance(from));
         const value = BigNumber.from(rawTx.value || 0);
-        const balanceRequired = gasPrice.mul(gas).add(value);
+        const balanceRequired = (gasPrice.mul(gas)).add(value);
         
         // console.log({
         //     gas: gas.toString(),
@@ -110,9 +110,9 @@ BitskiSubProvider.prototype.handleRequest = async function(payload, next, end) {
         const nonce = await this.fetchNonce(from);
         let result;
         try{
-            rawTx.gasPrice = gasPrice.toString();
-            rawTx.value = value.toString();
-            rawTx.gas = gas.toString();
+            rawTx.gasPrice = gasPrice.toHexString();
+            rawTx.value = value.toHexString();
+            rawTx.gas = gas.toHexString();
             rawTx.nonce = nonce;
             // console.log(JSON.stringify(rawTx, null, '  '));
             result = await this.sendTransaction(rawTx);
