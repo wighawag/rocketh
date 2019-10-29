@@ -682,10 +682,10 @@ eth-query@^2.1.0:
     json-rpc-random-id "^1.0.0"
     xtend "^4.0.1"
 
-ethers@^5.0.0-beta.157:
-  version "5.0.0-beta.157"
-  resolved "https://registry.yarnpkg.com/ethers/-/ethers-5.0.0-beta.157.tgz#1831450ab50347afee77da5818421d73716920d8"
-  integrity sha512-MuSUz58RhKdp0rpCTuCHq8SVF53Jp6vXZ9/B3+7hieqasZHj4Payg5HcFZORovElCAX5EcJu4u2KhAO8wFFJbA==
+ethers@^5.0.0-beta.159:
+  version "5.0.0-beta.159"
+  resolved "https://registry.yarnpkg.com/ethers/-/ethers-5.0.0-beta.159.tgz#d1bc621256b181f3cdeba25bca70a6d728dde053"
+  integrity sha512-tq7aeKZ0XSKz/43KowNreraz3cC3TBkSBI0ncQ7md037qORvYWFCWnePPBz+yTErSaqZA4yOwI/0aZoI81zKrw==
   dependencies:
     "@ethersproject/abi" ">=5.0.0-beta.137"
     "@ethersproject/abstract-provider" ">=5.0.0-beta.131"
