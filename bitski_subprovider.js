@@ -1,5 +1,5 @@
 const ethers = require('ethers');
-const BN = require('bn.js');
+const { BigNumber } = ethers;
 const Bitski = require("bitski-node");
 const {
     log
@@ -87,29 +87,34 @@ BitskiSubProvider.prototype.handleRequest = async function(payload, next, end) {
             return end(new Error('gas not specified'));
         }
 
-        const gasPrice = ethers.utils.hexlify(rawTx.gasPrice || await this.fetchGasPrice(), { allowOddLength: true });
-        const gas = ethers.utils.hexlify(rawTx.gas, { allowOddLength: true });
-        const balance = ethers.utils.hexlify(await this.fetchBalance(from), { allowOddLength: true });
-
-        const balanceBN = new BN(balance.slice(2), 'hex');
+        const gasPrice = BigNumber.from(rawTx.gasPrice || await this.fetchGasPrice());
+        const gas = BigNumber.from(rawTx.gas);
+        const balance = BigNumber.from(await this.fetchBalance(from));
+        const value = BigNumber.from(rawTx.value || 0);
+        const balanceRequired = gasPrice.mul(gas).add(value);
         
-        const gasPriceBN = new BN(gasPrice.slice(2), 'hex');
-        const gasBN = new BN(gas.slice(2), 'hex');
-
-        const balanceRequiredBN = gasPriceBN.mul(gasBN);
-        
-        if(balanceBN.lt(balanceRequiredBN)) {
+        console.log({
+            gas: gas.toString(),
+            value: value.toString(),
+            gasPrice: gasPrice.toString(),
+            balanceRequired: balanceRequired.toString(),
+            balance: balance.toString(),
+        })
+        if(balance.lt(balanceRequired)) {
             return end(new Error('Not enough balance: ' 
-                + balanceRequiredBN.toString(10)
-                + '( '  + gasBN.toString(10)  + ' gas x ' + gasPriceBN.toString(10) + ' gasPrice'
-                + ' ) > ' + balanceBN.toString(10)));
+                + balanceRequired.toString()
+                + '( '  + gas.toString()  + ' gas x ' + gasPrice.toString() + ' gasPrice'
+                + ' ) > ' + balance.toString()));
         }
 
         const nonce = await this.fetchNonce(from);
         let result;
         try{
-            rawTx.gasPrice = gasPrice;
+            rawTx.gasPrice = gasPrice.toString();
+            rawTx.value = value.toString();
+            rawTx.gas = gas.toString();
             rawTx.nonce = nonce;
+            console.log(JSON.stringify(rawTx, null, '  '));
             result = await this.sendTransaction(rawTx);
         }catch(e) {
             return end(e);
