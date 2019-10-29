@@ -93,13 +93,13 @@ BitskiSubProvider.prototype.handleRequest = async function(payload, next, end) {
         const value = BigNumber.from(rawTx.value || 0);
         const balanceRequired = gasPrice.mul(gas).add(value);
         
-        console.log({
-            gas: gas.toString(),
-            value: value.toString(),
-            gasPrice: gasPrice.toString(),
-            balanceRequired: balanceRequired.toString(),
-            balance: balance.toString(),
-        })
+        // console.log({
+        //     gas: gas.toString(),
+        //     value: value.toString(),
+        //     gasPrice: gasPrice.toString(),
+        //     balanceRequired: balanceRequired.toString(),
+        //     balance: balance.toString(),
+        // })
         if(balance.lt(balanceRequired)) {
             return end(new Error('Not enough balance: ' 
                 + balanceRequired.toString()
@@ -114,7 +114,7 @@ BitskiSubProvider.prototype.handleRequest = async function(payload, next, end) {
             rawTx.value = value.toString();
             rawTx.gas = gas.toString();
             rawTx.nonce = nonce;
-            console.log(JSON.stringify(rawTx, null, '  '));
+            // console.log(JSON.stringify(rawTx, null, '  '));
             result = await this.sendTransaction(rawTx);
         }catch(e) {
             return end(e);
