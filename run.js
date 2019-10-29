@@ -747,8 +747,9 @@ function getAccountsFromConfig(config, chainId, forceAccounts) {
     } else if (type == 'mnemonic') {
         log.log('using mnemonic');
         numWallets = accountsConfig.num || 10;
+        const mnemonicPath = accountsConfig.path || './.mnemonic';
         try {
-            mnemonic = fs.readFileSync('./.mnemonic').toString();
+            mnemonic = fs.readFileSync(mnemonicPath).toString();
         } catch (e) { }
     } else if (type == 'privateKeys') {
         log.log('using privateKeys');
