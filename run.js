@@ -825,7 +825,7 @@ function getWeb3Provider(config, url, chainId, forceAccounts) {
     }
 
     if (!subProvidersConfigured) {
-        const { privateKeys } = getAccountsFromConfig(config, undefined, forceAccounts);
+        const { privateKeys } = getAccountsFromConfig(config, chainId, forceAccounts);
         if (privateKeys) {
             const walletProvider = new WalletSubprovider(privateKeys);
             subProviders.push(walletProvider)
