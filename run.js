@@ -652,6 +652,9 @@ async function runStages(config, contractInfos, deployments) {
         registerDeployment,
         deployment: function (name) { return session.currentDeployments[name] },
         namedAccounts: rocketh.namedAccounts,
+        sendTxAndWait,
+        call,
+        estimateGas,
         initialRun,
         isDeploymentChainId: config.deploymentChainIds.indexOf('' + _chainId) != -1,
         deploy,
@@ -991,6 +994,9 @@ function attach(config, { url, chainId, accounts }, contractInfos, deployments) 
     }
 
     rocketh.ethereum = provider;
+    rocketh.sendTxAndWait = sendTxAndWait;
+    rocketh.estimateGas = estimateGas;
+    rocketh.call = call;
     global.ethereum = provider;
 
     ethersProvider = new ethers.providers.Web3Provider(rocketh.ethereum);
@@ -1028,6 +1034,111 @@ function getEthersSigner(from) {
     return ethersProvider.getSigner(accountIndex);
 }
 
+async function sendTxAndWait(options, contractName, methodName, ...args) {
+    let from = options.from;
+    let ethersSigner;
+    if(from.length >= 64) {
+        if(from.length == 64) {
+            from = '0x' + from;
+        }
+        ethersSigner = new Wallet(from);
+        from = ethersSigner.address;
+    } else {
+        ethersSigner = getEthersSigner(from);
+    }
+    let tx;
+    if (contractName) {
+        const deployment = rocketh.deployment(contractName);
+        const abi = deployment.contractInfo.abi
+        const overrides = {
+            gas: options.gas,
+            gasprice: options.gasPrice,
+            value: options.value,
+            nonce: options.nonce,
+            chainId: options.chainId,
+        }
+        const ethersContract = new ethers.Contract(deployment.address, abi, ethersSigner);
+        tx = await ethersContract.functions[methodName](...args, overrides);
+    } else {
+        // TODO send simple tx from options;
+    }
+    return tx.wait();
+}
+
+async function call(options, contractName, methodName, ...args) {
+    if (typeof options == 'string') {
+        if (typeof args == 'undefined') {
+            args = [];
+            if(typeof methodName != 'undefined') {
+                args.push(methodName);
+            }
+        }
+        methodName = contractName;
+        contractName = options;
+        options = {};
+    }
+    if (typeof args == 'undefined') {
+        args = [];
+    }
+    let from = options.from;
+    let ethersSigner;
+    if(from && from.length >= 64) {
+        if(from.length == 64) {
+            from = '0x' + from;
+        }
+        ethersSigner = new Wallet(from);
+        from = ethersSigner.address;
+    }
+    const deployment = rocketh.deployment(contractName);
+    const abi = deployment.contractInfo.abi
+    const overrides = {
+        gas: options.gas,
+        gasprice: options.gasPrice,
+        value: options.value,
+        nonce: options.nonce,
+        chainId: options.chainId,
+    }
+    const ethersContract = new ethers.Contract(deployment.address, abi, ethersSigner);
+    return ethersContract.callStatic[methodName](...args, overrides);
+}
+
+async function estimateGas(options, contractName, methodName, ...args) {
+    if (typeof options == 'string') {
+        if (typeof args == 'undefined') {
+            args = [];
+            if(typeof methodName != 'undefined') {
+                args.push(methodName);
+            }
+        }
+        methodName = contractName;
+        contractName = options;
+        options = {};
+    }
+    if (typeof args == 'undefined') {
+        args = [];
+    }
+    let from = options.from;
+    let ethersSigner;
+    if(from && from.length >= 64) {
+        if(from.length == 64) {
+            from = '0x' + from;
+        }
+        ethersSigner = new Wallet(from);
+        from = ethersSigner.address;
+    }
+    const deployment = rocketh.deployment(contractName);
+    const abi = deployment.contractInfo.abi
+    const overrides = {
+        gas: options.gas,
+        gasprice: options.gasPrice,
+        value: options.value,
+        nonce: options.nonce,
+        chainId: options.chainId,
+    }
+    const ethersContract = new ethers.Contract(deployment.address, abi, ethersSigner);
+    return ethersContract.estimate[methodName](...args, overrides);
+}
+
 async function deploy(name, options, contractName, ...args) {
     let register = true;
     if (typeof name != 'string') {
@@ -1036,18 +1147,29 @@ async function deploy(name, options, contractName, ...args) {
         contractName = options;
         options = name;
     }
+    let from = options.from;
+    let ethersSigner;
+    if(from.length >= 64) {
+        if(from.length == 64) {
+            from = '0x' + from;
+        }
+        ethersSigner = new Wallet(from);
+        from = ethersSigner.address;
+    } else {
+        ethersSigner = getEthersSigner(from);
+    }
     const ContractInfo = rocketh.contractInfo(contractName);
     const abi = ContractInfo.abi;
-    const factory = new ethers.ContractFactory(abi, '0x' + ContractInfo.evm.bytecode.object, getEthersSigner(options.from));
+    const factory = new ethers.ContractFactory(abi, '0x' + ContractInfo.evm.bytecode.object, ethersSigner);
     
-    const txReq = {
+    const overrides = {
         gas: options.gas,
         gasprice: options.gasPrice,
         value: options.value,
         nonce: options.nonce,
         chainId: options.chainId,
     }
-    const ethersContract = await factory.deploy(...args, txReq);
+    const ethersContract = await factory.deploy(...args, overrides);
     const tx = ethersContract.deployTransaction;
     const transactionHash = tx.hash;
     if (register) {
@@ -1057,7 +1179,7 @@ async function deploy(name, options, contractName, ...args) {
             args
         });
     }
-    const receipt = await tx.wait();
+    const receipt = await tx.wait(); // TODO return tx.wait
     const address = receipt.contractAddress;
     const contract = {address, abi};
 
