@@ -74,6 +74,7 @@ const registerDeployment = (name, deploymentInfo, force) => {
                 args: deploymentInfo.args,
                 address: deploymentInfo.address,
                 transactionHash: deploymentInfo.transactionHash,
+                data: deploymentInfo.data,
             };
 
             session.deployments[name] = deploymentInfoToSave;
@@ -581,6 +582,7 @@ async function runStages(config, contractInfos, deployments) {
                     } else if(typeof receipt.status != 'undefined' && receipt.status == 0) {
                         console.log('transaction ' + deployment.transactionHash + ' failed.');
                         unRegisterDeployment(contractName);
+                        // TODO exit ?
                         break;
                     } else if(receipt.contractAddress) {
                         contractAddress = receipt.contractAddress;
@@ -702,7 +704,7 @@ let _contractInfos;
 const rocketh = {
     runStages: () => runStages(_savedConfig, _contractInfos), // empty deployment for running Stages : blank canvas for testing
     deployment: (name) => {
-        return session.deployments[name];
+        return session.currentDeployments[name] || session.deployments[name];
     },
     deployments: () => session.deployments, // TODO remove ?
     getDeployedContract: getDeployedContract,
@@ -1176,7 +1178,8 @@ async function deploy(name, options, contractName, ...args) {
         rocketh.registerDeployment(name, {
             contractInfo: ContractInfo,
             transactionHash,
-            args
+            args,
+            data: options.associatedData,
         });
     }
     const receipt = await tx.wait(); // TODO return tx.wait
@@ -1188,7 +1191,8 @@ async function deploy(name, options, contractName, ...args) {
             contractInfo: ContractInfo,
             address: contract.address,
             transactionHash,
-            args
+            args,
+            data: associatedData
         });
     }
     return {
