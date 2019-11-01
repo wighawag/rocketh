@@ -1198,7 +1198,8 @@ async function deploy(name, options, contractName, ...args) {
     return {
         contract,
         transactionHash,
-        receipt
+        receipt,
+        newlyDeployed: true,
     };
 }
 
