@@ -1192,7 +1192,7 @@ async function deploy(name, options, contractName, ...args) {
             address: contract.address,
             transactionHash,
             args,
-            data: associatedData
+            data: options.associatedData
         });
     }
     return {
