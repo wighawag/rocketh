@@ -704,13 +704,17 @@ let _contractInfos;
 const rocketh = {
     runStages: () => runStages(_savedConfig, _contractInfos), // empty deployment for running Stages : blank canvas for testing
     deployment: (name) => {
-        return session.currentDeployments[name] || session.deployments[name];
+        return session.currentDeployments ? (session.currentDeployments[name] || session.deployments[name]) : session.deployments[name];
     },
     deployments: () => session.deployments, // TODO remove ?
     getDeployedContract: getDeployedContract,
     contractInfo: (name) => {
         return _contractInfos[name];
     },
+    call,
+    rawCall,
+    sendTxAndWait,
+    estimateGas,
     registerDeployment
 }
 
@@ -965,7 +969,7 @@ function attach(config, { url, chainId, accounts }, contractInfos, deployments) 
     }
 
     if (!session.deployments) {
-        log.log('extracting deployments for chainId', _chainId);
+        log.log('extracting deployments for chainId', _chainId, deploymentsPath, deploymentsSubPath);
         session.deployments = extractDeployments(path.join(deploymentsPath, deploymentsSubPath));
     }
 
@@ -1053,8 +1057,8 @@ async function sendTxAndWait(options, contractName, methodName, ...args) {
         const deployment = rocketh.deployment(contractName);
         const abi = deployment.contractInfo.abi
         const overrides = {
-            gas: options.gas,
-            gasprice: options.gasPrice,
+            gasLimit: options.gas,
+            gasPrice: options.gasPrice,
             value: options.value,
             nonce: options.nonce,
             chainId: options.chainId,
@@ -1065,6 +1069,13 @@ async function sendTxAndWait(options, contractName, methodName, ...args) {
         // TODO send simple tx from options;
     }
     return tx.wait();
+}
+
+async function rawCall(to, data) { // TODO call it eth_call?
+    return ethersProvider.send('eth_call', [{
+        to,
+        data
+    }, 'latest']); // TODO overrides
 }
 
 async function call(options, contractName, methodName, ...args) {
@@ -1091,16 +1102,25 @@ async function call(options, contractName, methodName, ...args) {
         ethersSigner = new Wallet(from);
         from = ethersSigner.address;
     }
+    if(!ethersSigner) {
+        ethersSigner = ethersProvider; // TODO rename ethersSigner
+    }
     const deployment = rocketh.deployment(contractName);
+    if (!deployment) {
+        throw new Error(`no contract named "${contractName}"`);
+    }
     const abi = deployment.contractInfo.abi
     const overrides = {
-        gas: options.gas,
-        gasprice: options.gasPrice,
+        gasLimit: options.gas,
+        gasPrice: options.gasPrice,
         value: options.value,
         nonce: options.nonce,
         chainId: options.chainId,
     }
     const ethersContract = new ethers.Contract(deployment.address, abi, ethersSigner);
+    if (options.outputTx) {
+        return ethersContract.populateTransaction[methodName](...args, overrides);    
+    }
     return ethersContract.callStatic[methodName](...args, overrides);
 }
 
