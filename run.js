@@ -711,6 +711,7 @@ const rocketh = {
     contractInfo: (name) => {
         return _contractInfos[name];
     },
+    deploy,
     call,
     rawCall,
     sendTxAndWait,
