@@ -861,6 +861,7 @@ function attach(config, { url, chainId, accounts }, contractInfos, deployments) 
     const isDeploymentChainId = config.deploymentChainIds.indexOf('' + _chainId) != -1;
 
     _savedConfig = config;
+    rocketh.config = config;
     if (!deploymentsPath) {
         if (config.deploymentsPath) {
             deploymentsPath = config.deploymentsPath;
