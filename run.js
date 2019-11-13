@@ -10,6 +10,7 @@ const geth = require('./geth_test_server');
 const runGanache = require('./run_ganache');
 const tmp = require('tmp');
 const ethers = require('ethers');
+const {BigNumber} = ethers;
 const WalletSubprovider = require('./walletprovider');
 
 const {
@@ -1060,8 +1061,8 @@ async function sendTxAndWait(options, contractName, methodName, ...args) {
         const abi = deployment.contractInfo.abi
         const overrides = {
             gasLimit: options.gas,
-            gasPrice: options.gasPrice,
-            value: options.value,
+            gasPrice: options.gasPrice ? BigNumber.from(options.gasPrice) : undefined,
+            value: options.value ? BigNumber.from(options.value) : undefined,
             nonce: options.nonce,
             chainId: options.chainId,
         }
