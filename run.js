@@ -957,8 +957,8 @@ function attach(config, { url, chainId, accounts }, contractInfos, deployments) 
             const cacheOutputPath = contractBuildPath + '/.compilationOutput.json';
             _contractInfos = extractContractInfos(JSON.parse(fs.readFileSync(cacheOutputPath).toString()), contractBuildPath);
 
-            const intputPath = contractBuildPath + '/.compilationInput.json';
-            compilationInput = JSON.parse(fs.readFileSync(intputPath).toString());
+            const inputPath = contractBuildPath + '/.compilationInput.json';
+            compilationInput = JSON.parse(fs.readFileSync(inputPath).toString());
         } catch (e) {
             console.log('no contracts');
         }
@@ -1161,7 +1161,7 @@ async function estimateGas(options, contractName, methodName, ...args) {
     const abi = deployment.contractInfo.abi
     const overrides = {
         gas: options.gas,
-        gasprice: options.gasPrice,
+        gasPrice: options.gasPrice,
         value: options.value,
         nonce: options.nonce,
         chainId: options.chainId,
@@ -1195,7 +1195,7 @@ async function deploy(name, options, contractName, ...args) {
     
     const overrides = {
         gas: options.gas,
-        gasprice: options.gasPrice,
+        gasPrice: options.gasPrice,
         value: options.value,
         nonce: options.nonce,
         chainId: options.chainId,
@@ -1322,7 +1322,7 @@ function registerContract(name, address, txHash, contractName, ...args) {
         transactionHash: txHash,
         args
     });
-    return { addresss, abi: ContractInfo.abi };
+    return { address, abi: ContractInfo.abi };
 }
 
 module.exports = {
