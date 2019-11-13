@@ -1081,18 +1081,15 @@ async function rawCall(to, data) { // TODO call it eth_call?
 }
 
 async function call(options, contractName, methodName, ...args) {
-    if (typeof options == 'string') {
-        if (typeof args == 'undefined') {
-            args = [];
-            if(typeof methodName != 'undefined') {
-                args.push(methodName);
-            }
+    if (typeof options === 'string') {
+        if(typeof methodName !== 'undefined') {
+            args.unshift(methodName);
         }
         methodName = contractName;
         contractName = options;
         options = {};
     }
-    if (typeof args == 'undefined') {
+    if (typeof args === 'undefined') {
         args = [];
     }
     let from = options.from;
@@ -1121,9 +1118,19 @@ async function call(options, contractName, methodName, ...args) {
     }
     const ethersContract = new ethers.Contract(deployment.address, abi, ethersSigner);
     if (options.outputTx) {
-        return ethersContract.populateTransaction[methodName](...args, overrides);    
+        const method = ethersContract.populateTransaction[methodName];
+        if(args.length > 0) {
+            return method(...args, overrides);
+        } else {
+            return method(overrides);
+        } 
     }
-    return ethersContract.callStatic[methodName](...args, overrides);
+    const method = ethersContract.callStatic[methodName];
+    if(args.length > 0) {
+        return method(...args, overrides);
+    } else {
+        return method(overrides);
+    }
 }
 
 async function estimateGas(options, contractName, methodName, ...args) {
