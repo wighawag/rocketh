@@ -540,7 +540,7 @@ function extractDeployments(deploymentsPath) {
         files = [];
     }
     for (const file of files) {
-        if (file.name.indexOf('.json') === file.name.length - 5) {
+        if (!file.directory && file.name.indexOf('.json') === file.name.length - 5) {
             deployments[file.name.substr(0, file.name.length - 5)] = JSON.parse(fs.readFileSync(file.path).toString());
         }
     }

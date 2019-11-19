@@ -344,6 +344,7 @@ if (process.env._ROCKETH_ARGS && process.env._ROCKETH_ARGS != "") {
 }
 
 program.option("-v, --verbose", 'more verbose output');
+// TODO program.option("--mnemonicFile", 'specify a specific mnemonic file path');
 
 program.command('launch [cmd]')
 .description('launch a node and execute cmd')
