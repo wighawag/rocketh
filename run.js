@@ -10,6 +10,8 @@ const geth = require('./geth_test_server');
 const runGanache = require('./run_ganache');
 const tmp = require('tmp');
 const ethers = require('ethers');
+// const {Logger} = require('@ethersproject/logger');
+// Logger.globalLogger().setLogLevel('error');
 const {BigNumber} = ethers;
 const WalletSubprovider = require('./walletprovider');
 
@@ -1053,8 +1055,11 @@ async function sendTxAndWait(options, contractName, methodName, ...args) {
         ethersSigner = new Wallet(from);
         from = ethersSigner.address;
     } else {
-        ethersSigner = getEthersSigner(from);
+        try {
+            ethersSigner = getEthersSigner(from);
+        } catch{}
     }
+
     let tx;
     if (contractName) {
         const deployment = rocketh.deployment(contractName);
@@ -1066,8 +1071,36 @@ async function sendTxAndWait(options, contractName, methodName, ...args) {
             nonce: options.nonce,
             chainId: options.chainId,
         }
-        const ethersContract = new ethers.Contract(deployment.address, abi, ethersSigner);
-        tx = await ethersContract.functions[methodName](...args, overrides);
+        if (!ethersSigner) { // ethers.js : would be nice to be able to estimate even if not access to signer (see below)
+            console.error('no signer for ' + from);
+            console.log('Please execute the following as ' + from);
+            const ethersContract = new ethers.Contract(deployment.address, abi, ethersProvider); 
+            const data = await ethersContract.populateTransaction[methodName](...args, overrides);
+            console.log(JSON.stringify({
+                to: deployment.address,
+                data,
+            }, null, '  '));
+            console.log('if you have an interface use the following');
+            console.log(JSON.stringify({
+                to: deployment.address,
+                method: methodName,
+                args,
+            }, null, '  '));
+            throw new Error('ABORT, ACTION REQUIRED, see above')
+        } else {
+            const ethersContract = new ethers.Contract(deployment.address, abi, ethersSigner);
+            if (!overrides.gasLimit) {
+                overrides.gasLimit = options.estimateGasLimit;
+                overrides.gasLimit = await ethersContract.estimateGas[methodName](...args, overrides); 
+                if (options.estimateGasExtra) {
+                    overrides.gasLimit = overrides.gasLimit + options.estimateGasExtra;
+                    if (options.estimateGasLimit) {
+                        overrides.gasLimit = Math.min(overrides.gasLimit, options.estimateGasLimit);
+                    }
+                }
+            }
+            tx = await ethersContract.functions[methodName](...args, overrides);
+        }
     } else {
         // TODO send simple tx from options;
     }

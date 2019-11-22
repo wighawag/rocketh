@@ -1,4 +1,6 @@
 const ethers = require('ethers');
+// const {Logger} = require('@ethersproject/logger');
+// Logger.globalLogger().setLogLevel('error');
 const {BigNumber} = ethers;
 
 const WalletSubProvider = function(privateKeys) {
@@ -58,6 +60,21 @@ WalletSubProvider.prototype.fetchBalance = function(from) {
     })
 }
 
+WalletSubProvider.prototype.estimateGas = function(data) {
+    const self = this;
+    return new Promise((resolve, reject) => {
+        self.engine.sendAsync({ id: ++self.lastId, method: 'eth_estimateGas', params: [data], jsonrpc: '2.0'}, (error, json) =>{
+            if(error) {
+                reject(error);
+            } else {
+                resolve(json.result);
+            }
+        });
+    })
+}
+
+
+
 function ensureEvenLength(hexString, debug) {
     const l = hexString.length - 2;
     if(debug) {
@@ -78,14 +95,48 @@ WalletSubProvider.prototype.handleRequest = async function(payload, next, end) {
         const rawTx = payload.params[0];
         const from = rawTx.from;
 
-        if(!rawTx.gas) {
-            return end(new Error('gas not specified'));
+        // // TODO remove ?
+        // if(!rawTx.gas) {
+        //     return end(new Error('gas not specified'));
+        // }
+
+        let nonce = rawTx.nonce;
+        if (typeof nonce === 'undefined') {
+            nonce = await this.fetchNonce(from);
+        } 
+        const nonceBN = BigNumber.from(nonce);
+
+        let value 
+        if(typeof rawTx.value === 'undefined') {
+            value = '0x00'; // TODO fix ethers
+        } else {
+            value = rawTx.value;
+        }
+        const valueBN = BigNumber.from(value);
+
+        let gas;
+        if(rawTx.gas) {
+            gas = rawTx.gas;
+        } else {
+            gas = await this.estimateGas({
+                from,
+                to: rawTx.to,
+                nonce: nonceBN.toHexString(),
+                data: rawTx.data,
+                value: valueBN.toHexString(),
+                chainId: rawTx.chainId,
+                gas: rawTx.estimateGasLimit,
+            });
+            if (rawTx.estimateGasExtra) {
+                gas += rawTx.estimateGasExtra;
+                if (rawTx.estimateGasLimit) {
+                    gas = Math.min(gas, rawTx.estimateGasLimit);
+                }
+            }
+            // return end(new Error('gas not specified'));
         }
 
-        // TODO fix it properly 
-        
         const gasPrice = rawTx.gasPrice || await this.fetchGasPrice();
-        const gas = rawTx.gas;
         const balance = await this.fetchBalance(from);
         
         const balanceBN = BigNumber.from(balance);
@@ -100,18 +151,6 @@ WalletSubProvider.prototype.handleRequest = async function(payload, next, end) {
                 + '( '  + gasBN.toString()  + ' gas x ' + gasPriceBN.toString() + ' gasPrice'
                 + ' ) > ' + balanceBN.toString()));
         }
-
-        const nonce = await this.fetchNonce(from);
-        const nonceBN = BigNumber.from(nonce);
-
-        
-        let value 
-        if(typeof rawTx.value === 'undefined') {
-            value = '0x00'; // TODO fix ethers
-        } else {
-            value = rawTx.value;
-        }
-        const valueBN = BigNumber.from(value);
 
         const forEthers = {
             to: rawTx.to,
