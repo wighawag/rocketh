@@ -1091,7 +1091,7 @@ async function sendTxAndWait(options, contractName, methodName, ...args) {
             const ethersContract = new ethers.Contract(deployment.address, abi, ethersSigner);
             if (!overrides.gasLimit) {
                 overrides.gasLimit = options.estimateGasLimit;
-                overrides.gasLimit = await ethersContract.estimateGas[methodName](...args, overrides); 
+                overrides.gasLimit = await ethersContract.estimate[methodName](...args, overrides); 
                 if (options.estimateGasExtra) {
                     overrides.gasLimit = overrides.gasLimit + options.estimateGasExtra;
                     if (options.estimateGasLimit) {
