@@ -1075,7 +1075,8 @@ async function sendTxAndWait(options, contractName, methodName, ...args) {
             console.error('no signer for ' + from);
             console.log('Please execute the following as ' + from);
             const ethersContract = new ethers.Contract(deployment.address, abi, ethersProvider); 
-            const data = await ethersContract.populateTransaction[methodName](...args, overrides);
+            const ethersArgs = args ? args.concat([overrides]) : [overrides];
+            const data = await ethersContract.populateTransaction[methodName](...ethersArgs);
             console.log(JSON.stringify({
                 to: deployment.address,
                 data,
@@ -1091,7 +1092,9 @@ async function sendTxAndWait(options, contractName, methodName, ...args) {
             const ethersContract = new ethers.Contract(deployment.address, abi, ethersSigner);
             if (!overrides.gasLimit) {
                 overrides.gasLimit = options.estimateGasLimit;
-                overrides.gasLimit = await ethersContract.estimate[methodName](...args, overrides); 
+                const ethersArgs = args ? args.concat([overrides]) : [overrides];
+                // console.log(ethersContract.estimate);
+                overrides.gasLimit = (await ethersContract.estimate[methodName](...ethersArgs)).toNumber(); 
                 if (options.estimateGasExtra) {
                     overrides.gasLimit = overrides.gasLimit + options.estimateGasExtra;
                     if (options.estimateGasLimit) {
@@ -1099,7 +1102,8 @@ async function sendTxAndWait(options, contractName, methodName, ...args) {
                     }
                 }
             }
-            tx = await ethersContract.functions[methodName](...args, overrides);
+            const ethersArgs = args ? args.concat([overrides]) : [overrides];
+            tx = await ethersContract.functions[methodName](...ethersArgs);
         }
     } else {
         // TODO send simple tx from options;
@@ -1290,7 +1294,7 @@ async function fetchIfDifferent(fieldsToCompare, name, options, contractName, ..
             let data;
             if (compareOnData || compareOnInput) {
                 data = factory.getDeployTransaction(...args);
-                console.log(JSON.stringify(data, null, '  '));
+                // console.log(JSON.stringify(data, null, '  '));
             }
             const newTransaction = {
                 data: compareOnData ? data : undefined,
