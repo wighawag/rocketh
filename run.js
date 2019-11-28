@@ -232,14 +232,14 @@ async function runNode(config) {
             const ganacheAccounts = [];
             for (let i = 0; i < privateKeys.length; i++) {
                 ganacheAccounts.push({
-                    balance: "0x56BC75E2D63100000", // TODO config
+                    balance: config.defaultBalance || "0x56BC75E2D63100000",
                     secretKey: privateKeys[i]
                 });
             }
             ganacheOptions.accounts = ganacheAccounts;
             await runGanache(port, wsPort, ganacheOptions);
         } else if (config.node == 'geth') {
-            const runningGeth = await geth.serve(port, wsPort, _accounts, config.chainId);
+            const runningGeth = await geth.serve(port, wsPort, _accounts, config.chainId, config);
             stop = runningGeth.stop;
         } else {
             const message = 'node type not supprted : ' + config.node;

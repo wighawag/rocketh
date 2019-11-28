@@ -40,7 +40,7 @@ function spawnGeth(gethPath, args, hookStd, logFile) {
     );
 }
 
-async function serve(port, wsPort, accounts, chainId) {
+async function serve(port, wsPort, accounts, chainId, config) {
     let gethBinary;
     try{
         gethBinary = requireLocal('geth-binary');
@@ -99,7 +99,7 @@ async function serve(port, wsPort, accounts, chainId) {
 
     for(let i = 0; i < accounts.length; i++) {
         genesis.alloc[accounts[i]] = {
-            balance: "0x56BC75E2D63100000"  // TODO config
+            balance: config.defaultBalance || "0x56BC75E2D63100000"
         };
     }
 
