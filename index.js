@@ -373,10 +373,11 @@ program.command('launch [cmd]')
     if(config.url) {
         config.keepRunning = false;
     } else {
-        if(cmdObj.blockTime) {
+        if(typeof cmdObj.blockTime != 'undefined') {
             config.blockTime = parseInt(cmdObj.blockTime);
         }
     }
+    // console.log(JSON.stringify(config, null, '  '));
 
     if(cmdObj.exportContracts) {
         config.exportContracts = cmdObj.exportContracts;

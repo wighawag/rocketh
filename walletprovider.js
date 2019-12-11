@@ -3,8 +3,9 @@ const ethers = require('ethers');
 // Logger.globalLogger().setLogLevel('error');
 const {BigNumber} = ethers;
 
-const WalletSubProvider = function(privateKeys) {
+const WalletSubProvider = function(privateKeys, config) {
     this.lastId = 0;
+    this.config = config;
    
     if(privateKeys){
         this.accounts = [];
@@ -136,13 +137,33 @@ WalletSubProvider.prototype.handleRequest = async function(payload, next, end) {
             // return end(new Error('gas not specified'));
         }
 
-        const gasPrice = rawTx.gasPrice || await this.fetchGasPrice();
-        const balance = await this.fetchBalance(from);
+        const gasPriceSpecified = !!rawTx.gasPrice;
+        let gasPriceBN;
+        if (!gasPriceSpecified) {
+            if (this.config.fixedGasPrice) {
+                gasPriceBN = BigNumber.from(this.config.fixedGasPrice);
+            } else {
+                const currentGasPrice = await this.fetchGasPrice();
+                gasPriceBN = BigNumber.from(currentGasPrice);
+            }
+        } else {
+            gasPriceBN = BigNumber.from(rawTx.gasPrice);
+        }
         
-        const balanceBN = BigNumber.from(balance);
-        const gasPriceBN = BigNumber.from(gasPrice);
+        if (this.config.extraGasPrice) {
+            let extraGasPriceBN;
+            if (this.config.extraGasPrice.endsWith('%')) {
+                extraGasPriceBN = gasPriceBN.mul(this.config.extraGasPrice.slice(0,this.config.extraGasPrice.length-1)).div(100);
+            } else {
+                extraGasPriceBN = BigNumber.from(this.config.extraGasPrice);
+            }
+            gasPriceBN = gasPriceBN.add(extraGasPriceBN);
+        }
+        
         const gasBN = BigNumber.from(gas);
 
+        const balance = await this.fetchBalance(from);
+        const balanceBN = BigNumber.from(balance);
         const balanceRequiredBN = gasPriceBN.mul(gasBN);
         
         if(balanceBN.lt(balanceRequiredBN)) {

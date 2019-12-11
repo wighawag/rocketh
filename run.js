@@ -226,9 +226,10 @@ async function runNode(config) {
             if (config.chainId) {
                 ganacheOptions.network_id = config.chainId;
             }
-            if (config.blockTime) {
+            if (typeof config.blockTime !== 'undefined') {
                 ganacheOptions.blockTime = config.blockTime; // TODO for geth
             }
+            // console.log(JSON.stringify(ganacheOptions, null, '  '));
             const ganacheAccounts = [];
             for (let i = 0; i < privateKeys.length; i++) {
                 ganacheAccounts.push({
@@ -840,7 +841,7 @@ function getWeb3Provider(config, url, chainId, forceAccounts) {
     if (!subProvidersConfigured) {
         const { privateKeys } = getAccountsFromConfig(config, chainId, forceAccounts);
         if (privateKeys) {
-            const walletProvider = new WalletSubprovider(privateKeys);
+            const walletProvider = new WalletSubprovider(privateKeys, config);
             subProviders.push(walletProvider)
         }
     }
