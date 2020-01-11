@@ -310,6 +310,7 @@ function compileWithSolc(solc, contractSrcPaths, resolve, reject, config) {
 
     const solcVersion = solc.semver();
     const pre_0_5_0_solc = semver.lt(solcVersion, '0.5.0');
+    const pre_0_6_0_solc = semver.lt(solcVersion, '0.6.0');
     const pre_0_4_11_solc = semver.lt(solcVersion, '0.4.11');
     if (pre_0_4_11_solc) {
         const message = 'you are using a too old solc version, rocketh only support solc >= 0.4.11';
@@ -415,8 +416,10 @@ function compileWithSolc(solc, contractSrcPaths, resolve, reject, config) {
         log.green('########################################### COMPILING #############################################################');
         if (pre_0_5_0_solc && !pre_0_4_11_solc) {
             rawOutput = solc.compileStandardWrapper(solcConfig);
-        } else {
+        } else if (pre_0_6_0_solc) {
             rawOutput = solc.compile(solcConfig, findImport);
+        } else {
+            rawOutput = solc.compile(solcConfig, {import: findImport});
         }
     } else {
         log.blue('########################################## FROM CACHE ############################################################');
