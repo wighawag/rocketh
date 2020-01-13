@@ -1070,7 +1070,7 @@ async function sendTxAndWait(options, contractName, methodName, ...args) {
         const abi = deployment.contractInfo.abi
         const overrides = {
             gasLimit: options.gas,
-            gasPrice: options.gasPrice ? BigNumber.from(options.gasPrice) : undefined,
+            gasPrice: options.gasPrice ? BigNumber.from(options.gasPrice) : undefined,  // TODO cinfig
             value: options.value ? BigNumber.from(options.value) : undefined,
             nonce: options.nonce,
             chainId: options.chainId,
@@ -1110,7 +1110,20 @@ async function sendTxAndWait(options, contractName, methodName, ...args) {
             tx = await ethersContract.functions[methodName](...ethersArgs);
         }
     } else {
-        // TODO send simple tx from options;
+        if (!ethersSigner) { // ethers.js : would be nice to be able to estimate even if not access to signer (see below)
+            console.error('no signer for ' + from);
+        } else {
+            const transactionData = {
+                to: options.to,
+                gasLimit: options.gas,
+                gasPrice: options.gasPrice ? BigNumber.from(options.gasPrice) : undefined, // TODO cinfig
+                value: options.value ? BigNumber.from(options.value) : undefined,
+                nonce: options.nonce,
+                data: options.data,
+                chainId: options.chainId,
+            }
+            tx = await ethersSigner.sendTransaction(transactionData);
+        }
     }
     return tx.wait();
 }
@@ -1222,6 +1235,9 @@ async function deploy(name, options, contractName, ...args) {
     }
     let from = options.from;
     let ethersSigner;
+    if (!from) {
+        throw new Error('no from specified');
+    }
     if(from.length >= 64) {
         if(from.length == 64) {
             from = '0x' + from;
