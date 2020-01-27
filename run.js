@@ -15,6 +15,18 @@ const ethers = require('ethers');
 const {BigNumber} = ethers;
 const WalletSubprovider = require('./walletprovider');
 
+function linkLibrary(bytecode, libraryName, libraryAddress) {
+    const address = libraryAddress.replace('0x', '');
+    const encodedLibraryName = ethers.utils
+        .solidityKeccak256(['string'], [libraryName])
+        .slice(2, 36);
+    const pattern = new RegExp(`_+\\$${encodedLibraryName}\\$_+`, 'g');
+    if (!pattern.exec(bytecode)) {
+        throw new Error(`Can't link '${libraryName}' (${encodedLibraryName}). in \n----\n ${bytecode}\n----\n`);
+    }
+    return bytecode.replace(pattern, address);
+}
+
 const {
     requireLocal,
     log,
@@ -1249,7 +1261,15 @@ async function deploy(name, options, contractName, ...args) {
     }
     const ContractInfo = rocketh.contractInfo(contractName);
     const abi = ContractInfo.abi;
-    const factory = new ethers.ContractFactory(abi, '0x' + ContractInfo.evm.bytecode.object, ethersSigner);
+
+    let byteCode = '0x' + ContractInfo.evm.bytecode.object;
+    if (options && options.libraries) {
+        for (const libName of Object.keys(options.libraries)) {
+            const libAddress = options.libraries[libName];
+            byteCode = linkLibrary(byteCode, libName, libAddress);
+        }
+    }
+    const factory = new ethers.ContractFactory(abi, byteCode, ethersSigner);
     
     const overrides = {
         gas: options.gas,
