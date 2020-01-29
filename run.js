@@ -1186,6 +1186,9 @@ async function call(options, contractName, methodName, ...args) {
     const ethersContract = new ethers.Contract(deployment.address, abi, ethersSigner);
     if (options.outputTx) {
         const method = ethersContract.populateTransaction[methodName];
+        if (!method) {
+            throw new Error(`no method named "${methodName}" on contract "${contractName}"`);
+        }
         if(args.length > 0) {
             return method(...args, overrides);
         } else {
@@ -1193,6 +1196,9 @@ async function call(options, contractName, methodName, ...args) {
         } 
     }
     const method = ethersContract.callStatic[methodName];
+    if (!method) {
+        throw new Error(`no method named "${methodName}" on contract "${contractName}"`);
+    }
     if(args.length > 0) {
         return method(...args, overrides);
     } else {
