@@ -735,10 +735,12 @@ const rocketh = {
     rawCall,
     sendTxAndWait,
     estimateGas,
-    registerDeployment
+    registerDeployment,
+    getEvents,
 }
 
 let ethersProvider;
+
 
 let deploymentsPath;
 let writeDeploymentsPath;
@@ -1138,6 +1140,26 @@ async function sendTxAndWait(options, contractName, methodName, ...args) {
         }
     }
     return tx.wait();
+}
+
+async function getEvents(contract, sig, options) {
+    const ethersContract = new ethers.Contract(contract.address, contract.abi, ethersProvider);
+    let topic = ethers.utils.id(sig);
+    let fromBlock = 0;
+    let toBlock = 'latest';
+    if (options && options.receipt) {
+        fromBlock = options.receipt.blockNumber;
+        toBlock = options.receipt.blockNumber;
+    }
+    let filter = {
+        address: contract.address,
+        fromBlock,
+        toBlock,
+        topics: [ topic ]
+    }
+
+    const logs = await ethersProvider.getLogs(filter);
+    return logs.map(l => ethersContract.interface.parseLog(l));
 }
 
 async function rawCall(to, data) { // TODO call it eth_call?

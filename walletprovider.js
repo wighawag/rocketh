@@ -96,6 +96,11 @@ WalletSubProvider.prototype.handleRequest = async function(payload, next, end) {
         const rawTx = payload.params[0];
         const from = rawTx.from;
 
+        const wallet = this.wallets[from];
+        if (!wallet) {
+            return end(new Error('Account unknown ' +from));
+        }
+
         // // TODO remove ?
         // if(!rawTx.gas) {
         //     return end(new Error('gas not specified'));
@@ -198,6 +203,10 @@ WalletSubProvider.prototype.handleRequest = async function(payload, next, end) {
           });
 
     } else if(payload.method == 'eth_sign') {
+        const wallet = this.wallets[payload.params[0]];
+        if (!wallet) {
+            return end(new Error('Account unknown ' + payload.params[0]));
+        }
         const signedMessage = await this.signMessage(payload.params[0], payload.params[1]);
         // console.log(payload.params, signedMessage);
         return end(null, signedMessage);
