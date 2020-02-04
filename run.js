@@ -674,6 +674,7 @@ async function runStages(config, contractInfos, deployments) {
         deployment: function (name) { return session.currentDeployments[name] },
         namedAccounts: rocketh.namedAccounts,
         sendTxAndWait,
+        batchTxAndWait,
         call,
         estimateGas,
         initialRun,
@@ -734,6 +735,7 @@ const rocketh = {
     call,
     rawCall,
     sendTxAndWait,
+    batchTxAndWait,
     estimateGas,
     registerDeployment,
     getEvents,
@@ -1024,6 +1026,7 @@ function attach(config, { url, chainId, accounts }, contractInfos, deployments) 
 
     rocketh.ethereum = provider;
     rocketh.sendTxAndWait = sendTxAndWait;
+    rocketh.batchTxAndWait = batchTxAndWait;
     rocketh.estimateGas = estimateGas;
     rocketh.call = call;
     global.ethereum = provider;
@@ -1063,7 +1066,37 @@ function getEthersSigner(from) {
     return ethersProvider.getSigner(accountIndex);
 }
 
+async function batchTxAndWait(txs) {
+    const promises = [];
+    const currentNonces = {}
+    for (const tx of txs) {
+        const options = tx[0];
+        let from = options.from;
+        let ethersSigner;
+        if(from.length >= 64) {
+            if(from.length == 64) {
+                from = '0x' + from;
+            }
+            ethersSigner = new Wallet(from);
+            from = ethersSigner.address;
+        } else {
+            try {
+                ethersSigner = getEthersSigner(from);
+            } catch{}
+        }
+        // console.log(tx);
+        const nonce = options.nonce || currentNonces[from] || await ethersProvider.getTransactionCount(from);
+        tx[0].nonce = nonce;
+        currentNonces[from] = nonce + 1;
+        promises.push(sendTxAndWait(...tx));
+    }
+    await Promise.all(promises);
+}
+
 async function sendTxAndWait(options, contractName, methodName, ...args) {
+    // console.log({
+    //     options, contractName, methodName, args
+    // });
     let from = options.from;
     let ethersSigner;
     if(from.length >= 64) {
