@@ -1066,7 +1066,7 @@ function getEthersSigner(from) {
     return ethersProvider.getSigner(accountIndex);
 }
 
-async function batchTxAndWait(txs) {
+async function batchTxAndWait(txs, batchOptions) {
     const promises = [];
     const currentNonces = {}
     for (const tx of txs) {
@@ -1089,6 +1089,11 @@ async function batchTxAndWait(txs) {
         tx[0].nonce = nonce;
         currentNonces[from] = nonce + 1;
         promises.push(sendTxAndWait(...tx));
+    }
+    if (batchOptions.dev_forceMine) {
+        try {
+            await ethersProvider.send('evm_mine', []);
+        } catch(e) {}
     }
     await Promise.all(promises);
 }
@@ -1171,6 +1176,11 @@ async function sendTxAndWait(options, contractName, methodName, ...args) {
             }
             tx = await ethersSigner.sendTransaction(transactionData);
         }
+    }
+    if (options.dev_forceMine) {
+        try {
+            await ethersProvider.send('evm_mine', []);
+        } catch(e) {}
     }
     return tx.wait();
 }
@@ -1349,6 +1359,11 @@ async function deploy(name, options, contractName, ...args) {
             args,
             data: options.associatedData,
         });
+    }
+    if (options.dev_forceMine) {
+        try {
+            await ethersProvider.send('evm_mine', []);
+        } catch(e) {}
     }
     const receipt = await tx.wait(); // TODO return tx.wait
     const address = receipt.contractAddress;
