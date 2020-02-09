@@ -1421,7 +1421,8 @@ async function fetchIfDifferent(fieldsToCompare, name, options, contractName, ..
                 from: options.from
             };
 
-            transaction.data = transaction.input;
+            transaction.data = transaction.data || transaction.input;
+            transaction.input = transaction.input || transaction.data;
             for (let i = 0; i < fieldsToCompare.length; i++) {
                 const field = fieldsToCompare[i];
                 if (typeof newTransaction[field] == 'undefined') {
