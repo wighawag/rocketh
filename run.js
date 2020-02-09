@@ -1409,7 +1409,8 @@ async function fetchIfDifferent(fieldsToCompare, name, options, contractName, ..
 
             let data;
             if (compareOnData || compareOnInput) {
-                data = factory.getDeployTransaction(...args);
+                const deployStruct = factory.getDeployTransaction(...args);
+                data = deployStruct.data;
                 // console.log(JSON.stringify(data, null, '  '));
             }
             const newTransaction = {
@@ -1457,7 +1458,7 @@ async function getDeployedContractWithTransactionHash(name) {
     if (!deployment) {
         return null;
     }
-    const receipt = await fetchReceipt(deployment.transactionHash);
+    const receipt = await fetchReceiptViaWeb3Provider(global.ethereum, deployment.transactionHash);
     return { contract: fromDeployment(deployment), transactionHash: deployment.transactionHash, receipt };
 }
 
