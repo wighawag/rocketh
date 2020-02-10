@@ -1294,11 +1294,13 @@ async function estimateGas(options, contractName, methodName, ...args) {
         }
         ethersSigner = new Wallet(from);
         from = ethersSigner.address;
+    } else if (from) {
+        ethersSigner = getEthersSigner(from);
     }
     const deployment = rocketh.deployment(contractName);
     const abi = deployment.contractInfo.abi
     const overrides = {
-        gas: options.gas,
+        gasLimit: options.gas,
         gasPrice: options.gasPrice,
         value: options.value,
         nonce: options.nonce,
@@ -1343,7 +1345,7 @@ async function deploy(name, options, contractName, ...args) {
     const factory = new ethers.ContractFactory(abi, byteCode, ethersSigner);
     
     const overrides = {
-        gas: options.gas,
+        gasLimit: options.gas,
         gasPrice: options.gasPrice,
         value: options.value,
         nonce: options.nonce,
