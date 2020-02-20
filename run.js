@@ -685,6 +685,8 @@ async function runStages(config, contractInfos, deployments) {
         fetchIfDifferent,
         getDeployedContract,
         registerContract,
+        getEvents,
+        sendTxAndWaitOnlyFrom,
     }];
 
     for (const fileName of fileNames) {
@@ -738,7 +740,9 @@ const rocketh = {
     batchTxAndWait,
     estimateGas,
     registerDeployment,
+    registerContract,
     getEvents,
+    sendTxAndWaitOnlyFrom,
 }
 
 let ethersProvider;
@@ -1096,6 +1100,34 @@ async function batchTxAndWait(txs, batchOptions) {
         } catch(e) {}
     }
     await Promise.all(promises);
+}
+
+async function sendTxAndWaitOnlyFrom(from, options, contractName, methodName, ...args) {
+    const deployment = rocketh.deployment(contractName);
+    const abi = deployment.contractInfo.abi;
+    const ethersContract = new ethers.Contract(deployment.address, abi, ethersProvider);
+    if (from.toLowerCase() !== options.from.toLowerCase()) {
+        const {data} = ethersContract.methods[methodName](...args).encodeABI();
+        const to = ethersContract.address;
+        console.log(options.from + ' has no right to ' + methodName);
+
+        console.log('Please execute the following as ' + from);
+        console.log(JSON.stringify({
+            to,
+            data,
+        }, null, '  '));
+        console.log('if you have an interface use the following');
+        console.log(JSON.stringify({
+            to,
+            method: methodName,
+            args,
+        }, null, '  '));
+        if (options.skipError) {
+            return null;
+        }
+        throw new Error('ABORT, ACTION REQUIRED, see above');
+    }
+    return sendTxAndWait(options, contractName, methodName, ...args);
 }
 
 async function sendTxAndWait(options, contractName, methodName, ...args) {
