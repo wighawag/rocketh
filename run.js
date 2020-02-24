@@ -1107,7 +1107,7 @@ async function sendTxAndWaitOnlyFrom(from, options, contractName, methodName, ..
     const abi = deployment.contractInfo.abi;
     const ethersContract = new ethers.Contract(deployment.address, abi, ethersProvider);
     if (from.toLowerCase() !== options.from.toLowerCase()) {
-        const {data} = ethersContract.functions[methodName](...args).encodeABI();
+        const {data} = ethersContract.populateTransaction[methodName](...args);
         const to = ethersContract.address;
         console.log(options.from + ' has no right to ' + methodName);
 
