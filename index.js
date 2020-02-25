@@ -60,9 +60,10 @@ function setupAnd(func) {
         log.setSlient(config.silent);
         log.log(JSON.stringify(config, null, '  '));
         if (require.main === module) {
+            log.log('running...');
             func(...args);
         } else {
-            log.log('attaching ...')
+            log.log('attaching ...');
             const session = global._rocketh_session;
             attach(config, { chainId: session.chainId, url: session.url, accounts: session.accounts });
         }
@@ -130,7 +131,7 @@ function executeOrAttach(execution, willRunStages) {
             
             try {
                 // console.log('running stages...');
-                newDeployments = await runStages(config, contractInfos, result.deployments);
+                newDeployments = await runStages(config, contractInfos, result.deployments, true);
             } catch (stageError) {
                 console.error(stageError);
                 process.exit(1);
@@ -352,6 +353,7 @@ program.command('launch [cmd]')
 .option('-q, --export-contracts <path>', 'export contractsInfo in <path>')
 .option('-k, --keep-running', 'do not stop the node once stages executed (not for url)')
 .option('-b, --block-time <blockTime>', 'specify a block time at which the node launched (not for url) will be mining')
+.option('-s, --skip-deployments', 'do not run deployments scripts')
 .action(setupAnd(function(cmd, cmdObj){
     // if(!cmdObj) {
     //     console.error('launch cmd argument missing ')
@@ -360,6 +362,10 @@ program.command('launch [cmd]')
 
     if(cmdObj.keepRunning) {
         config.keepRunning = true;
+    }
+
+    if (cmdObj.skipDeployments) {
+        config.skipDeployments = true;
     }
     
     if(typeof cmdObj.node != 'undefined') {
@@ -383,7 +389,7 @@ program.command('launch [cmd]')
         config.exportContracts = cmdObj.exportContracts;
     }
     
-    executeOrAttach(cmd ? cmd.split(' ') : undefined, true); // TODO split even with more spaces
+    executeOrAttach(cmd ? cmd.split(' ') : undefined, !config.skipDeployments); // TODO split even with more spaces
 }));
 
 program.command('attach <url> [cmd]')

@@ -62,6 +62,7 @@ const unRegisterDeployment = (name) => {
 }
 
 const registerDeployment = (name, deploymentInfo, force) => {
+    session.currentDeployments = session.currentDeployments || {};
     const conflict = !force && session.currentDeployments[name] && !(deploymentInfo.transactionHash == session.currentDeployments[name].transactionHash);
     if (conflict) {
         console.error(colors.red('deployment with same name (' + name + ') exists'));
@@ -491,6 +492,20 @@ function compileWithSolc(solc, contractSrcPaths, resolve, reject, config) {
         }
 
         const contractInfos = {};
+        log.log('importing contracts...');
+        const importsPath = path.join(config.rootPath || './', config.importsPath || 'imports');
+        let files;
+        try {
+            files = traverse(importsPath, [], null, (name, stats) => true);
+        } catch (e) {
+            files = [];
+        }
+        for (const file of files) {
+            if (!file.directory && file.name.indexOf('.json') === file.name.length - 5) {
+                contractInfos[file.name.substr(0, file.name.length - 5)] = JSON.parse(fs.readFileSync(file.path).toString());
+            }
+        }
+
         for (const filePath of Object.keys(output.contracts)) {
             for (const contractName of Object.keys(output.contracts[filePath])) {
                 const contractInfo = output.contracts[filePath][contractName];
@@ -520,6 +535,9 @@ function compileWithSolc(solc, contractSrcPaths, resolve, reject, config) {
                     try { fs.mkdirSync('build'); } catch (e) { }
                     try { fs.mkdirSync('build/contracts'); } catch (e) { }
                     fs.writeFileSync('build/contracts/' + contractName + '.json', JSON.stringify(truffleBuildFile, null, '  '));
+                }
+                if (contractInfos[contractName]) {
+                    log.log('overriding ' + contractName);
                 }
                 contractInfos[contractName] = contractInfo;
                 // if (contractInfo.evm
@@ -582,8 +600,7 @@ function chainConfig(config, object, chainId) {
 let _chainId;
 let _accounts;
 let disableDeploymentSave;
-let initialRun;
-async function runStages(config, contractInfos, deployments) {
+async function runStages(config, contractInfos, deployments, initialRun) {
     disableDeploymentSave = !deployments;
 
     session.currentDeployments = {};
@@ -743,6 +760,7 @@ const rocketh = {
     registerContract,
     getEvents,
     sendTxAndWaitOnlyFrom,
+    deployIfDifferent,
 }
 
 let ethersProvider;
@@ -978,16 +996,40 @@ function attach(config, { url, chainId, accounts }, contractInfos, deployments) 
 
     let compilationInput;
     if (!_contractInfos) {
+       
+
+        const importedContractInfos = {};
+        log.log('importing contracts...');
+        const importsPath = path.join(config.rootPath || './', config.importsPath || 'imports');
+        let files;
+        try {
+            files = traverse(importsPath, [], null, (name, stats) => true);
+        } catch (e) {
+            files = [];
+        }
+        for (const file of files) {
+            if (!file.directory && file.name.indexOf('.json') === file.name.length - 5) {
+                importedContractInfos[file.name.substr(0, file.name.length - 5)] = JSON.parse(fs.readFileSync(file.path).toString());
+            }
+        }
+
+        log.log('getting contracts info from compilation output....');
         // TODO remove duplic :
         try {
             const contractBuildPath = path.join(config.rootPath || './', config.contractBuildPath || 'build');
             const cacheOutputPath = contractBuildPath + '/.compilationOutput.json';
             _contractInfos = extractContractInfos(JSON.parse(fs.readFileSync(cacheOutputPath).toString()), contractBuildPath);
 
+            for (const contractName of Object.keys(importedContractInfos)) {
+                if (!_contractInfos[contractName]) {
+                    _contractInfos[contractName] = importedContractInfos[contractName];
+                }
+            } 
+
             const inputPath = contractBuildPath + '/.compilationInput.json';
             compilationInput = JSON.parse(fs.readFileSync(inputPath).toString());
         } catch (e) {
-            console.log('no contracts');
+            log.log('no contracts');
         }
     }
 
