@@ -600,6 +600,11 @@ function chainConfig(config, object, chainId) {
 let _chainId;
 let _accounts;
 let disableDeploymentSave;
+async function resetDeployments() {
+    session.deployments = {};
+    session.currentDeployments = {};
+}
+
 async function runStages(config, contractInfos, deployments, initialRun) {
     disableDeploymentSave = !deployments;
 
@@ -635,7 +640,7 @@ async function runStages(config, contractInfos, deployments, initialRun) {
         }
     }
 
-    initialRun = typeof deployments != 'undefined';
+    initialRun = initialRun || typeof deployments != 'undefined';
     session.deployments = deployments || {}; // override 
 
     const stagesPath = path.join(config.rootPath || './', config.stagesPath || 'stages');
@@ -761,6 +766,7 @@ const rocketh = {
     getEvents,
     sendTxAndWaitOnlyFrom,
     deployIfDifferent,
+    resetDeployments,
 }
 
 let ethersProvider;
@@ -1565,4 +1571,5 @@ module.exports = {
     rocketh,
     cleanDeployments,
     extractDeployments,
+    resetDeployments,
 }
