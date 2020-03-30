@@ -1155,7 +1155,7 @@ async function sendTxAndWaitOnlyFrom(from, options, contractName, methodName, ..
     const abi = deployment.contractInfo.abi;
     const ethersContract = new ethers.Contract(deployment.address, abi, ethersProvider);
     if (from.toLowerCase() !== options.from.toLowerCase()) {
-        const {data} = ethersContract.populateTransaction[methodName](...args);
+        const {data} = await ethersContract.populateTransaction[methodName](...args);
         const to = ethersContract.address;
         console.log(options.from + ' has no right to ' + methodName);
 
@@ -1212,7 +1212,7 @@ async function sendTxAndWait(options, contractName, methodName, ...args) {
             console.log('Please execute the following as ' + from);
             const ethersContract = new ethers.Contract(deployment.address, abi, ethersProvider); 
             const ethersArgs = args ? args.concat([overrides]) : [overrides];
-            const data = await ethersContract.populateTransaction[methodName](...ethersArgs);
+            const {data} = await ethersContract.populateTransaction[methodName](...ethersArgs);
             console.log(JSON.stringify({
                 to: deployment.address,
                 data,
