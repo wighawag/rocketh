@@ -1,5 +1,11 @@
 # rocketh-deploy
 
+## 0.5.3
+
+### Patch Changes
+
+- add execute method
+
 ## 0.5.2
 
 ### Patch Changes
