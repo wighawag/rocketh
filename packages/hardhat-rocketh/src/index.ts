@@ -1,3 +1,5 @@
+import './type-extensions';
+
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -56,6 +58,10 @@ function setupExtraSolcSettings(settings: {
 }
 
 extendConfig((config: HardhatConfig, userConfig: Readonly<HardhatUserConfig>) => {
+	config.generateArtifacts = userConfig.generateArtifacts || {
+		ts: ['./generated/artifacts.ts'],
+	};
+
 	for (const compiler of config.solidity.compilers) {
 		setupExtraSolcSettings(compiler.settings);
 	}
@@ -68,7 +74,7 @@ task('deploy', 'Deploy contracts').setAction(async (args, hre) => {
 	});
 });
 
-subtask(TASK_COMPILE_SOLIDITY_EMIT_ARTIFACTS).setAction(async (args, _, runSuper): Promise<any> => {
+subtask(TASK_COMPILE_SOLIDITY_EMIT_ARTIFACTS).setAction(async (args, hre, runSuper): Promise<any> => {
 	const allArtifacts: {[name: string]: any} = {}; // TODO read current ?
 	const artifactResult = await runSuper(args);
 	const shortNameDict: {[shortName: string]: boolean} = {};
@@ -113,9 +119,37 @@ subtask(TASK_COMPILE_SOLIDITY_EMIT_ARTIFACTS).setAction(async (args, _, runSuper
 			}
 		}
 	}
-	const newContent = `export default ${JSON.stringify(allArtifacts, null, 2)} as const;`;
-	const folderPath = './generated';
-	fs.mkdirSync(folderPath, {recursive: true});
-	fs.writeFileSync(`${folderPath}/artifacts.ts`, newContent);
+
+	const js = hre.config.generateArtifacts?.js || [];
+	const ts = hre.config.generateArtifacts?.ts || [];
+	const json = hre.config.generateArtifacts?.json || [];
+
+	if (ts.length > 0) {
+		const newContent = `export default ${JSON.stringify(allArtifacts, null, 2)} as const;`;
+		for (const tsFile of ts) {
+			const folderPath = path.dirname(tsFile);
+			fs.mkdirSync(folderPath, {recursive: true});
+			fs.writeFileSync(tsFile, newContent);
+		}
+	}
+
+	if (js.length > 0) {
+		const newContent = `export default /** @type {const} **/ (${JSON.stringify(allArtifacts, null, 2)});`;
+		for (const jsFile of js) {
+			const folderPath = path.dirname(jsFile);
+			fs.mkdirSync(folderPath, {recursive: true});
+			fs.writeFileSync(jsFile, newContent);
+		}
+	}
+
+	if (json.length > 0) {
+		const newContent = JSON.stringify(allArtifacts, null, 2);
+		for (const jsonFile of json) {
+			const folderPath = path.dirname(jsonFile);
+			fs.mkdirSync(folderPath, {recursive: true});
+			fs.writeFileSync(jsonFile, newContent);
+		}
+	}
+
 	return artifactResult;
 });
