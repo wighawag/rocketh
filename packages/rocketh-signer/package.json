@@ -1,0 +1,27 @@
+{
+	"name": "rocketh-signer",
+	"version": "0.5.0",
+	"description": "add signer to rocketh",
+	"publishConfig": {
+		"access": "public"
+	},
+	"type": "module",
+	"main": "dist/index.cjs",
+	"module": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"devDependencies": {
+		"eip-1193": "^0.4.4",
+		"eip-1193-signer": "^0.0.1",
+		"rimraf": "^4.4.1",
+		"tsup": "^6.7.0",
+		"typescript": "^5.0.4",
+		"rocketh": "workspace:*"
+	},
+	"peerDependencies": {
+		"rocketh": "workspace:*"
+	},
+	"scripts": {
+		"build": "rimraf dist && tsup src/index.ts --dts --format esm,cjs",
+    	"dev": "rimraf dist && tsup src/index.ts --dts --format esm,cjs --watch"
+	}
+}

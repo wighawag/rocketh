@@ -1,6 +1,9 @@
-node_modules/
-yarn-error.log
-npm-debug.log
-logo.png
-.mythx_credentials
-.mnemonic
+node_modules
+cache
+artifacts
+.vscode/*
+!*.default
+generated
+deployments/localhost
+
+*.local

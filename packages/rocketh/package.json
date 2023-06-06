@@ -1,0 +1,41 @@
+{
+	"name": "rocketh",
+	"version": "0.5.0",
+	"description": "deploy smart contract on ethereum-compatible networks",
+	"publishConfig": {
+		"access": "public"
+	},
+	"type": "module",
+	"main": "dist/index.cjs",
+	"module": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"bin": {
+		"rocketh": "dist/cli.cjs"
+	},
+	"devDependencies": {
+		"@types/figlet": "^1.5.5",
+		"@types/node": "^18.15.5",
+		"abitype": "^0.7.1",
+		"eip-1193": "^0.4.4",
+		"ipfs-gateway-emulator": "4.2.1-ipfs.2",
+		"rimraf": "^4.4.1",
+		"tsup": "^6.7.0",
+		"typedoc": "^0.23.28",
+		"typescript": "^5.0.4"
+	},
+	"dependencies": {
+		"commander": "^10.0.0",
+		"eip-1193-json-provider": "^0.1.5",
+		"esbuild": "^0.17.12",
+		"esbuild-register": "^3.4.2",
+		"figlet": "^1.5.2",
+		"ldenv": "^0.3.5",
+		"viem": "^0.3.50"
+	},
+	"scripts": {
+		"build": "rimraf dist && tsup --entry src/index.ts --entry src/cli.ts --dts --format esm,cjs",
+		"dev": "rimraf dist && tsup --entry src/index.ts --entry src/cli.ts --dts --format esm,cjs --watch",
+		"gen-docs": "typedoc --out docs src",
+		"serve-docs": "ipfs-emulator --only -d docs -p 8080"
+	}
+}

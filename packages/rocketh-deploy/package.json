@@ -1,0 +1,30 @@
+{
+	"name": "rocketh-deploy",
+	"version": "0.5.0",
+	"description": "provide deploy function for rocketh",
+	"publishConfig": {
+		"access": "public"
+	},
+	"type": "module",
+	"main": "dist/index.cjs",
+	"module": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"devDependencies": {
+		"abitype": "^0.7.1",
+		"eip-1193": "^0.4.4",
+		"rimraf": "^4.4.1",
+		"tsup": "^6.7.0",
+		"typescript": "^5.0.4",
+		"rocketh": "workspace:*"
+	},
+	"peerDependencies": {
+		"rocketh": "workspace:*"
+	},
+	"dependencies": {
+		"viem": "^0.3.50"
+	},
+	"scripts": {
+		"build": "rimraf dist && tsup src/index.ts --dts --format esm,cjs",
+    	"dev": "rimraf dist && tsup src/index.ts --dts --format esm,cjs --watch"
+	}
+}
