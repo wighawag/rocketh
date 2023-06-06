@@ -144,10 +144,12 @@ subtask(TASK_COMPILE_SOLIDITY_EMIT_ARTIFACTS).setAction(async (args, hre, runSup
 
 	if (typeof js === 'object' && js.length > 0) {
 		const newContent = `export default /** @type {const} **/ (${JSON.stringify(allArtifacts, null, 2)});`;
+		const dtsContent = `export = ${JSON.stringify(allArtifacts, null, 2)} as const;`;
 		for (const jsFile of js) {
 			const folderPath = path.dirname(jsFile);
 			fs.mkdirSync(folderPath, {recursive: true});
 			fs.writeFileSync(jsFile, newContent);
+			fs.writeFileSync(jsFile.replace('.js', '.d.ts'), dtsContent);
 		}
 	}
 
