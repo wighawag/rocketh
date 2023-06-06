@@ -1,5 +1,11 @@
 # hardhat-rocketh
 
+## 0.5.5
+
+### Patch Changes
+
+- forgot to build before publish
+
 ## 0.5.4
 
 ### Patch Changes
