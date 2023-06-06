@@ -1,6 +1,6 @@
 {
 	"name": "rocketh-signer",
-	"version": "0.5.0",
+	"version": "0.5.1",
 	"description": "add signer to rocketh",
 	"publishConfig": {
 		"access": "public"
@@ -22,6 +22,6 @@
 	},
 	"scripts": {
 		"build": "rimraf dist && tsup src/index.ts --dts --format esm,cjs",
-    	"dev": "rimraf dist && tsup src/index.ts --dts --format esm,cjs --watch"
+		"dev": "rimraf dist && tsup src/index.ts --dts --format esm,cjs --watch"
 	}
 }
