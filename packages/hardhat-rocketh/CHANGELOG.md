@@ -1,5 +1,11 @@
 # hardhat-rocketh
 
+## 0.5.6
+
+### Patch Changes
+
+- add d.ts export for js
+
 ## 0.5.5
 
 ### Patch Changes
