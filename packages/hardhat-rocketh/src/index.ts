@@ -120,11 +120,20 @@ subtask(TASK_COMPILE_SOLIDITY_EMIT_ARTIFACTS).setAction(async (args, hre, runSup
 		}
 	}
 
-	const js = hre.config.generateArtifacts?.js || [];
-	const ts = hre.config.generateArtifacts?.ts || [];
-	const json = hre.config.generateArtifacts?.json || [];
+	const js =
+		typeof hre.config.generateArtifacts?.js === 'string'
+			? [hre.config.generateArtifacts?.js]
+			: hre.config.generateArtifacts?.js || [];
+	const ts =
+		typeof hre.config.generateArtifacts?.ts === 'string'
+			? [hre.config.generateArtifacts?.ts]
+			: hre.config.generateArtifacts?.ts || [];
+	const json =
+		typeof hre.config.generateArtifacts?.json === 'string'
+			? [hre.config.generateArtifacts?.json]
+			: hre.config.generateArtifacts?.json || [];
 
-	if (ts.length > 0) {
+	if (typeof ts === 'object' && ts.length > 0) {
 		const newContent = `export default ${JSON.stringify(allArtifacts, null, 2)} as const;`;
 		for (const tsFile of ts) {
 			const folderPath = path.dirname(tsFile);
@@ -133,7 +142,7 @@ subtask(TASK_COMPILE_SOLIDITY_EMIT_ARTIFACTS).setAction(async (args, hre, runSup
 		}
 	}
 
-	if (js.length > 0) {
+	if (typeof js === 'object' && js.length > 0) {
 		const newContent = `export default /** @type {const} **/ (${JSON.stringify(allArtifacts, null, 2)});`;
 		for (const jsFile of js) {
 			const folderPath = path.dirname(jsFile);
@@ -142,7 +151,7 @@ subtask(TASK_COMPILE_SOLIDITY_EMIT_ARTIFACTS).setAction(async (args, hre, runSup
 		}
 	}
 
-	if (json.length > 0) {
+	if (typeof json === 'object' && json.length > 0) {
 		const newContent = JSON.stringify(allArtifacts, null, 2);
 		for (const jsonFile of json) {
 			const folderPath = path.dirname(jsonFile);
