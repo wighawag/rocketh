@@ -143,7 +143,7 @@ export async function createEnvironment<
 			}
 		} else {
 			const accountForNetwork = accountDef[networkName] || accountDef[chainId] || accountDef['default'];
-			if (accountForNetwork) {
+			if (typeof accountForNetwork !== undefined) {
 				const accountFetched = await getAccount(name, accounts, accountForNetwork);
 				if (accountFetched) {
 					accountCache[name] = account = accountFetched;
