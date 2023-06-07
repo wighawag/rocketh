@@ -35,6 +35,7 @@
 	"scripts": {
 		"build": "rimraf dist && tsup --entry src/index.ts --entry src/cli.ts --dts --format esm,cjs",
 		"dev": "rimraf dist && tsup --entry src/index.ts --entry src/cli.ts --dts --format esm,cjs --watch",
+		"dev-no-reset": "tsup --entry src/index.ts --entry src/cli.ts --dts --format esm,cjs --watch",
 		"gen-docs": "typedoc --out docs src",
 		"serve-docs": "ipfs-emulator --only -d docs -p 8080"
 	}

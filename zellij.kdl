@@ -4,20 +4,20 @@ layout {
 			args "-c" "${SHELL-bash}"
 		}
 		pane split_direction="vertical" {
-			pane name="rocketh" command="pnpm" {
-				args "run" "--filter" "rocketh" "dev"
+			pane name="rocketh" command="bash" {
+				args "-c" "pnpm run --filter rocketh dev-no-reset; cd packages/rocketh; ${SHELL-bash}"
 			}
-			pane name="rocketh-deploy" command="pnpm" {
-				args "run" "--filter" "rocketh-deploy" "dev"
+			pane name="rocketh-deploy" command="bash" {
+				args "-c" "pnpm run --filter rocketh-deploy dev; cd packages/rocketh-deploy; ${SHELL-bash}"
 			}
-			pane name="hardhat-rocketh" command="pnpm" {
-				args "run" "--filter" "hardhat-rocketh" "dev"
+			pane name="hardhat-rocketh" command="bash" {
+				args "-c" "pnpm run --filter hardhat-rocketh dev; cd packages/hardhat-rocketh; ${SHELL-bash}"
 			}
-			pane name="rocketh-signer" command="pnpm" {
-				args "run" "--filter" "rocketh-signer" "dev"
+			pane name="rocketh-signer" command="bash" {
+				args "-c" "pnpm run --filter rocketh-signer dev; cd packages/rocketh-signer; ${SHELL-bash}"
 			}
-			pane name="rocketh-verifier" command="pnpm" {
-				args "run" "--filter" "rocketh-verifier" "dev"
+			pane name="rocketh-verifier" command="bash" {
+				args "-c" "pnpm run --filter rocketh-verifier dev; cd packages/rocketh-verifier; ${SHELL-bash}"
 			}
 		}
 	}
