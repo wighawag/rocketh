@@ -26,8 +26,9 @@ export type DeployFunction = <TAbi extends Abi, TChain extends Chain = Chain>(
 
 export type ExecuteFunction = <TAbi extends Abi, TFunctionName extends string, TChain extends Chain = Chain>(
 	name: string,
-	functionName: TFunctionName,
-	args: Omit<WriteContractParameters<TAbi, TFunctionName, TChain>, 'account'> & {account: string}
+	args: Omit<WriteContractParameters<TAbi, TFunctionName, TChain>, 'address' | 'abi' | 'account' | 'nonce'> & {
+		account: string;
+	}
 ) => Promise<EIP1193DATA>;
 
 export type DeployOptions =
@@ -41,8 +42,9 @@ export type DeployOptions =
 extendEnvironment((env: Environment) => {
 	async function execute<TAbi extends Abi, TFunctionName extends string, TChain extends Chain = Chain>(
 		name: string,
-		functionName: TFunctionName,
-		args: Omit<WriteContractParameters<TAbi, TFunctionName, TChain>, 'account'> & {account: string}
+		args: Omit<WriteContractParameters<TAbi, TFunctionName, TChain>, 'address' | 'abi' | 'account' | 'nonce'> & {
+			account: string;
+		}
 	) {
 		const {account, ...viemArgs} = args;
 		let address: `0x${string}`;
@@ -65,15 +67,11 @@ extendEnvironment((env: Environment) => {
 		}
 		const artifactToUse = deployment as unknown as Artifact<TAbi>;
 		const abi = artifactToUse.abi;
-
-		const argsToUse: WriteContractParameters<TAbi, TFunctionName, TChain> = {
-			...viemArgs,
-			account,
+		const calldata = encodeFunctionData<TAbi, TFunctionName>({
 			abi,
-			functionName,
-		} as unknown as WriteContractParameters<TAbi, TFunctionName, TChain>; // TODO why casting necessary here
-
-		const calldata = encodeFunctionData<TAbi, TFunctionName>({abi, functionName, args: argsToUse} as any);
+			functionName: viemArgs.functionName,
+			args: viemArgs.args,
+		} as any);
 
 		const signer = env.addressSigners[address];
 
@@ -94,7 +92,7 @@ extendEnvironment((env: Environment) => {
 						maxPriorityFeePerGas:
 							viemArgs.maxPriorityFeePerGas && (`0x${viemArgs.maxPriorityFeePerGas.toString(16)}` as `0x${string}`),
 						// value: `0x${viemArgs.value?.toString(16)}` as `0x${string}`,
-						nonce: viemArgs.nonce && (`0x${viemArgs.nonce.toString(16)}` as `0x${string}`),
+						// nonce: viemArgs.nonce && (`0x${viemArgs.nonce.toString(16)}` as `0x${string}`),
 					},
 				],
 			});
@@ -114,7 +112,7 @@ extendEnvironment((env: Environment) => {
 						maxPriorityFeePerGas:
 							viemArgs.maxPriorityFeePerGas && (`0x${viemArgs.maxPriorityFeePerGas.toString(16)}` as `0x${string}`),
 						// value: `0x${viemArgs.value?.toString(16)}` as `0x${string}`,
-						nonce: viemArgs.nonce && (`0x${viemArgs.nonce.toString(16)}` as `0x${string}`),
+						// nonce: viemArgs.nonce && (`0x${viemArgs.nonce.toString(16)}` as `0x${string}`),
 					},
 				],
 			});
@@ -133,7 +131,19 @@ extendEnvironment((env: Environment) => {
 		name: string,
 		args: DeploymentConstruction<TAbi>,
 		options?: DeployOptions
-	) {
+	): Promise<Deployment<TAbi>> {
+		const skipIfAlreadyDeployed = options && 'skipIfAlreadyDeployed' in options && options.skipIfAlreadyDeployed;
+		const allwaysOverride = options && 'allwaysOverride' in options && options.allwaysOverride;
+
+		if (allwaysOverride && skipIfAlreadyDeployed) {
+			throw new Error(`conflicting options: "allwaysOverride" and "skipIfAlreadyDeployed"`);
+		}
+
+		const existingDeployment = env.get(name);
+		if (existingDeployment && skipIfAlreadyDeployed) {
+			return existingDeployment as Deployment<TAbi>;
+		}
+
 		const {account, artifact, ...viemArgs} = args;
 		let address: `0x${string}`;
 		if (account.startsWith('0x')) {
@@ -165,6 +175,12 @@ extendEnvironment((env: Environment) => {
 		const calldata = encodeDeployData(argsToUse);
 		const argsData = `0x${calldata.replace(bytecode, '')}` as `0x${string}`;
 
+		if (existingDeployment && !allwaysOverride) {
+			if (existingDeployment.bytecode + existingDeployment.argsData.slice(2) === calldata) {
+				return existingDeployment as Deployment<TAbi>;
+			}
+		}
+
 		const signer = env.addressSigners[address];
 
 		let txHash: `0x${string}`;
@@ -183,7 +199,7 @@ extendEnvironment((env: Environment) => {
 						maxPriorityFeePerGas:
 							viemArgs.maxPriorityFeePerGas && (`0x${viemArgs.maxPriorityFeePerGas.toString(16)}` as `0x${string}`),
 						// value: `0x${viemArgs.value?.toString(16)}` as `0x${string}`,
-						nonce: viemArgs.nonce && (`0x${viemArgs.nonce.toString(16)}` as `0x${string}`),
+						// nonce: viemArgs.nonce && (`0x${viemArgs.nonce.toString(16)}` as `0x${string}`),
 					},
 				],
 			});
