@@ -7,7 +7,7 @@ import pkg from '../package.json';
 import {ConfigOptions} from 'rocketh';
 loadEnv();
 
-const commandName = `rocketh`;
+const commandName = `rocketh-verify`;
 
 const program = new Command();
 program

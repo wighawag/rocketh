@@ -1,11 +1,16 @@
 layout {
 	pane {
-		pane name="shell" command="bash" {
-			args "-c" "${SHELL-bash}"
-		}
 		pane split_direction="vertical" {
+			pane name="shell" command="bash" {
+				args "-c" "${SHELL-bash}"
+			}
 			pane name="rocketh" command="bash" {
 				args "-c" "pnpm run --filter rocketh dev-no-reset; cd packages/rocketh; ${SHELL-bash}"
+			}
+		}
+		pane split_direction="vertical" {
+			pane name="rocketh-export" command="bash" {
+				args "-c" "pnpm run --filter rocketh-export dev; cd packages/rocketh-export; ${SHELL-bash}"
 			}
 			pane name="hardhat-rocketh" command="bash" {
 				args "-c" "pnpm run --filter hardhat-rocketh dev; cd packages/hardhat-rocketh; ${SHELL-bash}"
