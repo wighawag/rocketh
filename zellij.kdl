@@ -1,0 +1,24 @@
+layout {
+	pane {
+		pane name="shell" command="bash" {
+			args "-c" "${SHELL-bash}"
+		}
+		pane split_direction="vertical" {
+			pane name="rocketh" command="pnpm" {
+				args "run" "--filter" "rocketh" "dev"
+			}
+			pane name="rocketh-deploy" command="pnpm" {
+				args "run" "--filter" "rocketh-deploy" "dev"
+			}
+			pane name="hardhat-rocketh" command="pnpm" {
+				args "run" "--filter" "hardhat-rocketh" "dev"
+			}
+			pane name="rocketh-signer" command="pnpm" {
+				args "run" "--filter" "rocketh-signer" "dev"
+			}
+			pane name="rocketh-verifier" command="pnpm" {
+				args "run" "--filter" "rocketh-verifier" "dev"
+			}
+		}
+	}
+}
