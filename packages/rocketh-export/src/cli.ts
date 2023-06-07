@@ -22,7 +22,7 @@ program
 const options = program.opts();
 const resolvedConfig = readAndResolveConfig(options as ConfigOptions, {ignoreMissingRPC: true});
 run(resolvedConfig, {
-	tots: options.ts,
-	tojson: options.json,
-	tojs: options.js,
+	tots: options.ts ? options.ts.split(',') : undefined,
+	tojson: options.json ? options.json.split(',') : undefined,
+	tojs: options.js ? options.js.split(',') : undefined,
 });

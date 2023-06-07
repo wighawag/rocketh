@@ -1,5 +1,11 @@
 # rocketh-export
 
+## 0.5.5
+
+### Patch Changes
+
+- fix export multiple files
+
 ## 0.5.4
 
 ### Patch Changes
