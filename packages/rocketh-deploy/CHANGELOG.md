@@ -1,5 +1,11 @@
 # rocketh-deploy
 
+## 0.5.4
+
+### Patch Changes
+
+- execute + deploy with diff check
+
 ## 0.5.3
 
 ### Patch Changes
