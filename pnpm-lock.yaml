@@ -109,6 +109,37 @@ importers:
         specifier: ^5.0.4
         version: 5.0.4
 
+  packages/rocketh-deploy-proxy:
+    dependencies:
+      rocketh-deploy:
+        specifier: workspace:*
+        version: link:../rocketh-deploy
+      solidity-proxy:
+        specifier: ^0.0.0
+        version: 0.0.0
+      viem:
+        specifier: ^0.3.50
+        version: 0.3.50(typescript@5.0.4)
+    devDependencies:
+      abitype:
+        specifier: ^0.7.1
+        version: 0.7.1(typescript@5.0.4)
+      eip-1193:
+        specifier: ^0.4.4
+        version: 0.4.4
+      rimraf:
+        specifier: ^4.4.1
+        version: 4.4.1
+      rocketh:
+        specifier: workspace:*
+        version: link:../rocketh
+      tsup:
+        specifier: ^6.7.0
+        version: 6.7.0(typescript@5.0.4)
+      typescript:
+        specifier: ^5.0.4
+        version: 5.0.4
+
   packages/rocketh-signer:
     devDependencies:
       eip-1193:
@@ -5077,6 +5108,10 @@ packages:
     transitivePeerDependencies:
       - debug
     dev: true
+
+  /solidity-proxy@0.0.0:
+    resolution: {integrity: sha512-PfD+Dq6jwp4fipz0l5kzlVxSABN1he/2vw+QFW/r7aCQRi4rbSSL8UeEI5jSCf2pdVdRlpJ7DIjsHSBDrGBXJA==}
+    dev: false
 
   /source-map-support@0.5.21:
     resolution: {integrity: sha512-uBHU3L3czsIyYXKX88fdrGovxdSCoTGDRZ6SYXtSRxLZUzHg5P/66Ht6uoUlHu9EZod+inXhKo3qQgwXUT/y1w==}

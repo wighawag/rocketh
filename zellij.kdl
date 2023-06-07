@@ -7,11 +7,16 @@ layout {
 			pane name="rocketh" command="bash" {
 				args "-c" "pnpm run --filter rocketh dev-no-reset; cd packages/rocketh; ${SHELL-bash}"
 			}
-			pane name="rocketh-deploy" command="bash" {
-				args "-c" "pnpm run --filter rocketh-deploy dev; cd packages/rocketh-deploy; ${SHELL-bash}"
-			}
 			pane name="hardhat-rocketh" command="bash" {
 				args "-c" "pnpm run --filter hardhat-rocketh dev; cd packages/hardhat-rocketh; ${SHELL-bash}"
+			}
+			pane name="rocketh-deploy" command="bash" {
+				args "-c" "pnpm run --filter rocketh-deploy dev-no-reset; cd packages/rocketh-deploy; ${SHELL-bash}"
+			}
+		}
+		pane split_direction="vertical" {
+			pane name="rocketh-deploy-proxy" command="bash" {
+				args "-c" "pnpm run --filter rocketh-deploy-proxy dev; cd packages/rocketh-deploy-proxy; ${SHELL-bash}"
 			}
 			pane name="rocketh-signer" command="bash" {
 				args "-c" "pnpm run --filter rocketh-signer dev; cd packages/rocketh-signer; ${SHELL-bash}"
