@@ -105,7 +105,8 @@ subtask(TASK_COMPILE_SOLIDITY_EMIT_ARTIFACTS).setAction(async (args, hre, runSup
 				}
 			}
 		} else {
-			throw new Error(`no artifact at ${filepath}`);
+			// this can happen for solidity file without contract exported, just error or types for example
+			// throw new Error(`no artifact at ${filepath}`);
 		}
 	}
 	for (const key of Object.keys(allArtifacts)) {

@@ -1,5 +1,11 @@
 # hardhat-rocketh
 
+## 0.5.7
+
+### Patch Changes
+
+- skip on artifact not found, since this can happen for valid solidity (types,error,event only files)
+
 ## 0.5.6
 
 ### Patch Changes
