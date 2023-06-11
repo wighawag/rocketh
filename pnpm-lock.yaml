@@ -59,8 +59,8 @@ importers:
         specifier: ^0.2.3
         version: 0.2.3
       ora-cjs:
-        specifier: ^0.0.1
-        version: 0.0.1
+        specifier: ^0.0.2
+        version: 0.0.2
       viem:
         specifier: ^0.3.50
         version: 0.3.50(typescript@5.0.4)
@@ -1697,7 +1697,6 @@ packages:
     engines: {node: '>=8'}
     dependencies:
       color-convert: 2.0.1
-    dev: true
 
   /any-promise@1.3.0:
     resolution: {integrity: sha512-7UvmKalWRt1wgjL1RrGxoSJW/0QZFIegpeGvZG9kjp8vrRu55XTHbwnqq2GpXm9uLbcuhxm3IqX9OB4MZR1b2A==}
@@ -2005,7 +2004,6 @@ packages:
     dependencies:
       ansi-styles: 4.3.0
       supports-color: 7.2.0
-    dev: true
 
   /chalk@5.2.0:
     resolution: {integrity: sha512-ree3Gqw/nazQAPuJJEy+avdl7QfZMcUvmHIKgEZkGL+xOBzRvup5Hxo6LHuMceSxOabuJLJm5Yp/92R9eMmMvA==}
@@ -2130,7 +2128,6 @@ packages:
     engines: {node: '>=7.0.0'}
     dependencies:
       color-name: 1.1.4
-    dev: true
 
   /color-name@1.1.3:
     resolution: {integrity: sha512-72fSenhMw2HZMTVHeCA9KCmpEIbzWiQsjN+BHcBbS9vr1mtt+vJjPdksIBNUmKAW8TFUDPJK5SUU3QhE9NEXDw==}
@@ -2138,7 +2135,6 @@ packages:
 
   /color-name@1.1.4:
     resolution: {integrity: sha512-dOy+3AuW3a2wNbZHIuMZpTcgjGuLU/uBL/ubcZF9OXbDo8ff4O8yVp5Bf0efS8uEoYo5q4Fx7dY9OgQGXgAsQA==}
-    dev: true
 
   /command-exists@1.2.9:
     resolution: {integrity: sha512-LTQ/SGc+s0Xc0Fu5WaKnR0YiygZkm9eKFvyS+fRsU7/ZWFF8ykFM6Pc9aCVf1+xasOOZpO3BAVgVrKvsqKHV7w==}
@@ -4554,11 +4550,11 @@ packages:
       is-wsl: 2.2.0
     dev: true
 
-  /ora-cjs@0.0.1:
-    resolution: {integrity: sha512-D/K43IjST9ZmsskcoCLCtjSiUXv9lpGrMDheVCQ9GKLGeZRx5++NkllnLbIRzWl4Cb16lRbf8pYd3C87+DHwVQ==}
+  /ora-cjs@0.0.2:
+    resolution: {integrity: sha512-GBBLn5PJ+d0eUDpa6KTxv/j7jXufuFPR+q58BI9H7nCCm/aH+BxyBB6wpr+G2PxmKYIdoGyGg0fqf2ys2qeUYQ==}
     engines: {node: '>=16'}
     dependencies:
-      chalk: 5.2.0
+      chalk: 4.1.2
       cli-cursor: 4.0.0
       cli-spinners: 2.9.0
       is-interactive: 2.0.0
@@ -5453,7 +5449,6 @@ packages:
     engines: {node: '>=8'}
     dependencies:
       has-flag: 4.0.0
-    dev: true
 
   /supports-color@8.1.1:
     resolution: {integrity: sha512-MpUEN2OodtUzxvKQl72cUF7RQ5EiHsGvSsVG0ia9c5RbWGL2CI4C7EpPS8UTBIplnlzZiNuV56w+FuNxy3ty2Q==}

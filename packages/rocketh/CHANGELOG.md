@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.5.7
+
+### Patch Changes
+
+- use latest ora-cjs
+
 ## 0.5.6
 
 ### Patch Changes
