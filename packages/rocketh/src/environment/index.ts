@@ -349,7 +349,7 @@ export async function createEnvironment<
 		const {abi, ...artifactObjectWithoutABI} = pendingDeployment.partialDeployment;
 
 		if (!artifactObjectWithoutABI.nonce) {
-			const spinner = spin(`fetching nonce for ${pendingDeployment.txHash}`);
+			const spinner = spin(); // TODO spin(`fetching nonce for ${pendingDeployment.txHash}`);
 			let transaction: EIP1193Transaction | null = null;
 			try {
 				transaction = await provider.request({
@@ -397,7 +397,7 @@ export async function createEnvironment<
 	async function saveWhilePending<TAbi extends Abi = Abi>(name: string, pendingDeployment: PendingDeployment<TAbi>) {
 		await saveTransaction<TAbi>(name, pendingDeployment);
 		let transaction: EIP1193Transaction | null = null;
-		const spinner = spin(`fetching tx from peers ${pendingDeployment.txHash}`);
+		const spinner = spin(); // TODO spin(`fetching tx from peers ${pendingDeployment.txHash}`);
 		try {
 			transaction = await provider.request({
 				method: 'eth_getTransactionByHash',

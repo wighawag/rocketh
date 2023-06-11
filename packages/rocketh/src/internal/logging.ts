@@ -23,7 +23,9 @@ type PartialOra = {
 };
 const voidSpinner: PartialOra = {
 	start(msg?: string) {
-		console.log(msg);
+		if (msg) {
+			console.log(msg);
+		}
 		return this;
 	},
 	stop() {
@@ -44,7 +46,7 @@ const voidSpinner: PartialOra = {
 
 // let lastSpin = ora('rocketh');
 let lastSpin = voidSpinner;
-export function spin(message: string): PartialOra {
+export function spin(message?: string): PartialOra {
 	if (Logging.level > 0) {
 		lastSpin = lastSpin.start(message);
 		return lastSpin;
