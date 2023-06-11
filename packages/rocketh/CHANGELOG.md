@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.5.11
+
+### Patch Changes
+
+- better handling of pending tx
+
 ## 0.5.10
 
 ### Patch Changes

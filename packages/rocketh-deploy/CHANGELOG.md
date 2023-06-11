@@ -1,5 +1,13 @@
 # rocketh-deploy
 
+## 0.5.13
+
+### Patch Changes
+
+- better handling of pending tx
+- Updated dependencies
+  - rocketh@0.5.11
+
 ## 0.5.12
 
 ### Patch Changes

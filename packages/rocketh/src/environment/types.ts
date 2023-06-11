@@ -4,6 +4,7 @@ import {
 	EIP1193ProviderWithoutEvents,
 	EIP1193SignerProvider,
 	EIP1193TransactionEIP1193DATA,
+	EIP1193TransactionReceipt,
 	EIP1193WalletProvider,
 } from 'eip-1193';
 import {Abi, Narrow} from 'abitype';
@@ -136,10 +137,8 @@ export interface Environment<
 	addressSigners: {[name: `0x${string}`]: NamedSigner};
 	artifacts: Artifacts;
 	save<TAbi extends Abi = Abi>(name: string, deployment: Deployment<TAbi>): Promise<Deployment<TAbi>>;
-	saveWhilePending<TAbi extends Abi = Abi>(
-		name: string,
-		pendingDeployment: PendingDeployment<TAbi>
-	): Promise<Deployment<TAbi>>;
+	savePendingDeployment<TAbi extends Abi = Abi>(pendingDeployment: PendingDeployment<TAbi>): Promise<Deployment<TAbi>>;
+	savePendingExecution(pendingExecution: PendingExecution): Promise<EIP1193TransactionReceipt>;
 	get<TAbi extends Abi>(name: string): Deployment<TAbi> | undefined;
 }
 
@@ -155,7 +154,21 @@ export type PartialDeployment<TAbi extends Abi = Abi> = Artifact<TAbi> & {
 	libraries?: Libraries;
 };
 
-export type PendingDeployment<TAbi extends Abi = Abi> = DeploymentConstruction<TAbi> & {
+export type PendingDeployment<TAbi extends Abi = Abi> = {
+	type: 'deployment';
+	name: string;
 	txHash: `0x${string}`;
+	nonce?: `0x${string}`;
+	txOrigin?: `0x${string}`;
 	partialDeployment: PartialDeployment<TAbi>;
 };
+
+export type PendingExecution = {
+	type: 'execution';
+	description?: string;
+	txHash: `0x${string}`;
+	nonce?: `0x${string}`;
+	txOrigin?: `0x${string}`;
+};
+
+export type PendingTransaction = PendingDeployment | PendingExecution;

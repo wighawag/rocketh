@@ -1,5 +1,12 @@
 # rocketh-export
 
+## 0.5.14
+
+### Patch Changes
+
+- Updated dependencies
+  - rocketh@0.5.11
+
 ## 0.5.13
 
 ### Patch Changes

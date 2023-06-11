@@ -7,6 +7,7 @@ import type {
 	Environment,
 	PendingDeployment,
 	PartialDeployment,
+	PendingExecution,
 } from 'rocketh';
 import {extendEnvironment} from 'rocketh';
 import {Chain, WriteContractParameters, encodeFunctionData} from 'viem';
@@ -123,7 +124,14 @@ extendEnvironment((env: Environment) => {
 			});
 		}
 
-		// TODO : env.saveTxWhilePending(txHash);
+		const pendingExecution: PendingExecution = {
+			type: 'execution',
+			txHash,
+			// description, // TODO
+			txOrigin: address,
+			// TODO we should have the nonce, except for wallet like metamask where it is not usre you get the nonce you start with
+		};
+		await env.savePendingExecution({type: 'execution', txHash});
 		return txHash;
 	}
 
@@ -218,7 +226,7 @@ extendEnvironment((env: Environment) => {
 						maxPriorityFeePerGas:
 							viemArgs.maxPriorityFeePerGas && (`0x${viemArgs.maxPriorityFeePerGas.toString(16)}` as `0x${string}`),
 						// value: `0x${viemArgs.value?.toString(16)}` as `0x${string}`,
-						nonce: viemArgs.nonce && (`0x${viemArgs.nonce.toString(16)}` as `0x${string}`),
+						// nonce: viemArgs.nonce && (`0x${viemArgs.nonce.toString(16)}` as `0x${string}`),
 					},
 				],
 			});
@@ -233,8 +241,15 @@ extendEnvironment((env: Environment) => {
 			...artifactToUse,
 			argsData,
 		};
-		const pendingDeployment: PendingDeployment<TAbi> = {...args, partialDeployment, txHash};
-		return env.saveWhilePending(name, pendingDeployment);
+		const pendingDeployment: PendingDeployment<TAbi> = {
+			type: 'deployment',
+			partialDeployment,
+			txHash,
+			name,
+			txOrigin: address,
+			// TODO we should have the nonce, except for wallet like metamask where it is not usre you get the nonce you start with
+		};
+		return env.savePendingDeployment(pendingDeployment);
 	}
 
 	env.deploy = deploy;

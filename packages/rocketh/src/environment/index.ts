@@ -1,12 +1,13 @@
 import fs from 'node:fs';
 
-import {Transaction, TransactionReceipt, createPublicClient, custom} from 'viem';
+import {TransactionReceipt, createPublicClient, custom} from 'viem';
 import {
 	AccountType,
 	Deployment,
 	Environment,
 	NamedSigner,
 	PendingDeployment,
+	PendingTransaction,
 	ResolvedAccount,
 	ResolvedConfig,
 	ResolvedNamedAccounts,
@@ -21,9 +22,16 @@ import {InternalEnvironment} from '../internal/types';
 import path from 'node:path';
 import {JSONToString, stringToJSON} from '../utils/json';
 import {loadDeployments} from './deployments';
-import {EIP1193Account, EIP1193ProviderWithoutEvents, EIP1193Transaction} from 'eip-1193';
+import {
+	EIP1193Account,
+	EIP1193DATA,
+	EIP1193ProviderWithoutEvents,
+	EIP1193Transaction,
+	EIP1193TransactionReceipt,
+} from 'eip-1193';
 import {ProvidedContext} from '../executor/types';
 import {spin} from '../internal/logging';
+import {PendingExecution} from '../../dist';
 
 export type EnvironmentExtenstion = (env: Environment) => Environment;
 //we store this globally so this is not lost
@@ -43,6 +51,12 @@ export function handleSignerProtocol(protocol: string, getSigner: SignerProtocol
 	(globalThis as any).signerProtocols[protocol] = {
 		getSigner,
 	};
+}
+
+function wait(numSeconds: number): Promise<void> {
+	return new Promise((resolve) => {
+		setTimeout(resolve, numSeconds * 1000);
+	});
 }
 
 function displayTransaction(transaction: EIP1193Transaction) {
@@ -253,28 +267,38 @@ export async function createEnvironment<
 	}
 
 	async function recoverTransactionsIfAny<TAbi extends Abi = Abi>(): Promise<void> {
-		const filepath = path.join(config.deployments, context.network.name, '.pending_transactions.json');
-		let existingPendingDeployments: {name: string; transaction: PendingDeployment<TAbi>}[];
+		const folderPath = ensureDeploymentFolder();
+		const filepath = path.join(folderPath, '.pending_transactions.json');
+		let existingPendingTansactions: PendingTransaction[];
 		try {
-			existingPendingDeployments = stringToJSON(fs.readFileSync(filepath, 'utf-8'));
+			existingPendingTansactions = stringToJSON(fs.readFileSync(filepath, 'utf-8'));
 		} catch {
-			existingPendingDeployments = [];
+			existingPendingTansactions = [];
 		}
-		if (existingPendingDeployments.length > 0) {
-			while (existingPendingDeployments.length > 0) {
-				const pendingTransaction = existingPendingDeployments.shift();
+		if (existingPendingTansactions.length > 0) {
+			while (existingPendingTansactions.length > 0) {
+				const pendingTransaction = existingPendingTansactions.shift();
 				if (pendingTransaction) {
-					const spinner = spin(
-						`recovering ${pendingTransaction.name} with transaction ${pendingTransaction.transaction.txHash}`
-					);
-					try {
-						await waitForTransactionAndSave(pendingTransaction.name, pendingTransaction.transaction);
-						console.log(`transaction ${pendingTransaction.transaction.txHash} complete`);
-						fs.writeFileSync(filepath, JSONToString(existingPendingDeployments, 2));
-						spinner.succeed();
-					} catch (e) {
-						spinner.fail();
-						throw e;
+					if (pendingTransaction.type === 'deployment') {
+						const spinner = spin(`recovering ${pendingTransaction.name} with transaction ${pendingTransaction.txHash}`);
+						try {
+							await waitForDeploymentTransactionAndSave(pendingTransaction);
+							fs.writeFileSync(filepath, JSONToString(existingPendingTansactions, 2));
+							spinner.succeed();
+						} catch (e) {
+							spinner.fail();
+							throw e;
+						}
+					} else {
+						const spinner = spin(`recovering execution's transaction ${pendingTransaction.txHash}`);
+						try {
+							await waitForTransaction(pendingTransaction.txHash);
+							fs.writeFileSync(filepath, JSONToString(existingPendingTansactions, 2));
+							spinner.succeed();
+						} catch (e) {
+							spinner.fail();
+							throw e;
+						}
 					}
 				}
 			}
@@ -282,25 +306,46 @@ export async function createEnvironment<
 		}
 	}
 
-	async function saveTransaction<TAbi extends Abi = Abi>(name: string, transaction: PendingDeployment<TAbi>) {
+	async function savePendingTransaction(pendingTransaction: PendingTransaction) {
 		if (context.network.saveDeployments) {
 			const folderPath = ensureDeploymentFolder();
 			const filepath = path.join(folderPath, '.pending_transactions.json');
-			let existingPendingDeployments: {name: string; transaction: PendingDeployment<TAbi>}[];
+			let existingPendinTransaction: PendingTransaction[];
 			try {
-				existingPendingDeployments = stringToJSON(fs.readFileSync(filepath, 'utf-8'));
+				existingPendinTransaction = stringToJSON(fs.readFileSync(filepath, 'utf-8'));
 			} catch {
-				existingPendingDeployments = [];
+				existingPendinTransaction = [];
 			}
-			existingPendingDeployments.push({name, transaction});
-			fs.writeFileSync(filepath, JSONToString(existingPendingDeployments, 2));
+			existingPendinTransaction.push(pendingTransaction);
+			fs.writeFileSync(filepath, JSONToString(existingPendinTransaction, 2));
 		}
 		return deployments;
 	}
 
+	async function waitForTransactionReceipt(params: {
+		hash: EIP1193DATA;
+		// confirmations?: number; // TODO
+		pollingInterval?: number;
+		// timeout?: number; // TODO
+	}): Promise<EIP1193TransactionReceipt> {
+		// const {hash, confirmations, pollingInterval, timeout} = {confirmations: 1, pollingInterval: 1, ...params};
+		const {hash, pollingInterval} = {pollingInterval: 1, ...params};
+
+		let receipt = await provider.request({
+			method: 'eth_getTransactionReceipt',
+			params: [hash],
+		});
+		if (!receipt || !receipt.blockHash) {
+			await wait(pollingInterval);
+			return waitForTransactionReceipt(params);
+		}
+		return receipt;
+	}
+
 	async function deleteTransaction<TAbi extends Abi = Abi>(hash: string) {
 		if (context.network.saveDeployments) {
-			const filepath = path.join(config.deployments, context.network.name, '.pending_transactions.json');
+			const folderPath = ensureDeploymentFolder();
+			const filepath = path.join(folderPath, '.pending_transactions.json');
 			let existingPendingDeployments: {name: string; transaction: PendingDeployment<TAbi>}[];
 			try {
 				existingPendingDeployments = stringToJSON(fs.readFileSync(filepath, 'utf-8'));
@@ -322,33 +367,36 @@ export async function createEnvironment<
 		fs.writeFileSync(`${folderPath}/deployments.ts`, `export default ${JSONToString(deployments, 2)} as const;`);
 	}
 
-	async function waitForTransactionAndSave<TAbi extends Abi = Abi>(
-		name: string,
-		pendingDeployment: PendingDeployment<TAbi>,
-		transaction?: EIP1193Transaction | null
-	): Promise<Deployment<TAbi>> {
-		const spinner = spin(
-			`  - Deploying ${name} with tx:\n      ${pendingDeployment.txHash}${
-				transaction ? `\n      ${displayTransaction(transaction)}` : ''
-			}`
-		);
-		let receipt: TransactionReceipt;
+	async function waitForTransaction(hash: `0x${string}`, message?: string): Promise<EIP1193TransactionReceipt> {
+		const spinner = spin(message || '');
+		let receipt: EIP1193TransactionReceipt;
 		try {
-			receipt = await viemClient.waitForTransactionReceipt({
-				hash: pendingDeployment.txHash,
+			receipt = await waitForTransactionReceipt({
+				hash,
 			});
 		} catch (e) {
 			spinner.fail();
 			throw e;
 		}
 		if (!receipt) {
-			spinner.fail(`receipt for ${pendingDeployment.txHash} not found`);
+			throw new Error(`receipt for ${hash} not found`);
 		} else {
 			spinner.succeed();
 		}
+		return receipt;
+	}
+
+	async function waitForDeploymentTransactionAndSave<TAbi extends Abi = Abi>(
+		pendingDeployment: PendingDeployment<TAbi>,
+		transaction?: EIP1193Transaction | null
+	): Promise<Deployment<TAbi>> {
+		const message = `  - Deploying ${pendingDeployment.name} with tx:\n      ${pendingDeployment.txHash}${
+			transaction ? `\n      ${displayTransaction(transaction)}` : ''
+		}`;
+		const receipt = await waitForTransaction(pendingDeployment.txHash, message);
 
 		if (!receipt.contractAddress) {
-			throw new Error(`failed to deploy contract ${name}`);
+			throw new Error(`failed to deploy contract ${pendingDeployment.name}`);
 		}
 		const {abi, ...artifactObjectWithoutABI} = pendingDeployment.partialDeployment;
 
@@ -395,11 +443,40 @@ export async function createEnvironment<
 			abi,
 			...artifactObjectWithoutABI,
 		};
-		return save(name, deployment);
+		return save(pendingDeployment.name, deployment);
 	}
 
-	async function saveWhilePending<TAbi extends Abi = Abi>(name: string, pendingDeployment: PendingDeployment<TAbi>) {
-		await saveTransaction<TAbi>(name, pendingDeployment);
+	async function savePendingExecution(pendingExecution: PendingExecution) {
+		await savePendingTransaction(pendingExecution);
+		let transaction: EIP1193Transaction | null = null;
+		const spinner = spin(); // TODO spin(`fetching tx from peers ${pendingDeployment.txHash}`);
+		try {
+			transaction = await provider.request({
+				method: 'eth_getTransactionByHash',
+				params: [pendingExecution.txHash],
+			});
+		} catch (e) {
+			spinner.fail();
+			throw e;
+		}
+		if (!transaction) {
+			spinner.fail(`tx ${pendingExecution.txHash} not found`);
+		} else {
+			spinner.stop();
+		}
+
+		if (transaction) {
+			pendingExecution.nonce = transaction.nonce;
+			pendingExecution.txOrigin = transaction.from;
+		}
+
+		const receipt = await waitForTransaction(pendingExecution.txHash);
+		await deleteTransaction(pendingExecution.txHash);
+		return receipt;
+	}
+
+	async function savePendingDeployment<TAbi extends Abi = Abi>(pendingDeployment: PendingDeployment<TAbi>) {
+		await savePendingTransaction(pendingDeployment);
 		let transaction: EIP1193Transaction | null = null;
 		const spinner = spin(); // TODO spin(`fetching tx from peers ${pendingDeployment.txHash}`);
 		try {
@@ -417,17 +494,12 @@ export async function createEnvironment<
 			spinner.stop();
 		}
 
-		const deployment = waitForTransactionAndSave<TAbi>(
-			name,
-			transaction
-				? {
-						...pendingDeployment,
-						nonce: transaction.nonce,
-						txOrigin: transaction.from,
-				  }
-				: pendingDeployment,
-			transaction
-		);
+		if (transaction) {
+			pendingDeployment.nonce = transaction.nonce;
+			pendingDeployment.txOrigin = transaction.from;
+		}
+
+		const deployment = await waitForDeploymentTransactionAndSave<TAbi>(pendingDeployment);
 		await deleteTransaction(pendingDeployment.txHash);
 		return deployment;
 	}
@@ -435,7 +507,8 @@ export async function createEnvironment<
 	let env: Environment<Artifacts, NamedAccounts, Deployments> = {
 		...perliminaryEnvironment,
 		save,
-		saveWhilePending,
+		savePendingDeployment,
+		savePendingExecution,
 		get,
 	};
 	for (const extension of (globalThis as any).extensions) {
