@@ -31,7 +31,7 @@ import {
 } from 'eip-1193';
 import {ProvidedContext} from '../executor/types';
 import {spin} from '../internal/logging';
-import {PendingExecution} from '../../dist';
+import {PendingExecution} from './types';
 
 export type EnvironmentExtenstion = (env: Environment) => Environment;
 //we store this globally so this is not lost
@@ -495,11 +495,11 @@ export async function createEnvironment<
 		}
 
 		if (transaction) {
-			pendingDeployment.nonce = transaction.nonce;
-			pendingDeployment.txOrigin = transaction.from;
+			// we update the tx data with the one we get from the network
+			pendingDeployment = {...pendingDeployment, nonce: transaction.nonce, txOrigin: transaction.from};
 		}
 
-		const deployment = await waitForDeploymentTransactionAndSave<TAbi>(pendingDeployment);
+		const deployment = await waitForDeploymentTransactionAndSave<TAbi>(pendingDeployment, transaction);
 		await deleteTransaction(pendingDeployment.txHash);
 		return deployment;
 	}
