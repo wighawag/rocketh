@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.5.8
+
+### Patch Changes
+
+- remove ora
+
 ## 0.5.7
 
 ### Patch Changes

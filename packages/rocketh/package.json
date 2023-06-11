@@ -1,6 +1,6 @@
 {
 	"name": "rocketh",
-	"version": "0.5.7",
+	"version": "0.5.8",
 	"description": "deploy smart contract on ethereum-compatible networks",
 	"publishConfig": {
 		"access": "public"
@@ -32,7 +32,6 @@
 		"ldenv": "^0.3.5",
 		"named-logs": "^0.2.2",
 		"named-logs-console": "^0.2.3",
-		"ora-cjs": "^0.0.2",
 		"viem": "^0.3.50"
 	},
 	"scripts": {
