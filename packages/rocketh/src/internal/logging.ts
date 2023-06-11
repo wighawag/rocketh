@@ -32,11 +32,15 @@ const voidSpinner: PartialOra = {
 		return this;
 	},
 	succeed(msg?: string) {
-		console.log(msg);
+		if (msg) {
+			console.log(msg);
+		}
 		return this;
 	},
 	fail(msg?: string) {
-		console.error(msg);
+		if (msg) {
+			console.error(msg);
+		}
 		return this;
 	},
 };

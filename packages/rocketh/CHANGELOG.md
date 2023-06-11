@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.5.10
+
+### Patch Changes
+
+- show deploy name
+
 ## 0.5.9
 
 ### Patch Changes

@@ -327,7 +327,11 @@ export async function createEnvironment<
 		pendingDeployment: PendingDeployment<TAbi>,
 		transaction?: EIP1193Transaction | null
 	): Promise<Deployment<TAbi>> {
-		const spinner = spin(`tx ${pendingDeployment.txHash}${transaction ? ` ${displayTransaction(transaction)}` : ''}`);
+		const spinner = spin(
+			`Deploying ${name} with tx:\n${pendingDeployment.txHash}${
+				transaction ? `\n${displayTransaction(transaction)}` : ''
+			}`
+		);
 		let receipt: TransactionReceipt;
 		try {
 			receipt = await viemClient.waitForTransactionReceipt({
