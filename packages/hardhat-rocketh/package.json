@@ -1,14 +1,14 @@
 {
 	"name": "hardhat-rocketh",
-	"version": "0.5.9",
+	"version": "0.5.10",
 	"description": "rocketh plugin for hardhat",
 	"publishConfig": {
 		"access": "public"
 	},
-	"main": "dist/index.cjs",
+	"main": "dist/index.js",
 	"types": "dist/index.d.ts",
 	"bin": {
-		"rocketh": "dist/cli.cjs"
+		"rocketh": "dist/cli.js"
 	},
 	"devDependencies": {
 		"rocketh": "workspace:*",

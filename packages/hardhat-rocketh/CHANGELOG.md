@@ -1,5 +1,11 @@
 # hardhat-rocketh
 
+## 0.5.10
+
+### Patch Changes
+
+- fix
+
 ## 0.5.9
 
 ### Patch Changes
