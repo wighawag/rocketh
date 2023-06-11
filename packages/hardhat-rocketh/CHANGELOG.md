@@ -1,5 +1,11 @@
 # hardhat-rocketh
 
+## 0.5.9
+
+### Patch Changes
+
+- cjs only
+
 ## 0.5.8
 
 ### Patch Changes
