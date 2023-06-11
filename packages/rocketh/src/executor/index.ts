@@ -12,6 +12,7 @@ import type {
 } from '../environment/types';
 import {createEnvironment} from '../environment';
 import {DeployScriptFunction, DeployScriptModule, ProvidedContext} from './types';
+import {logger, setLogLevel, spin} from '../internal/logging';
 
 require('esbuild-register/dist/node').register();
 
@@ -57,16 +58,24 @@ export function readConfig(options: ConfigOptions, extra?: {ignoreMissingRPC?: b
 				if (extra?.ignoreMissingRPC) {
 					nodeUrl = '';
 				} else {
-					console.error(`network "${options.network}" is not configured. Please add it to the rocketh.json file`);
-					process.exit(1);
+					if (options.network === 'localhost') {
+						nodeUrl = 'http://127.0.0.1:8545';
+					} else {
+						logger.error(`network "${options.network}" is not configured. Please add it to the rocketh.json file`);
+						process.exit(1);
+					}
 				}
 			}
 		} else {
 			if (extra?.ignoreMissingRPC) {
 				nodeUrl = '';
 			} else {
-				console.error(`network "${options.network}" is not configured. Please add it to the rocketh.json file`);
-				process.exit(1);
+				if (options.network === 'localhost') {
+					nodeUrl = 'http://127.0.0.1:8545';
+				} else {
+					logger.error(`network "${options.network}" is not configured. Please add it to the rocketh.json file`);
+					process.exit(1);
+				}
 			}
 		}
 	}
@@ -113,6 +122,8 @@ export async function executeDeployScripts<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Deployments extends UnknownDeployments = UnknownDeployments
 >(config: ResolvedConfig): Promise<Deployments> {
+	setLogLevel(typeof config.logLevel === 'undefined' ? 0 : config.logLevel);
+
 	let filepaths;
 	filepaths = traverseMultipleDirectory([config.scripts]);
 	filepaths = filepaths
@@ -145,7 +156,7 @@ export async function executeDeployScripts<
 			if ((scriptModule as any).default) {
 				scriptModule = (scriptModule as any).default as DeployScriptModule;
 				if ((scriptModule as any).default) {
-					console.warn(`double default...`);
+					logger.warn(`double default...`);
 					scriptModule = (scriptModule as any).default as DeployScriptModule;
 				}
 			}
@@ -155,7 +166,7 @@ export async function executeDeployScripts<
 			}
 			providedContext = scriptModule.providedContext as ProvidedContext<Artifacts, NamedAccounts>;
 		} catch (e) {
-			console.error(`could not import ${filepath}`);
+			logger.error(`could not import ${filepath}`);
 			throw e;
 		}
 
@@ -248,26 +259,30 @@ export async function executeDeployScripts<
 
 	for (const deployScript of scriptsToRun.concat(scriptsToRunAtTheEnd)) {
 		const filename = path.basename(deployScript.filePath);
+		const relativeFilepath = path.relative('.', deployScript.filePath);
 		// if (deployScript.func.id && this.db.migrations[deployScript.func.id]) {
-		// 	log(`skipping ${filename} as migrations already executed and complete`);
+		// 	logger.info(`skipping ${filename} as migrations already executed and complete`);
 		// 	continue;
 		// }
 		let skip = false;
 		if (deployScript.func.skip) {
+			const spinner = spin(`Executing skipping function from ${filename}`);
 			try {
 				skip = await deployScript.func.skip(external);
+				spinner.succeed(skip ? `skipping ${filename}` : undefined);
 			} catch (e) {
-				console.error(`skip failed for ${deployScript.filePath}`);
+				spinner.fail();
 				throw e;
 			}
 		}
 		if (!skip) {
 			let result;
+			const spinner = spin(`Executing ${filename}`);
 			try {
-				// console.log(`Executing...`);
 				result = await deployScript.func(external);
+				spinner.succeed(`${filename} execution complete`);
 			} catch (e) {
-				console.error(`execution failed for ${deployScript.filePath}`);
+				spinner.fail();
 				throw e;
 			}
 			if (result && typeof result === 'boolean') {

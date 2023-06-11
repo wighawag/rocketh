@@ -71,6 +71,7 @@ task('deploy', 'Deploy contracts').setAction(async (args, hre) => {
 	await loadAndExecuteDeployments({
 		provider: hre.network.provider as unknown as any,
 		networkName: hre.network.name,
+		logLevel: 1,
 	});
 });
 

@@ -1,6 +1,6 @@
 {
 	"name": "rocketh-deploy-proxy",
-	"version": "0.5.3",
+	"version": "0.5.4",
 	"description": "provide proxy-enabled deploy function for rocketh",
 	"publishConfig": {
 		"access": "public"
@@ -11,7 +11,7 @@
 	"types": "dist/index.d.ts",
 	"devDependencies": {
 		"abitype": "^0.7.1",
-		"eip-1193": "^0.4.4",
+		"eip-1193": "^0.4.7",
 		"rimraf": "^4.4.1",
 		"rocketh": "workspace:*",
 		"tsup": "^6.7.0",

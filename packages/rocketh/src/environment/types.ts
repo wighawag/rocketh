@@ -100,6 +100,9 @@ type BaseConfig = {
 	deployments?: string;
 
 	tags?: string[];
+	logLevel?: number;
+	// TODO
+	gasPricing?: {};
 };
 
 type ConfigForJSONRPC = BaseConfig & {

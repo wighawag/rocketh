@@ -1,6 +1,6 @@
 {
 	"name": "rocketh",
-	"version": "0.5.2",
+	"version": "0.5.3",
 	"description": "deploy smart contract on ethereum-compatible networks",
 	"publishConfig": {
 		"access": "public"
@@ -16,7 +16,7 @@
 		"@types/figlet": "^1.5.5",
 		"@types/node": "^18.15.5",
 		"abitype": "^0.7.1",
-		"eip-1193": "^0.4.4",
+		"eip-1193": "^0.4.7",
 		"ipfs-gateway-emulator": "4.2.1-ipfs.2",
 		"rimraf": "^4.4.1",
 		"tsup": "^6.7.0",
@@ -30,6 +30,9 @@
 		"esbuild-register": "^3.4.2",
 		"figlet": "^1.5.2",
 		"ldenv": "^0.3.5",
+		"named-logs": "^0.2.2",
+		"named-logs-console": "^0.2.3",
+		"ora": "^6.3.1",
 		"viem": "^0.3.50"
 	},
 	"scripts": {

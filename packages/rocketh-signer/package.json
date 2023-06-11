@@ -1,6 +1,6 @@
 {
 	"name": "rocketh-signer",
-	"version": "0.5.2",
+	"version": "0.5.3",
 	"description": "add signer to rocketh",
 	"publishConfig": {
 		"access": "public"
@@ -10,7 +10,7 @@
 	"module": "dist/index.js",
 	"types": "dist/index.d.ts",
 	"devDependencies": {
-		"eip-1193": "^0.4.4",
+		"eip-1193": "^0.4.7",
 		"eip-1193-signer": "^0.0.1",
 		"rimraf": "^4.4.1",
 		"tsup": "^6.7.0",
