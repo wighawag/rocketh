@@ -479,7 +479,7 @@ export async function createEnvironment<
 			pendingExecution.txOrigin = transaction.from;
 		}
 
-		const receipt = await waitForTransaction(pendingExecution.txHash);
+		const receipt = await waitForTransaction(pendingExecution.txHash, {transaction});
 		await deleteTransaction(pendingExecution.txHash);
 		return receipt;
 	}
