@@ -328,8 +328,8 @@ export async function createEnvironment<
 		transaction?: EIP1193Transaction | null
 	): Promise<Deployment<TAbi>> {
 		const spinner = spin(
-			`Deploying ${name} with tx:\n${pendingDeployment.txHash}${
-				transaction ? `\n${displayTransaction(transaction)}` : ''
+			`  - Deploying ${name} with tx:\n      ${pendingDeployment.txHash}${
+				transaction ? `\n      ${displayTransaction(transaction)}` : ''
 			}`
 		);
 		let receipt: TransactionReceipt;

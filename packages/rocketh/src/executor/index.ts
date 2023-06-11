@@ -265,8 +265,9 @@ export async function executeDeployScripts<
 		// 	continue;
 		// }
 		let skip = false;
+		const spinner = spin(`- Executing ${filename}`);
 		if (deployScript.func.skip) {
-			const spinner = spin(`Executing skipping function from ${filename}`);
+			const spinner = spin(`  - skip?()`);
 			try {
 				skip = await deployScript.func.skip(external);
 				spinner.succeed(skip ? `skipping ${filename}` : undefined);
@@ -277,10 +278,10 @@ export async function executeDeployScripts<
 		}
 		if (!skip) {
 			let result;
-			const spinner = spin(`Executing ${filename}`);
+
 			try {
 				result = await deployScript.func(external);
-				spinner.succeed(`${filename} execution complete`);
+				spinner.succeed(`\n`);
 			} catch (e) {
 				spinner.fail();
 				throw e;
