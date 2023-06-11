@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.5.14
+
+### Patch Changes
+
+- add tx info in all case
+
 ## 0.5.13
 
 ### Patch Changes

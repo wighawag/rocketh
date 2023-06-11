@@ -367,8 +367,17 @@ export async function createEnvironment<
 		fs.writeFileSync(`${folderPath}/deployments.ts`, `export default ${JSONToString(deployments, 2)} as const;`);
 	}
 
-	async function waitForTransaction(hash: `0x${string}`, message?: string): Promise<EIP1193TransactionReceipt> {
-		const spinner = spin(message || '');
+	async function waitForTransaction(
+		hash: `0x${string}`,
+		info?: {message?: string; transaction?: EIP1193Transaction | null}
+	): Promise<EIP1193TransactionReceipt> {
+		const spinner = spin(
+			info?.message
+				? info.message
+				: `  - Broadcasting tx:\n      ${hash}${
+						info?.transaction ? `\n      ${displayTransaction(info?.transaction)}` : ''
+				  }`
+		);
 		let receipt: EIP1193TransactionReceipt;
 		try {
 			receipt = await waitForTransactionReceipt({
@@ -393,7 +402,7 @@ export async function createEnvironment<
 		const message = `  - Deploying ${pendingDeployment.name} with tx:\n      ${pendingDeployment.txHash}${
 			transaction ? `\n      ${displayTransaction(transaction)}` : ''
 		}`;
-		const receipt = await waitForTransaction(pendingDeployment.txHash, message);
+		const receipt = await waitForTransaction(pendingDeployment.txHash, {message, transaction});
 
 		if (!receipt.contractAddress) {
 			throw new Error(`failed to deploy contract ${pendingDeployment.name}`);
