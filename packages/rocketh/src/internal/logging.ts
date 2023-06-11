@@ -1,7 +1,7 @@
 import {logs} from 'named-logs';
 
 import {hookup, logs as Logging} from 'named-logs-console';
-import ora from 'ora';
+import ora from 'ora-cjs';
 hookup();
 
 export function setLogLevel(level: number) {

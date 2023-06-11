@@ -1,5 +1,12 @@
 # rocketh-signer
 
+## 0.5.5
+
+### Patch Changes
+
+- Updated dependencies
+  - rocketh@0.5.5
+
 ## 0.5.4
 
 ### Patch Changes
