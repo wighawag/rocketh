@@ -58,9 +58,9 @@ importers:
       named-logs-console:
         specifier: ^0.2.3
         version: 0.2.3
-      ora:
-        specifier: ^6.3.1
-        version: 6.3.1
+      ora-cjs:
+        specifier: ^0.0.1
+        version: 0.0.1
       viem:
         specifier: ^0.3.50
         version: 0.3.50(typescript@5.0.4)
@@ -4554,9 +4554,9 @@ packages:
       is-wsl: 2.2.0
     dev: true
 
-  /ora@6.3.1:
-    resolution: {integrity: sha512-ERAyNnZOfqM+Ao3RAvIXkYh5joP220yf59gVe2X/cI6SiCxIdi4c9HZKZD8R6q/RDXEje1THBju6iExiSsgJaQ==}
-    engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
+  /ora-cjs@0.0.1:
+    resolution: {integrity: sha512-D/K43IjST9ZmsskcoCLCtjSiUXv9lpGrMDheVCQ9GKLGeZRx5++NkllnLbIRzWl4Cb16lRbf8pYd3C87+DHwVQ==}
+    engines: {node: '>=16'}
     dependencies:
       chalk: 5.2.0
       cli-cursor: 4.0.0
