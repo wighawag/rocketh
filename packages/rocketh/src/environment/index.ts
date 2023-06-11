@@ -310,14 +310,14 @@ export async function createEnvironment<
 		if (context.network.saveDeployments) {
 			const folderPath = ensureDeploymentFolder();
 			const filepath = path.join(folderPath, '.pending_transactions.json');
-			let existingPendinTransaction: PendingTransaction[];
+			let existingPendinTransactions: PendingTransaction[];
 			try {
-				existingPendinTransaction = stringToJSON(fs.readFileSync(filepath, 'utf-8'));
+				existingPendinTransactions = stringToJSON(fs.readFileSync(filepath, 'utf-8'));
 			} catch {
-				existingPendinTransaction = [];
+				existingPendinTransactions = [];
 			}
-			existingPendinTransaction.push(pendingTransaction);
-			fs.writeFileSync(filepath, JSONToString(existingPendinTransaction, 2));
+			existingPendinTransactions.push(pendingTransaction);
+			fs.writeFileSync(filepath, JSONToString(existingPendinTransactions, 2));
 		}
 		return deployments;
 	}
@@ -346,17 +346,17 @@ export async function createEnvironment<
 		if (context.network.saveDeployments) {
 			const folderPath = ensureDeploymentFolder();
 			const filepath = path.join(folderPath, '.pending_transactions.json');
-			let existingPendingDeployments: {name: string; transaction: PendingDeployment<TAbi>}[];
+			let existingPendinTransactions: PendingTransaction[];
 			try {
-				existingPendingDeployments = stringToJSON(fs.readFileSync(filepath, 'utf-8'));
+				existingPendinTransactions = stringToJSON(fs.readFileSync(filepath, 'utf-8'));
 			} catch {
-				existingPendingDeployments = [];
+				existingPendinTransactions = [];
 			}
-			existingPendingDeployments = existingPendingDeployments.filter((v) => v.transaction.txHash !== hash);
-			if (existingPendingDeployments.length === 0) {
+			existingPendinTransactions = existingPendinTransactions.filter((v) => v.txHash !== hash);
+			if (existingPendinTransactions.length === 0) {
 				fs.rmSync(filepath);
 			} else {
-				fs.writeFileSync(filepath, JSONToString(existingPendingDeployments, 2));
+				fs.writeFileSync(filepath, JSONToString(existingPendinTransactions, 2));
 			}
 		}
 	}

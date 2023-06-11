@@ -1,5 +1,13 @@
 # rocketh-deploy
 
+## 0.5.14
+
+### Patch Changes
+
+- fix
+- Updated dependencies
+  - rocketh@0.5.12
+
 ## 0.5.13
 
 ### Patch Changes

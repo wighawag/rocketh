@@ -131,7 +131,7 @@ extendEnvironment((env: Environment) => {
 			txOrigin: address,
 			// TODO we should have the nonce, except for wallet like metamask where it is not usre you get the nonce you start with
 		};
-		await env.savePendingExecution({type: 'execution', txHash});
+		await env.savePendingExecution(pendingExecution);
 		return txHash;
 	}
 
