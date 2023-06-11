@@ -5,9 +5,7 @@
 	"publishConfig": {
 		"access": "public"
 	},
-	"type": "module",
 	"main": "dist/index.cjs",
-	"module": "dist/index.js",
 	"types": "dist/index.d.ts",
 	"bin": {
 		"rocketh": "dist/cli.cjs"
@@ -23,7 +21,7 @@
 		"rocketh": "workspace:*"
 	},
 	"scripts": {
-		"build": "rimraf dist && tsup src/index.ts --dts --format esm,cjs",
-		"dev": "rimraf dist && tsup src/index.ts --dts --format esm,cjs --watch"
+		"build": "rimraf dist && tsup src/index.ts --dts --format cjs",
+		"dev": "rimraf dist && tsup src/index.ts --dts --format cjs --watch"
 	}
 }
