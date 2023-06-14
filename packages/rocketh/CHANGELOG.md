@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.5.16
+
+### Patch Changes
+
+- return environment instead of just deployments
+
 ## 0.5.15
 
 ### Patch Changes

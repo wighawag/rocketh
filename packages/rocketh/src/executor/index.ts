@@ -108,20 +108,16 @@ export async function loadAndExecuteDeployments<
 	Artifacts extends UnknownArtifacts = UnknownArtifacts,
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Deployments extends UnknownDeployments = UnknownDeployments
->(config: Config) {
+>(config: Config): Promise<Environment> {
 	const resolvedConfig = resolveConfig(config);
-
 	return executeDeployScripts<Artifacts, NamedAccounts, Deployments>(resolvedConfig);
-
-	// TODO
-	// await this.export(options);
 }
 
 export async function executeDeployScripts<
 	Artifacts extends UnknownArtifacts = UnknownArtifacts,
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Deployments extends UnknownDeployments = UnknownDeployments
->(config: ResolvedConfig): Promise<Deployments> {
+>(config: ResolvedConfig): Promise<Environment> {
 	setLogLevel(typeof config.logLevel === 'undefined' ? 0 : config.logLevel);
 
 	let filepaths;
@@ -314,5 +310,5 @@ export async function executeDeployScripts<
 		}
 	}
 
-	return external.deployments as Deployments;
+	return external;
 }
