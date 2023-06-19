@@ -267,6 +267,9 @@ export async function createEnvironment<
 	}
 
 	async function recoverTransactionsIfAny<TAbi extends Abi = Abi>(): Promise<void> {
+		if (!context.network.saveDeployments) {
+			return;
+		}
 		const folderPath = ensureDeploymentFolder();
 		const filepath = path.join(folderPath, '.pending_transactions.json');
 		let existingPendingTansactions: PendingTransaction[];

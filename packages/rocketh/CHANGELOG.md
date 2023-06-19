@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.5.17
+
+### Patch Changes
+
+- skip tx recovery when saveDeployments=false
+
 ## 0.5.16
 
 ### Patch Changes
