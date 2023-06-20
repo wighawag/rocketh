@@ -104,6 +104,15 @@ export function resolveConfig(config: Config): ResolvedConfig {
 	return resolvedConfig;
 }
 
+export async function loadEnvironment<
+	Artifacts extends UnknownArtifacts = UnknownArtifacts,
+	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts
+>(config: Config, context: ProvidedContext<Artifacts, NamedAccounts>): Promise<Environment> {
+	const resolvedConfig = resolveConfig(config);
+	const {external, internal} = await createEnvironment(resolvedConfig, context);
+	return external;
+}
+
 export async function loadAndExecuteDeployments<
 	Artifacts extends UnknownArtifacts = UnknownArtifacts,
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,

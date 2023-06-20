@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.5.18
+
+### Patch Changes
+
+- add loadEnvironment
+
 ## 0.5.17
 
 ### Patch Changes
