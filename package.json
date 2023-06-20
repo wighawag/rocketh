@@ -12,6 +12,7 @@
   },
   "scripts": {
     "prepare": "set-defaults .vscode",
+    "prepublish": "pnpm build",
     "build": "pnpm -r build",
     "sync-deps": "syncpack fix-mismatches",
     "start": "zellij --layout zellij.kdl a $npm_package_name || zellij --layout zellij.kdl -s $npm_package_name"
