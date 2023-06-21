@@ -16,9 +16,11 @@ export type Libraries = {[libraryName: string]: EIP1193Account};
 export type Deployment<TAbi extends Abi> = {
 	address: EIP1193Account;
 	abi: Narrow<TAbi>;
-	txHash: EIP1193DATA;
-	txOrigin?: EIP1193Account;
-	nonce?: EIP1193DATA;
+	transaction: {
+		hash: EIP1193DATA;
+		origin?: EIP1193Account;
+		nonce?: EIP1193DATA;
+	};
 	bytecode: EIP1193DATA;
 	argsData: EIP1193DATA;
 	metadata: string;
@@ -148,8 +150,6 @@ export type DeploymentConstruction<TAbi extends Abi, TChain extends Chain = Chai
 > & {account: string | EIP1193Account; artifact: string | Artifact<TAbi>};
 
 export type PartialDeployment<TAbi extends Abi = Abi> = Artifact<TAbi> & {
-	txOrigin?: EIP1193Account;
-	nonce?: EIP1193DATA;
 	argsData: EIP1193DATA;
 	libraries?: Libraries;
 };
@@ -157,18 +157,22 @@ export type PartialDeployment<TAbi extends Abi = Abi> = Artifact<TAbi> & {
 export type PendingDeployment<TAbi extends Abi = Abi> = {
 	type: 'deployment';
 	name: string;
-	txHash: `0x${string}`;
-	nonce?: `0x${string}`;
-	txOrigin?: `0x${string}`;
+	transaction: {
+		hash: `0x${string}`;
+		nonce?: `0x${string}`;
+		origin?: `0x${string}`;
+	};
 	partialDeployment: PartialDeployment<TAbi>;
 };
 
 export type PendingExecution = {
 	type: 'execution';
 	description?: string;
-	txHash: `0x${string}`;
-	nonce?: `0x${string}`;
-	txOrigin?: `0x${string}`;
+	transaction: {
+		hash: `0x${string}`;
+		nonce?: `0x${string}`;
+		origin?: `0x${string}`;
+	};
 };
 
 export type PendingTransaction = PendingDeployment | PendingExecution;

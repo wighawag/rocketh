@@ -1,5 +1,16 @@
 # rocketh-deploy
 
+## 0.6.0
+
+### Minor Changes
+
+- transaction field in deployment
+
+### Patch Changes
+
+- Updated dependencies
+  - rocketh@0.6.0
+
 ## 0.5.20
 
 ### Patch Changes

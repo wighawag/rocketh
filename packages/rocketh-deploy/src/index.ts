@@ -126,9 +126,8 @@ extendEnvironment((env: Environment) => {
 
 		const pendingExecution: PendingExecution = {
 			type: 'execution',
-			txHash,
+			transaction: {hash: txHash, origin: address},
 			// description, // TODO
-			txOrigin: address,
 			// TODO we should have the nonce, except for wallet like metamask where it is not usre you get the nonce you start with
 		};
 		await env.savePendingExecution(pendingExecution);
@@ -244,9 +243,8 @@ extendEnvironment((env: Environment) => {
 		const pendingDeployment: PendingDeployment<TAbi> = {
 			type: 'deployment',
 			partialDeployment,
-			txHash,
+			transaction: {hash: txHash, origin: address},
 			name,
-			txOrigin: address,
 			// TODO we should have the nonce, except for wallet like metamask where it is not usre you get the nonce you start with
 		};
 		return env.savePendingDeployment(pendingDeployment);

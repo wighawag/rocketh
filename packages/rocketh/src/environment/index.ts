@@ -283,7 +283,9 @@ export async function createEnvironment<
 				const pendingTransaction = existingPendingTansactions.shift();
 				if (pendingTransaction) {
 					if (pendingTransaction.type === 'deployment') {
-						const spinner = spin(`recovering ${pendingTransaction.name} with transaction ${pendingTransaction.txHash}`);
+						const spinner = spin(
+							`recovering ${pendingTransaction.name} with transaction ${pendingTransaction.transaction.hash}`
+						);
 						try {
 							await waitForDeploymentTransactionAndSave(pendingTransaction);
 							fs.writeFileSync(filepath, JSONToString(existingPendingTansactions, 2));
@@ -293,9 +295,9 @@ export async function createEnvironment<
 							throw e;
 						}
 					} else {
-						const spinner = spin(`recovering execution's transaction ${pendingTransaction.txHash}`);
+						const spinner = spin(`recovering execution's transaction ${pendingTransaction.transaction.hash}`);
 						try {
-							await waitForTransaction(pendingTransaction.txHash);
+							await waitForTransaction(pendingTransaction.transaction.hash);
 							fs.writeFileSync(filepath, JSONToString(existingPendingTansactions, 2));
 							spinner.succeed();
 						} catch (e) {
@@ -355,7 +357,7 @@ export async function createEnvironment<
 			} catch {
 				existingPendinTransactions = [];
 			}
-			existingPendinTransactions = existingPendinTransactions.filter((v) => v.txHash !== hash);
+			existingPendinTransactions = existingPendinTransactions.filter((v) => v.transaction.hash !== hash);
 			if (existingPendinTransactions.length === 0) {
 				fs.rmSync(filepath);
 			} else {
@@ -402,37 +404,40 @@ export async function createEnvironment<
 		pendingDeployment: PendingDeployment<TAbi>,
 		transaction?: EIP1193Transaction | null
 	): Promise<Deployment<TAbi>> {
-		const message = `  - Deploying ${pendingDeployment.name} with tx:\n      ${pendingDeployment.txHash}${
+		const message = `  - Deploying ${pendingDeployment.name} with tx:\n      ${pendingDeployment.transaction.hash}${
 			transaction ? `\n      ${displayTransaction(transaction)}` : ''
 		}`;
-		const receipt = await waitForTransaction(pendingDeployment.txHash, {message, transaction});
+		const receipt = await waitForTransaction(pendingDeployment.transaction.hash, {message, transaction});
 
 		if (!receipt.contractAddress) {
 			throw new Error(`failed to deploy contract ${pendingDeployment.name}`);
 		}
 		const {abi, ...artifactObjectWithoutABI} = pendingDeployment.partialDeployment;
 
-		if (!artifactObjectWithoutABI.nonce) {
+		if (!pendingDeployment.transaction.hash) {
 			const spinner = spin(); // TODO spin(`fetching nonce for ${pendingDeployment.txHash}`);
 			let transaction: EIP1193Transaction | null = null;
 			try {
 				transaction = await provider.request({
 					method: 'eth_getTransactionByHash',
-					params: [pendingDeployment.txHash],
+					params: [pendingDeployment.transaction.hash],
 				});
 			} catch (e) {
 				spinner.fail();
 				throw e;
 			}
 			if (!transaction) {
-				spinner.fail(`tx ${pendingDeployment.txHash} not found`);
+				spinner.fail(`tx ${pendingDeployment.transaction.hash} not found`);
 			} else {
 				spinner.stop();
 			}
 
 			if (transaction) {
-				artifactObjectWithoutABI.nonce = transaction.nonce;
-				artifactObjectWithoutABI.txOrigin = transaction.from;
+				pendingDeployment.transaction = {
+					nonce: transaction.nonce,
+					hash: transaction.hash,
+					origin: transaction.from,
+				};
 			}
 		}
 
@@ -451,9 +456,9 @@ export async function createEnvironment<
 
 		const deployment = {
 			address: receipt.contractAddress,
-			txHash: pendingDeployment.txHash,
 			abi,
 			...artifactObjectWithoutABI,
+			transaction: pendingDeployment.transaction,
 		};
 		return save(pendingDeployment.name, deployment);
 	}
@@ -465,25 +470,25 @@ export async function createEnvironment<
 		try {
 			transaction = await provider.request({
 				method: 'eth_getTransactionByHash',
-				params: [pendingExecution.txHash],
+				params: [pendingExecution.transaction.hash],
 			});
 		} catch (e) {
 			spinner.fail();
 			throw e;
 		}
 		if (!transaction) {
-			spinner.fail(`tx ${pendingExecution.txHash} not found`);
+			spinner.fail(`tx ${pendingExecution.transaction.hash} not found`);
 		} else {
 			spinner.stop();
 		}
 
 		if (transaction) {
-			pendingExecution.nonce = transaction.nonce;
-			pendingExecution.txOrigin = transaction.from;
+			pendingExecution.transaction.nonce = transaction.nonce;
+			pendingExecution.transaction.origin = transaction.from;
 		}
 
-		const receipt = await waitForTransaction(pendingExecution.txHash, {transaction});
-		await deleteTransaction(pendingExecution.txHash);
+		const receipt = await waitForTransaction(pendingExecution.transaction.hash, {transaction});
+		await deleteTransaction(pendingExecution.transaction.hash);
 		return receipt;
 	}
 
@@ -494,25 +499,28 @@ export async function createEnvironment<
 		try {
 			transaction = await provider.request({
 				method: 'eth_getTransactionByHash',
-				params: [pendingDeployment.txHash],
+				params: [pendingDeployment.transaction.hash],
 			});
 		} catch (e) {
 			spinner.fail();
 			throw e;
 		}
 		if (!transaction) {
-			spinner.fail(`tx ${pendingDeployment.txHash} not found`);
+			spinner.fail(`tx ${pendingDeployment.transaction.hash} not found`);
 		} else {
 			spinner.stop();
 		}
 
 		if (transaction) {
 			// we update the tx data with the one we get from the network
-			pendingDeployment = {...pendingDeployment, nonce: transaction.nonce, txOrigin: transaction.from};
+			pendingDeployment = {
+				...pendingDeployment,
+				transaction: {hash: transaction.hash, nonce: transaction.nonce, origin: transaction.from},
+			};
 		}
 
 		const deployment = await waitForDeploymentTransactionAndSave<TAbi>(pendingDeployment, transaction);
-		await deleteTransaction(pendingDeployment.txHash);
+		await deleteTransaction(pendingDeployment.transaction.hash);
 		return deployment;
 	}
 

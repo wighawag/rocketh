@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.6.0
+
+### Minor Changes
+
+- transaction field in deployment
+
 ## 0.5.18
 
 ### Patch Changes
