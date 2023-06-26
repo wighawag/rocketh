@@ -63,7 +63,7 @@ extendEnvironment((env: Environment) => {
 		const proxyArtifact = artifacts.EIP173Proxy;
 
 		const implementation = options?.deployImplementation
-			? await options?.deployImplementation(name, {...args})
+			? await options?.deployImplementation(implementationName, {...args})
 			: await env.deploy(implementationName, {
 					...args,
 			  });
