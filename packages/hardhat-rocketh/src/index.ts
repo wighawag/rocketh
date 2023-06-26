@@ -117,10 +117,21 @@ function writeFiles(name: string | undefined, data: any, config: ArtifactGenerat
 	if (typeof ts === 'object' && ts.length > 0) {
 		const newContent = `export default ${JSON.stringify(data, null, 2)} as const;`;
 		for (const tsFile of ts) {
-			const filepath = name ? `${tsFile.replace(/\.ts$/, '')}/${name}.ts` : tsFile;
-			const folderPath = path.dirname(filepath);
-			fs.mkdirSync(folderPath, {recursive: true});
-			fs.writeFileSync(filepath, newContent);
+			if (tsFile.endsWith('.ts')) {
+				if (!name) {
+					const filepath = tsFile;
+					const folderPath = path.dirname(filepath);
+					fs.mkdirSync(folderPath, {recursive: true});
+					fs.writeFileSync(filepath, newContent);
+				}
+			} else {
+				if (name) {
+					const filepath = `${tsFile}/${name}.ts`;
+					const folderPath = path.dirname(filepath);
+					fs.mkdirSync(folderPath, {recursive: true});
+					fs.writeFileSync(filepath, newContent);
+				}
+			}
 		}
 	}
 
@@ -128,21 +139,44 @@ function writeFiles(name: string | undefined, data: any, config: ArtifactGenerat
 		const newContent = `export default /** @type {const} **/ (${JSON.stringify(data, null, 2)});`;
 		const dtsContent = `export = ${JSON.stringify(data, null, 2)} as const;`;
 		for (const jsFile of js) {
-			const filepath = name ? `${jsFile.replace(/\.js$/, '')}/${name}.js` : jsFile;
-			const folderPath = path.dirname(filepath);
-			fs.mkdirSync(folderPath, {recursive: true});
-			fs.writeFileSync(filepath, newContent);
-			fs.writeFileSync(filepath.replace(/\.js$/, '.d.ts'), dtsContent);
+			if (jsFile.endsWith('.js')) {
+				if (!name) {
+					const filepath = jsFile;
+					const folderPath = path.dirname(filepath);
+					fs.mkdirSync(folderPath, {recursive: true});
+					fs.writeFileSync(filepath, newContent);
+					fs.writeFileSync(filepath.replace(/\.js$/, '.d.ts'), dtsContent);
+				}
+			} else {
+				if (name) {
+					const filepath = `${jsFile}/${name}.js`;
+					const folderPath = path.dirname(filepath);
+					fs.mkdirSync(folderPath, {recursive: true});
+					fs.writeFileSync(filepath, newContent);
+					fs.writeFileSync(filepath.replace(/\.js$/, '.d.ts'), dtsContent);
+				}
+			}
 		}
 	}
 
 	if (typeof json === 'object' && json.length > 0) {
 		const newContent = JSON.stringify(data, null, 2);
 		for (const jsonFile of json) {
-			const filepath = name ? `${jsonFile.replace(/\.json$/, '')}/${name}.json` : jsonFile;
-			const folderPath = path.dirname(filepath);
-			fs.mkdirSync(folderPath, {recursive: true});
-			fs.writeFileSync(filepath, newContent);
+			if (jsonFile.endsWith('.json')) {
+				if (!name) {
+					const filepath = jsonFile;
+					const folderPath = path.dirname(filepath);
+					fs.mkdirSync(folderPath, {recursive: true});
+					fs.writeFileSync(filepath, newContent);
+				}
+			} else {
+				if (name) {
+					const filepath = `${jsonFile}/${name}.json`;
+					const folderPath = path.dirname(filepath);
+					fs.mkdirSync(folderPath, {recursive: true});
+					fs.writeFileSync(filepath, newContent);
+				}
+			}
 		}
 	}
 }
@@ -199,7 +233,7 @@ subtask(TASK_COMPILE_SOLIDITY_EMIT_ARTIFACTS).setAction(async (args, hre, runSup
 		const artifact = allArtifacts[key];
 		writeFiles(key, artifact, hre.config.generateArtifacts);
 	}
-	// writeFiles(allArtifacts, hre.config.generateArtifacts);
+	writeFiles(undefined, allArtifacts, hre.config.generateArtifacts);
 
 	return artifactResult;
 });
