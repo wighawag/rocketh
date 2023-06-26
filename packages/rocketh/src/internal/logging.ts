@@ -1,6 +1,6 @@
 import {logs} from 'named-logs';
 
-import {hookup, logs as Logging} from 'named-logs-console';
+import {hookup, factory as Logging} from 'named-logs-console';
 // import ora from 'ora-cjs';
 hookup();
 

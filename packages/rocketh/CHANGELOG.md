@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.6.2
+
+### Patch Changes
+
+- fix logging
+
 ## 0.6.1
 
 ### Patch Changes
