@@ -66,7 +66,7 @@ extendEnvironment((env: Environment) => {
 
 		const fallbackImplementation = '0x0000000000000000000000000000000000000000' as `0x${string}`;
 
-		const sigMap = ['0x'] as `0x${string}`[];
+		const sigMap: `0x${string}`[] = [];
 		for (const entry of sigJSMap) {
 			sigMap.push((entry[0] + entry[1].index.toString(16).padStart(2, '0')) as `0x${string}`);
 		}
