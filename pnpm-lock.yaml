@@ -125,8 +125,8 @@ importers:
         specifier: workspace:*
         version: link:../rocketh-deploy
       solidity-proxy:
-        specifier: ^0.1.0
-        version: 0.1.0
+        specifier: ^0.1.1
+        version: 0.1.1
       viem:
         specifier: ^1.1.7
         version: 1.1.7(typescript@5.1.3)
@@ -156,8 +156,8 @@ importers:
         specifier: workspace:*
         version: link:../rocketh-deploy
       solidity-proxy:
-        specifier: ^0.1.0
-        version: 0.1.0
+        specifier: ^0.1.1
+        version: 0.1.1
       viem:
         specifier: ^1.1.7
         version: 1.1.7(typescript@5.1.3)
@@ -5281,8 +5281,8 @@ packages:
       - debug
     dev: true
 
-  /solidity-proxy@0.1.0:
-    resolution: {integrity: sha512-jINOGUC5rg/2EKBJvT3xrQg9IVZkKRo+yAJ7VSC87BGqrvqEIWobMjulf50cadgp8wmyp9n2pzLWvx4sa/YPkg==}
+  /solidity-proxy@0.1.1:
+    resolution: {integrity: sha512-DnUe3wJbgaIgLiMEMv5BwuhFo4qJDHR4wfJMAh4a0DiWzvpdWoafbP1MQ9d6m2vEoQR6u7/tWZGslMIFzPUsDA==}
     dev: false
 
   /source-map-support@0.5.21:
