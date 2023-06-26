@@ -15,6 +15,10 @@ export type ProxyDeployOptions = {
 	disabled?: boolean;
 	owner: EIP1193Account;
 	execute?: string; // TODO
+	deployImplementation?: <TAbi extends Abi, TChain extends Chain>(
+		name: string,
+		args: DeploymentConstruction<TAbi, TChain>
+	) => Promise<Deployment<TAbi>>;
 };
 
 export type DeployViaProxyFunction = <TAbi extends Abi, TChain extends Chain = Chain>(
@@ -58,9 +62,11 @@ extendEnvironment((env: Environment) => {
 
 		const proxyArtifact = artifacts.EIP173Proxy;
 
-		const implementation = await env.deploy(implementationName, {
-			...args,
-		});
+		const implementation = options?.deployImplementation
+			? await options?.deployImplementation(name, {...args})
+			: await env.deploy(implementationName, {
+					...args,
+			  });
 
 		let existingDeployment = env.get<TAbi>(name);
 

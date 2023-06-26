@@ -1,5 +1,13 @@
 # rocketh-export
 
+## 0.6.1
+
+### Patch Changes
+
+- latest update + rocketh-deploy-router
+- Updated dependencies
+  - rocketh@0.6.1
+
 ## 0.6.0
 
 ### Patch Changes

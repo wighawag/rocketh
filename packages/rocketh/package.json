@@ -1,6 +1,6 @@
 {
 	"name": "rocketh",
-	"version": "0.6.0",
+	"version": "0.6.1",
 	"description": "deploy smart contract on ethereum-compatible networks",
 	"publishConfig": {
 		"access": "public"
@@ -13,26 +13,26 @@
 		"rocketh": "dist/cli.cjs"
 	},
 	"devDependencies": {
-		"@types/figlet": "^1.5.5",
-		"@types/node": "^18.15.5",
-		"abitype": "^0.7.1",
+		"@types/figlet": "^1.5.6",
+		"@types/node": "^20.3.2",
+		"abitype": "^0.8.11",
 		"eip-1193": "^0.4.7",
 		"ipfs-gateway-emulator": "4.2.1-ipfs.2",
-		"rimraf": "^4.4.1",
-		"tsup": "^6.7.0",
-		"typedoc": "^0.23.28",
-		"typescript": "^5.0.4"
+		"rimraf": "^5.0.1",
+		"tsup": "^7.1.0",
+		"typedoc": "^0.24.8",
+		"typescript": "^5.1.3"
 	},
 	"dependencies": {
 		"commander": "^10.0.0",
-		"eip-1193-json-provider": "^0.1.5",
-		"esbuild": "^0.17.12",
+		"eip-1193-json-provider": "^0.1.8",
+		"esbuild": "^0.18.9",
 		"esbuild-register": "^3.4.2",
-		"figlet": "^1.5.2",
-		"ldenv": "^0.3.5",
+		"figlet": "^1.6.0",
+		"ldenv": "^0.3.7",
 		"named-logs": "^0.2.2",
-		"named-logs-console": "^0.2.3",
-		"viem": "^0.3.50"
+		"named-logs-console": "^0.3.0",
+		"viem": "^1.1.7"
 	},
 	"scripts": {
 		"build": "rimraf dist && tsup --entry src/index.ts --entry src/cli.ts --dts --format esm,cjs",

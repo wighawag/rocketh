@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.6.1
+
+### Patch Changes
+
+- latest update + rocketh-deploy-router
+
 ## 0.6.0
 
 ### Minor Changes

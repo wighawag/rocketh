@@ -1,7 +1,7 @@
 {
-	"name": "rocketh-deploy-proxy",
+	"name": "rocketh-deploy-router",
 	"version": "0.6.1",
-	"description": "provide proxy-enabled deploy function for rocketh",
+	"description": "provide router based proxy deployment for rocketh",
 	"publishConfig": {
 		"access": "public"
 	},

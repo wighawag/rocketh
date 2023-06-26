@@ -1,5 +1,13 @@
 # hardhat-rocketh
 
+## 0.6.2
+
+### Patch Changes
+
+- latest update + rocketh-deploy-router
+- Updated dependencies
+  - rocketh@0.6.1
+
 ## 0.6.1
 
 ### Patch Changes
