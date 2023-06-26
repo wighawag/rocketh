@@ -1,5 +1,11 @@
 # hardhat-rocketh
 
+## 0.6.1
+
+### Patch Changes
+
+- add option to generate a folder for artifacts
+
 ## 0.6.0
 
 ### Patch Changes
