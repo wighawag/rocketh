@@ -68,7 +68,8 @@ extendEnvironment((env: Environment) => {
 
 		const sigMap: `0x${string}`[] = [];
 		for (const entry of sigJSMap) {
-			sigMap.push((entry[0] + entry[1].index.toString(16).padStart(2, '0')) as `0x${string}`);
+			// we add +1 to index as 0 indicate no implementation
+			sigMap.push((entry[0] + (entry[1].index + 1).toString(16).padStart(2, '0')) as `0x${string}`);
 		}
 
 		const deployment = await env.deploy<typeof artifacts.Router4X24.abi>(name, {
