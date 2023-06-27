@@ -203,18 +203,20 @@ subtask(TASK_COMPILE_SOLIDITY_EMIT_ARTIFACTS).setAction(async (args, hre, runSup
 		const debugContent = fs.readFileSync(debugFilepath, 'utf-8');
 		const parsedDebug: {_format: string; buildInfo: string} = JSON.parse(debugContent);
 		const buildInfoFilepath = path.join(path.dirname(path.resolve(debugFilepath)), parsedDebug.buildInfo);
-		const buildInfoContent = fs.readFileSync(buildInfoFilepath, 'utf-8');
-		const parsedBuildInfo = JSON.parse(buildInfoContent);
-		const solidityOutput = parsedBuildInfo.output.contracts[dirname][contractName];
+		if (fs.existsSync(buildInfoFilepath)) {
+			const buildInfoContent = fs.readFileSync(buildInfoFilepath, 'utf-8');
+			const parsedBuildInfo = JSON.parse(buildInfoContent);
+			const solidityOutput = parsedBuildInfo.output.contracts[dirname][contractName];
 
-		const artifactObject = {...parsed, ...solidityOutput};
-		const fullName = `${dirname}/${contractName}`;
-		allArtifacts[fullName] = artifactObject;
-		if (shortNameDict[contractName]) {
-			delete allArtifacts[contractName];
-		} else {
-			allArtifacts[contractName] = artifactObject;
-			shortNameDict[contractName] = true;
+			const artifactObject = {...parsed, ...solidityOutput};
+			const fullName = `${dirname}/${contractName}`;
+			allArtifacts[fullName] = artifactObject;
+			if (shortNameDict[contractName]) {
+				delete allArtifacts[contractName];
+			} else {
+				allArtifacts[contractName] = artifactObject;
+				shortNameDict[contractName] = true;
+			}
 		}
 	}
 	for (const key of Object.keys(allArtifacts)) {

@@ -1,5 +1,11 @@
 # hardhat-rocketh
 
+## 0.6.4
+
+### Patch Changes
+
+- skip artifact generation if build-info file is missing
+
 ## 0.6.3
 
 ### Patch Changes
