@@ -121,12 +121,15 @@ importers:
 
   packages/rocketh-deploy-proxy:
     dependencies:
+      named-logs:
+        specifier: ^0.2.2
+        version: 0.2.2
       rocketh-deploy:
         specifier: workspace:*
         version: link:../rocketh-deploy
       solidity-proxy:
-        specifier: ^0.1.1
-        version: 0.1.1
+        specifier: ^0.2.2
+        version: 0.2.2
       viem:
         specifier: ^1.1.7
         version: 1.1.7(typescript@5.1.3)
@@ -152,12 +155,15 @@ importers:
 
   packages/rocketh-deploy-router:
     dependencies:
+      named-logs:
+        specifier: ^0.2.2
+        version: 0.2.2
       rocketh-deploy:
         specifier: workspace:*
         version: link:../rocketh-deploy
       solidity-proxy:
-        specifier: ^0.1.1
-        version: 0.1.1
+        specifier: ^0.2.2
+        version: 0.2.2
       viem:
         specifier: ^1.1.7
         version: 1.1.7(typescript@5.1.3)
@@ -5281,8 +5287,8 @@ packages:
       - debug
     dev: true
 
-  /solidity-proxy@0.1.1:
-    resolution: {integrity: sha512-DnUe3wJbgaIgLiMEMv5BwuhFo4qJDHR4wfJMAh4a0DiWzvpdWoafbP1MQ9d6m2vEoQR6u7/tWZGslMIFzPUsDA==}
+  /solidity-proxy@0.2.2:
+    resolution: {integrity: sha512-ay1kpcMCaLvfUPdtBSHi1Fn+hjiKAOdfUu5UgUgBUGhrMUQ+mZnQkrfWmd487zWkc1Lnc2IPR5Q7B9ZW1WsBow==}
     dev: false
 
   /source-map-support@0.5.21:
