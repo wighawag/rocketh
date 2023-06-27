@@ -59,8 +59,12 @@ function setupExtraSolcSettings(settings: {
 }
 
 extendConfig((config: HardhatConfig, userConfig: Readonly<HardhatUserConfig>) => {
-	config.generateArtifacts = userConfig.generateArtifacts || {
+	config.generateArtifacts = {
 		ts: ['./generated/artifacts.ts'],
+		js: [],
+		json: [],
+		directories: [userConfig.paths?.sources || 'contracts'],
+		...userConfig.generateArtifacts,
 	};
 
 	for (const compiler of config.solidity.compilers) {
@@ -76,18 +80,20 @@ task('deploy', 'Deploy contracts').setAction(async (args, hre) => {
 	});
 });
 
-function traverse(
-	dir: string,
-	result: any[] = [],
-	topDir?: string,
-	filter?: (name: string, stats: any) => boolean // TODO any is Stats
-): Array<{
+type FileTraversed = {
 	name: string;
 	path: string;
 	relativePath: string;
 	mtimeMs: number;
 	directory: boolean;
-}> {
+};
+
+function traverse(
+	dir: string,
+	result: any[] = [],
+	topDir?: string,
+	filter?: (name: string, stats: any) => boolean // TODO any is Stats
+): Array<FileTraversed> {
 	fs.readdirSync(dir).forEach((name) => {
 		const fPath = path.resolve(dir, name);
 		const stats = fs.statSync(fPath);
@@ -182,10 +188,58 @@ function writeFiles(name: string | undefined, data: any, config: ArtifactGenerat
 }
 
 subtask(TASK_COMPILE_SOLIDITY_EMIT_ARTIFACTS).setAction(async (args, hre, runSuper): Promise<any> => {
-	const allArtifacts: {[name: string]: any} = {}; // TODO read current ?
-	const artifactResult = await runSuper(args);
+	// let previousArtifacts: {[name: string]: any} = {};
+	// try {
+	// 	previousArtifacts = JSON.parse(fs.readFileSync('./generated/_artifacts.json', 'utf-8'));
+	// } catch {}
+	// const allArtifacts: {[name: string]: any} = previousArtifacts;
+	const allArtifacts: {[name: string]: any} = {};
 	const shortNameDict: {[shortName: string]: boolean} = {};
-	const files = traverse('./artifacts', [], undefined, (name) => name != 'build-info');
+	// for (const key of Object.keys(allArtifacts)) {
+	// 	if (!key.indexOf('/')) {
+	// 		shortNameDict[key] = true;
+	// 	}
+	// }
+
+	const artifactResult = await runSuper(args);
+
+	// for (const artifact of artifactResult.artifactsEmittedPerFile) {
+	// 	const filepath = `./artifacts/${artifact.file.sourceName}/${artifact.artifactsEmitted[0]}.json`;
+	// 	if (fs.existsSync(filepath)) {
+	// 		for (let i = 0; i < artifact.artifactsEmitted.length; i++) {
+	// 			const shortName = artifact.artifactsEmitted[i];
+	// 			const content = fs.readFileSync(filepath, 'utf-8');
+	// 			const parsed = JSON.parse(content);
+
+	// 			const debugFilepath = filepath.replace('.json', '.dbg.json');
+	// 			const debugContent = fs.readFileSync(debugFilepath, 'utf-8');
+	// 			const parsedDebug: {_format: string; buildInfo: string} = JSON.parse(debugContent);
+	// 			const buildInfoFilepath = path.join(path.dirname(path.resolve(debugFilepath)), parsedDebug.buildInfo);
+	// 			const buildInfoContent = fs.readFileSync(buildInfoFilepath, 'utf-8');
+	// 			const parsedBuildInfo = JSON.parse(buildInfoContent);
+	// 			const solidityOutput = parsedBuildInfo.output.contracts[artifact.file.sourceName][shortName];
+
+	// 			const artifactObject = {...parsed, ...solidityOutput};
+	// 			const fullName = `${artifact.file.sourceName}/${shortName}`;
+	// 			allArtifacts[fullName] = artifactObject;
+	// 			if (shortNameDict[shortName]) {
+	// 				delete allArtifacts[shortName];
+	// 			} else {
+	// 				allArtifacts[shortName] = artifactObject;
+	// 				shortNameDict[shortName] = true;
+	// 			}
+	// 		}
+	// 	} else {
+	// 		// this can happen for solidity file without contract exported, just error or types for example
+	// 		// throw new Error(`no artifact at ${filepath}`);
+	// 	}
+	// }
+
+	const files: FileTraversed[] = [];
+	for (const directory of hre.config.generateArtifacts.directories) {
+		const filesToAdd = traverse(`./artifacts/${directory}`, [], './artifacts', (name) => name != 'build-info');
+		files.push(...filesToAdd);
+	}
 
 	for (const file of files) {
 		const filename = path.basename(file.path);
@@ -202,9 +256,24 @@ subtask(TASK_COMPILE_SOLIDITY_EMIT_ARTIFACTS).setAction(async (args, hre, runSup
 		const debugFilepath = file.path.replace('.json', '.dbg.json');
 		const debugContent = fs.readFileSync(debugFilepath, 'utf-8');
 		const parsedDebug: {_format: string; buildInfo: string} = JSON.parse(debugContent);
-		const buildInfoFilepath = path.join(path.dirname(path.resolve(debugFilepath)), parsedDebug.buildInfo);
-		if (fs.existsSync(buildInfoFilepath)) {
-			const buildInfoContent = fs.readFileSync(buildInfoFilepath, 'utf-8');
+		const buildInfoFilepath = path.join(path.dirname(path.relative('.', debugFilepath)), parsedDebug.buildInfo);
+
+		const backupBuildInfoFilepath = path.join(
+			'./generated',
+			buildInfoFilepath.slice(buildInfoFilepath.indexOf('/', 1))
+		);
+		let buildInfoFilepathToUse = buildInfoFilepath;
+		if (!fs.existsSync(buildInfoFilepathToUse)) {
+			buildInfoFilepathToUse = backupBuildInfoFilepath;
+		}
+		if (fs.existsSync(buildInfoFilepathToUse)) {
+			const buildInfoContent = fs.readFileSync(buildInfoFilepathToUse, 'utf-8');
+
+			if (buildInfoFilepathToUse !== backupBuildInfoFilepath) {
+				fs.mkdirSync(path.dirname(backupBuildInfoFilepath), {recursive: true});
+				fs.writeFileSync(backupBuildInfoFilepath, buildInfoContent);
+			}
+
 			const parsedBuildInfo = JSON.parse(buildInfoContent);
 			const solidityOutput = parsedBuildInfo.output.contracts[dirname][contractName];
 
@@ -235,6 +304,10 @@ subtask(TASK_COMPILE_SOLIDITY_EMIT_ARTIFACTS).setAction(async (args, hre, runSup
 		const artifact = allArtifacts[key];
 		writeFiles(key, artifact, hre.config.generateArtifacts);
 	}
+	// const json = hre.config.generateArtifacts.json || [];
+	// json.push('./generated/_artifacts.json');
+	// writeFiles(undefined, allArtifacts, {...hre.config.generateArtifacts, json: json});
+
 	writeFiles(undefined, allArtifacts, hre.config.generateArtifacts);
 
 	return artifactResult;

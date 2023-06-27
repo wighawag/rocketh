@@ -1,5 +1,11 @@
 # hardhat-rocketh
 
+## 0.6.5
+
+### Patch Changes
+
+- filter artifact per directory + more robust hardhat-ethers
+
 ## 0.6.4
 
 ### Patch Changes
