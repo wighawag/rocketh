@@ -1,5 +1,11 @@
 # rocketh-deploy
 
+## 0.6.4
+
+### Patch Changes
+
+- fix cbor removal
+
 ## 0.6.3
 
 ### Patch Changes

@@ -191,14 +191,25 @@ extendEnvironment((env: Environment) => {
 		}
 
 		if (existingDeployment && !allwaysOverride) {
-			const previousCalldata = existingDeployment.bytecode + existingDeployment.argsData.slice(2);
-			if (previousCalldata === calldata) {
+			const previousBytecode = existingDeployment.bytecode;
+			const previousArgsData = existingDeployment.argsData;
+			// we assume cbor encoding of hash at the end
+			// TODO option to remove it, can parse metadata but would rather avoid this here
+			const last2Bytes = previousBytecode.slice(-4);
+			const cborLength = parseInt(last2Bytes, 16);
+			const previousBytecodeWithoutCBOR = previousBytecode.slice(0, -cborLength * 2);
+			const newBytecodeWithoutCBOR = bytecode.slice(0, -cborLength * 2);
+			if (previousBytecodeWithoutCBOR === newBytecodeWithoutCBOR && previousArgsData === argsData) {
 				return existingDeployment as Deployment<TAbi>;
 			} else {
-				logger.info('--------------------------------');
-				logger.info(previousCalldata);
-				logger.info(calldata);
-				logger.info('--------------------------------');
+				// logger.info(`-------------- WITHOUT CBOR---------------------`);
+				// logger.info(previousBytecodeWithoutCBOR);
+				// logger.info(newBytecodeWithoutCBOR);
+				// logger.info(`-----------------------------------`);
+				// logger.info(`-------------- ARGS DATA ---------------------`);
+				// logger.info(previousArgsData);
+				// logger.info(argsData);
+				// logger.info(`-----------------------------------`);
 			}
 		}
 
