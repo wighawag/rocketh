@@ -1,5 +1,11 @@
 # hardhat-rocketh
 
+## 0.6.6
+
+### Patch Changes
+
+- more logs
+
 ## 0.6.5
 
 ### Patch Changes

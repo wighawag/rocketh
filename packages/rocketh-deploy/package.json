@@ -1,6 +1,6 @@
 {
 	"name": "rocketh-deploy",
-	"version": "0.6.2",
+	"version": "0.6.3",
 	"description": "provide deploy function for rocketh",
 	"publishConfig": {
 		"access": "public"
@@ -21,6 +21,7 @@
 		"rocketh": "workspace:*"
 	},
 	"dependencies": {
+		"named-logs": "^0.2.2",
 		"viem": "^1.1.7"
 	},
 	"scripts": {

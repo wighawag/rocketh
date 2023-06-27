@@ -12,6 +12,9 @@ import type {
 import {extendEnvironment} from 'rocketh';
 import {Chain, WriteContractParameters, encodeFunctionData} from 'viem';
 import {DeployContractParameters, encodeDeployData} from 'viem/contract';
+import {logs} from 'named-logs';
+
+const logger = logs('rocketh-deploy');
 
 declare module 'rocketh' {
 	interface Environment {
@@ -148,6 +151,7 @@ extendEnvironment((env: Environment) => {
 
 		const existingDeployment = env.get(name);
 		if (existingDeployment && skipIfAlreadyDeployed) {
+			logger.info(`deployment for ${name} at ${existingDeployment.address}, skipIfAlreadyDeployed: true => we skip`);
 			return existingDeployment as Deployment<TAbi>;
 		}
 
@@ -182,9 +186,19 @@ extendEnvironment((env: Environment) => {
 		const calldata = encodeDeployData(argsToUse);
 		const argsData = `0x${calldata.replace(bytecode, '')}` as `0x${string}`;
 
+		if (existingDeployment) {
+			logger.info(`existing deployment for ${name} at ${existingDeployment.address}`);
+		}
+
 		if (existingDeployment && !allwaysOverride) {
-			if (existingDeployment.bytecode + existingDeployment.argsData.slice(2) === calldata) {
+			const previousCalldata = existingDeployment.bytecode + existingDeployment.argsData.slice(2);
+			if (previousCalldata === calldata) {
 				return existingDeployment as Deployment<TAbi>;
+			} else {
+				logger.info('--------------------------------');
+				logger.info(previousCalldata);
+				logger.info(calldata);
+				logger.info('--------------------------------');
 			}
 		}
 

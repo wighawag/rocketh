@@ -70,6 +70,10 @@ extendConfig((config: HardhatConfig, userConfig: Readonly<HardhatUserConfig>) =>
 	for (const compiler of config.solidity.compilers) {
 		setupExtraSolcSettings(compiler.settings);
 	}
+	for (const key of Object.keys(config.solidity.overrides)) {
+		const override = config.solidity.overrides[key];
+		setupExtraSolcSettings(override.settings);
+	}
 });
 
 task('deploy', 'Deploy contracts').setAction(async (args, hre) => {

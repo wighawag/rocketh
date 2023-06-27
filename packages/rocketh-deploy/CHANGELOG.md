@@ -1,5 +1,11 @@
 # rocketh-deploy
 
+## 0.6.3
+
+### Patch Changes
+
+- more logs
+
 ## 0.6.2
 
 ### Patch Changes
