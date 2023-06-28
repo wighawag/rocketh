@@ -1,5 +1,11 @@
 # hardhat-rocketh
 
+## 0.6.7
+
+### Patch Changes
+
+- artifact generation run after compilation complete
+
 ## 0.6.6
 
 ### Patch Changes

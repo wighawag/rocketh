@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import {subtask, task, extendConfig} from 'hardhat/config';
-import {TASK_COMPILE_SOLIDITY_EMIT_ARTIFACTS} from 'hardhat/builtin-tasks/task-names';
+import {TASK_COMPILE} from 'hardhat/builtin-tasks/task-names';
 import {loadAndExecuteDeployments} from 'rocketh';
 import {HardhatConfig, HardhatUserConfig} from 'hardhat/types';
 import {ArtifactGenerationConfig} from './type-extensions';
@@ -191,7 +191,7 @@ function writeFiles(name: string | undefined, data: any, config: ArtifactGenerat
 	}
 }
 
-subtask(TASK_COMPILE_SOLIDITY_EMIT_ARTIFACTS).setAction(async (args, hre, runSuper): Promise<any> => {
+subtask(TASK_COMPILE).setAction(async (args, hre, runSuper): Promise<any> => {
 	// let previousArtifacts: {[name: string]: any} = {};
 	// try {
 	// 	previousArtifacts = JSON.parse(fs.readFileSync('./generated/_artifacts.json', 'utf-8'));
@@ -205,7 +205,7 @@ subtask(TASK_COMPILE_SOLIDITY_EMIT_ARTIFACTS).setAction(async (args, hre, runSup
 	// 	}
 	// }
 
-	const artifactResult = await runSuper(args);
+	const compilationResult = await runSuper(args);
 
 	// for (const artifact of artifactResult.artifactsEmittedPerFile) {
 	// 	const filepath = `./artifacts/${artifact.file.sourceName}/${artifact.artifactsEmitted[0]}.json`;
@@ -314,5 +314,5 @@ subtask(TASK_COMPILE_SOLIDITY_EMIT_ARTIFACTS).setAction(async (args, hre, runSup
 
 	writeFiles(undefined, allArtifacts, hre.config.generateArtifacts);
 
-	return artifactResult;
+	return compilationResult;
 });
