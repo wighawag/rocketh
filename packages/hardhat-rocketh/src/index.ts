@@ -3,7 +3,7 @@ import './type-extensions';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import {subtask, task, extendConfig} from 'hardhat/config';
+import {task, extendConfig} from 'hardhat/config';
 import {TASK_COMPILE} from 'hardhat/builtin-tasks/task-names';
 import {loadAndExecuteDeployments} from 'rocketh';
 import {HardhatConfig, HardhatUserConfig} from 'hardhat/types';
@@ -191,7 +191,7 @@ function writeFiles(name: string | undefined, data: any, config: ArtifactGenerat
 	}
 }
 
-subtask(TASK_COMPILE).setAction(async (args, hre, runSuper): Promise<any> => {
+task(TASK_COMPILE).setAction(async (args, hre, runSuper): Promise<any> => {
 	// let previousArtifacts: {[name: string]: any} = {};
 	// try {
 	// 	previousArtifacts = JSON.parse(fs.readFileSync('./generated/_artifacts.json', 'utf-8'));

@@ -1,5 +1,11 @@
 # hardhat-rocketh
 
+## 0.6.8
+
+### Patch Changes
+
+- hardhat-rocketh: fix: compile cannot be redefined as a subtask
+
 ## 0.6.7
 
 ### Patch Changes
