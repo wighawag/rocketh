@@ -1,5 +1,13 @@
 # hardhat-rocketh
 
+## 0.6.9
+
+### Patch Changes
+
+- let deploy script accept arguments
+- Updated dependencies
+  - rocketh@0.6.3
+
 ## 0.6.8
 
 ### Patch Changes

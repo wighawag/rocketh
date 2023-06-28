@@ -76,7 +76,7 @@ export async function createEnvironment<
 >(
 	config: ResolvedConfig,
 	providedContext: ProvidedContext<Artifacts, NamedAccounts>
-): Promise<{internal: InternalEnvironment; external: Environment}> {
+): Promise<{internal: InternalEnvironment; external: Environment<Artifacts, NamedAccounts, Deployments>}> {
 	const provider =
 		'provider' in config ? config.provider : (new JSONRPCHTTPProvider(config.nodeUrl) as EIP1193ProviderWithoutEvents);
 

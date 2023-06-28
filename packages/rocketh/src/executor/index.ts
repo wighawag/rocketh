@@ -19,19 +19,22 @@ require('esbuild-register/dist/node').register();
 export function execute<
 	Artifacts extends UnknownArtifacts = UnknownArtifacts,
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
+	ArgumentsType = undefined,
 	Deployments extends UnknownDeployments = UnknownDeployments
 >(
 	context: ProvidedContext<Artifacts, NamedAccounts>,
-	callback: DeployScriptFunction<Artifacts, ResolvedNamedAccounts<NamedAccounts>, Deployments>,
+	callback: DeployScriptFunction<Artifacts, ResolvedNamedAccounts<NamedAccounts>, ArgumentsType, Deployments>,
 	options: {tags?: string[]; dependencies?: string[]}
-): DeployScriptModule<Artifacts, NamedAccounts, Deployments> {
-	const scriptModule = (env: Environment<Artifacts, ResolvedNamedAccounts<NamedAccounts>, Deployments>) =>
-		callback(env);
+): DeployScriptModule<Artifacts, NamedAccounts, ArgumentsType, Deployments> {
+	const scriptModule = (
+		env: Environment<Artifacts, ResolvedNamedAccounts<NamedAccounts>, Deployments>,
+		args?: ArgumentsType
+	) => callback(env, args);
 	scriptModule.providedContext = context;
 	scriptModule.tags = options.tags;
 	scriptModule.dependencies = options.dependencies;
 	// TODO id + skip
-	return scriptModule as unknown as DeployScriptModule<Artifacts, NamedAccounts, Deployments>;
+	return scriptModule as unknown as DeployScriptModule<Artifacts, NamedAccounts, ArgumentsType, Deployments>;
 }
 
 export type ConfigOptions = {network: string; deployments?: string; scripts?: string; tags?: string};
@@ -116,17 +119,19 @@ export async function loadEnvironment<
 export async function loadAndExecuteDeployments<
 	Artifacts extends UnknownArtifacts = UnknownArtifacts,
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
+	ArgumentsType = undefined,
 	Deployments extends UnknownDeployments = UnknownDeployments
->(config: Config): Promise<Environment> {
+>(config: Config, args?: ArgumentsType): Promise<Environment> {
 	const resolvedConfig = resolveConfig(config);
-	return executeDeployScripts<Artifacts, NamedAccounts, Deployments>(resolvedConfig);
+	return executeDeployScripts<Artifacts, NamedAccounts, ArgumentsType, Deployments>(resolvedConfig, args);
 }
 
 export async function executeDeployScripts<
 	Artifacts extends UnknownArtifacts = UnknownArtifacts,
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
+	ArgumentsType = undefined,
 	Deployments extends UnknownDeployments = UnknownDeployments
->(config: ResolvedConfig): Promise<Environment> {
+>(config: ResolvedConfig, args?: ArgumentsType): Promise<Environment> {
 	setLogLevel(typeof config.logLevel === 'undefined' ? 0 : config.logLevel);
 
 	let filepaths;
@@ -145,13 +150,13 @@ export async function executeDeployScripts<
 
 	let providedContext: ProvidedContext<Artifacts, NamedAccounts> | undefined;
 
-	const scriptModuleByFilePath: {[filename: string]: DeployScriptModule} = {};
+	const scriptModuleByFilePath: {[filename: string]: DeployScriptModule<Artifacts, NamedAccounts, ArgumentsType>} = {};
 	const scriptPathBags: {[tag: string]: string[]} = {};
 	const scriptFilePaths: string[] = [];
 
 	for (const filepath of filepaths) {
 		const scriptFilePath = path.resolve(filepath);
-		let scriptModule: DeployScriptModule;
+		let scriptModule: DeployScriptModule<Artifacts, NamedAccounts, ArgumentsType>;
 		try {
 			if (require.cache) {
 				delete require.cache[scriptFilePath]; // ensure we reload it every time, so changes are taken in consideration
@@ -159,10 +164,10 @@ export async function executeDeployScripts<
 			scriptModule = require(scriptFilePath);
 
 			if ((scriptModule as any).default) {
-				scriptModule = (scriptModule as any).default as DeployScriptModule;
+				scriptModule = (scriptModule as any).default as DeployScriptModule<Artifacts, NamedAccounts, ArgumentsType>;
 				if ((scriptModule as any).default) {
 					logger.warn(`double default...`);
-					scriptModule = (scriptModule as any).default as DeployScriptModule;
+					scriptModule = (scriptModule as any).default as DeployScriptModule<Artifacts, NamedAccounts, ArgumentsType>;
 				}
 			}
 			scriptModuleByFilePath[scriptFilePath] = scriptModule;
@@ -221,11 +226,11 @@ export async function executeDeployScripts<
 
 	const scriptsRegisteredToRun: {[filename: string]: boolean} = {};
 	const scriptsToRun: Array<{
-		func: DeployScriptModule;
+		func: DeployScriptModule<Artifacts, NamedAccounts, ArgumentsType>;
 		filePath: string;
 	}> = [];
 	const scriptsToRunAtTheEnd: Array<{
-		func: DeployScriptModule;
+		func: DeployScriptModule<Artifacts, NamedAccounts, ArgumentsType>;
 		filePath: string;
 	}> = [];
 	function recurseDependencies(scriptFilePath: string) {
@@ -274,7 +279,7 @@ export async function executeDeployScripts<
 		if (deployScript.func.skip) {
 			const spinner = spin(`  - skip?()`);
 			try {
-				skip = await deployScript.func.skip(external);
+				skip = await deployScript.func.skip(external, args);
 				spinner.succeed(skip ? `skipping ${filename}` : undefined);
 			} catch (e) {
 				spinner.fail();
@@ -285,7 +290,7 @@ export async function executeDeployScripts<
 			let result;
 
 			try {
-				result = await deployScript.func(external);
+				result = await deployScript.func(external, args);
 				spinner.succeed(`\n`);
 			} catch (e) {
 				spinner.fail();

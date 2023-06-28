@@ -1,15 +1,12 @@
 {
 	"name": "hardhat-rocketh",
-	"version": "0.6.8",
+	"version": "0.6.9",
 	"description": "rocketh plugin for hardhat",
 	"publishConfig": {
 		"access": "public"
 	},
 	"main": "dist/index.js",
 	"types": "dist/index.d.ts",
-	"bin": {
-		"rocketh": "dist/cli.js"
-	},
 	"devDependencies": {
 		"hardhat": "^2.16.0",
 		"rimraf": "^5.0.1",

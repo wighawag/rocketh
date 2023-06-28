@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.6.3
+
+### Patch Changes
+
+- let deploy script accept arguments
+
 ## 0.6.2
 
 ### Patch Changes
