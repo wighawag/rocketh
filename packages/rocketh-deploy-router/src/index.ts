@@ -2,7 +2,8 @@ import {Abi} from 'abitype';
 import type {Artifact, DeploymentConstruction, Deployment, Environment} from 'rocketh';
 import 'rocketh-deploy';
 import {extendEnvironment} from 'rocketh';
-import {GetConstructorArgs, getFunctionSelector} from 'viem';
+import {GetConstructorArgs} from 'viem';
+import {FunctionFragment} from 'ethers';
 import artifactsAsModule from 'solidity-proxy/generated/artifacts';
 import {logs} from 'named-logs';
 
@@ -54,7 +55,8 @@ extendEnvironment((env: Environment) => {
 			const route = routes[i];
 			for (const element of route.artifact.abi) {
 				if (element.type === 'function') {
-					const selector = getFunctionSelector(element);
+					// const selector = getFunctionSelector(element);
+					const selector = FunctionFragment.from(element).selector as `0x${string}`;
 					if (sigJSMap.has(selector)) {
 						const existing = sigJSMap.get(selector);
 						throw new Error(

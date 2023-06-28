@@ -1,5 +1,11 @@
 # rocketh-deploy-proxy
 
+## 0.6.10
+
+### Patch Changes
+
+- fix selector generation by using ethers instead of viem
+
 ## 0.6.9
 
 ### Patch Changes

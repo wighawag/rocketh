@@ -1,6 +1,6 @@
 {
 	"name": "rocketh-deploy-router",
-	"version": "0.6.9",
+	"version": "0.6.10",
 	"description": "provide router based proxy deployment for rocketh",
 	"publishConfig": {
 		"access": "public"
@@ -21,6 +21,7 @@
 		"rocketh": "workspace:*"
 	},
 	"dependencies": {
+		"ethers": "^6.6.2",
 		"named-logs": "^0.2.2",
 		"rocketh-deploy": "workspace:*",
 		"solidity-proxy": "^0.2.2",
