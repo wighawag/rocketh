@@ -21,10 +21,10 @@ type PartialOra = {
 	succeed(msg?: string): PartialOra;
 	fail(msg?: string): PartialOra;
 };
-const voidSpinner: PartialOra = {
+const loggerSpinner: PartialOra = {
 	start(msg?: string) {
 		if (msg) {
-			console.log(msg);
+			logger.log(msg);
 		}
 		return this;
 	},
@@ -33,14 +33,28 @@ const voidSpinner: PartialOra = {
 	},
 	succeed(msg?: string) {
 		if (msg) {
-			console.log(msg);
+			logger.log(msg);
 		}
 		return this;
 	},
 	fail(msg?: string) {
 		if (msg) {
-			console.error(msg);
+			logger.error(msg);
 		}
+		return this;
+	},
+};
+const voidSpinner: PartialOra = {
+	start() {
+		return this;
+	},
+	stop() {
+		return this;
+	},
+	succeed() {
+		return this;
+	},
+	fail() {
 		return this;
 	},
 };
@@ -49,7 +63,7 @@ const voidSpinner: PartialOra = {
 // }
 
 // let lastSpin = ora('rocketh');
-let lastSpin = voidSpinner;
+let lastSpin = loggerSpinner;
 export function spin(message?: string): PartialOra {
 	if (Logging.level > 0) {
 		lastSpin = lastSpin.start(message);

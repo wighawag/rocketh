@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.6.4
+
+### Patch Changes
+
+- void spinner
+
 ## 0.6.3
 
 ### Patch Changes
