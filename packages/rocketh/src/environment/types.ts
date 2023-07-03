@@ -11,40 +11,135 @@ import {Abi, Narrow} from 'abitype';
 import type {DeployContractParameters} from 'viem/contract';
 import type {Chain} from 'viem';
 
-export type Libraries = {[libraryName: string]: EIP1193Account};
+export type Libraries = {readonly [libraryName: string]: EIP1193Account};
+
+export type GasEstimate = 'infinite' | `${number}`;
+export type CreationGasEstimate = {
+	readonly codeDepositCost: GasEstimate;
+	readonly executionCost: GasEstimate;
+	readonly totalCost: GasEstimate;
+};
+
+export type GasEstimates = {
+	readonly creation?: CreationGasEstimate;
+	readonly external?: {
+		readonly [signature: string]: GasEstimate;
+	};
+	readonly internal?: {
+		readonly [signature: string]: GasEstimate;
+	};
+};
+
+export type Storage = {
+	readonly astId: number;
+	readonly contract: string; // canonical name <path>:<name>
+	readonly label: string; // variable name
+	readonly offset: number;
+	readonly slot: 0; // slot bytes32
+	readonly type: string; // "t_mapping(t_uint256,t_struct(Cell)12382_storage)"
+};
+export type TypeDef = {
+	readonly encoding: 'inplace' | string; // TODO
+	readonly label: 'address' | 'byte24' | string; // TODO
+	readonly numberOfBytes: `${number}`;
+	readonly key?: string; // ref to another typedef
+	readonly value: string;
+	readonly members?: readonly Storage[];
+};
+
+export type DevDoc = {
+	readonly events?: {
+		[signature: string]: {
+			readonly params: {readonly [name: string]: string}; //description
+		};
+	};
+	readonly errors?: {
+		[signature: string]: {
+			readonly params: {readonly [name: string]: string}; //description
+		};
+	};
+	readonly methods: {
+		[signature: string]: {
+			readonly params: {readonly [name: string]: string}; //description
+			readonly returns?: {
+				readonly [key: string | `_${number}`]: string; // description
+			};
+		};
+	};
+	readonly kind: 'dev';
+	readonly version: number;
+	readonly title?: string;
+	readonly author?: string;
+};
+
+export type UserDoc = {
+	readonly events?: {
+		readonly [signature: string]: {
+			readonly notice: string;
+		};
+	};
+	readonly errors?: {
+		readonly [signature: string]: {
+			readonly notice: string;
+		};
+	};
+	readonly kind: 'user';
+	readonly methods: {
+		readonly [signature: string]: {
+			readonly notice: string;
+		};
+	};
+	readonly version: number;
+	readonly notice?: string;
+};
+
+export type StorageLayout = {
+	readonly storage: readonly Storage[];
+	readonly types: {
+		readonly [name: string]: TypeDef;
+	} | null;
+};
 
 export type Deployment<TAbi extends Abi> = {
-	address: EIP1193Account;
-	abi: Narrow<TAbi>;
-	transaction: {
-		hash: EIP1193DATA;
-		origin?: EIP1193Account;
-		nonce?: EIP1193DATA;
+	readonly address: EIP1193Account;
+	readonly abi: Narrow<TAbi>;
+	readonly transaction: {
+		readonly hash: EIP1193DATA;
+		readonly origin?: EIP1193Account;
+		readonly nonce?: EIP1193DATA;
 	};
-	bytecode: EIP1193DATA;
-	argsData: EIP1193DATA;
-	metadata: string;
-	libraries?: Libraries;
-	deployedBytecode?: EIP1193DATA;
-	linkReferences?: any;
-	deployedLinkReferences?: any;
-	devdoc?: any; // TODO type
-	evm?: any; // TODO type
-	storageLayout?: any; // TODO type
-	userdoc?: any; // TODO type
+	readonly bytecode: EIP1193DATA;
+	readonly argsData: EIP1193DATA;
+	readonly metadata: string;
+	readonly libraries?: Libraries;
+	readonly deployedBytecode?: EIP1193DATA;
+	readonly linkReferences?: any; // TODO
+	readonly deployedLinkReferences?: any; // TODO
+	readonly contractName?: string;
+	readonly sourceName?: string; // relative path
+	readonly devdoc?: DevDoc;
+	readonly evm?: {
+		readonly gasEstimates?: GasEstimates;
+	};
+	readonly storageLayout?: StorageLayout;
+	readonly userdoc?: UserDoc;
 };
 
 export type Artifact<TAbi extends Abi = Abi> = {
-	abi: TAbi;
-	bytecode: EIP1193DATA;
-	metadata: string;
-	deployedBytecode?: EIP1193DATA;
-	linkReferences?: any;
-	deployedLinkReferences?: any;
-	devdoc?: any; // TODO type
-	evm?: any; // TODO type
-	storageLayout?: any; // TODO type
-	userdoc?: any; // TODO type
+	readonly abi: TAbi;
+	readonly bytecode: EIP1193DATA;
+	readonly metadata: string;
+	readonly deployedBytecode?: EIP1193DATA;
+	readonly linkReferences?: any; // TODO
+	readonly deployedLinkReferences?: any; // TODO
+	readonly contractName?: string;
+	readonly sourceName?: string; // relative path
+	readonly devdoc?: DevDoc;
+	readonly evm?: {
+		readonly gasEstimates?: GasEstimates;
+	};
+	readonly storageLayout?: StorageLayout;
+	readonly userdoc?: UserDoc;
 };
 
 export type AccountDefinition = EIP1193Account | string | number;

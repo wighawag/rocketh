@@ -193,6 +193,34 @@ importers:
         specifier: ^5.1.3
         version: 5.1.3
 
+  packages/rocketh-doc:
+    dependencies:
+      commander:
+        specifier: ^10.0.0
+        version: 10.0.0
+      fs-extra:
+        specifier: ^11.1.1
+        version: 11.1.1
+    devDependencies:
+      '@types/fs-extra':
+        specifier: ^11.0.1
+        version: 11.0.1
+      '@types/node':
+        specifier: ^20.3.2
+        version: 20.3.2
+      rimraf:
+        specifier: ^5.0.1
+        version: 5.0.1
+      rocketh:
+        specifier: workspace:*
+        version: link:../rocketh
+      tsup:
+        specifier: ^7.1.0
+        version: 7.1.0(typescript@5.1.3)
+      typescript:
+        specifier: ^5.1.3
+        version: 5.1.3
+
   packages/rocketh-export:
     dependencies:
       chalk:

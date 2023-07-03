@@ -447,10 +447,14 @@ export async function createEnvironment<
 				delete (artifactObjectWithoutABI as any)[key];
 			}
 			if (key === 'evm') {
-				const {gasEstimates} = artifactObjectWithoutABI.evm;
-				artifactObjectWithoutABI.evm = {
-					gasEstimates,
-				};
+				if (artifactObjectWithoutABI.evm) {
+					if ('gasEstimates' in artifactObjectWithoutABI['evm']) {
+						const {gasEstimates} = artifactObjectWithoutABI.evm;
+						artifactObjectWithoutABI.evm = {
+							gasEstimates,
+						};
+					}
+				}
 			}
 		}
 
