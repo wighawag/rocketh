@@ -36,7 +36,7 @@ export type Storage = {
 	readonly contract: string; // canonical name <path>:<name>
 	readonly label: string; // variable name
 	readonly offset: number;
-	readonly slot: 0; // slot bytes32
+	readonly slot: `${number}`; // slot bytes32
 	readonly type: string; // "t_mapping(t_uint256,t_struct(Cell)12382_storage)"
 };
 export type TypeDef = {
