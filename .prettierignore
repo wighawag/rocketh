@@ -9,3 +9,5 @@ artifacts
 generated
 #############################################
 package.json
+pnpm-lock.yaml
+*.hbs

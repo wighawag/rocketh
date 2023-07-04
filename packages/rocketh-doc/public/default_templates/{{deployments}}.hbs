@@ -1,4 +1,19 @@
-{{name}}
+# {{{name}}}
+
 {{#if notice}}
-	{{notice}}
+{{{notice}}}
 {{/if}}
+
+
+{{#each methods}}
+## {{{name}}}
+
+{{{notice}}}
+
+{{#each params}}
+{{#if description}}
+{{{name}}}:{{{description}}}
+
+{{/if}}
+{{/each}}
+{{/each}}
