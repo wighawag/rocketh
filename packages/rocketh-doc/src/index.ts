@@ -9,16 +9,21 @@ export type ReturnDoc = {name: string | `_${number}`; description: string};
 
 export type EventDoc = NoticeUserDoc & {
 	readonly name: string;
+	readonly details?: string;
 	readonly params?: ParamDoc[];
 };
 
-export type ErrorDoc = NoticeUserDoc & {
+export type ErrorDoc = {
+	readonly notice?: string[];
 	readonly name: string;
+	// TODO
+	// readonly details?: string; // TODO check if it can exists
 	readonly params?: ParamDoc[];
 };
 
 export type MethodDoc = NoticeUserDoc & {
 	readonly name: string;
+	readonly details?: string; // TODO check if it can exists
 	readonly params?: ParamDoc[];
 	readonly returns?: ReturnDoc[];
 };
@@ -66,14 +71,29 @@ export async function run(config: ResolvedConfig, options: {template?: string; o
 				const errorFromUserDoc = deployment.userdoc.errors[errorName];
 				const errorFromDevDoc = deployment.devdoc?.errors?.[errorName];
 				const params: ParamDoc[] = [];
-				if (errorFromDevDoc?.params) {
-					for (const paramName of Object.keys(errorFromDevDoc.params)) {
-						params.push({name: paramName, description: errorFromDevDoc.params[paramName]});
+				if (errorFromDevDoc) {
+					for (const doc of errorFromDevDoc) {
+						if (doc.params) {
+							for (const paramName of Object.keys(doc.params)) {
+								params.push({name: paramName, description: doc.params[paramName]});
+							}
+							// TODO what if same name
+							// TODO what is the array for ? (look at solidity doc)
+						}
+					}
+				}
+				const notice: string[] = [];
+				if (errorFromUserDoc) {
+					for (const doc of errorFromUserDoc) {
+						if (doc.notice) {
+							notice.push(doc.notice);
+							// TODO what is the array for ? (look at solidity doc)
+						}
 					}
 				}
 				errors.push({
 					name: errorName,
-					notice: errorFromUserDoc.notice,
+					notice,
 					params,
 				});
 			}

@@ -49,14 +49,17 @@ export type TypeDef = {
 };
 
 export type DevEventDoc = {
+	readonly details?: string;
 	readonly params?: {readonly [name: string]: string};
 };
 
 export type DevErrorDoc = {
+	readonly details?: string; // TODO check if it can exists
 	readonly params?: {readonly [name: string]: string};
 };
 
 export type DevMethodDoc = {
+	readonly details?: string; // TODO check if it can exists
 	readonly params?: {readonly [name: string]: string};
 	readonly returns?: {
 		readonly [key: string | `_${number}`]: string; // description
@@ -64,7 +67,7 @@ export type DevMethodDoc = {
 };
 
 export type NoticeUserDoc = {
-	readonly notice: string;
+	readonly notice?: string;
 };
 
 export type DevDoc = {
@@ -72,7 +75,7 @@ export type DevDoc = {
 		[signature: string]: DevEventDoc;
 	};
 	readonly errors?: {
-		[signature: string]: DevErrorDoc;
+		[signature: string]: readonly DevErrorDoc[];
 	};
 	readonly methods: {
 		[signature: string]: DevMethodDoc;
@@ -88,7 +91,7 @@ export type UserDoc = {
 		readonly [signature: string]: NoticeUserDoc;
 	};
 	readonly errors?: {
-		readonly [signature: string]: NoticeUserDoc;
+		readonly [signature: string]: readonly NoticeUserDoc[];
 	};
 	readonly kind: 'user';
 	readonly methods: {
@@ -124,8 +127,8 @@ export type Deployment<TAbi extends Abi> = {
 	readonly sourceName?: string; // relative path
 	readonly devdoc?: DevDoc;
 	readonly evm?: {
-		readonly gasEstimates?: GasEstimates;
-	};
+		readonly gasEstimates?: GasEstimates | null;
+	} & any;
 	readonly storageLayout?: StorageLayout;
 	readonly userdoc?: UserDoc;
 };
@@ -141,8 +144,8 @@ export type Artifact<TAbi extends Abi = Abi> = {
 	readonly sourceName?: string; // relative path
 	readonly devdoc?: DevDoc;
 	readonly evm?: {
-		readonly gasEstimates?: GasEstimates;
-	};
+		readonly gasEstimates?: GasEstimates | null;
+	} & any;
 	readonly storageLayout?: StorageLayout;
 	readonly userdoc?: UserDoc;
 };
