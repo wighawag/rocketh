@@ -11,6 +11,7 @@ import {Abi, Narrow} from 'abitype';
 import type {DeployContractParameters} from 'viem/contract';
 import type {Chain} from 'viem';
 
+export type {Abi};
 export type Libraries = {readonly [libraryName: string]: EIP1193Account};
 
 export type GasEstimate = 'infinite' | `${number}`;
@@ -47,24 +48,34 @@ export type TypeDef = {
 	readonly members?: readonly Storage[];
 };
 
+export type DevEventDoc = {
+	readonly params?: {readonly [name: string]: string};
+};
+
+export type DevErrorDoc = {
+	readonly params?: {readonly [name: string]: string};
+};
+
+export type DevMethodDoc = {
+	readonly params?: {readonly [name: string]: string};
+	readonly returns?: {
+		readonly [key: string | `_${number}`]: string; // description
+	};
+};
+
+export type NoticeUserDoc = {
+	readonly notice: string;
+};
+
 export type DevDoc = {
 	readonly events?: {
-		[signature: string]: {
-			readonly params: {readonly [name: string]: string}; //description
-		};
+		[signature: string]: DevEventDoc;
 	};
 	readonly errors?: {
-		[signature: string]: {
-			readonly params: {readonly [name: string]: string}; //description
-		};
+		[signature: string]: DevErrorDoc;
 	};
 	readonly methods: {
-		[signature: string]: {
-			readonly params: {readonly [name: string]: string}; //description
-			readonly returns?: {
-				readonly [key: string | `_${number}`]: string; // description
-			};
-		};
+		[signature: string]: DevMethodDoc;
 	};
 	readonly kind: 'dev';
 	readonly version: number;
@@ -74,20 +85,14 @@ export type DevDoc = {
 
 export type UserDoc = {
 	readonly events?: {
-		readonly [signature: string]: {
-			readonly notice: string;
-		};
+		readonly [signature: string]: NoticeUserDoc;
 	};
 	readonly errors?: {
-		readonly [signature: string]: {
-			readonly notice: string;
-		};
+		readonly [signature: string]: NoticeUserDoc;
 	};
 	readonly kind: 'user';
 	readonly methods: {
-		readonly [signature: string]: {
-			readonly notice: string;
-		};
+		readonly [signature: string]: NoticeUserDoc;
 	};
 	readonly version: number;
 	readonly notice?: string;

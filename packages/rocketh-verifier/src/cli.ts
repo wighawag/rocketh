@@ -14,8 +14,6 @@ program
 	.name(commandName)
 	.description('submit contract for verification')
 	.version(pkg.version)
-	.option('-s, --scripts <value>', 'path the folder containing the deploy scripts to execute')
-	.option('-t, --tags <value>', 'comma separated list of tags to execute')
 	.option('-d, --deployments <value>', 'folder where deployments are saved')
 	.requiredOption('-n, --network <value>', 'network context to use');
 
