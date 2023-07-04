@@ -44,7 +44,7 @@ export type TypeDef = {
 	readonly label: 'address' | 'byte24' | string; // TODO
 	readonly numberOfBytes: `${number}`;
 	readonly key?: string; // ref to another typedef
-	readonly value: string;
+	readonly value?: string;
 	readonly members?: readonly Storage[];
 };
 
