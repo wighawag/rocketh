@@ -19,7 +19,20 @@ import {Fragment, FunctionFragment} from 'ethers';
 import {DocumentationData, ErrorDoc, EventDoc, MethodDoc, ParamDoc, ReturnDoc} from './types';
 export * from './types';
 
-export async function run(config: ResolvedConfig, options: {template?: string; outputFolder?: string}) {
+export type RunOptions = {template?: string; outputFolder?: string; exceptSuffix?: string[]};
+
+function filter(options: RunOptions, name: string): boolean {
+	if (options.exceptSuffix) {
+		for (const suffix of options.exceptSuffix) {
+			if (name.endsWith(suffix)) {
+				return false;
+			}
+		}
+	}
+	return true;
+}
+
+export async function run(config: ResolvedConfig, options: RunOptions) {
 	const {deployments, chainId} = loadDeployments(config.deployments, config.networkName);
 
 	if (!deployments || Object.keys(deployments).length === 0) {
@@ -31,17 +44,31 @@ export async function run(config: ResolvedConfig, options: {template?: string; o
 		throw new Error(`no chainId found for ${config.networkName}`);
 	}
 
-	return generateFromDeployments(deployments, options);
+	const toDocument: UnknownDeployments = {};
+	for (const name of Object.keys(deployments)) {
+		if (!filter(options, name)) {
+			continue;
+		}
+		const deployment = deployments[name];
+		toDocument[name] = deployment;
+	}
+
+	return generateFromDeployments(toDocument, options);
 }
 
-export async function runFromFolder(folder: string, options: {template?: string; outputFolder?: string}) {
+export async function runFromFolder(folder: string, options: RunOptions) {
 	const files = fs.readdirSync(folder);
 	const deployments: UnknownDeployments = {};
 	for (const file of files) {
 		if (file.endsWith('.json')) {
+			const name = path.basename(file, '.json');
+			if (!filter(options, name)) {
+				continue;
+			}
+
 			const deploymentString = fs.readFileSync(path.join(folder, file), 'utf-8');
 			const deployment = JSON.parse(deploymentString);
-			deployments[path.basename(file, '.json')] = deployment;
+			deployments[name] = deployment;
 		}
 	}
 
@@ -67,28 +94,28 @@ export async function generateFromDeployments(
 	options: {template?: string; outputFolder?: string}
 ) {
 	const outputFolder = options.outputFolder || 'docs';
-	const templateFilepath = options.template || path.join(__dirname, 'default_templates/{{deployments}}.hbs');
+	const templateFilepath = options.template || path.join(__dirname, 'default_templates/{{contracts}}.hbs');
 	const templateName = path.basename(templateFilepath, '.hbs');
 	const templateContent = fs.readFileSync(templateFilepath, 'utf-8');
 	const template = Handlebars.compile(templateContent);
 
-	const deploymentsMap: Map<string, DocumentationData> = new Map();
 	const deploymentsList: DocumentationData[] = [];
 	for (const name of Object.keys(deployments)) {
 		const deployment = deployments[name];
 		const data = generateDocumentationData(name, deployment);
 		deploymentsList.push(data);
-		deploymentsMap.set(name, data);
 	}
 
-	fs.ensureDirSync(outputFolder);
-	if (templateName === '{{deployments}}') {
+	fs.emptyDirSync(outputFolder);
+	if (templateName === '{{contracts}}') {
 		for (const deployment of deploymentsList) {
 			const generated = template(deployment);
-			fs.writeFileSync(path.join(outputFolder, deployment.name + '.md'), generated);
+			if (generated.trim() !== '') {
+				fs.writeFileSync(path.join(outputFolder, deployment.name + '.md'), generated);
+			}
 		}
 	} else {
-		const generated = template({deployments: deploymentsList});
+		const generated = template({contracts: deploymentsList});
 		fs.writeFileSync(path.join(outputFolder, templateName + '.md'), generated);
 	}
 }

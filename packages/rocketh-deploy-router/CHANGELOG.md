@@ -1,5 +1,11 @@
 # rocketh-deploy-proxy
 
+## 0.6.17
+
+### Patch Changes
+
+- suffix filter + Route name ending
+
 ## 0.6.16
 
 ### Patch Changes

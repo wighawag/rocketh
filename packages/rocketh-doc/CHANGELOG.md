@@ -1,5 +1,11 @@
 # rocketh-doc
 
+## 0.6.6
+
+### Patch Changes
+
+- suffix filter + Route name ending
+
 ## 0.6.5
 
 ### Patch Changes

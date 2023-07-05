@@ -179,7 +179,7 @@ extendEnvironment((env: Environment) => {
 		}
 
 		for (const route of routes) {
-			const deployedRoute = await env.deploy<Abi>(`${name}_route_${route.name}`, {
+			const deployedRoute = await env.deploy<Abi>(`${name}_Router_${route.name}_Route`, {
 				...args,
 				artifact: route.artifact,
 				args: route.args as unknown[],
