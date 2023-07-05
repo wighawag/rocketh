@@ -19,7 +19,7 @@ import {Fragment, FunctionFragment} from 'ethers';
 import {DocumentationData, ErrorDoc, EventDoc, MethodDoc, ParamDoc, ReturnDoc} from './types';
 export * from './types';
 
-export type RunOptions = {template?: string; outputFolder?: string; exceptSuffix?: string[]};
+export type RunOptions = {template?: string; output?: string; exceptSuffix?: string[]};
 
 function filter(options: RunOptions, name: string): boolean {
 	if (options.exceptSuffix) {
@@ -89,11 +89,8 @@ export async function runFromFolder(folder: string, options: RunOptions) {
 // 	return generateFromDeployments(deployments, options);
 // }
 
-export async function generateFromDeployments(
-	deployments: UnknownDeployments,
-	options: {template?: string; outputFolder?: string}
-) {
-	const outputFolder = options.outputFolder || 'docs';
+export async function generateFromDeployments(deployments: UnknownDeployments, options: RunOptions) {
+	const outputFolder = options.output || 'docs';
 	const templateFilepath = options.template || path.join(__dirname, 'default_templates/{{contracts}}.hbs');
 	const templateName = path.basename(templateFilepath, '.hbs');
 	const templateContent = fs.readFileSync(templateFilepath, 'utf-8');
