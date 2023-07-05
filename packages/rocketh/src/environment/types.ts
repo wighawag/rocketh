@@ -7,11 +7,11 @@ import {
 	EIP1193TransactionReceipt,
 	EIP1193WalletProvider,
 } from 'eip-1193';
-import {Abi, Narrow} from 'abitype';
+import {Abi, Narrow, AbiError, AbiEvent, AbiConstructor, AbiFallback, AbiFunction, AbiReceive} from 'abitype';
 import type {DeployContractParameters} from 'viem/contract';
 import type {Chain} from 'viem';
 
-export type {Abi};
+export type {Abi, AbiError, AbiEvent, AbiConstructor, AbiFallback, AbiFunction, AbiReceive};
 export type Libraries = {readonly [libraryName: string]: EIP1193Account};
 
 export type GasEstimate = 'infinite' | `${number}`;

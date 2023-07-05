@@ -1,19 +1,77 @@
 # {{{name}}}
 
+
 {{#if notice}}
+### **Description**
+
 {{{notice}}}
 {{/if}}
 
+{{#if methods.length}}
+## Functions
 
 {{#each methods}}
-## {{{name}}}
+### **{{{name}}}**
 
 {{{notice}}}
 
+*sig hash*: `{{{bytes4}}}`
+
+*Signature*: {{{signature}}}
+
+{{{fullFormat}}}
+
+{{#if params.length}}
+| Name | Description 
+| ---- | ----------- 
 {{#each params}}
 {{#if description}}
-{{{name}}}:{{{description}}}
+| {{{name}}} | {{{description}}}
+{{/if}}
+{{/each}}
 
 {{/if}}
 {{/each}}
+{{/if}}
+
+{{#if events.length}}
+{{#each events}}
+### **{{{name}}}**
+
+{{{notice}}}
+
+{{{fullFormat}}}
+
+{{#if params.length}}
+| Name | Description 
+| ---- | ----------- 
+{{#each params}}
+{{#if description}}
+| {{{name}}} | {{{description}}}
+{{/if}}
 {{/each}}
+
+{{/if}}
+{{/each}}
+{{/if}}
+
+{{#if errors.length}}
+{{#each errors}}
+### **{{{name}}}**
+
+{{{notice}}}
+
+{{{fullFormat}}}
+
+{{#if params.length}}
+| Name | Description 
+| ---- | ----------- 
+{{#each params}}
+{{#if description}}
+| {{{name}}} | {{{description}}}
+{{/if}}
+{{/each}}
+
+{{/if}}
+{{/each}}
+{{/if}}

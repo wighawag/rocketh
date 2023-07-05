@@ -1,5 +1,13 @@
 # rocketh-doc
 
+## 0.6.4
+
+### Patch Changes
+
+- better docs
+- Updated dependencies
+  - rocketh@0.6.8
+
 ## 0.6.3
 
 ### Patch Changes

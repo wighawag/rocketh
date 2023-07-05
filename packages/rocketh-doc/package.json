@@ -1,6 +1,6 @@
 {
 	"name": "rocketh-doc",
-	"version": "0.6.3",
+	"version": "0.6.4",
 	"description": "can generate doc from rocketh deployments and provided template",
 	"publishConfig": {
 		"access": "public"
@@ -24,6 +24,7 @@
 	},
 	"dependencies": {
 		"commander": "^10.0.0",
+		"ethers": "^6.6.2",
 		"fs-extra": "^11.1.1",
 		"handlebars": "^4.7.7"
 	},

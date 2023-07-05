@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.6.8
+
+### Patch Changes
+
+- better docs
+
 ## 0.6.7
 
 ### Patch Changes
