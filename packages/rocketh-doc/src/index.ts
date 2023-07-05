@@ -16,63 +16,8 @@ import Handlebars from 'handlebars';
 import path from 'path';
 import {Fragment, FunctionFragment} from 'ethers';
 
-export type ParamDoc = {name: string | `_${number}`; description: string};
-export type ReturnDoc = {name: string | `_${number}`; description: string};
-
-export type EventDoc = NoticeUserDoc & {
-	readonly name: string;
-	readonly signature: string;
-	readonly abi: AbiEvent;
-	readonly fullFormat: string;
-	readonly details?: string;
-	readonly params?: ParamDoc[];
-};
-
-export type ErrorDoc = {
-	readonly name: string;
-	readonly signature: string;
-	readonly abi: AbiError;
-	readonly fullFormat: string;
-	readonly notice?: string[];
-	// TODO
-	// readonly details?: string; // TODO check if it can exists
-	readonly params?: ParamDoc[];
-};
-
-type NonConstructorMethodDoc = NoticeUserDoc & {
-	readonly type: 'function';
-	readonly name: string;
-	readonly signature: string;
-	readonly bytes4: `0x${string}`;
-	readonly abi: AbiFunction;
-	readonly fullFormat: string;
-	readonly details?: string; // TODO check if it can exists
-	readonly params?: ParamDoc[];
-	readonly returns?: ReturnDoc[];
-};
-
-export type ConstructorDoc = NoticeUserDoc & {
-	readonly type: 'constructor';
-	readonly name: 'constructor';
-	readonly abi: AbiConstructor;
-	readonly signature: string;
-	readonly details?: string; // TODO check if it can exists
-	readonly params?: ParamDoc[];
-	readonly returns?: ReturnDoc[];
-};
-
-export type MethodDoc = NonConstructorMethodDoc | ConstructorDoc;
-
-type DeploymentData = {
-	readonly name: string;
-	readonly abi: Abi;
-	readonly title?: string;
-	readonly author?: string;
-	readonly notice?: string;
-	readonly events: EventDoc[];
-	readonly methods: MethodDoc[];
-	readonly errors: ErrorDoc[];
-};
+import {DocumentationData, ErrorDoc, EventDoc, MethodDoc, ParamDoc, ReturnDoc} from './types';
+export * from './types';
 
 export async function run(config: ResolvedConfig, options: {template?: string; outputFolder?: string}) {
 	const {deployments, chainId} = loadDeployments(config.deployments, config.networkName);
@@ -127,8 +72,8 @@ export async function generateFromDeployments(
 	const templateContent = fs.readFileSync(templateFilepath, 'utf-8');
 	const template = Handlebars.compile(templateContent);
 
-	const deploymentsMap: Map<string, DeploymentData> = new Map();
-	const deploymentsList: DeploymentData[] = [];
+	const deploymentsMap: Map<string, DocumentationData> = new Map();
+	const deploymentsList: DocumentationData[] = [];
 	for (const name of Object.keys(deployments)) {
 		const deployment = deployments[name];
 		const data = generateDocumentationData(name, deployment);
@@ -151,7 +96,7 @@ export async function generateFromDeployments(
 export function generateDocumentationData(
 	name: string,
 	deploymentOrArfifact: Partial<Deployment<Abi>> & Artifact<Abi>
-): DeploymentData {
+): DocumentationData {
 	const abi = deploymentOrArfifact.abi;
 	const abiMap = new Map<string, AbiConstructor | AbiError | AbiEvent | AbiFunction>();
 	for (const abiElement of abi) {
@@ -291,6 +236,7 @@ export function generateDocumentationData(
 					name: 'constructor',
 					abi: abi as AbiConstructor,
 					signature: methodSignature,
+					fullFormat,
 					notice: methodFromUserDoc.notice,
 					params,
 					returns,
@@ -312,8 +258,9 @@ export function generateDocumentationData(
 		}
 	}
 
-	const data: DeploymentData = {
+	const data: DocumentationData = {
 		name,
+		address: deploymentOrArfifact.address,
 		abi,
 		author: deploymentOrArfifact.devdoc?.author,
 		title: deploymentOrArfifact.devdoc?.title,

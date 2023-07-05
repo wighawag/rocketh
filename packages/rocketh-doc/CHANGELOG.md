@@ -1,5 +1,11 @@
 # rocketh-doc
 
+## 0.6.5
+
+### Patch Changes
+
+- types + address
+
 ## 0.6.4
 
 ### Patch Changes
