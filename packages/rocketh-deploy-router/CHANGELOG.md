@@ -1,5 +1,11 @@
 # rocketh-deploy-proxy
 
+## 0.6.16
+
+### Patch Changes
+
+- merge dev and user docs for router deployment
+
 ## 0.6.15
 
 ### Patch Changes

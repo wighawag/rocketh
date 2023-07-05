@@ -1,5 +1,5 @@
 import {Abi} from 'abitype';
-import type {Artifact, DeploymentConstruction, Deployment, Environment} from 'rocketh';
+import type {Artifact, DeploymentConstruction, Deployment, Environment, DevDoc, UserDoc} from 'rocketh';
 import 'rocketh-deploy';
 import {extendEnvironment} from 'rocketh';
 import {GetConstructorArgs} from 'viem';
@@ -38,6 +38,45 @@ type ArrayElement<ArrayType extends readonly unknown[]> = ArrayType extends read
 	? ElementType
 	: never;
 
+// from https://gist.github.com/egardner/efd34f270cc33db67c0246e837689cb9
+function deepEqual(obj1: any, obj2: any): boolean {
+	// Private
+	function isObject(obj: any) {
+		if (typeof obj === 'object' && obj != null) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+
+	if (obj1 === obj2) {
+		return true;
+	} else if (isObject(obj1) && isObject(obj2)) {
+		if (Object.keys(obj1).length !== Object.keys(obj2).length) {
+			return false;
+		}
+		for (var prop in obj1) {
+			if (!deepEqual(obj1[prop], obj2[prop])) {
+				return false;
+			}
+		}
+		return true;
+	}
+	return false;
+}
+
+function mergeDoc(values: any, mergedDevDocs: any, field: string) {
+	if (values[field]) {
+		const mergedEventDocs = (mergedDevDocs[field] = mergedDevDocs[field] || {});
+		for (const signature of Object.keys(values[field])) {
+			if (mergedEventDocs[signature] && !deepEqual(mergedEventDocs[signature], values[field][signature])) {
+				throw new Error(`Doc ${field} conflict: "${signature}" `);
+			}
+			mergedEventDocs[signature] = values[field][signature];
+		}
+	}
+}
+
 extendEnvironment((env: Environment) => {
 	async function deployViaRouter<TAbi extends Abi>(
 		name: string,
@@ -50,6 +89,8 @@ extendEnvironment((env: Environment) => {
 
 		const mergedABI: CreateMutable<Abi> = [];
 		const added: Map<string, ArrayElement<Abi>> = new Map();
+		const mergedDevDocs: CreateMutable<DevDoc> = {kind: 'dev', version: 1, methods: {}};
+		const mergedUserDocs: CreateMutable<UserDoc> = {kind: 'user', version: 1, methods: {}};
 
 		for (let i = 0; i < routes.length; i++) {
 			const route = routes[i];
@@ -106,6 +147,35 @@ extendEnvironment((env: Environment) => {
 					// }
 				}
 			}
+			const devdoc = route.artifact.devdoc;
+			if (devdoc) {
+				mergeDoc(devdoc, mergedDevDocs, 'events');
+				mergeDoc(devdoc, mergedDevDocs, 'errors');
+				mergeDoc(devdoc, mergedDevDocs, 'methods');
+				if (devdoc.author) {
+					if (mergedDevDocs.author && mergedDevDocs.author != devdoc.author) {
+						throw new Error(`DevDoc author conflict `);
+					}
+					mergedDevDocs.author = devdoc.author;
+					if (mergedDevDocs.title && mergedDevDocs.title != devdoc.title) {
+						throw new Error(`DevDoc title conflict `);
+					}
+					mergedDevDocs.title = devdoc.title;
+				}
+			}
+
+			const userdoc = route.artifact.userdoc;
+			if (userdoc) {
+				mergeDoc(userdoc, mergedUserDocs, 'events');
+				mergeDoc(userdoc, mergedUserDocs, 'errors');
+				mergeDoc(userdoc, mergedUserDocs, 'methods');
+				if (userdoc.notice) {
+					if (mergedUserDocs.notice && mergedUserDocs.notice != userdoc.notice) {
+						throw new Error(`UserDoc notice conflict `);
+					}
+					mergedUserDocs.notice = userdoc.notice;
+				}
+			}
 		}
 
 		for (const route of routes) {
@@ -149,6 +219,8 @@ extendEnvironment((env: Environment) => {
 			existingDeployment = await env.save(name, {
 				...router,
 				abi: mergedABI,
+				devdoc: mergedDevDocs,
+				userdoc: mergedUserDocs,
 			});
 
 			logger.info(`save with merged ABI: ${name}`);
