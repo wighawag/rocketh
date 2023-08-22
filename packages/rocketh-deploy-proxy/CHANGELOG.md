@@ -1,5 +1,14 @@
 # rocketh-deploy-proxy
 
+## 0.6.14
+
+### Patch Changes
+
+- add bytecode and linkedData to export
+- Updated dependencies
+  - rocketh-deploy@0.6.11
+  - rocketh@0.6.9
+
 ## 0.6.13
 
 ### Patch Changes

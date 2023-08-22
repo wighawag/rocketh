@@ -120,6 +120,7 @@ export type Deployment<TAbi extends Abi> = {
 	readonly argsData: EIP1193DATA;
 	readonly metadata: string;
 	readonly libraries?: Libraries;
+	readonly linkedData?: any; // TODO
 	readonly deployedBytecode?: EIP1193DATA;
 	readonly linkReferences?: any; // TODO
 	readonly deployedLinkReferences?: any; // TODO
@@ -255,6 +256,7 @@ export type DeploymentConstruction<TAbi extends Abi, TChain extends Chain = Chai
 export type PartialDeployment<TAbi extends Abi = Abi> = Artifact<TAbi> & {
 	argsData: EIP1193DATA;
 	libraries?: Libraries;
+	linkedData?: any; // TODO json type ?
 };
 
 export type PendingDeployment<TAbi extends Abi = Abi> = {

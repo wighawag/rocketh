@@ -30,7 +30,10 @@ function objectMap<V, N, O extends Trandformed<{}, V> = Trandformed<{}, V>>(
 	}, {} as Trandformed<O, N>);
 }
 
-export async function run(config: ResolvedConfig, options: {tojs?: string[]; tots?: string[]; tojson?: string[]}) {
+export async function run(
+	config: ResolvedConfig,
+	options: {tojs?: string[]; tots?: string[]; tojson?: string[]; includeBytecode?: boolean}
+) {
 	if (!options.tots && !options.tojs && !options.tojson) {
 		console.log(`no filepath to export to are specified`);
 		return;
@@ -49,7 +52,12 @@ export async function run(config: ResolvedConfig, options: {tojs?: string[]; tot
 
 	const exportData: ExportedDeployments = {
 		chainId,
-		contracts: objectMap<Deployment<Abi>, ContractExport>(deployments, (d) => ({abi: d.abi, address: d.address})),
+		contracts: objectMap<Deployment<Abi>, ContractExport>(deployments, (d) => ({
+			abi: d.abi,
+			address: d.address,
+			linkedData: d.linkedData,
+			bytecode: options.includeBytecode ? d.bytecode : undefined,
+		})),
 		name: config.networkName,
 	};
 

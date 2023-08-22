@@ -14,8 +14,9 @@ program
 	.version(pkg.version)
 	.option('-d, --deployments <value>', 'folder where deployments are saved')
 	.option('--ts <value>', 'list of filepath where the typescript export will be written, separated by commas')
-	.option('--js <value>', 'list of filepath where the typescript export will be written, separated by commas')
-	.option('--json <value>', 'list of filepath where the typescript export will be written, separated by commas')
+	.option('--js <value>', 'list of filepath where the javascript export will be written, separated by commas')
+	.option('--json <value>', 'list of filepath where the json export will be written, separated by commas')
+	.option('-b, --bytecode', 'if set, the bytecode will also be part of the output')
 	.requiredOption('-n, --network <value>', 'network context to use')
 	.parse(process.argv);
 
@@ -25,4 +26,5 @@ run(resolvedConfig, {
 	tots: options.ts ? options.ts.split(',') : undefined,
 	tojson: options.json ? options.json.split(',') : undefined,
 	tojs: options.js ? options.js.split(',') : undefined,
+	includeBytecode: options.bytecode,
 });

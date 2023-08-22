@@ -15,6 +15,7 @@ const artifacts = (artifactsAsModule as any).default
 	: artifactsAsModule;
 
 export type ProxyDeployOptions = {
+	linkedData?: any;
 	disabled?: boolean;
 	owner: EIP1193Account;
 	execute?: string;
@@ -130,6 +131,7 @@ extendEnvironment((env: Environment) => {
 			logger.info(`proxy deployed at ${proxy.address}`);
 
 			existingDeployment = await env.save<TAbi>(name, {
+				linkedData: options?.linkedData,
 				...proxy,
 				...artifactToUse,
 			});
@@ -168,6 +170,7 @@ extendEnvironment((env: Environment) => {
 				}
 			}
 			existingDeployment = await env.save(name, {
+				linkedData: options?.linkedData,
 				...proxyDeployment,
 				...artifactToUse,
 			});

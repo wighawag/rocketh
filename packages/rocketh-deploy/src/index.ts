@@ -35,13 +35,14 @@ export type ExecuteFunction = <TAbi extends Abi, TFunctionName extends string, T
 	}
 ) => Promise<EIP1193DATA>;
 
-export type DeployOptions =
+export type DeployOptions = {linkedData?: any} & (
 	| {
 			skipIfAlreadyDeployed?: boolean;
 	  }
 	| {
 			alwaysOverride?: boolean;
-	  };
+	  }
+);
 
 extendEnvironment((env: Environment) => {
 	async function execute<TAbi extends Abi, TFunctionName extends string, TChain extends Chain = Chain>(
@@ -264,6 +265,7 @@ extendEnvironment((env: Environment) => {
 		const partialDeployment: PartialDeployment<TAbi> = {
 			...artifactToUse,
 			argsData,
+			linkedData: options?.linkedData,
 		};
 		const pendingDeployment: PendingDeployment<TAbi> = {
 			type: 'deployment',

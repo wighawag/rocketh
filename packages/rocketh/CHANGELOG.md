@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.6.9
+
+### Patch Changes
+
+- add bytecode and linkedData to export
+
 ## 0.6.8
 
 ### Patch Changes

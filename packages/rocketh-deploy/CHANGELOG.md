@@ -1,5 +1,13 @@
 # rocketh-deploy
 
+## 0.6.11
+
+### Patch Changes
+
+- add bytecode and linkedData to export
+- Updated dependencies
+  - rocketh@0.6.9
+
 ## 0.6.10
 
 ### Patch Changes
