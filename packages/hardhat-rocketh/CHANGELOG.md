@@ -1,5 +1,11 @@
 # hardhat-rocketh
 
+## 0.6.16
+
+### Patch Changes
+
+- fix hardhat fork config
+
 ## 0.6.15
 
 ### Patch Changes
