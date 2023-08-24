@@ -1,5 +1,11 @@
 # hardhat-rocketh
 
+## 0.6.17
+
+### Patch Changes
+
+- forgot to build
+
 ## 0.6.16
 
 ### Patch Changes
