@@ -14,7 +14,9 @@ import {createEnvironment} from '../environment';
 import {DeployScriptFunction, DeployScriptModule, ProvidedContext} from './types';
 import {logger, setLogLevel, spin} from '../internal/logging';
 
-require('esbuild-register/dist/node').register();
+if (!process.env['ROCKETH_SKIP_ESBUILD']) {
+	require('esbuild-register/dist/node').register();
+}
 
 export function execute<
 	Artifacts extends UnknownArtifacts = UnknownArtifacts,
