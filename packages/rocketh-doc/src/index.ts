@@ -175,8 +175,12 @@ export function generateDocumentationData(
 			if (errorFromUserDoc) {
 				for (const doc of errorFromUserDoc) {
 					if (doc.notice) {
-						notice.push(doc.notice);
-						// TODO what is the array for ? (look at solidity doc)
+						const notes = doc.notice.split('\\');
+						for (const note of notes) {
+							if (note != '') {
+								notice.push(note);
+							}
+						}
 					}
 				}
 			}

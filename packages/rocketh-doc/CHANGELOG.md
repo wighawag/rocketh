@@ -1,5 +1,11 @@
 # rocketh-doc
 
+## 0.6.9
+
+### Patch Changes
+
+- alow backslash to define new paragraph in doc
+
 ## 0.6.8
 
 ### Patch Changes
