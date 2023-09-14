@@ -1,5 +1,13 @@
 # rocketh-doc
 
+## 0.6.11
+
+### Patch Changes
+
+- d6c3d9d: reorg
+- Updated dependencies
+  - rocketh@0.6.11
+
 ## 0.6.10
 
 ### Patch Changes

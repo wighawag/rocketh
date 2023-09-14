@@ -1,5 +1,14 @@
 # rocketh-deploy-proxy
 
+## 0.6.16
+
+### Patch Changes
+
+- d6c3d9d: reorg
+- Updated dependencies
+  - rocketh@0.6.11
+  - rocketh-deploy@0.6.13
+
 ## 0.6.15
 
 ### Patch Changes

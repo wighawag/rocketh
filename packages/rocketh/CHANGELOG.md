@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.6.11
+
+### Patch Changes
+
+- log using console if Logging level
+
 ## 0.6.10
 
 ### Patch Changes
