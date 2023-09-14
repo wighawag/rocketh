@@ -1,6 +1,6 @@
 {
 	"name": "rocketh-deploy-proxy",
-	"version": "0.6.16",
+	"version": "0.6.17",
 	"description": "provide proxy-enabled deploy function for rocketh",
 	"publishConfig": {
 		"access": "public"

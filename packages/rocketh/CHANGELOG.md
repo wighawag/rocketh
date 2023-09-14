@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.6.12
+
+### Patch Changes
+
+- forgot to build
+
 ## 0.6.11
 
 ### Patch Changes
