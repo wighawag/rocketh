@@ -34,14 +34,19 @@ function filter(options: RunOptions, name: string): boolean {
 
 export async function run(config: ResolvedConfig, options: RunOptions) {
 	const {deployments, chainId} = loadDeployments(config.deployments, config.networkName);
+	if (!chainId) {
+		throw new Error(`no chainId found for ${config.networkName}`);
+	}
+	generate({deployments}, options);
+}
 
+export async function generate(
+	{deployments}: {deployments: UnknownDeployments; chainId?: string},
+	options: RunOptions
+) {
 	if (!deployments || Object.keys(deployments).length === 0) {
 		console.log(`no deployments to export`);
 		return;
-	}
-
-	if (!chainId) {
-		throw new Error(`no chainId found for ${config.networkName}`);
 	}
 
 	const toDocument: UnknownDeployments = {};

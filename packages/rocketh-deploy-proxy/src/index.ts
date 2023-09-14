@@ -131,9 +131,9 @@ extendEnvironment((env: Environment) => {
 			logger.info(`proxy deployed at ${proxy.address}`);
 
 			existingDeployment = await env.save<TAbi>(name, {
-				linkedData: options?.linkedData,
 				...proxy,
 				...artifactToUse,
+				linkedData: options?.linkedData,
 			});
 
 			logger.info(`saving as ${name}`);
@@ -170,9 +170,9 @@ extendEnvironment((env: Environment) => {
 				}
 			}
 			existingDeployment = await env.save(name, {
-				linkedData: options?.linkedData,
 				...proxyDeployment,
 				...artifactToUse,
+				linkedData: options?.linkedData,
 			});
 			logger.info(`saving as ${name}`);
 		}

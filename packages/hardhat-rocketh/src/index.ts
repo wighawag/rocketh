@@ -316,3 +316,6 @@ task(TASK_COMPILE).setAction(async (args, hre, runSuper): Promise<any> => {
 
 	return compilationResult;
 });
+
+// TODO add docgen command ?
+// task("docgen").setAction(async (args, hre, runSuper): Promise<any> => {
