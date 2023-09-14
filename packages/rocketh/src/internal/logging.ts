@@ -24,7 +24,7 @@ type PartialOra = {
 const loggerSpinner: PartialOra = {
 	start(msg?: string) {
 		if (msg) {
-			logger.log(msg);
+			console.log(msg);
 		}
 		return this;
 	},
@@ -33,13 +33,13 @@ const loggerSpinner: PartialOra = {
 	},
 	succeed(msg?: string) {
 		if (msg) {
-			logger.log(msg);
+			console.log(msg);
 		}
 		return this;
 	},
 	fail(msg?: string) {
 		if (msg) {
-			logger.error(msg);
+			console.error(msg);
 		}
 		return this;
 	},
