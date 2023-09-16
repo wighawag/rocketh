@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.6.13
+
+### Patch Changes
+
+- add receipt to deployments
+
 ## 0.6.12
 
 ### Patch Changes

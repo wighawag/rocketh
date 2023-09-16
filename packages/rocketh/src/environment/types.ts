@@ -116,6 +116,7 @@ export type Deployment<TAbi extends Abi> = {
 		readonly origin?: EIP1193Account;
 		readonly nonce?: EIP1193DATA;
 	};
+	readonly receipt: EIP1193TransactionReceipt;
 	readonly bytecode: EIP1193DATA;
 	readonly argsData: EIP1193DATA;
 	readonly metadata: string;

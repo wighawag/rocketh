@@ -463,6 +463,7 @@ export async function createEnvironment<
 			abi,
 			...artifactObjectWithoutABI,
 			transaction: pendingDeployment.transaction,
+			receipt,
 		};
 		return save(pendingDeployment.name, deployment);
 	}
