@@ -26,12 +26,15 @@ import {
 	EIP1193Account,
 	EIP1193DATA,
 	EIP1193ProviderWithoutEvents,
+	EIP1193QUANTITY,
 	EIP1193Transaction,
 	EIP1193TransactionReceipt,
 } from 'eip-1193';
 import {ProvidedContext} from '../executor/types';
 import {spin} from '../internal/logging';
 import {PendingExecution} from './types';
+
+type ReceiptResult = {receipt: EIP1193TransactionReceipt; latestBlockNumber: EIP1193QUANTITY};
 
 export type EnvironmentExtenstion = (env: Environment) => Environment;
 //we store this globally so this is not lost
@@ -332,9 +335,13 @@ export async function createEnvironment<
 		// confirmations?: number; // TODO
 		pollingInterval?: number;
 		// timeout?: number; // TODO
-	}): Promise<EIP1193TransactionReceipt> {
+	}): Promise<ReceiptResult> {
 		// const {hash, confirmations, pollingInterval, timeout} = {confirmations: 1, pollingInterval: 1, ...params};
 		const {hash, pollingInterval} = {pollingInterval: 1, ...params};
+
+		let latestBlockNumber = await provider.request({
+			method: 'eth_blockNumber',
+		});
 
 		let receipt = await provider.request({
 			method: 'eth_getTransactionReceipt',
@@ -344,7 +351,7 @@ export async function createEnvironment<
 			await wait(pollingInterval);
 			return waitForTransactionReceipt(params);
 		}
-		return receipt;
+		return {receipt, latestBlockNumber};
 	}
 
 	async function deleteTransaction<TAbi extends Abi = Abi>(hash: string) {
@@ -375,7 +382,7 @@ export async function createEnvironment<
 	async function waitForTransaction(
 		hash: `0x${string}`,
 		info?: {message?: string; transaction?: EIP1193Transaction | null}
-	): Promise<EIP1193TransactionReceipt> {
+	): Promise<ReceiptResult> {
 		const spinner = spin(
 			info?.message
 				? info.message
@@ -383,21 +390,21 @@ export async function createEnvironment<
 						info?.transaction ? `\n      ${displayTransaction(info?.transaction)}` : ''
 				  }`
 		);
-		let receipt: EIP1193TransactionReceipt;
+		let receiptResult: {receipt: EIP1193TransactionReceipt; latestBlockNumber: EIP1193QUANTITY};
 		try {
-			receipt = await waitForTransactionReceipt({
+			receiptResult = await waitForTransactionReceipt({
 				hash,
 			});
 		} catch (e) {
 			spinner.fail();
 			throw e;
 		}
-		if (!receipt) {
+		if (!receiptResult) {
 			throw new Error(`receipt for ${hash} not found`);
 		} else {
 			spinner.succeed();
 		}
-		return receipt;
+		return receiptResult;
 	}
 
 	async function waitForDeploymentTransactionAndSave<TAbi extends Abi = Abi>(
@@ -407,7 +414,10 @@ export async function createEnvironment<
 		const message = `  - Deploying ${pendingDeployment.name} with tx:\n      ${pendingDeployment.transaction.hash}${
 			transaction ? `\n      ${displayTransaction(transaction)}` : ''
 		}`;
-		const receipt = await waitForTransaction(pendingDeployment.transaction.hash, {message, transaction});
+		const {receipt, latestBlockNumber} = await waitForTransaction(pendingDeployment.transaction.hash, {
+			message,
+			transaction,
+		});
 
 		if (!receipt.contractAddress) {
 			throw new Error(`failed to deploy contract ${pendingDeployment.name}`);
@@ -458,12 +468,17 @@ export async function createEnvironment<
 			}
 		}
 
+		const latestBlockNumberAsNumber = parseInt(latestBlockNumber.slice(2), 16);
+		const receiptBlockNumber = parseInt(receipt.blockNumber.slice(2), 16);
+		const confirmations = Math.max(0, latestBlockNumberAsNumber - receiptBlockNumber);
+
 		const deployment = {
 			address: receipt.contractAddress,
 			abi,
 			...artifactObjectWithoutABI,
 			transaction: pendingDeployment.transaction,
 			receipt: {
+				confirmations,
 				blockHash: receipt.blockHash,
 				blockNumber: receipt.blockNumber,
 				transactionIndex: receipt.transactionIndex,
@@ -496,7 +511,7 @@ export async function createEnvironment<
 			pendingExecution.transaction.origin = transaction.from;
 		}
 
-		const receipt = await waitForTransaction(pendingExecution.transaction.hash, {transaction});
+		const {receipt} = await waitForTransaction(pendingExecution.transaction.hash, {transaction});
 		await deleteTransaction(pendingExecution.transaction.hash);
 		return receipt;
 	}

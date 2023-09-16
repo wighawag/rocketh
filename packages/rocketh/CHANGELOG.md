@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.6.15
+
+### Patch Changes
+
+- confirmations for receipt
+
 ## 0.6.14
 
 ### Patch Changes

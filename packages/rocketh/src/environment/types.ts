@@ -118,6 +118,7 @@ export type Deployment<TAbi extends Abi> = {
 		readonly nonce?: EIP1193DATA;
 	};
 	readonly receipt: {
+		confirmations: number;
 		blockHash: EIP1193DATA;
 		blockNumber: EIP1193QUANTITY;
 		transactionIndex: EIP1193QUANTITY;

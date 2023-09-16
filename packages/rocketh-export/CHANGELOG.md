@@ -1,5 +1,13 @@
 # rocketh-export
 
+## 0.6.16
+
+### Patch Changes
+
+- confirmations for receipt
+- Updated dependencies
+  - rocketh@0.6.15
+
 ## 0.6.15
 
 ### Patch Changes
