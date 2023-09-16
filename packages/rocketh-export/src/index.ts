@@ -39,7 +39,7 @@ export async function run(
 		return;
 	}
 
-	const {deployments, chainId} = loadDeployments(config.deployments, config.networkName, true);
+	const {deployments, chainId} = loadDeployments(config.deployments, config.networkName);
 
 	if (!deployments || Object.keys(deployments).length === 0) {
 		console.log(`no deployments to export`);

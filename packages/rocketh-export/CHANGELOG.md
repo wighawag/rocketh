@@ -1,5 +1,11 @@
 # rocketh-export
 
+## 0.6.17
+
+### Patch Changes
+
+- fix
+
 ## 0.6.16
 
 ### Patch Changes
