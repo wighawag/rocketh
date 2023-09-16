@@ -57,6 +57,7 @@ export async function run(
 			address: d.address,
 			linkedData: d.linkedData,
 			bytecode: options.includeBytecode ? d.bytecode : undefined,
+			startBlock: d.receipt?.blockNumber ? parseInt(d.receipt.blockNumber) : undefined,
 		})),
 		name: config.networkName,
 	};
