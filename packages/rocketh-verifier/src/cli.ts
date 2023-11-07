@@ -22,9 +22,9 @@ program
 	.command('etherscan')
 	.description('submit contract for verification to etherscan')
 	.option('--endpoint <value>', 'endpoint to connect to')
-	.action(() => {
-		const options = program.opts() as ConfigOptions & {endpoint?: string};
-		const resolvedConfig = readAndResolveConfig(options, {ignoreMissingRPC: true});
+	.action((str, options: {endpoint?: string}) => {
+		const programOptions = program.opts() as ConfigOptions;
+		const resolvedConfig = readAndResolveConfig(programOptions, {ignoreMissingRPC: true});
 		run(resolvedConfig, {
 			verifier: {type: 'etherscan', apiKey: process.env['ETHERSCAN_API_KEY'], endpoint: options.endpoint},
 		});
@@ -34,9 +34,9 @@ program
 	.command('sourcify')
 	.description('submit contract for verification to sourcify')
 	.option('--endpoint <value>', 'endpoint to connect to')
-	.action(() => {
-		const options = program.opts() as ConfigOptions & {endpoint?: string};
-		const resolvedConfig = readAndResolveConfig(options, {ignoreMissingRPC: true});
+	.action((str, options: {endpoint?: string}) => {
+		const programOptions = program.opts() as ConfigOptions;
+		const resolvedConfig = readAndResolveConfig(programOptions, {ignoreMissingRPC: true});
 		run(resolvedConfig, {verifier: {type: 'sourcify', endpoint: options.endpoint}});
 	});
 
