@@ -1,5 +1,11 @@
 # rocketh-verifier
 
+## 0.6.18
+
+### Patch Changes
+
+- fix rocketh-verifier command options
+
 ## 0.6.17
 
 ### Patch Changes
