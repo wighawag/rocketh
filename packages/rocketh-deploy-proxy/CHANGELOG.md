@@ -1,5 +1,11 @@
 # rocketh-deploy-proxy
 
+## 0.6.21
+
+### Patch Changes
+
+- fix proxy deploy with eth_getStorageAt + allow metadata export for deployments
+
 ## 0.6.20
 
 ### Patch Changes

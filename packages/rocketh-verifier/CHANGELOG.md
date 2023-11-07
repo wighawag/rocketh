@@ -1,5 +1,11 @@
 # rocketh-verifier
 
+## 0.6.19
+
+### Patch Changes
+
+- fix proxy deploy with eth_getStorageAt + allow metadata export for deployments
+
 ## 0.6.18
 
 ### Patch Changes
