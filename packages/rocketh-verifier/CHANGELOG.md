@@ -1,5 +1,11 @@
 # rocketh-verifier
 
+## 0.6.16
+
+### Patch Changes
+
+- fix options
+
 ## 0.6.15
 
 ### Patch Changes

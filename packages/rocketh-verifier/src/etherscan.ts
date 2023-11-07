@@ -223,9 +223,7 @@ export async function submitSourcesToEtherscan(
 				host = 'https://api-sepolia.etherscan.io';
 				break;
 			default:
-				return logError(
-					`Network with chainId: ${env.chainId} not supported. You can specify the url manually via --api-url <url>.`
-				);
+				return logError(`Network with chainId: ${env.chainId} not supported. Please specify the endpoint manually.`);
 		}
 	}
 

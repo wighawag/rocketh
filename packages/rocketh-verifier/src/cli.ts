@@ -14,25 +14,30 @@ program
 	.name(commandName)
 	.description('submit contract for verification')
 	.version(pkg.version)
+
 	.option('-d, --deployments <value>', 'folder where deployments are saved')
 	.requiredOption('-n, --network <value>', 'network context to use');
 
 program
 	.command('etherscan')
 	.description('submit contract for verification to etherscan')
+	.option('--endpoint <value>', 'endpoint to connect to')
 	.action(() => {
-		const options = program.opts() as ConfigOptions;
+		const options = program.opts() as ConfigOptions & {endpoint?: string};
 		const resolvedConfig = readAndResolveConfig(options, {ignoreMissingRPC: true});
-		run(resolvedConfig, {verifier: {type: 'etherscan', apiKey: process.env['ETHERSCAN_API_KEY']}});
+		run(resolvedConfig, {
+			verifier: {type: 'etherscan', apiKey: process.env['ETHERSCAN_API_KEY'], endpoint: options.endpoint},
+		});
 	});
 
 program
 	.command('sourcify')
-	.description('submit contract for verification to etherscan')
+	.description('submit contract for verification to sourcify')
+	.option('--endpoint <value>', 'endpoint to connect to')
 	.action(() => {
-		const options = program.opts() as ConfigOptions;
+		const options = program.opts() as ConfigOptions & {endpoint?: string};
 		const resolvedConfig = readAndResolveConfig(options, {ignoreMissingRPC: true});
-		run(resolvedConfig, {verifier: {type: 'sourcify'}});
+		run(resolvedConfig, {verifier: {type: 'sourcify', endpoint: options.endpoint}});
 	});
 
 program.parse(process.argv);
