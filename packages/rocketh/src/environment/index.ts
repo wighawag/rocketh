@@ -31,7 +31,7 @@ import {
 	EIP1193TransactionReceipt,
 } from 'eip-1193';
 import {ProvidedContext} from '../executor/types';
-import {spin} from '../internal/logging';
+import {ProgressIndicator, log, spin} from '../internal/logging';
 import {PendingExecution} from './types';
 
 type ReceiptResult = {receipt: EIP1193TransactionReceipt; latestBlockNumber: EIP1193QUANTITY};
@@ -552,12 +552,22 @@ export async function createEnvironment<
 		return deployment;
 	}
 
+	function showMessage(message: string) {
+		log(message);
+	}
+
+	function showProgress(message?: string): ProgressIndicator {
+		return spin(message);
+	}
+
 	let env: Environment<Artifacts, NamedAccounts, Deployments> = {
 		...perliminaryEnvironment,
 		save,
 		savePendingDeployment,
 		savePendingExecution,
 		get,
+		showMessage,
+		showProgress,
 	};
 	for (const extension of (globalThis as any).extensions) {
 		env = extension(env);

@@ -239,6 +239,12 @@ extendEnvironment((env: Environment) => {
 			}
 		}
 
+		const partialDeployment: PartialDeployment<TAbi> = {
+			...artifactToUse,
+			argsData,
+			linkedData: options?.linkedData,
+		};
+
 		const signer = env.addressSigners[address];
 
 		const chainId = `0x${parseInt(env.network.chainId).toString(16)}` as `0x${string}`;
@@ -312,22 +318,32 @@ extendEnvironment((env: Environment) => {
 					? `0x${options.deterministic.slice(2).padStart(64, '0')}`
 					: '0x0000000000000000000000000000000000000000000000000000000000000000'
 			) as `0x${string}`;
-			params[0].data = (salt + (params[0].data?.slice(2) || '')) as `0x${string}`;
-			params[0].to = deterministicFactoryAddress;
+
+			const bytecode = params[0].data || '0x';
 
 			expectedAddress = ('0x' +
-				keccak256(
-					`0xff${deterministicFactoryAddress.slice(2)}${salt.slice(2)}${keccak256(params[0].data).slice(2)}`
-				).slice(-40)) as `0x${string}`;
+				keccak256(`0xff${deterministicFactoryAddress.slice(2)}${salt.slice(2)}${keccak256(bytecode).slice(2)}`).slice(
+					-40
+				)) as `0x${string}`;
+
+			const codeAlreadyDeployed = await env.network.provider.request({
+				method: 'eth_getCode',
+				params: [expectedAddress],
+			});
+
+			if (codeAlreadyDeployed !== '0x') {
+				env.showMessage(`contract was already deterministically deployed at ${expectedAddress}`);
+				return env.save(name, {
+					address: expectedAddress,
+					...partialDeployment,
+				});
+			}
+
+			params[0].data = (salt + (bytecode.slice(2) || '')) as `0x${string}`;
+			params[0].to = deterministicFactoryAddress;
 		}
 
 		const txHash = await broadcastTransaction(env, signer, params);
-
-		const partialDeployment: PartialDeployment<TAbi> = {
-			...artifactToUse,
-			argsData,
-			linkedData: options?.linkedData,
-		};
 
 		const pendingDeployment: PendingDeployment<TAbi> = {
 			type: 'deployment',

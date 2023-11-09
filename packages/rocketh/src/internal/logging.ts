@@ -15,13 +15,13 @@ export function setLogLevel(level: number) {
 
 export const logger = logs('rocketh');
 
-type PartialOra = {
-	start(msg?: string): PartialOra;
-	stop(): PartialOra;
-	succeed(msg?: string): PartialOra;
-	fail(msg?: string): PartialOra;
+export type ProgressIndicator = {
+	start(msg?: string): ProgressIndicator;
+	stop(): ProgressIndicator;
+	succeed(msg?: string): ProgressIndicator;
+	fail(msg?: string): ProgressIndicator;
 };
-const loggerSpinner: PartialOra = {
+const loggerProgressIndicator: ProgressIndicator = {
 	start(msg?: string) {
 		if (msg) {
 			console.log(msg);
@@ -44,7 +44,7 @@ const loggerSpinner: PartialOra = {
 		return this;
 	},
 };
-const voidSpinner: PartialOra = {
+const voidProgressIndicator: ProgressIndicator = {
 	start() {
 		return this;
 	},
@@ -59,16 +59,22 @@ const voidSpinner: PartialOra = {
 	},
 };
 // export function spin(message: string): PartialOra {
-// 	return Logging.level > 0 ? ora(message).start() : voidSpinner;
+// 	return Logging.level > 0 ? ora(message).start() : voidProgressIndicator;
 // }
 
 // let lastSpin = ora('rocketh');
-let lastSpin = loggerSpinner;
-export function spin(message?: string): PartialOra {
+let lastSpin = loggerProgressIndicator;
+export function spin(message?: string): ProgressIndicator {
 	if (Logging.level > 0) {
 		lastSpin = lastSpin.start(message);
 		return lastSpin;
 	} else {
-		return voidSpinner;
+		return voidProgressIndicator;
+	}
+}
+
+export function log(message: string) {
+	if (Logging.level > 0) {
+		console.log(message);
 	}
 }

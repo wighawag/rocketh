@@ -11,6 +11,7 @@ import {
 import {Abi, Narrow, AbiError, AbiEvent, AbiConstructor, AbiFallback, AbiFunction, AbiReceive} from 'abitype';
 import type {DeployContractParameters} from 'viem/contract';
 import type {Chain} from 'viem';
+import {ProgressIndicator} from '../internal/logging';
 
 export type {Abi, AbiError, AbiEvent, AbiConstructor, AbiFallback, AbiFunction, AbiReceive};
 export type Libraries = {readonly [libraryName: string]: EIP1193Account};
@@ -112,12 +113,12 @@ export type StorageLayout = {
 export type Deployment<TAbi extends Abi> = {
 	readonly address: EIP1193Account;
 	readonly abi: Narrow<TAbi>;
-	readonly transaction: {
+	readonly transaction?: {
 		readonly hash: EIP1193DATA;
 		readonly origin?: EIP1193Account;
 		readonly nonce?: EIP1193DATA;
 	};
-	readonly receipt: {
+	readonly receipt?: {
 		confirmations: number;
 		blockHash: EIP1193DATA;
 		blockNumber: EIP1193QUANTITY;
@@ -253,6 +254,8 @@ export interface Environment<
 	savePendingDeployment<TAbi extends Abi = Abi>(pendingDeployment: PendingDeployment<TAbi>): Promise<Deployment<TAbi>>;
 	savePendingExecution(pendingExecution: PendingExecution): Promise<EIP1193TransactionReceipt>;
 	get<TAbi extends Abi>(name: string): Deployment<TAbi> | undefined;
+	showMessage(message: string): void;
+	showProgress(message?: string): ProgressIndicator;
 }
 
 export type DeploymentConstruction<TAbi extends Abi, TChain extends Chain = Chain> = Omit<
