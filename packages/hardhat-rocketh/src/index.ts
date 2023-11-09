@@ -147,8 +147,9 @@ function writeFiles(name: string | undefined, data: any, config: ArtifactGenerat
 
 	if (typeof js === 'object' && js.length > 0) {
 		const newContent = `export default /** @type {const} **/ (${JSON.stringify(data, null, 2)});`;
-		const dtsContent = `export = ${JSON.stringify(data, null, 2)} as const;`;
-		// const dtsContent = `declare const _default: ${JSON.stringify(data, null, 2)};export default _default;`;
+		// const dtsContent = `export = ${JSON.stringify(data, null, 2)} as const;`;
+		const dtsContent = `declare const _default: ${JSON.stringify(data, null, 2)};export default _default;`;
+		// const dtsContent = `declare const _default: ${JSON.stringify(data, null, 2)};export = _default;`;
 		for (const jsFile of js) {
 			if (jsFile.endsWith('.js')) {
 				if (!name) {

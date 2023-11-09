@@ -1,5 +1,11 @@
 # hardhat-rocketh
 
+## 0.6.29
+
+### Patch Changes
+
+- fix dts export
+
 ## 0.6.28
 
 ### Patch Changes
