@@ -1,5 +1,5 @@
 import {Abi} from 'abitype';
-import {EIP1193DATA} from 'eip-1193';
+import {EIP1193DATA, EIP1193TransactionData} from 'eip-1193';
 import type {
 	Artifact,
 	DeploymentConstruction,
@@ -8,9 +8,10 @@ import type {
 	PendingDeployment,
 	PartialDeployment,
 	PendingExecution,
+	NamedSigner,
 } from 'rocketh';
 import {extendEnvironment} from 'rocketh';
-import {Chain, WriteContractParameters, encodeFunctionData} from 'viem';
+import {Chain, WriteContractParameters, encodeFunctionData, keccak256} from 'viem';
 import {DeployContractParameters, encodeDeployData} from 'viem/contract';
 import {logs} from 'named-logs';
 
@@ -25,7 +26,8 @@ declare module 'rocketh' {
 
 export type DeployFunction = <TAbi extends Abi, TChain extends Chain = Chain>(
 	name: string,
-	args: DeploymentConstruction<TAbi, TChain>
+	args: DeploymentConstruction<TAbi, TChain>,
+	options?: DeployOptions
 ) => Promise<Deployment<TAbi>>;
 
 export type ExecuteFunction = <TAbi extends Abi, TFunctionName extends string, TChain extends Chain = Chain>(
@@ -35,7 +37,7 @@ export type ExecuteFunction = <TAbi extends Abi, TFunctionName extends string, T
 	}
 ) => Promise<EIP1193DATA>;
 
-export type DeployOptions = {linkedData?: any} & (
+export type DeployOptions = {linkedData?: any; deterministic?: boolean | `0x${string}`} & (
 	| {
 			skipIfAlreadyDeployed?: boolean;
 	  }
@@ -43,6 +45,29 @@ export type DeployOptions = {linkedData?: any} & (
 			alwaysOverride?: boolean;
 	  }
 );
+
+async function broadcastTransaction(
+	env: Environment,
+	signer: NamedSigner,
+	params: [EIP1193TransactionData]
+): Promise<`0x${string}`> {
+	if (signer.type === 'wallet' || signer.type === 'remote') {
+		return signer.signer.request({
+			method: 'eth_sendTransaction',
+			params,
+		});
+	} else {
+		const rawTx = await signer.signer.request({
+			method: 'eth_signTransaction',
+			params,
+		});
+
+		return env.network.provider.request({
+			method: 'eth_sendRawTransaction',
+			params: [rawTx],
+		});
+	}
+}
 
 extendEnvironment((env: Environment) => {
 	async function execute<TAbi extends Abi, TFunctionName extends string, TChain extends Chain = Chain>(
@@ -216,59 +241,97 @@ extendEnvironment((env: Environment) => {
 
 		const signer = env.addressSigners[address];
 
-		let txHash: `0x${string}`;
-		if (signer.type === 'wallet' || signer.type === 'remote') {
-			txHash = await signer.signer.request({
-				method: 'eth_sendTransaction',
-				params: [
-					{
-						type: '0x2',
-						from: address,
-						chainId: `0x${parseInt(env.network.chainId).toString(16)}` as `0x${string}`,
-						data: calldata,
-						gas: viemArgs.gas && (`0x${viemArgs.gas.toString(16)}` as `0x${string}`),
-						// gasPrice: viemArgs.gasPrice && `0x${viemArgs.gasPrice.toString(16)}` as `0x${string}`,
-						maxFeePerGas: viemArgs.maxFeePerGas && (`0x${viemArgs.maxFeePerGas.toString(16)}` as `0x${string}`),
-						maxPriorityFeePerGas:
-							viemArgs.maxPriorityFeePerGas && (`0x${viemArgs.maxPriorityFeePerGas.toString(16)}` as `0x${string}`),
-						// value: `0x${viemArgs.value?.toString(16)}` as `0x${string}`,
-						// nonce: viemArgs.nonce && (`0x${viemArgs.nonce.toString(16)}` as `0x${string}`),
-					},
-				],
-			});
-		} else {
-			const rawTx = await signer.signer.request({
-				method: 'eth_signTransaction',
-				params: [
-					{
-						type: '0x2',
-						from: address,
-						chainId: `0x${parseInt(env.network.chainId).toString(16)}` as `0x${string}`,
-						data: calldata,
-						gas: viemArgs.gas && (`0x${viemArgs.gas.toString(16)}` as `0x${string}`),
-						// gasPrice: viemArgs.gasPrice && `0x${viemArgs.gasPrice.toString(16)}` as `0x${string}`,
-						maxFeePerGas: viemArgs.maxFeePerGas && (`0x${viemArgs.maxFeePerGas.toString(16)}` as `0x${string}`),
-						maxPriorityFeePerGas:
-							viemArgs.maxPriorityFeePerGas && (`0x${viemArgs.maxPriorityFeePerGas.toString(16)}` as `0x${string}`),
-						// value: `0x${viemArgs.value?.toString(16)}` as `0x${string}`,
-						// nonce: viemArgs.nonce && (`0x${viemArgs.nonce.toString(16)}` as `0x${string}`),
-					},
-				],
-			});
+		const chainId = `0x${parseInt(env.network.chainId).toString(16)}` as `0x${string}`;
+		const maxFeePerGas = viemArgs.maxFeePerGas && (`0x${viemArgs.maxFeePerGas.toString(16)}` as `0x${string}`);
+		const maxPriorityFeePerGas =
+			viemArgs.maxPriorityFeePerGas && (`0x${viemArgs.maxPriorityFeePerGas.toString(16)}` as `0x${string}`);
 
-			txHash = await env.network.provider.request({
-				method: 'eth_sendRawTransaction',
-				params: [rawTx],
-			});
+		const params: [EIP1193TransactionData] = [
+			{
+				type: '0x2',
+				from: address,
+				chainId,
+				data: calldata,
+				gas: viemArgs.gas && (`0x${viemArgs.gas.toString(16)}` as `0x${string}`),
+				maxFeePerGas,
+				maxPriorityFeePerGas,
+				// gasPrice: viemArgs.gasPrice && `0x${viemArgs.gasPrice.toString(16)}` as `0x${string}`,
+				// value: `0x${viemArgs.value?.toString(16)}` as `0x${string}`,
+				// nonce: viemArgs.nonce && (`0x${viemArgs.nonce.toString(16)}` as `0x${string}`),
+			},
+		];
+
+		let expectedAddress: `0x${string}` | undefined = undefined;
+		if (options?.deterministic) {
+			// TODO make these configurable
+			const deterministicFactoryAddress = `0x4e59b44847b379578588920ca78fbf26c0b4956c`;
+			const deterministicFactoryDeployerAddress = `0x3fab184622dc19b6109349b94811493bf2a45362`;
+			const factoryDeploymentData = `0xf8a58085174876e800830186a08080b853604580600e600039806000f350fe7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe03601600081602082378035828234f58015156039578182fd5b8082525050506014600cf31ba02222222222222222222222222222222222222222222222222222222222222222a02222222222222222222222222222222222222222222222222222222222222222`;
+
+			const code = await env.network.provider.request({method: 'eth_getCode', params: [deterministicFactoryAddress]});
+			if (code === '0x') {
+				const balanceHexString = await env.network.provider.request({
+					method: 'eth_getBalance',
+					params: [deterministicFactoryDeployerAddress],
+				});
+				const balance = BigInt(balanceHexString);
+				if (balance < 10000000000000000n) {
+					const need = 10000000000000000n - balance;
+					const balanceToSend = `0x${need.toString(16)}` as `0x${string}`;
+					const txHash = await broadcastTransaction(env, signer, [
+						{
+							type: '0x2',
+							chainId,
+							from: address,
+							to: deterministicFactoryDeployerAddress,
+							value: balanceToSend,
+							gas: `0x${BigInt(21000).toString(16)}`,
+							maxFeePerGas,
+							maxPriorityFeePerGas,
+						},
+					]);
+					await env.savePendingExecution({
+						type: 'execution', // TODO different type ?
+						transaction: {hash: txHash, origin: address},
+					});
+				}
+
+				const txHash = await env.network.provider.request({
+					method: 'eth_sendRawTransaction',
+					params: [factoryDeploymentData],
+				});
+				await env.savePendingExecution({
+					type: 'execution', // TODO different type ?
+					transaction: {hash: txHash, origin: address},
+				});
+			}
+
+			// prepending the salt
+			const salt = (
+				typeof options.deterministic === 'string'
+					? `0x${options.deterministic.slice(2).padStart(64, '0')}`
+					: '0x0000000000000000000000000000000000000000000000000000000000000000'
+			) as `0x${string}`;
+			params[0].data = (salt + (params[0].data?.slice(2) || '')) as `0x${string}`;
+			params[0].to = deterministicFactoryAddress;
+
+			expectedAddress = ('0x' +
+				keccak256(
+					`0xff${deterministicFactoryAddress.slice(2)}${salt.slice(2)}${keccak256(params[0].data).slice(2)}`
+				).slice(-40)) as `0x${string}`;
 		}
+
+		const txHash = await broadcastTransaction(env, signer, params);
 
 		const partialDeployment: PartialDeployment<TAbi> = {
 			...artifactToUse,
 			argsData,
 			linkedData: options?.linkedData,
 		};
+
 		const pendingDeployment: PendingDeployment<TAbi> = {
 			type: 'deployment',
+			expectedAddress,
 			partialDeployment,
 			transaction: {hash: txHash, origin: address},
 			name,

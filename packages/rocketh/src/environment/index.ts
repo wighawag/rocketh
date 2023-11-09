@@ -419,8 +419,11 @@ export async function createEnvironment<
 			transaction,
 		});
 
-		if (!receipt.contractAddress) {
-			throw new Error(`failed to deploy contract ${pendingDeployment.name}`);
+		// TODO we could make pendingDeployment.expectedAddress a spec for fetching address from event too
+		const contractAddress = pendingDeployment.expectedAddress || receipt.contractAddress;
+		if (!contractAddress) {
+			console.error(receipt);
+			throw new Error(`no contract address found for ${pendingDeployment.name}`);
 		}
 		const {abi, ...artifactObjectWithoutABI} = pendingDeployment.partialDeployment;
 
@@ -473,7 +476,7 @@ export async function createEnvironment<
 		const confirmations = Math.max(0, latestBlockNumberAsNumber - receiptBlockNumber);
 
 		const deployment = {
-			address: receipt.contractAddress,
+			address: contractAddress,
 			abi,
 			...artifactObjectWithoutABI,
 			transaction: pendingDeployment.transaction,
@@ -526,6 +529,7 @@ export async function createEnvironment<
 				params: [pendingDeployment.transaction.hash],
 			});
 		} catch (e) {
+			console.error(`failed to fetch tx ${pendingDeployment.transaction.hash}. Can't know its status`);
 			spinner.fail();
 			throw e;
 		}

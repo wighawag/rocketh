@@ -275,6 +275,7 @@ export type PendingDeployment<TAbi extends Abi = Abi> = {
 		origin?: `0x${string}`;
 	};
 	partialDeployment: PartialDeployment<TAbi>;
+	expectedAddress?: `0x${string}`; // TODO we could make that a event specification so we can get address from factory event
 };
 
 export type PendingExecution = {

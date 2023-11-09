@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.6.16
+
+### Patch Changes
+
+- deterministic deployment via create2 factory
+
 ## 0.6.15
 
 ### Patch Changes
