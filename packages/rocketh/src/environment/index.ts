@@ -426,7 +426,7 @@ export async function createEnvironment<
 			throw new Error(`no contract address found for ${pendingDeployment.name}`);
 		}
 
-		showMessage(`=> ${contractAddress}`);
+		showMessage(`    => ${contractAddress}`);
 
 		const {abi, ...artifactObjectWithoutABI} = pendingDeployment.partialDeployment;
 

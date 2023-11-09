@@ -1,5 +1,12 @@
 # rocketh-deploy
 
+## 0.6.22
+
+### Patch Changes
+
+- Updated dependencies
+  - rocketh@0.6.20
+
 ## 0.6.21
 
 ### Patch Changes

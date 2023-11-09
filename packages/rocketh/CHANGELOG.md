@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.6.20
+
+### Patch Changes
+
+- fix message indentation
+
 ## 0.6.19
 
 ### Patch Changes
