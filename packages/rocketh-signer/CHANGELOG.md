@@ -1,5 +1,13 @@
 # rocketh-signer
 
+## 0.6.19
+
+### Patch Changes
+
+- forgot to build
+- Updated dependencies
+  - rocketh@0.6.19
+
 ## 0.6.18
 
 ### Patch Changes

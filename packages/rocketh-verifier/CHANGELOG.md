@@ -1,5 +1,13 @@
 # rocketh-verifier
 
+## 0.6.23
+
+### Patch Changes
+
+- forgot to build
+- Updated dependencies
+  - rocketh@0.6.19
+
 ## 0.6.22
 
 ### Patch Changes
