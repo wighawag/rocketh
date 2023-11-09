@@ -1,5 +1,12 @@
 # hardhat-rocketh
 
+## 0.6.26
+
+### Patch Changes
+
+- Updated dependencies
+  - rocketh@0.6.18
+
 ## 0.6.25
 
 ### Patch Changes

@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.6.18
+
+### Patch Changes
+
+- show Contract Address
+
 ## 0.6.17
 
 ### Patch Changes
