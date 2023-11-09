@@ -150,6 +150,7 @@ function writeFiles(name: string | undefined, data: any, config: ArtifactGenerat
 		// const dtsContent = `export = ${JSON.stringify(data, null, 2)} as const;`;
 		const dtsContent = `declare const _default: ${JSON.stringify(data, null, 2)};export default _default;`;
 		// const dtsContent = `declare const _default: ${JSON.stringify(data, null, 2)};export = _default;`;
+		const cjsContent = `module.exports = /** @type {const} **/ (${JSON.stringify(data, null, 2)});`;
 		for (const jsFile of js) {
 			if (jsFile.endsWith('.js')) {
 				if (!name) {
@@ -158,6 +159,7 @@ function writeFiles(name: string | undefined, data: any, config: ArtifactGenerat
 					fs.mkdirSync(folderPath, {recursive: true});
 					fs.writeFileSync(filepath, newContent);
 					fs.writeFileSync(filepath.replace(/\.js$/, '.d.ts'), dtsContent);
+					fs.writeFileSync(filepath.replace(/\.js$/, '.cjs'), cjsContent);
 				}
 			} else {
 				if (name) {
@@ -166,6 +168,7 @@ function writeFiles(name: string | undefined, data: any, config: ArtifactGenerat
 					fs.mkdirSync(folderPath, {recursive: true});
 					fs.writeFileSync(filepath, newContent);
 					fs.writeFileSync(filepath.replace(/\.js$/, '.d.ts'), dtsContent);
+					fs.writeFileSync(filepath.replace(/\.js$/, '.cjs'), cjsContent);
 				}
 			}
 		}

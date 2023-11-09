@@ -1,5 +1,11 @@
 # hardhat-rocketh
 
+## 0.6.30
+
+### Patch Changes
+
+- export cjs too
+
 ## 0.6.29
 
 ### Patch Changes
