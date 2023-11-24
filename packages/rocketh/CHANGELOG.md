@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.7.1
+
+### Patch Changes
+
+- use latest eip-1193-json-provider
+
 ## 0.7.0
 
 ### Minor Changes
