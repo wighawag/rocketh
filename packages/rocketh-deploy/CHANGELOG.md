@@ -1,5 +1,16 @@
 # rocketh-deploy
 
+## 1.0.0
+
+### Minor Changes
+
+- latest deps minus isomorphic-unfetch
+
+### Patch Changes
+
+- Updated dependencies
+  - rocketh@0.7.0
+
 ## 0.6.22
 
 ### Patch Changes

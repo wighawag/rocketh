@@ -165,7 +165,7 @@ extendEnvironment((env: Environment) => {
 
 	async function deploy<TAbi extends Abi, TChain extends Chain = Chain>(
 		name: string,
-		args: DeploymentConstruction<TAbi>,
+		args: DeploymentConstruction<TAbi, TChain>,
 		options?: DeployOptions
 	): Promise<Deployment<TAbi>> {
 		const skipIfAlreadyDeployed = options && 'skipIfAlreadyDeployed' in options && options.skipIfAlreadyDeployed;

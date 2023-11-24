@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.7.0
+
+### Minor Changes
+
+- latest deps minus isomorphic-unfetch
+
 ## 0.6.20
 
 ### Patch Changes

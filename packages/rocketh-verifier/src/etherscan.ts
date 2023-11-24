@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import fs from 'fs';
-import 'isomorphic-unfetch';
 import qs from 'qs';
 import chalk from 'chalk';
 import {matchAll} from './utils/match-all';
