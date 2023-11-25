@@ -1,5 +1,12 @@
 # rocketh-doc
 
+## 1.0.2
+
+### Patch Changes
+
+- Updated dependencies
+  - rocketh@0.7.2
+
 ## 1.0.1
 
 ### Patch Changes

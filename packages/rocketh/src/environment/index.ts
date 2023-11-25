@@ -87,6 +87,12 @@ export async function createEnvironment<
 	const viemClient = createPublicClient({transport});
 
 	const chainId = (await viemClient.getChainId()).toString();
+	let genesisHash: `0x${string}` | undefined;
+	try {
+		genesisHash = (await viemClient.getBlock({blockTag: 'earliest'})).hash;
+	} catch (err) {
+		console.error(`failed to get genesis hash`);
+	}
 
 	let networkName: string;
 	let saveDeployments: boolean;
@@ -200,7 +206,11 @@ export async function createEnvironment<
 		},
 	};
 
-	const {deployments} = loadDeployments(config.deployments, context.network.name, false, chainId);
+	const {deployments} = loadDeployments(config.deployments, context.network.name, false, {
+		chainId,
+		genesisHash,
+		deleteDeploymentsIfDifferentGenesisHash: true,
+	});
 
 	const namedAccounts: {[name: string]: EIP1193Account} = {};
 	const namedSigners: {[name: string]: NamedSigner} = {};
@@ -232,9 +242,13 @@ export async function createEnvironment<
 	function ensureDeploymentFolder(): string {
 		const folderPath = path.join(config.deployments, context.network.name);
 		fs.mkdirSync(folderPath, {recursive: true});
-		const chainIdFilepath = path.join(folderPath, '.chainId');
-		if (!fs.existsSync(chainIdFilepath)) {
-			fs.writeFileSync(chainIdFilepath, chainId);
+		// const chainIdFilepath = path.join(folderPath, '.chainId');
+		// if (!fs.existsSync(chainIdFilepath)) {
+		// 	fs.writeFileSync(chainIdFilepath, chainId);
+		// }
+		const chainFilepath = path.join(folderPath, '.chain');
+		if (!fs.existsSync(chainFilepath)) {
+			fs.writeFileSync(chainFilepath, JSON.stringify({chainId, genesisHash}));
 		}
 		return folderPath;
 	}

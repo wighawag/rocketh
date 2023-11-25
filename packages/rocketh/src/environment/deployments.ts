@@ -7,8 +7,8 @@ export function loadDeployments(
 	deploymentsPath: string,
 	subPath: string,
 	onlyABIAndAddress?: boolean,
-	expectedChainId?: string
-): {deployments: UnknownDeployments; chainId?: string} {
+	expectedChain?: {chainId: string; genesisHash?: `0x${string}`; deleteDeploymentsIfDifferentGenesisHash?: boolean}
+): {deployments: UnknownDeployments; chainId?: string; genesisHash?: `0x${string}`} {
 	const deploymentsFound: UnknownDeployments = {};
 	const deployPath = path.join(deploymentsPath, subPath);
 
@@ -20,19 +20,42 @@ export function loadDeployments(
 		return {deployments: {}};
 	}
 	let chainId: string;
+	let genesisHash: `0x${string}` | undefined;
 	if (filesStats.length > 0) {
 		const chainIdFilepath = path.join(deployPath, '.chainId');
 		if (fs.existsSync(chainIdFilepath)) {
-			chainId = fs.readFileSync(chainIdFilepath).toString().trim();
+			chainId = fs.readFileSync(chainIdFilepath, 'utf-8').trim();
 		} else {
-			throw new Error(`A .chainId' file is expected to be present in the deployment folder for network ${subPath}`);
+			const chainFilepath = path.join(deployPath, '.chain');
+			if (fs.existsSync(chainFilepath)) {
+				const chainSTR = fs.readFileSync(chainIdFilepath, 'utf-8');
+				const chainData = JSON.parse(chainSTR);
+				chainId = chainData.chainId;
+				genesisHash = chainData.genesisHash;
+			} else {
+				throw new Error(
+					`A '.chain' or '.chainId' file is expected to be present in the deployment folder for network ${subPath}`
+				);
+			}
 		}
 
-		if (expectedChainId) {
-			if (expectedChainId !== chainId) {
+		if (expectedChain) {
+			if (expectedChain.chainId !== chainId) {
 				throw new Error(
-					`Loading deployment in folder '${deployPath}' (with chainId: ${chainId}) for a different chainId (${expectedChainId})`
+					`Loading deployment in folder '${deployPath}' (with chainId: ${chainId}) for a different chainId (${expectedChain.chainId})`
 				);
+			}
+
+			if (expectedChain.genesisHash && expectedChain.genesisHash !== genesisHash) {
+				if (expectedChain.deleteDeploymentsIfDifferentGenesisHash) {
+					// we delete the old folder
+					fs.rmSync(deployPath, {recursive: true, force: true});
+					return {deployments: {}};
+				} else {
+					throw new Error(
+						`Loading deployment in folder '${deployPath}' (with genesisHash: ${genesisHash}) for a different genesisHash (${expectedChain.genesisHash})`
+					);
+				}
 			}
 		}
 	} else {
@@ -75,5 +98,5 @@ export function loadDeployments(
 			deploymentsFound[name] = deployment;
 		}
 	}
-	return {deployments: deploymentsFound, chainId};
+	return {deployments: deploymentsFound, chainId, genesisHash};
 }

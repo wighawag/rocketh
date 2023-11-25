@@ -12,6 +12,7 @@ export interface ContractExport {
 
 export type ExportedDeployments = {
 	chainId: string;
+	genesisHash?: string;
 	name: string;
 	contracts: {[name: string]: ContractExport};
 };
@@ -39,7 +40,7 @@ export async function run(
 		return;
 	}
 
-	const {deployments, chainId} = loadDeployments(config.deployments, config.networkName);
+	const {deployments, chainId, genesisHash} = loadDeployments(config.deployments, config.networkName);
 
 	if (!deployments || Object.keys(deployments).length === 0) {
 		console.log(`no deployments to export`);
@@ -52,6 +53,7 @@ export async function run(
 
 	const exportData: ExportedDeployments = {
 		chainId,
+		genesisHash,
 		contracts: objectMap<Deployment<Abi>, ContractExport>(deployments, (d) => ({
 			abi: d.abi,
 			address: d.address,

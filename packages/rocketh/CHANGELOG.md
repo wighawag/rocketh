@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.7.2
+
+### Patch Changes
+
+- use .chain file and include genesisHash
+
 ## 0.7.1
 
 ### Patch Changes
