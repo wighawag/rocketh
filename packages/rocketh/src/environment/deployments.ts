@@ -28,7 +28,7 @@ export function loadDeployments(
 		} else {
 			const chainFilepath = path.join(deployPath, '.chain');
 			if (fs.existsSync(chainFilepath)) {
-				const chainSTR = fs.readFileSync(chainIdFilepath, 'utf-8');
+				const chainSTR = fs.readFileSync(chainFilepath, 'utf-8');
 				const chainData = JSON.parse(chainSTR);
 				chainId = chainData.chainId;
 				genesisHash = chainData.genesisHash;
@@ -49,6 +49,7 @@ export function loadDeployments(
 			if (expectedChain.genesisHash && expectedChain.genesisHash !== genesisHash) {
 				if (expectedChain.deleteDeploymentsIfDifferentGenesisHash) {
 					// we delete the old folder
+
 					fs.rmSync(deployPath, {recursive: true, force: true});
 					return {deployments: {}};
 				} else {

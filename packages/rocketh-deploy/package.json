@@ -1,6 +1,6 @@
 {
 	"name": "rocketh-deploy",
-	"version": "1.0.2",
+	"version": "1.0.3",
 	"description": "provide deploy function for rocketh",
 	"publishConfig": {
 		"access": "public"
