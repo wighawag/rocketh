@@ -1,5 +1,11 @@
 # rocketh-deploy
 
+## 1.0.4
+
+### Patch Changes
+
+- specifiy blockTag "latest" explicitly
+
 ## 1.0.3
 
 ### Patch Changes
