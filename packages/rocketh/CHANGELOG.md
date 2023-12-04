@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.7.4
+
+### Patch Changes
+
+- use eip-1193-jsonrpc-provider new name
+
 ## 0.7.3
 
 ### Patch Changes

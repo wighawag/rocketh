@@ -16,7 +16,7 @@ import {
 	UnknownDeployments,
 	UnresolvedUnknownNamedAccounts,
 } from './types';
-import {JSONRPCHTTPProvider} from 'eip-1193-json-provider';
+import {JSONRPCHTTPProvider} from 'eip-1193-jsonrpc-provider';
 import {Abi} from 'abitype';
 import {InternalEnvironment} from '../internal/types';
 import path from 'node:path';
