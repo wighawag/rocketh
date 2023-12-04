@@ -1,0 +1,32 @@
+{
+	"name": "rocketh-tenderly",
+	"version": "1.0.3",
+	"description": "rocketh function to push contracts to tenderly.co",
+	"publishConfig": {
+		"access": "public"
+	},
+	"type": "module",
+	"main": "dist/index.cjs",
+	"module": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"devDependencies": {
+		"@types/js-yaml": "^4.0.9",
+		"@types/node": "^20.10.0",
+		"rocketh": "workspace:*",
+		"tsup": "^8.0.1",
+		"typescript": "^5.3.2"
+	},
+	"peerDependencies": {
+		"rocketh": "workspace:*"
+	},
+	"scripts": {
+		"build": "rimraf dist && tsup src/index.ts --dts --format esm,cjs",
+		"dev": "rimraf dist && tsup src/index.ts --dts --format esm,cjs --watch"
+	},
+	"dependencies": {
+		"axios": "^1.6.2",
+		"commander": "^11.1.0",
+		"js-yaml": "^4.1.0",
+		"ldenv": "^0.3.7"
+	}
+}
