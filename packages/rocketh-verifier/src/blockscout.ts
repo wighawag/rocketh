@@ -6,18 +6,18 @@ import {BlockscoutOptions} from '.';
 
 //https://eth.blockscout.com/api/v2/search?q=WETH
 const defaultEndpoints: {[chainId: string]: string} = {
-	'1': 'https://eth.blockscout.com/',
-	'11155111': 'https://eth-sepolia.blockscout.com/',
-	'5': 'https://eth-goerli.blockscout.com/',
-	'10': 'https://optimism.blockscout.com/',
-	'11155420': 'https://optimism-sepolia.blockscout.com/',
-	'61': 'https://etc.blockscout.com/',
-	'324': 'https://zksync.blockscout.com/',
-	'8453': 'https://base.blockscout.com/',
-	'84532': 'https://base-sepolia.blockscout.com/',
-	'100': 'https://gnosis.blockscout.com/',
-	'10200': 'https://gnosis-chiado.blockscout.com/',
-	'17001': 'https://17001-explorer-api.quarry.linfra.xyz', // probably temporary
+	'1': 'https://eth.blockscout.com/api/v2',
+	'11155111': 'https://eth-sepolia.blockscout.com/api/v2',
+	'5': 'https://eth-goerli.blockscout.com/api/v2',
+	'10': 'https://optimism.blockscout.com/api/v2',
+	'11155420': 'https://optimism-sepolia.blockscout.com/api/v2',
+	'61': 'https://etc.blockscout.com/api/v2',
+	'324': 'https://zksync.blockscout.com/api/v2',
+	'8453': 'https://base.blockscout.com/api/v2',
+	'84532': 'https://base-sepolia.blockscout.com/api/v2',
+	'100': 'https://gnosis.blockscout.com/api/v2',
+	'10200': 'https://gnosis-chiado.blockscout.com/api/v2',
+	'17001': 'https://17001-explorer-api.quarry.linfra.xyz/api/v2', // probably temporary
 };
 
 function sleep(ms: number) {
@@ -69,42 +69,11 @@ export async function submitSourcesToBlockscout(
 		return;
 	}
 
-	// async function submitV1(name: string, deployment: Deployment<Abi>) {
-	// 	const {address, metadata} = deployment;
-
-	// 	const apiEndPoint = `${url}api/v1/solidity/verify/standard-json`;
-
-	// 	const data = {
-	// 		creation_bytecode: deployment.bytecode + deployment.argsData.slice(2),
-	// 		compiler_version: JSON.parse(metadata).compiler.version,
-	// 		input: metadata,
-	// 	};
-
-	// 	try {
-	// 		console.log(`trying at ${apiEndPoint}`);
-	// 		const submissionResponse = await fetch(apiEndPoint, {body: JSON.stringify(data), method: 'POST'});
-	// 		const json = await submissionResponse.json();
-	// 		console.log(json);
-	// 		if (json.result[0].status === 'perfect') {
-	// 			logSuccess(` => contract ${name} is now verified`);
-	// 		} else {
-	// 			logError(` => contract ${name} is not verified`);
-	// 		}
-	// 	} catch (e) {
-	// 		if (env?.logErrorOnFailure) {
-	// 			const failingMetadataFolder = path.join('failing_metadata', env.chainId);
-	// 			fs.ensureDirSync(failingMetadataFolder);
-	// 			fs.writeFileSync(path.join(failingMetadataFolder, `${name}_at_${address}.json`), metadata);
-	// 		}
-	// 		logError(((e as any).response && JSON.stringify((e as any).response.data)) || e);
-	// 	}
-	// }
-
 	async function submit(name: string, deployment: Deployment<Abi>) {
 		const {address, metadata} = deployment;
 
 		try {
-			const checkResponse = await fetch(`${url}api/v2/smart-contracts/${address.toLowerCase()}`);
+			const checkResponse = await fetch(`${url}smart-contracts/${address.toLowerCase()}`);
 			const json = await checkResponse.json();
 			if (json.is_verified) {
 				log(`already verified: ${name} (${address}), skipping.`);
@@ -114,9 +83,31 @@ export async function submitSourcesToBlockscout(
 			logError(((e as any).response && JSON.stringify((e as any).response.data)) || e);
 		}
 
+		const metadataObj = JSON.parse(metadata);
+		const compilationTarget = metadataObj.settings?.compilationTarget;
+
+		let contractFilepath;
+		let contractName;
+		if (compilationTarget) {
+			contractFilepath = Object.keys(compilationTarget)[0];
+			contractName = compilationTarget[contractFilepath];
+		}
+
+		if (!contractFilepath || !contractName) {
+			return logError(
+				`Failed to extract contract fully qualified name from metadata.settings.compilationTarget for ${name}. Skipping.`
+			);
+		}
+
+		const contractNamePath = `${contractFilepath}:${contractName}`;
+
 		const formData = new FormData();
 		formData.append('address_hash', address);
 		formData.append('compiler_version', JSON.parse(metadata).compiler.version);
+		formData.append('constructor_args', deployment.argsData);
+		formData.append('autodetect_constructor_args', 'false');
+		formData.append('contract_name', contractNamePath);
+
 		const metadataBlob = new Blob([metadata], {
 			type: 'application/json',
 		});
@@ -124,7 +115,7 @@ export async function submitSourcesToBlockscout(
 
 		try {
 			const submissionResponse = await fetch(
-				`${url}api/v2/smart-contracts/${address.toLowerCase()}/verification/via/standard-input`,
+				`${url}smart-contracts/${address.toLowerCase()}/verification/via/standard-input`,
 				{body: formData, method: 'POST'}
 			);
 			const json = await submissionResponse.json();

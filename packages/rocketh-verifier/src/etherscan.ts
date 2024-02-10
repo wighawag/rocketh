@@ -7,33 +7,33 @@ import {Environment, UnknownDeployments} from 'rocketh';
 import {EtherscanOptions} from '.';
 
 const defaultEndpoints: {[chainId: string]: string} = {
-	'1': 'https://api.etherscan.io',
-	'3': 'https://api-ropsten.etherscan.io',
-	'4': 'https://api-rinkeby.etherscan.io',
-	'5': 'https://api-goerli.etherscan.io',
-	'10': 'https://api-optimistic.etherscan.io',
-	'42': 'https://api-kovan.etherscan.io',
-	'97': 'https://api-testnet.bscscan.com',
-	'56': 'https://api.bscscan.com',
-	'69': 'https://api-kovan-optimistic.etherscan.io',
-	'70': 'https://api.hooscan.com',
-	'77': 'https://blockscout.com/poa/sokol',
-	'128': 'https://api.hecoinfo.com',
-	'137': 'https://api.polygonscan.com',
-	'250': 'https://api.ftmscan.com',
-	'256': 'https://api-testnet.hecoinfo.com',
-	'420': 'https://api-goerli-optimism.etherscan.io',
-	'588': 'https://stardust-explorer.metis.io',
-	'1088': 'https://andromeda-explorer.metis.io',
-	'1285': 'https://api-moonriver.moonscan.io',
-	'80001': 'https://api-testnet.polygonscan.com',
-	'4002': 'https://api-testnet.ftmscan.com',
-	'42161': 'https://api.arbiscan.io',
-	'421611': 'https://api-testnet.arbiscan.io',
-	'421613': 'https://api-goerli.arbiscan.io',
-	'43113': 'https://api-testnet.snowtrace.io',
-	'43114': 'https://api.snowtrace.io',
-	'11155111': 'https://api-sepolia.etherscan.io',
+	'1': 'https://api.etherscan.io/api',
+	'3': 'https://api-ropsten.etherscan.io/api',
+	'4': 'https://api-rinkeby.etherscan.io/api',
+	'5': 'https://api-goerli.etherscan.io/api',
+	'10': 'https://api-optimistic.etherscan.io/api',
+	'42': 'https://api-kovan.etherscan.io/api',
+	'97': 'https://api-testnet.bscscan.com/api',
+	'56': 'https://api.bscscan.com/api',
+	'69': 'https://api-kovan-optimistic.etherscan.io/api',
+	'70': 'https://api.hooscan.com/api',
+	'77': 'https://blockscout.com/poa/sokol/api',
+	'128': 'https://api.hecoinfo.com/api',
+	'137': 'https://api.polygonscan.com/api',
+	'250': 'https://api.ftmscan.com/api',
+	'256': 'https://api-testnet.hecoinfo.com/api',
+	'420': 'https://api-goerli-optimism.etherscan.io/api',
+	'588': 'https://stardust-explorer.metis.io/api',
+	'1088': 'https://andromeda-explorer.metis.io/api',
+	'1285': 'https://api-moonriver.moonscan.io/api',
+	'80001': 'https://api-testnet.polygonscan.com/api',
+	'4002': 'https://api-testnet.ftmscan.com/api',
+	'42161': 'https://api.arbiscan.io/api',
+	'421611': 'https://api-testnet.arbiscan.io/api',
+	'421613': 'https://api-goerli.arbiscan.io/api',
+	'43113': 'https://api-testnet.snowtrace.io/api',
+	'43114': 'https://api.snowtrace.io/api',
+	'11155111': 'https://api-sepolia.etherscan.io/api',
 };
 
 function log(...args: any[]) {
@@ -322,7 +322,7 @@ export async function submitSourcesToEtherscan(
 				}
 			}
 		}
-		const submissionResponse = await fetch(`${host}/api`, {
+		const submissionResponse = await fetch(`${host}`, {
 			method: 'POST',
 			headers: {'content-type': 'application/x-www-form-urlencoded'},
 			body: data,
@@ -349,7 +349,7 @@ export async function submitSourcesToEtherscan(
 		async function checkStatus(): Promise<string | undefined> {
 			// TODO while loop and delay :
 			const statusResponse = await fetch(
-				`${host}/api?apikey=${etherscanApiKey}&guid=${guid}&module=contract&action=checkverifystatus`
+				`${host}?apikey=${etherscanApiKey}&guid=${guid}&module=contract&action=checkverifystatus`
 			);
 			const json = await statusResponse.json();
 
