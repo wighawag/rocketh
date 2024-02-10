@@ -1,5 +1,11 @@
 # rocketh-verifier
 
+## 0.7.5
+
+### Patch Changes
+
+- api endpoint
+
 ## 0.7.4
 
 ### Patch Changes
