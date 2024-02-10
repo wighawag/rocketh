@@ -1,6 +1,7 @@
 import {ResolvedConfig, loadDeployments} from 'rocketh';
 import {submitSourcesToEtherscan} from './etherscan';
 import {submitSourcesToSourcify} from './sourcify';
+import {submitSourcesToBlockscout} from './blockscout';
 
 export type EtherscanOptions = {
 	type: 'etherscan';
@@ -15,8 +16,14 @@ export type SourcifyOptions = {
 	endpoint?: string;
 };
 
+export type BlockscoutOptions = {
+	type: 'blockscout';
+	endpoint?: string;
+	// version?: string;
+};
+
 export type VerificationOptions = {
-	verifier: EtherscanOptions | SourcifyOptions;
+	verifier: EtherscanOptions | SourcifyOptions | BlockscoutOptions;
 	deploymentNames?: string[];
 	minInterval?: number;
 	logErrorOnFailure?: boolean;
@@ -47,8 +54,20 @@ export async function run(config: ResolvedConfig, options: VerificationOptions) 
 			},
 			options.verifier
 		);
-	} else {
+	} else if (options.verifier.type === 'sourcify') {
 		await submitSourcesToSourcify(
+			{
+				chainId,
+				deployments,
+				networkName: config.networkName,
+				deploymentNames: options.deploymentNames,
+				minInterval: options.minInterval,
+				logErrorOnFailure: options.logErrorOnFailure,
+			},
+			options.verifier
+		);
+	} else if (options.verifier.type === 'blockscout') {
+		await submitSourcesToBlockscout(
 			{
 				chainId,
 				deployments,

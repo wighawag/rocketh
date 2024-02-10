@@ -6,6 +6,36 @@ import {matchAll} from './utils/match-all';
 import {Environment, UnknownDeployments} from 'rocketh';
 import {EtherscanOptions} from '.';
 
+const defaultEndpoints: {[chainId: string]: string} = {
+	'1': 'https://api.etherscan.io',
+	'3': 'https://api-ropsten.etherscan.io',
+	'4': 'https://api-rinkeby.etherscan.io',
+	'5': 'https://api-goerli.etherscan.io',
+	'10': 'https://api-optimistic.etherscan.io',
+	'42': 'https://api-kovan.etherscan.io',
+	'97': 'https://api-testnet.bscscan.com',
+	'56': 'https://api.bscscan.com',
+	'69': 'https://api-kovan-optimistic.etherscan.io',
+	'70': 'https://api.hooscan.com',
+	'77': 'https://blockscout.com/poa/sokol',
+	'128': 'https://api.hecoinfo.com',
+	'137': 'https://api.polygonscan.com',
+	'250': 'https://api.ftmscan.com',
+	'256': 'https://api-testnet.hecoinfo.com',
+	'420': 'https://api-goerli-optimism.etherscan.io',
+	'588': 'https://stardust-explorer.metis.io',
+	'1088': 'https://andromeda-explorer.metis.io',
+	'1285': 'https://api-moonriver.moonscan.io',
+	'80001': 'https://api-testnet.polygonscan.com',
+	'4002': 'https://api-testnet.ftmscan.com',
+	'42161': 'https://api.arbiscan.io',
+	'421611': 'https://api-testnet.arbiscan.io',
+	'421613': 'https://api-goerli.arbiscan.io',
+	'43113': 'https://api-testnet.snowtrace.io',
+	'43114': 'https://api.snowtrace.io',
+	'11155111': 'https://api-sepolia.etherscan.io',
+};
+
 function log(...args: any[]) {
 	console.log(...args);
 }
@@ -139,90 +169,9 @@ export async function submitSourcesToEtherscan(
 	const networkName = env.networkName;
 	let host = config.endpoint;
 	if (!host) {
-		switch (env.chainId) {
-			case '1':
-				host = 'https://api.etherscan.io';
-				break;
-			case '3':
-				host = 'https://api-ropsten.etherscan.io';
-				break;
-			case '4':
-				host = 'https://api-rinkeby.etherscan.io';
-				break;
-			case '5':
-				host = 'https://api-goerli.etherscan.io';
-				break;
-			case '10':
-				host = 'https://api-optimistic.etherscan.io';
-				break;
-			case '42':
-				host = 'https://api-kovan.etherscan.io';
-				break;
-			case '97':
-				host = 'https://api-testnet.bscscan.com';
-				break;
-			case '56':
-				host = 'https://api.bscscan.com';
-				break;
-			case '69':
-				host = 'https://api-kovan-optimistic.etherscan.io';
-				break;
-			case '70':
-				host = 'https://api.hooscan.com';
-				break;
-			case '77':
-				host = 'https://blockscout.com/poa/sokol';
-				break;
-			case '128':
-				host = 'https://api.hecoinfo.com';
-				break;
-			case '137':
-				host = 'https://api.polygonscan.com';
-				break;
-			case '250':
-				host = 'https://api.ftmscan.com';
-				break;
-			case '256':
-				host = 'https://api-testnet.hecoinfo.com';
-				break;
-			case '420':
-				host = 'https://api-goerli-optimism.etherscan.io';
-				break;
-			case '588':
-				host = 'https://stardust-explorer.metis.io';
-				break;
-			case '1088':
-				host = 'https://andromeda-explorer.metis.io';
-				break;
-			case '1285':
-				host = 'https://api-moonriver.moonscan.io';
-				break;
-			case '80001':
-				host = 'https://api-testnet.polygonscan.com';
-				break;
-			case '4002':
-				host = 'https://api-testnet.ftmscan.com';
-				break;
-			case '42161':
-				host = 'https://api.arbiscan.io';
-				break;
-			case '421611':
-				host = 'https://api-testnet.arbiscan.io';
-				break;
-			case '421613':
-				host = 'https://api-goerli.arbiscan.io';
-				break;
-			case '43113':
-				host = 'https://api-testnet.snowtrace.io';
-				break;
-			case '43114':
-				host = 'https://api.snowtrace.io';
-				break;
-			case '11155111':
-				host = 'https://api-sepolia.etherscan.io';
-				break;
-			default:
-				return logError(`Network with chainId: ${env.chainId} not supported. Please specify the endpoint manually.`);
+		host = defaultEndpoints[env.chainId];
+		if (!host) {
+			return logError(`Network with chainId: ${env.chainId} not supported. Please specify the endpoint manually.`);
 		}
 	}
 

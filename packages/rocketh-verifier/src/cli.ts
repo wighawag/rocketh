@@ -42,6 +42,17 @@ program
 	});
 
 program
+	.command('blockscout')
+	.description('submit contract for verification to blockscout')
+	.option('--endpoint <value>', 'endpoint to connect to')
+	// .option('--api <value>', 'api version (default to v2)')
+	.action((options: {endpoint?: string}) => {
+		const programOptions = program.opts() as ConfigOptions;
+		const resolvedConfig = readAndResolveConfig(programOptions, {ignoreMissingRPC: true});
+		run(resolvedConfig, {verifier: {type: 'blockscout', endpoint: options.endpoint}});
+	});
+
+program
 	.command('metadata')
 	.description('export metadata')
 	.option('--out <value>', 'folder to write metadata into')
