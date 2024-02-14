@@ -1,7 +1,8 @@
 import type {Chain} from 'viem/chains';
-import * as allChains from 'viem/chains';
+import chains from 'viem/chains';
 
 export const chainById: {[chainId: string]: Chain} = {};
+const allChains = (chains as any).default || chains;
 for (const key of Object.keys(allChains)) {
 	const chain = (allChains as any)[key] as Chain;
 	chainById[chain.id.toString()] = chain;
