@@ -82,7 +82,7 @@ export type DevDoc = {
 	readonly methods: {
 		[signature: string]: DevMethodDoc;
 	};
-	readonly kind: 'dev';
+	readonly kind?: 'dev';
 	readonly version: number;
 	readonly title?: string;
 	readonly author?: string;
@@ -95,7 +95,7 @@ export type UserDoc = {
 	readonly errors?: {
 		readonly [signature: string]: readonly NoticeUserDoc[];
 	};
-	readonly kind: 'user';
+	readonly kind?: 'user';
 	readonly methods: {
 		readonly [signature: string]: NoticeUserDoc;
 	};
