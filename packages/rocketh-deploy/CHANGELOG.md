@@ -1,5 +1,16 @@
 # rocketh-deploy
 
+## 2.0.0
+
+### Minor Changes
+
+- use latest viem + add read
+
+### Patch Changes
+
+- Updated dependencies
+  - rocketh@0.8.0
+
 ## 1.0.7
 
 ### Patch Changes

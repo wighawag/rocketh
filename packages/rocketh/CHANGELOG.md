@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.8.0
+
+### Minor Changes
+
+- use latest viem + add read
+
 ## 0.7.6
 
 ### Patch Changes

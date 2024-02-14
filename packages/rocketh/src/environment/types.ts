@@ -9,7 +9,7 @@ import {
 	EIP1193WalletProvider,
 } from 'eip-1193';
 import {Abi, Narrow, AbiError, AbiEvent, AbiConstructor, AbiFallback, AbiFunction, AbiReceive} from 'abitype';
-import type {DeployContractParameters} from 'viem/contract';
+import type {DeployContractParameters} from 'viem';
 import type {Chain} from 'viem';
 import {ProgressIndicator} from '../internal/logging';
 

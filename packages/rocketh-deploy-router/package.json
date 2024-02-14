@@ -1,6 +1,6 @@
 {
 	"name": "rocketh-deploy-router",
-	"version": "1.0.7",
+	"version": "2.0.0",
 	"description": "provide router based proxy deployment for rocketh",
 	"publishConfig": {
 		"access": "public"
@@ -10,22 +10,22 @@
 	"module": "dist/index.js",
 	"types": "dist/index.d.ts",
 	"devDependencies": {
-		"abitype": "^0.10.2",
+		"abitype": "^1.0.0",
 		"eip-1193": "^0.4.7",
 		"rimraf": "^5.0.5",
 		"rocketh": "workspace:*",
-		"tsup": "^8.0.1",
-		"typescript": "^5.3.2"
+		"tsup": "^8.0.2",
+		"typescript": "^5.3.3"
 	},
 	"peerDependencies": {
 		"rocketh": "workspace:*"
 	},
 	"dependencies": {
-		"ethers": "^6.8.1",
+		"ethers": "^6.11.0",
 		"named-logs": "^0.2.2",
 		"rocketh-deploy": "workspace:*",
 		"solidity-proxy": "^0.2.4",
-		"viem": "^1.19.8"
+		"viem": "^2.7.9"
 	},
 	"scripts": {
 		"build": "rimraf dist && tsup src/index.ts --dts --format esm,cjs",

@@ -11,9 +11,21 @@ import type {
 	NamedSigner,
 } from 'rocketh';
 import {extendEnvironment} from 'rocketh';
-import {Chain, WriteContractParameters, encodeFunctionData, keccak256} from 'viem';
-import {DeployContractParameters, encodeDeployData} from 'viem/contract';
+import {
+	Chain,
+	ContractFunctionArgs,
+	ContractFunctionName,
+	DecodeFunctionResultReturnType,
+	EncodeDeployDataParameters,
+	ReadContractParameters,
+	WriteContractParameters,
+	decodeFunctionResult,
+	encodeFunctionData,
+	keccak256,
+} from 'viem';
+import {DeployContractParameters, encodeDeployData} from 'viem';
 import {logs} from 'named-logs';
+import {ContractConstructorArgs} from 'viem/_types/types/contract';
 
 const logger = logs('rocketh-deploy');
 
@@ -21,6 +33,7 @@ declare module 'rocketh' {
 	interface Environment {
 		deploy: DeployFunction;
 		execute: ExecuteFunction;
+		read: ReadFunction;
 	}
 }
 
@@ -30,12 +43,36 @@ export type DeployFunction = <TAbi extends Abi, TChain extends Chain = Chain>(
 	options?: DeployOptions
 ) => Promise<Deployment<TAbi>>;
 
-export type ExecuteFunction = <TAbi extends Abi, TFunctionName extends string, TChain extends Chain = Chain>(
+export type ExecuteFunction = <
+	TAbi extends Abi,
+	TFunctionName extends ContractFunctionName<TAbi, 'nonpayable' | 'payable'>,
+	TArgs extends ContractFunctionArgs<TAbi, 'nonpayable' | 'payable', TFunctionName> = ContractFunctionArgs<
+		TAbi,
+		'nonpayable' | 'payable',
+		TFunctionName
+	>,
+	TChain extends Chain = Chain
+>(
 	name: string,
-	args: Omit<WriteContractParameters<TAbi, TFunctionName, TChain>, 'address' | 'abi' | 'account' | 'nonce'> & {
+	args: Omit<WriteContractParameters<TAbi, TFunctionName, TArgs, TChain>, 'address' | 'abi' | 'account' | 'nonce'> & {
 		account: string;
 	}
 ) => Promise<EIP1193DATA>;
+
+export type ReadFunction = <
+	TAbi extends Abi,
+	TFunctionName extends ContractFunctionName<TAbi, 'pure' | 'view'>,
+	TArgs extends ContractFunctionArgs<TAbi, 'pure' | 'view', TFunctionName> = ContractFunctionArgs<
+		TAbi,
+		'pure' | 'view',
+		TFunctionName
+	>
+>(
+	name: string,
+	args: Omit<ReadContractParameters<TAbi, TFunctionName, TArgs>, 'address' | 'abi' | 'account' | 'nonce'> & {
+		account?: string;
+	}
+) => Promise<DecodeFunctionResultReturnType<TAbi, TFunctionName>>;
 
 export type DeployOptions = {linkedData?: any; deterministic?: boolean | `0x${string}`} & (
 	| {
@@ -70,9 +107,18 @@ async function broadcastTransaction(
 }
 
 extendEnvironment((env: Environment) => {
-	async function execute<TAbi extends Abi, TFunctionName extends string, TChain extends Chain = Chain>(
+	async function execute<
+		TAbi extends Abi,
+		TFunctionName extends ContractFunctionName<TAbi, 'nonpayable' | 'payable'>,
+		TArgs extends ContractFunctionArgs<TAbi, 'nonpayable' | 'payable', TFunctionName> = ContractFunctionArgs<
+			TAbi,
+			'nonpayable' | 'payable',
+			TFunctionName
+		>,
+		TChain extends Chain = Chain
+	>(
 		name: string,
-		args: Omit<WriteContractParameters<TAbi, TFunctionName, TChain>, 'address' | 'abi' | 'account' | 'nonce'> & {
+		args: Omit<WriteContractParameters<TAbi, TFunctionName, TArgs, TChain>, 'address' | 'abi' | 'account' | 'nonce'> & {
 			account: string;
 		}
 	) {
@@ -163,6 +209,73 @@ extendEnvironment((env: Environment) => {
 		return txHash;
 	}
 
+	async function read<
+		TAbi extends Abi,
+		TFunctionName extends ContractFunctionName<TAbi, 'pure' | 'view'>,
+		TArgs extends ContractFunctionArgs<TAbi, 'pure' | 'view', TFunctionName> = ContractFunctionArgs<
+			TAbi,
+			'pure' | 'view',
+			TFunctionName
+		>
+	>(
+		name: string,
+		args: Omit<ReadContractParameters<TAbi, TFunctionName, TArgs>, 'address' | 'abi' | 'account' | 'nonce'> & {
+			account?: string;
+		}
+	): Promise<DecodeFunctionResultReturnType<TAbi, TFunctionName>> {
+		const {account, ...viemArgs} = args;
+		let address: `0x${string}` | undefined;
+		if (account) {
+			if (account.startsWith('0x')) {
+				address = account as `0x${string}`;
+			} else {
+				if (env.accounts) {
+					address = env.accounts[account];
+					if (!address) {
+						throw new Error(`no address for ${account}`);
+					}
+				} else {
+					throw new Error(`no accounts setup, cannot get address for ${account}`);
+				}
+			}
+		}
+
+		const deployment = env.get(name);
+		if (!deployment) {
+			throw new Error(`no deployment named ${name}`);
+		}
+		const artifactToUse = deployment as unknown as Artifact<TAbi>;
+		const abi = artifactToUse.abi;
+		const calldata = encodeFunctionData<TAbi, TFunctionName>({
+			abi,
+			functionName: viemArgs.functionName,
+			args: viemArgs.args,
+		} as any);
+
+		const result: `0x${string}` = (await env.network.provider.request({
+			method: 'eth_call',
+			params: [
+				{
+					to: deployment.address,
+					type: '0x2',
+					from: address,
+					chainId: `0x${parseInt(env.network.chainId).toString(16)}` as `0x${string}`,
+					data: calldata,
+					// value: `0x${viemArgs.value?.toString(16)}` as `0x${string}`,
+				},
+			],
+		})) as `0x${string}`;
+
+		const parsed = decodeFunctionResult<TAbi, TFunctionName>({
+			abi,
+			functionName: viemArgs.functionName,
+			data: result,
+			args: viemArgs.args,
+		} as any);
+
+		return parsed as DecodeFunctionResultReturnType<TAbi, TFunctionName>;
+	}
+
 	async function deploy<TAbi extends Abi, TChain extends Chain = Chain>(
 		name: string,
 		args: DeploymentConstruction<TAbi, TChain>,
@@ -202,14 +315,14 @@ extendEnvironment((env: Environment) => {
 		const bytecode = artifactToUse.bytecode;
 		const abi = artifactToUse.abi;
 
-		const argsToUse: DeployContractParameters<TAbi, TChain> = {
+		const argsToUse = {
 			...viemArgs,
 			account,
 			abi,
 			bytecode,
-		} as unknown as DeployContractParameters<TAbi, TChain>; // TODO why casting necessary here
+		};
 
-		const calldata = encodeDeployData(argsToUse);
+		const calldata = encodeDeployData(argsToUse as any); // TODO any
 		const argsData = `0x${calldata.replace(bytecode, '')}` as `0x${string}`;
 
 		if (existingDeployment) {
@@ -361,5 +474,6 @@ extendEnvironment((env: Environment) => {
 
 	env.deploy = deploy;
 	env.execute = execute;
+	env.read = read;
 	return env;
 });

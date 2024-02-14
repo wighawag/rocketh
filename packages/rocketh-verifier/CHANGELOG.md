@@ -1,5 +1,16 @@
 # rocketh-verifier
 
+## 0.8.0
+
+### Minor Changes
+
+- use latest viem + add read
+
+### Patch Changes
+
+- Updated dependencies
+  - rocketh@0.8.0
+
 ## 0.7.7
 
 ### Patch Changes

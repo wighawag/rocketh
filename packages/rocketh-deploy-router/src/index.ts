@@ -2,10 +2,11 @@ import {Abi} from 'abitype';
 import type {Artifact, DeploymentConstruction, Deployment, Environment, DevDoc, UserDoc} from 'rocketh';
 import 'rocketh-deploy';
 import {extendEnvironment} from 'rocketh';
-import {GetConstructorArgs} from 'viem';
+import {DeployContractParameters} from 'viem';
 import {FunctionFragment} from 'ethers';
 import artifactsAsModule from 'solidity-proxy/generated/artifacts';
 import {logs} from 'named-logs';
+import {EIP1193Account} from 'eip-1193';
 
 const logger = logs('rocketh-deploy-proxy');
 
@@ -14,10 +15,11 @@ const artifacts = (artifactsAsModule as any).default
 	? ((artifactsAsModule as any).default as typeof artifactsAsModule)
 	: artifactsAsModule;
 
-export type Route<TAbi extends Abi = Abi> = {
+export type Route<TAbi extends Abi = Abi> = Omit<DeployContractParameters<TAbi>, 'bytecode' | 'account' | 'abi'> & {
 	name: string;
+	account: string | EIP1193Account;
 	artifact: Artifact<TAbi>;
-} & GetConstructorArgs<TAbi>;
+};
 
 export type DeployViaRouterFunction = <TAbi extends Abi>(
 	name: string,

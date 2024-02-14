@@ -3,9 +3,9 @@
   "private": true,
   "version": "0.5.0",
   "devDependencies": {
-    "@changesets/cli": "^2.26.2",
+    "@changesets/cli": "^2.27.1",
     "set-defaults": "^0.0.2",
-    "syncpack": "^11.2.1"
+    "syncpack": "^12.3.0"
   },
   "volta": {
     "node": "18.7.0"
