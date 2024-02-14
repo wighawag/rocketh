@@ -39,7 +39,7 @@ declare module 'rocketh' {
 
 export type DeployFunction = <TAbi extends Abi, TChain extends Chain = Chain>(
 	name: string,
-	args: DeploymentConstruction<TAbi, TChain>,
+	args: DeploymentConstruction<TAbi>,
 	options?: DeployOptions
 ) => Promise<Deployment<TAbi>>;
 
@@ -50,11 +50,10 @@ export type ExecuteFunction = <
 		TAbi,
 		'nonpayable' | 'payable',
 		TFunctionName
-	>,
-	TChain extends Chain = Chain
+	>
 >(
 	name: string,
-	args: Omit<WriteContractParameters<TAbi, TFunctionName, TArgs, TChain>, 'address' | 'abi' | 'account' | 'nonce'> & {
+	args: Omit<WriteContractParameters<TAbi, TFunctionName, TArgs>, 'address' | 'abi' | 'account' | 'nonce' | 'chain'> & {
 		account: string;
 	}
 ) => Promise<EIP1193DATA>;
@@ -114,11 +113,13 @@ extendEnvironment((env: Environment) => {
 			TAbi,
 			'nonpayable' | 'payable',
 			TFunctionName
-		>,
-		TChain extends Chain = Chain
+		>
 	>(
 		name: string,
-		args: Omit<WriteContractParameters<TAbi, TFunctionName, TArgs, TChain>, 'address' | 'abi' | 'account' | 'nonce'> & {
+		args: Omit<
+			WriteContractParameters<TAbi, TFunctionName, TArgs>,
+			'address' | 'abi' | 'account' | 'nonce' | 'chain'
+		> & {
 			account: string;
 		}
 	) {
@@ -160,7 +161,7 @@ extendEnvironment((env: Environment) => {
 						to: deployment.address,
 						type: '0x2',
 						from: address,
-						chainId: `0x${parseInt(env.network.chainId).toString(16)}` as `0x${string}`,
+						chainId: `0x${env.network.chain.id.toString(16)}` as `0x${string}`,
 						data: calldata,
 						gas: viemArgs.gas && (`0x${viemArgs.gas.toString(16)}` as `0x${string}`),
 						// gasPrice: viemArgs.gasPrice && `0x${viemArgs.gasPrice.toString(16)}` as `0x${string}`,
@@ -180,7 +181,7 @@ extendEnvironment((env: Environment) => {
 						to: deployment.address,
 						type: '0x2',
 						from: address,
-						chainId: `0x${parseInt(env.network.chainId).toString(16)}` as `0x${string}`,
+						chainId: `0x${env.network.chain.id.toString(16)}` as `0x${string}`,
 						data: calldata,
 						gas: viemArgs.gas && (`0x${viemArgs.gas.toString(16)}` as `0x${string}`),
 						// gasPrice: viemArgs.gasPrice && `0x${viemArgs.gasPrice.toString(16)}` as `0x${string}`,
@@ -259,7 +260,7 @@ extendEnvironment((env: Environment) => {
 					to: deployment.address,
 					type: '0x2',
 					from: address,
-					chainId: `0x${parseInt(env.network.chainId).toString(16)}` as `0x${string}`,
+					chainId: `0x${env.network.chain.id.toString(16)}` as `0x${string}`,
 					data: calldata,
 					// value: `0x${viemArgs.value?.toString(16)}` as `0x${string}`,
 				},
@@ -276,9 +277,9 @@ extendEnvironment((env: Environment) => {
 		return parsed as DecodeFunctionResultReturnType<TAbi, TFunctionName>;
 	}
 
-	async function deploy<TAbi extends Abi, TChain extends Chain = Chain>(
+	async function deploy<TAbi extends Abi>(
 		name: string,
-		args: DeploymentConstruction<TAbi, TChain>,
+		args: DeploymentConstruction<TAbi>,
 		options?: DeployOptions
 	): Promise<Deployment<TAbi>> {
 		const skipIfAlreadyDeployed = options && 'skipIfAlreadyDeployed' in options && options.skipIfAlreadyDeployed;
@@ -360,7 +361,7 @@ extendEnvironment((env: Environment) => {
 
 		const signer = env.addressSigners[address];
 
-		const chainId = `0x${parseInt(env.network.chainId).toString(16)}` as `0x${string}`;
+		const chainId = `0x${env.network.chain.id.toString(16)}` as `0x${string}`;
 		const maxFeePerGas = viemArgs.maxFeePerGas && (`0x${viemArgs.maxFeePerGas.toString(16)}` as `0x${string}`);
 		const maxPriorityFeePerGas =
 			viemArgs.maxPriorityFeePerGas && (`0x${viemArgs.maxPriorityFeePerGas.toString(16)}` as `0x${string}`);

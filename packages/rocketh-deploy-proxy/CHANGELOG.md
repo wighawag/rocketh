@@ -1,5 +1,14 @@
 # rocketh-deploy-proxy
 
+## 2.0.1
+
+### Patch Changes
+
+- remove the need to pass chain
+- Updated dependencies
+  - rocketh-deploy@2.0.1
+  - rocketh@0.8.1
+
 ## 2.0.0
 
 ### Minor Changes

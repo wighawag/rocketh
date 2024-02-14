@@ -1,5 +1,12 @@
 # rocketh-export
 
+## 2.0.1
+
+### Patch Changes
+
+- Updated dependencies
+  - rocketh@0.8.1
+
 ## 2.0.0
 
 ### Minor Changes

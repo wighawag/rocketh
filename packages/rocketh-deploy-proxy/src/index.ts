@@ -23,12 +23,12 @@ export type ProxyDeployOptions = {
 
 export type ImplementationDeployer<TAbi extends Abi, TChain extends Chain> = (
 	name: string,
-	args: Omit<DeploymentConstruction<TAbi, TChain>, 'artifact'>
+	args: Omit<DeploymentConstruction<TAbi>, 'artifact'>
 ) => Promise<Deployment<TAbi>>;
 
 // TODO omit nonce ? // TODO omit chain ? same for rocketh-deploy
 export type ProxyEnhancedDeploymentConstruction<TAbi extends Abi, TChain extends Chain = Chain> = Omit<
-	DeploymentConstruction<TAbi, TChain>,
+	DeploymentConstruction<TAbi>,
 	'artifact'
 > & {
 	artifact: string | Artifact<TAbi> | ImplementationDeployer<TAbi, TChain>;
@@ -78,7 +78,7 @@ extendEnvironment((env: Environment) => {
 				? await args.artifact(implementationName, {...args})
 				: await env.deploy(implementationName, {
 						...args,
-				  } as DeploymentConstruction<TAbi, TChain>);
+				  } as DeploymentConstruction<TAbi>);
 
 		logger.info(`implementation at ${implementation.address}`, `${implementationName}`);
 
@@ -115,6 +115,7 @@ extendEnvironment((env: Environment) => {
 					account,
 					abi,
 					bytecode,
+					chain: env.network.chain,
 				} as unknown as DeployContractParameters<TAbi, TChain>; // TODO why casting necessary here
 
 				methodCallData = encodeFunctionData({abi: [method], functionName: method.name, args: argsToUse as any});

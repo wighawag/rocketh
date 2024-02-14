@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 
 import {TransactionReceipt, createPublicClient, custom} from 'viem';
+
 import {
 	AccountType,
 	Deployment,
@@ -33,6 +34,7 @@ import {
 import {ProvidedContext} from '../executor/types';
 import {ProgressIndicator, log, spin} from '../internal/logging';
 import {PendingExecution} from './types';
+import {getChain} from './utils/chains';
 
 type ReceiptResult = {receipt: EIP1193TransactionReceipt; latestBlockNumber: EIP1193QUANTITY};
 
@@ -232,7 +234,7 @@ export async function createEnvironment<
 		addressSigners: addressSigners,
 		artifacts: context.artifacts,
 		network: {
-			chainId,
+			chain: getChain(chainId),
 			name: context.network.name,
 			tags: context.network.tags,
 			provider,

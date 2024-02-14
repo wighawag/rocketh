@@ -240,7 +240,7 @@ export interface Environment<
 > {
 	config: ResolvedConfig;
 	network: {
-		chainId: string;
+		chain: Chain;
 		name: string;
 		tags: {[tag: string]: boolean};
 		provider: EIP1193ProviderWithoutEvents;
@@ -258,9 +258,9 @@ export interface Environment<
 	showProgress(message?: string): ProgressIndicator;
 }
 
-export type DeploymentConstruction<TAbi extends Abi, TChain extends Chain = Chain> = Omit<
-	DeployContractParameters<TAbi, TChain>,
-	'bytecode' | 'account' | 'abi'
+export type DeploymentConstruction<TAbi extends Abi> = Omit<
+	DeployContractParameters<TAbi>,
+	'bytecode' | 'account' | 'abi' | 'chain'
 > & {account: string | EIP1193Account; artifact: string | Artifact<TAbi>};
 
 export type PartialDeployment<TAbi extends Abi = Abi> = Artifact<TAbi> & {

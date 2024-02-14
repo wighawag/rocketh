@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.8.1
+
+### Patch Changes
+
+- remove the need to pass chain
+
 ## 0.8.0
 
 ### Minor Changes

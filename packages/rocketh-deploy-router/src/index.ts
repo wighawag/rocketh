@@ -15,7 +15,10 @@ const artifacts = (artifactsAsModule as any).default
 	? ((artifactsAsModule as any).default as typeof artifactsAsModule)
 	: artifactsAsModule;
 
-export type Route<TAbi extends Abi = Abi> = Omit<DeployContractParameters<TAbi>, 'bytecode' | 'account' | 'abi'> & {
+export type Route<TAbi extends Abi = Abi> = Omit<
+	DeployContractParameters<TAbi>,
+	'bytecode' | 'account' | 'abi' | 'chain'
+> & {
 	name: string;
 	account: string | EIP1193Account;
 	artifact: Artifact<TAbi>;
