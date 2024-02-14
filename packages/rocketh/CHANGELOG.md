@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.7.6
+
+### Patch Changes
+
+- type devdoc more leniant for older solc
+
 ## 0.7.5
 
 ### Patch Changes
