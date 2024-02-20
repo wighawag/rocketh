@@ -139,7 +139,7 @@ extendEnvironment((env: Environment) => {
 
 			logger.info(`saving as ${name}`);
 		} else {
-			const proxyDeployment = env.get(proxyName);
+			const proxyDeployment = env.get(proxyName) as Deployment<typeof proxyArtifact.abi>;
 			if (!proxyDeployment) {
 				throw new Error(`deployment for "${name}" exits but there is no proxy`);
 			}
@@ -160,14 +160,14 @@ extendEnvironment((env: Environment) => {
 				);
 
 				if (methodCallData) {
-					await env.execute<typeof proxyArtifact.abi, 'upgradeToAndCall'>(proxyName, {
+					await env.execute(proxyDeployment, {
 						account: address,
 						functionName: 'upgradeToAndCall',
 						args: [implementation.address, methodCallData],
 						value: 0n, // TODO
 					});
 				} else {
-					await env.execute<typeof proxyArtifact.abi, 'upgradeTo'>(proxyName, {
+					await env.execute(proxyDeployment, {
 						account: address,
 						functionName: 'upgradeTo',
 						args: [implementation.address],

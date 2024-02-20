@@ -1,5 +1,11 @@
 # rocketh-deploy
 
+## 2.1.0
+
+### Minor Changes
+
+- we use deployment as param for execute and read
+
 ## 2.0.2
 
 ### Patch Changes

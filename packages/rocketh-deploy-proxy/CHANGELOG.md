@@ -1,5 +1,16 @@
 # rocketh-deploy-proxy
 
+## 2.1.0
+
+### Minor Changes
+
+- we use deployment as param for execute and read
+
+### Patch Changes
+
+- Updated dependencies
+  - rocketh-deploy@2.1.0
+
 ## 2.0.2
 
 ### Patch Changes

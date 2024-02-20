@@ -34,6 +34,8 @@ declare module 'rocketh' {
 		deploy: DeployFunction;
 		execute: ExecuteFunction;
 		read: ReadFunction;
+		executeByName: ExecuteFunctionByName;
+		readByName: ReadFunctionByName;
 	}
 }
 
@@ -52,6 +54,21 @@ export type ExecuteFunction = <
 		TFunctionName
 	>
 >(
+	deployment: Deployment<TAbi>,
+	args: Omit<WriteContractParameters<TAbi, TFunctionName, TArgs>, 'address' | 'abi' | 'account' | 'nonce' | 'chain'> & {
+		account: string;
+	}
+) => Promise<EIP1193DATA>;
+
+export type ExecuteFunctionByName = <
+	TAbi extends Abi,
+	TFunctionName extends ContractFunctionName<TAbi, 'nonpayable' | 'payable'>,
+	TArgs extends ContractFunctionArgs<TAbi, 'nonpayable' | 'payable', TFunctionName> = ContractFunctionArgs<
+		TAbi,
+		'nonpayable' | 'payable',
+		TFunctionName
+	>
+>(
 	name: string,
 	args: Omit<WriteContractParameters<TAbi, TFunctionName, TArgs>, 'address' | 'abi' | 'account' | 'nonce' | 'chain'> & {
 		account: string;
@@ -59,6 +76,21 @@ export type ExecuteFunction = <
 ) => Promise<EIP1193DATA>;
 
 export type ReadFunction = <
+	TAbi extends Abi,
+	TFunctionName extends ContractFunctionName<TAbi, 'pure' | 'view'>,
+	TArgs extends ContractFunctionArgs<TAbi, 'pure' | 'view', TFunctionName> = ContractFunctionArgs<
+		TAbi,
+		'pure' | 'view',
+		TFunctionName
+	>
+>(
+	deployment: Deployment<TAbi>,
+	args: Omit<ReadContractParameters<TAbi, TFunctionName, TArgs>, 'address' | 'abi' | 'account' | 'nonce'> & {
+		account?: string;
+	}
+) => Promise<DecodeFunctionResultReturnType<TAbi, TFunctionName>>;
+
+export type ReadFunctionByName = <
 	TAbi extends Abi,
 	TFunctionName extends ContractFunctionName<TAbi, 'pure' | 'view'>,
 	TArgs extends ContractFunctionArgs<TAbi, 'pure' | 'view', TFunctionName> = ContractFunctionArgs<
@@ -115,7 +147,7 @@ extendEnvironment((env: Environment) => {
 			TFunctionName
 		>
 	>(
-		name: string,
+		deployment: Deployment<TAbi>,
 		args: Omit<
 			WriteContractParameters<TAbi, TFunctionName, TArgs>,
 			'address' | 'abi' | 'account' | 'nonce' | 'chain'
@@ -138,10 +170,6 @@ extendEnvironment((env: Environment) => {
 			}
 		}
 
-		const deployment = env.get(name);
-		if (!deployment) {
-			throw new Error(`no deployment named ${name}`);
-		}
 		const artifactToUse = deployment as unknown as Artifact<TAbi>;
 		const abi = artifactToUse.abi;
 		const calldata = encodeFunctionData<TAbi, TFunctionName>({
@@ -210,6 +238,31 @@ extendEnvironment((env: Environment) => {
 		return txHash;
 	}
 
+	async function executeByName<
+		TAbi extends Abi,
+		TFunctionName extends ContractFunctionName<TAbi, 'nonpayable' | 'payable'>,
+		TArgs extends ContractFunctionArgs<TAbi, 'nonpayable' | 'payable', TFunctionName> = ContractFunctionArgs<
+			TAbi,
+			'nonpayable' | 'payable',
+			TFunctionName
+		>
+	>(
+		name: string,
+		args: Omit<
+			WriteContractParameters<TAbi, TFunctionName, TArgs>,
+			'address' | 'abi' | 'account' | 'nonce' | 'chain'
+		> & {
+			account: string;
+		}
+	) {
+		const deployment = env.get(name) as Deployment<TAbi>;
+		if (!deployment) {
+			throw new Error(`no deployment named ${name}`);
+		}
+
+		return execute(deployment, args);
+	}
+
 	async function read<
 		TAbi extends Abi,
 		TFunctionName extends ContractFunctionName<TAbi, 'pure' | 'view'>,
@@ -219,7 +272,7 @@ extendEnvironment((env: Environment) => {
 			TFunctionName
 		>
 	>(
-		name: string,
+		deployment: Deployment<TAbi>,
 		args: Omit<ReadContractParameters<TAbi, TFunctionName, TArgs>, 'address' | 'abi' | 'account' | 'nonce'> & {
 			account?: string;
 		}
@@ -241,10 +294,6 @@ extendEnvironment((env: Environment) => {
 			}
 		}
 
-		const deployment = env.get(name);
-		if (!deployment) {
-			throw new Error(`no deployment named ${name}`);
-		}
 		const artifactToUse = deployment as unknown as Artifact<TAbi>;
 		const abi = artifactToUse.abi;
 		const calldata = encodeFunctionData<TAbi, TFunctionName>({
@@ -277,6 +326,27 @@ extendEnvironment((env: Environment) => {
 		return parsed as DecodeFunctionResultReturnType<TAbi, TFunctionName>;
 	}
 
+	async function readByName<
+		TAbi extends Abi,
+		TFunctionName extends ContractFunctionName<TAbi, 'pure' | 'view'>,
+		TArgs extends ContractFunctionArgs<TAbi, 'pure' | 'view', TFunctionName> = ContractFunctionArgs<
+			TAbi,
+			'pure' | 'view',
+			TFunctionName
+		>
+	>(
+		name: string,
+		args: Omit<ReadContractParameters<TAbi, TFunctionName, TArgs>, 'address' | 'abi' | 'account' | 'nonce'> & {
+			account?: string;
+		}
+	): Promise<DecodeFunctionResultReturnType<TAbi, TFunctionName>> {
+		const deployment = env.get(name) as Deployment<TAbi>;
+		if (!deployment) {
+			throw new Error(`no deployment named ${name}`);
+		}
+
+		return read(deployment, args);
+	}
 	async function deploy<TAbi extends Abi>(
 		name: string,
 		args: DeploymentConstruction<TAbi>,
@@ -475,6 +545,8 @@ extendEnvironment((env: Environment) => {
 
 	env.deploy = deploy;
 	env.execute = execute;
+	env.executeByName = executeByName;
 	env.read = read;
+	env.readByName = readByName;
 	return env;
 });
