@@ -1,5 +1,14 @@
 # rocketh-deploy-proxy
 
+## 3.0.3
+
+### Patch Changes
+
+- can reverse lookup named abi rom address
+- Updated dependencies
+  - rocketh@0.9.2
+  - rocketh-deploy@3.0.3
+
 ## 3.0.2
 
 ### Patch Changes

@@ -9,7 +9,7 @@ import {
 	EIP1193WalletProvider,
 } from 'eip-1193';
 import {Abi, Narrow, AbiError, AbiEvent, AbiConstructor, AbiFallback, AbiFunction, AbiReceive} from 'abitype';
-import type {DeployContractParameters} from 'viem';
+import type {Address, DeployContractParameters} from 'viem';
 import type {Chain} from 'viem';
 import {ProgressIndicator} from '../internal/logging';
 
@@ -254,7 +254,9 @@ export interface Environment<
 	savePendingDeployment<TAbi extends Abi = Abi>(pendingDeployment: PendingDeployment<TAbi>): Promise<Deployment<TAbi>>;
 	savePendingExecution(pendingExecution: PendingExecution): Promise<EIP1193TransactionReceipt>;
 	get<TAbi extends Abi>(name: string): Deployment<TAbi>;
-	getOrNull<TAbi extends Abi>(name: string): Deployment<TAbi> | undefined;
+	getOrNull<TAbi extends Abi>(name: string): Deployment<TAbi> | null;
+	fromAddressToNamedABI<TAbi extends Abi>(address: Address): {mergedABI: TAbi; names: string[]};
+	fromAddressToNamedABIOrNull<TAbi extends Abi>(address: Address): {mergedABI: TAbi; names: string[]} | null;
 	showMessage(message: string): void;
 	showProgress(message?: string): ProgressIndicator;
 }

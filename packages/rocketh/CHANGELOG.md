@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.9.2
+
+### Patch Changes
+
+- can reverse lookup named abi rom address
+
 ## 0.9.1
 
 ### Patch Changes

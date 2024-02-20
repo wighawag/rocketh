@@ -4,6 +4,7 @@ import {TransactionReceipt, createPublicClient, custom} from 'viem';
 
 import {
 	AccountType,
+	Artifact,
 	Deployment,
 	Environment,
 	NamedSigner,
@@ -18,7 +19,7 @@ import {
 	UnresolvedUnknownNamedAccounts,
 } from './types';
 import {JSONRPCHTTPProvider} from 'eip-1193-jsonrpc-provider';
-import {Abi} from 'abitype';
+import {Abi, Address} from 'abitype';
 import {InternalEnvironment} from '../internal/types';
 import path from 'node:path';
 import {JSONToString, stringToJSON} from '../utils/json';
@@ -35,6 +36,7 @@ import {ProvidedContext} from '../executor/types';
 import {ProgressIndicator, log, spin} from '../internal/logging';
 import {PendingExecution} from './types';
 import {getChain} from './utils/chains';
+import {mergeArtifacts} from './utils/artifacts';
 
 type ReceiptResult = {receipt: EIP1193TransactionReceipt; latestBlockNumber: EIP1193QUANTITY};
 
@@ -280,8 +282,35 @@ export async function createEnvironment<
 		return deployment;
 	}
 
-	function getOrNull<TAbi extends Abi>(name: string): Deployment<TAbi> | undefined {
-		return deployments[name] as Deployment<TAbi> | undefined;
+	function getOrNull<TAbi extends Abi>(name: string): Deployment<TAbi> | null {
+		return (deployments[name] || null) as Deployment<TAbi> | null;
+	}
+
+	function fromAddressToNamedABIOrNull<TAbi extends Abi>(address: Address): {mergedABI: TAbi; names: string[]} | null {
+		let list: {name: string; artifact: Artifact<Abi>}[] = [];
+		for (const name of Object.keys(deployments)) {
+			const deployment = deployments[name];
+			if (deployment.address.toLowerCase() == address.toLowerCase()) {
+				list.push({name, artifact: deployment});
+			}
+		}
+		if (list.length === 0) {
+			return null;
+		}
+
+		const {mergedABI} = mergeArtifacts(list);
+		return {
+			mergedABI: mergedABI as unknown as TAbi,
+			names: list.map((v) => v.name),
+		};
+	}
+
+	function fromAddressToNamedABI<TAbi extends Abi>(address: Address): {mergedABI: TAbi; names: string[]} {
+		const n = fromAddressToNamedABIOrNull<TAbi>(address);
+		if (!n) {
+			throw new Error(`could not find artifact for address ${address}`);
+		}
+		return n;
 	}
 
 	async function save<TAbi extends Abi>(name: string, deployment: Deployment<TAbi>): Promise<Deployment<TAbi>> {
@@ -594,6 +623,8 @@ export async function createEnvironment<
 		savePendingExecution,
 		get,
 		getOrNull,
+		fromAddressToNamedABI,
+		fromAddressToNamedABIOrNull,
 		showMessage,
 		showProgress,
 	};

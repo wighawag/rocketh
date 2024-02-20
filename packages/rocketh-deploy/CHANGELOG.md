@@ -1,5 +1,12 @@
 # rocketh-deploy
 
+## 3.0.3
+
+### Patch Changes
+
+- Updated dependencies
+  - rocketh@0.9.2
+
 ## 3.0.2
 
 ### Patch Changes

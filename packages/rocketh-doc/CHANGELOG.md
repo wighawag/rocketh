@@ -1,5 +1,12 @@
 # rocketh-doc
 
+## 3.0.2
+
+### Patch Changes
+
+- Updated dependencies
+  - rocketh@0.9.2
+
 ## 3.0.1
 
 ### Patch Changes
