@@ -71,7 +71,7 @@ extendEnvironment((env: Environment) => {
 			}
 		}
 
-		const proxyArtifact = artifacts.EIP173Proxy;
+		const proxyArtifact = artifacts.ERC173Proxy;
 
 		const implementation =
 			typeof args.artifact === 'function'

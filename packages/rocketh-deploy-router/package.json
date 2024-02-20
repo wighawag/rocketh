@@ -1,6 +1,6 @@
 {
 	"name": "rocketh-deploy-router",
-	"version": "3.0.1",
+	"version": "3.0.2",
 	"description": "provide router based proxy deployment for rocketh",
 	"publishConfig": {
 		"access": "public"
@@ -21,11 +21,11 @@
 		"rocketh": "workspace:*"
 	},
 	"dependencies": {
-		"ethers": "^6.11.0",
+		"ethers": "^6.11.1",
 		"named-logs": "^0.2.2",
 		"rocketh-deploy": "workspace:*",
-		"solidity-proxy": "^0.2.4",
-		"viem": "^2.7.9"
+		"solidity-proxy": "^0.3.0",
+		"viem": "^2.7.11"
 	},
 	"scripts": {
 		"build": "rimraf dist && tsup src/index.ts --dts --format esm,cjs",

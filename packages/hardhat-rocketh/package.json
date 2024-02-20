@@ -1,6 +1,6 @@
 {
 	"name": "hardhat-rocketh",
-	"version": "3.0.0",
+	"version": "3.0.1",
 	"description": "rocketh plugin for hardhat",
 	"publishConfig": {
 		"access": "public"
@@ -8,7 +8,7 @@
 	"main": "dist/index.js",
 	"types": "dist/index.d.ts",
 	"devDependencies": {
-		"hardhat": "^2.19.5",
+		"hardhat": "^2.20.1",
 		"rimraf": "^5.0.5",
 		"rocketh": "workspace:*",
 		"tsup": "^8.0.2",

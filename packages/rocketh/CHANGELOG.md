@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.9.1
+
+### Patch Changes
+
+- use latest solidity-proxy
+
 ## 0.9.0
 
 ### Minor Changes

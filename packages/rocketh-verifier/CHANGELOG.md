@@ -1,5 +1,13 @@
 # rocketh-verifier
 
+## 0.8.4
+
+### Patch Changes
+
+- use latest solidity-proxy
+- Updated dependencies
+  - rocketh@0.9.1
+
 ## 0.8.3
 
 ### Patch Changes

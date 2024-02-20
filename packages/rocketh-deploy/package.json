@@ -1,6 +1,6 @@
 {
 	"name": "rocketh-deploy",
-	"version": "3.0.1",
+	"version": "3.0.2",
 	"description": "provide deploy function for rocketh",
 	"publishConfig": {
 		"access": "public"
@@ -22,7 +22,7 @@
 	},
 	"dependencies": {
 		"named-logs": "^0.2.2",
-		"viem": "^2.7.9"
+		"viem": "^2.7.11"
 	},
 	"scripts": {
 		"build": "rimraf dist && tsup src/index.ts --dts --format esm,cjs",

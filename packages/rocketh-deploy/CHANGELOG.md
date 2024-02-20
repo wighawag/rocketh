@@ -1,5 +1,13 @@
 # rocketh-deploy
 
+## 3.0.2
+
+### Patch Changes
+
+- use latest solidity-proxy
+- Updated dependencies
+  - rocketh@0.9.1
+
 ## 3.0.1
 
 ### Patch Changes
