@@ -1,5 +1,12 @@
 # rocketh-verifier
 
+## 0.8.3
+
+### Patch Changes
+
+- Updated dependencies
+  - rocketh@0.9.0
+
 ## 0.8.2
 
 ### Patch Changes

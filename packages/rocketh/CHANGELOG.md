@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.9.0
+
+### Minor Changes
+
+- get throw if deployment not found, add getOrNull
+
 ## 0.8.2
 
 ### Patch Changes

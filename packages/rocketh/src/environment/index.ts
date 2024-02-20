@@ -272,7 +272,15 @@ export async function createEnvironment<
 	// 	return '0x';
 	// }
 
-	function get<TAbi extends Abi>(name: string): Deployment<TAbi> | undefined {
+	function get<TAbi extends Abi>(name: string): Deployment<TAbi> {
+		const deployment = deployments[name] as Deployment<TAbi>;
+		if (!deployment) {
+			throw new Error(`no deployment named "${name}" found.`);
+		}
+		return deployment;
+	}
+
+	function getOrNull<TAbi extends Abi>(name: string): Deployment<TAbi> | undefined {
 		return deployments[name] as Deployment<TAbi> | undefined;
 	}
 
@@ -585,6 +593,7 @@ export async function createEnvironment<
 		savePendingDeployment,
 		savePendingExecution,
 		get,
+		getOrNull,
 		showMessage,
 		showProgress,
 	};

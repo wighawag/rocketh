@@ -253,7 +253,8 @@ export interface Environment<
 	save<TAbi extends Abi = Abi>(name: string, deployment: Deployment<TAbi>): Promise<Deployment<TAbi>>;
 	savePendingDeployment<TAbi extends Abi = Abi>(pendingDeployment: PendingDeployment<TAbi>): Promise<Deployment<TAbi>>;
 	savePendingExecution(pendingExecution: PendingExecution): Promise<EIP1193TransactionReceipt>;
-	get<TAbi extends Abi>(name: string): Deployment<TAbi> | undefined;
+	get<TAbi extends Abi>(name: string): Deployment<TAbi>;
+	getOrNull<TAbi extends Abi>(name: string): Deployment<TAbi> | undefined;
 	showMessage(message: string): void;
 	showProgress(message?: string): ProgressIndicator;
 }
