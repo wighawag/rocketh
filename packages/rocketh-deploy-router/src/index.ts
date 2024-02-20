@@ -202,7 +202,7 @@ extendEnvironment((env: Environment) => {
 
 		const sigMap = unorderedSigMap.sort();
 
-		let existingDeployment = env.get(name);
+		let existingDeployment = env.getOrNull(name);
 
 		const routeParams = {
 			fallbackImplementation,

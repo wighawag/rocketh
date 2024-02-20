@@ -139,7 +139,7 @@ extendEnvironment((env: Environment) => {
 
 			logger.info(`saving as ${name}`);
 		} else {
-			const proxyDeployment = env.get(proxyName) as Deployment<typeof proxyArtifact.abi>;
+			const proxyDeployment = env.getOrNull<typeof proxyArtifact.abi>(proxyName);
 			if (!proxyDeployment) {
 				throw new Error(`deployment for "${name}" exits but there is no proxy`);
 			}

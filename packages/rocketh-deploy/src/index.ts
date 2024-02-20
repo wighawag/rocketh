@@ -255,7 +255,7 @@ extendEnvironment((env: Environment) => {
 			account: string;
 		}
 	) {
-		const deployment = env.get(name) as Deployment<TAbi>;
+		const deployment = env.getOrNull<TAbi>(name);
 		if (!deployment) {
 			throw new Error(`no deployment named ${name}`);
 		}
@@ -340,7 +340,7 @@ extendEnvironment((env: Environment) => {
 			account?: string;
 		}
 	): Promise<DecodeFunctionResultReturnType<TAbi, TFunctionName>> {
-		const deployment = env.get(name) as Deployment<TAbi>;
+		const deployment = env.getOrNull<TAbi>(name);
 		if (!deployment) {
 			throw new Error(`no deployment named ${name}`);
 		}
@@ -359,7 +359,7 @@ extendEnvironment((env: Environment) => {
 			throw new Error(`conflicting options: "allwaysOverride" and "skipIfAlreadyDeployed"`);
 		}
 
-		const existingDeployment = env.get(name);
+		const existingDeployment = env.getOrNull(name);
 		if (existingDeployment && skipIfAlreadyDeployed) {
 			logger.info(`deployment for ${name} at ${existingDeployment.address}, skipIfAlreadyDeployed: true => we skip`);
 			return existingDeployment as Deployment<TAbi>;

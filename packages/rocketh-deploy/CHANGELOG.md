@@ -1,5 +1,11 @@
 # rocketh-deploy
 
+## 3.0.1
+
+### Patch Changes
+
+- fix
+
 ## 3.0.0
 
 ### Patch Changes
