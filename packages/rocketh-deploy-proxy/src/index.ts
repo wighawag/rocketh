@@ -95,7 +95,7 @@ extendEnvironment((env: Environment) => {
 				? artifactFromImplementation
 				: ((typeof artifact === 'string' ? env.artifacts[artifact] : artifact) as Artifact<TAbi>);
 
-		let existingDeployment = env.get<TAbi>(name);
+		let existingDeployment = env.getOrNull<TAbi>(name);
 
 		logger.info(`existingDeployment at ${existingDeployment?.address}`);
 
