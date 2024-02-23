@@ -1,5 +1,16 @@
 # hardhat-rocketh
 
+## 4.0.0
+
+### Minor Changes
+
+- read config always
+
+### Patch Changes
+
+- Updated dependencies
+  - rocketh@0.10.0
+
 ## 3.0.2
 
 ### Patch Changes

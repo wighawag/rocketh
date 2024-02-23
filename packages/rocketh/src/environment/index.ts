@@ -85,7 +85,9 @@ export async function createEnvironment<
 	providedContext: ProvidedContext<Artifacts, NamedAccounts>
 ): Promise<{internal: InternalEnvironment; external: Environment<Artifacts, NamedAccounts, Deployments>}> {
 	const provider =
-		'provider' in config ? config.provider : (new JSONRPCHTTPProvider(config.nodeUrl) as EIP1193ProviderWithoutEvents);
+		'provider' in config.network
+			? config.network.provider
+			: (new JSONRPCHTTPProvider(config.network.nodeUrl) as EIP1193ProviderWithoutEvents);
 
 	const transport = custom(provider);
 	const viemClient = createPublicClient({transport});
@@ -100,22 +102,30 @@ export async function createEnvironment<
 
 	let networkName: string;
 	let saveDeployments: boolean;
-	let tags: {[tag: string]: boolean} = {};
+	let networkTags: {[tag: string]: boolean} = {};
+	for (const networkTag of config.network.tags) {
+		networkTags[networkTag] = true;
+	}
+
 	if ('nodeUrl' in config) {
-		networkName = config.networkName;
+		networkName = config.network.name;
 		saveDeployments = true;
 	} else {
-		if (config.networkName) {
-			networkName = config.networkName;
+		if (config.network.name) {
+			networkName = config.network.name;
 		} else {
 			networkName = 'memory';
 		}
 		if (networkName === 'memory' || networkName === 'hardhat') {
-			tags['memory'] = true;
+			networkTags['memory'] = true;
 			saveDeployments = false;
 		} else {
 			saveDeployments = true;
 		}
+	}
+
+	if (config.saveDeployments !== undefined) {
+		saveDeployments = config.saveDeployments;
 	}
 
 	const resolvedAccounts: {[name: string]: ResolvedAccount} = {};
@@ -205,16 +215,26 @@ export async function createEnvironment<
 		artifacts: providedContext.artifacts as Artifacts,
 		network: {
 			name: networkName,
+			fork: config.network.fork,
 			saveDeployments,
-			tags,
+			tags: networkTags,
 		},
 	};
 
-	const {deployments} = loadDeployments(config.deployments, context.network.name, false, {
-		chainId,
-		genesisHash,
-		deleteDeploymentsIfDifferentGenesisHash: true,
-	});
+	// console.log(`context`, JSON.stringify(context.network, null, 2));
+
+	const {deployments} = loadDeployments(
+		config.deployments,
+		context.network.name,
+		false,
+		context.network.fork
+			? undefined
+			: {
+					chainId,
+					genesisHash,
+					deleteDeploymentsIfDifferentGenesisHash: true,
+			  }
+	);
 
 	const namedAccounts: {[name: string]: EIP1193Account} = {};
 	const namedSigners: {[name: string]: NamedSigner} = {};

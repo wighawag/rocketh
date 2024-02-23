@@ -4,6 +4,7 @@ import {run} from '.';
 import {Command} from 'commander';
 import pkg from '../package.json';
 import {ConfigOptions} from 'rocketh';
+import {RunOptions} from '../dist';
 
 const commandName = pkg.name;
 
@@ -21,5 +22,5 @@ program
 
 const options = program.opts();
 options.exceptSuffix = options.exceptSuffix.split(',');
-const resolvedConfig = readAndResolveConfig(options as ConfigOptions, {ignoreMissingRPC: true});
-run(resolvedConfig, options);
+const resolvedConfig = readAndResolveConfig(options as ConfigOptions);
+run(resolvedConfig, options as RunOptions);

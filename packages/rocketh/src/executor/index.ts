@@ -13,6 +13,7 @@ import type {
 import {createEnvironment} from '../environment';
 import {DeployScriptFunction, DeployScriptModule, ProvidedContext} from './types';
 import {logger, setLogLevel, spin} from '../internal/logging';
+import {EIP1193GenericRequestProvider, EIP1193ProviderWithoutEvents} from 'eip-1193';
 
 if (!process.env['ROCKETH_SKIP_ESBUILD']) {
 	require('esbuild-register/dist/node').register();
@@ -39,28 +40,70 @@ export function execute<
 	return scriptModule as unknown as DeployScriptModule<Artifacts, NamedAccounts, ArgumentsType, Deployments>;
 }
 
-export type ConfigOptions = {network: string; deployments?: string; scripts?: string; tags?: string};
+export type ConfigOptions = {
+	network?: string | {fork: string};
+	deployments?: string;
+	scripts?: string;
+	tags?: string;
+	logLevel?: number;
+	provider?: EIP1193ProviderWithoutEvents | EIP1193GenericRequestProvider;
+	ignoreMissingRPC?: boolean;
+	saveDeployments?: boolean;
+};
 
-export function readConfig(options: ConfigOptions, extra?: {ignoreMissingRPC?: boolean}): Config {
-	type Networks = {[name: string]: {rpcUrl: string}};
-	type ConfigFile = {networks: Networks};
+export function readConfig(options: ConfigOptions): Config {
+	type Networks = {[name: string]: {rpcUrl?: string; tags?: string[]}};
+	type ConfigFile = {networks: Networks; deployments?: string; scripts?: string};
 	let configFile: ConfigFile | undefined;
 	try {
 		const configString = fs.readFileSync('./rocketh.json', 'utf-8');
 		configFile = JSON.parse(configString);
 	} catch {}
 
-	let nodeUrl: string;
+	if (configFile) {
+		if (!options.deployments && configFile.deployments) {
+			options.deployments = configFile.deployments;
+		}
+		if (!options.scripts && configFile.scripts) {
+			options.scripts = configFile.scripts;
+		}
+	}
+
 	const fromEnv = process.env['ETH_NODE_URI_' + options.network];
-	if (typeof fromEnv === 'string') {
-		nodeUrl = fromEnv;
-	} else {
-		if (configFile) {
-			const network = configFile.networks && configFile.networks[options.network];
-			if (network) {
-				nodeUrl = network.rpcUrl;
+	const fork = typeof options.network !== 'string';
+	let networkName = 'memory';
+	if (options.network) {
+		if (typeof options.network === 'string') {
+			networkName = options.network;
+		} else if ('fork' in options.network) {
+			networkName = options.network.fork;
+		}
+	}
+
+	let networkTags: string[] = (configFile?.networks && configFile?.networks[networkName]?.tags) || [];
+	if (!options.provider) {
+		let nodeUrl: string;
+		if (typeof fromEnv === 'string') {
+			nodeUrl = fromEnv;
+		} else {
+			if (configFile) {
+				const network = configFile.networks && configFile.networks[networkName];
+				if (network && network.rpcUrl) {
+					nodeUrl = network.rpcUrl;
+				} else {
+					if (options?.ignoreMissingRPC) {
+						nodeUrl = '';
+					} else {
+						if (options.network === 'localhost') {
+							nodeUrl = 'http://127.0.0.1:8545';
+						} else {
+							logger.error(`network "${options.network}" is not configured. Please add it to the rocketh.json file`);
+							process.exit(1);
+						}
+					}
+				}
 			} else {
-				if (extra?.ignoreMissingRPC) {
+				if (options?.ignoreMissingRPC) {
 					nodeUrl = '';
 				} else {
 					if (options.network === 'localhost') {
@@ -71,40 +114,50 @@ export function readConfig(options: ConfigOptions, extra?: {ignoreMissingRPC?: b
 					}
 				}
 			}
-		} else {
-			if (extra?.ignoreMissingRPC) {
-				nodeUrl = '';
-			} else {
-				if (options.network === 'localhost') {
-					nodeUrl = 'http://127.0.0.1:8545';
-				} else {
-					logger.error(`network "${options.network}" is not configured. Please add it to the rocketh.json file`);
-					process.exit(1);
-				}
-			}
 		}
+		return {
+			network: {
+				nodeUrl,
+				name: networkName,
+				tags: networkTags,
+				fork,
+			},
+			deployments: options.deployments,
+			saveDeployments: options.saveDeployments,
+			scripts: options.scripts,
+			tags: typeof options.tags === 'undefined' ? undefined : options.tags.split(','),
+			logLevel: options.logLevel,
+		};
+	} else {
+		return {
+			network: {
+				provider: options.provider as EIP1193ProviderWithoutEvents,
+				name: networkName,
+				tags: networkTags,
+				fork,
+			},
+			deployments: options.deployments,
+			saveDeployments: options.saveDeployments,
+			scripts: options.scripts,
+			tags: typeof options.tags === 'undefined' ? undefined : options.tags.split(','),
+			logLevel: options.logLevel,
+		};
 	}
-
-	return {
-		nodeUrl,
-		networkName: options.network,
-		deployments: options.deployments,
-		scripts: options.scripts,
-		tags: typeof options.tags === 'undefined' ? undefined : options.tags.split(','),
-	};
 }
 
-export function readAndResolveConfig(options: ConfigOptions, extra?: {ignoreMissingRPC?: boolean}): ResolvedConfig {
-	return resolveConfig(readConfig(options, extra));
+export function readAndResolveConfig(options: ConfigOptions): ResolvedConfig {
+	return resolveConfig(readConfig(options));
 }
 
 export function resolveConfig(config: Config): ResolvedConfig {
 	const resolvedConfig: ResolvedConfig = {
 		...config,
-		networkName: config.networkName || 'memory',
+		network: config.network, // TODO default to || {name: 'memory'....}
 		deployments: config.deployments || 'deployments',
 		scripts: config.scripts || 'deploy',
 		tags: config.tags || [],
+		networkTags: config.networkTags || [],
+		saveDeployments: config.saveDeployments,
 	};
 	return resolvedConfig;
 }
@@ -112,8 +165,8 @@ export function resolveConfig(config: Config): ResolvedConfig {
 export async function loadEnvironment<
 	Artifacts extends UnknownArtifacts = UnknownArtifacts,
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts
->(config: Config, context: ProvidedContext<Artifacts, NamedAccounts>): Promise<Environment> {
-	const resolvedConfig = resolveConfig(config);
+>(options: ConfigOptions, context: ProvidedContext<Artifacts, NamedAccounts>): Promise<Environment> {
+	const resolvedConfig = readAndResolveConfig(options);
 	const {external, internal} = await createEnvironment(resolvedConfig, context);
 	return external;
 }
@@ -123,8 +176,10 @@ export async function loadAndExecuteDeployments<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	ArgumentsType = undefined,
 	Deployments extends UnknownDeployments = UnknownDeployments
->(config: Config, args?: ArgumentsType): Promise<Environment> {
-	const resolvedConfig = resolveConfig(config);
+>(options: ConfigOptions, args?: ArgumentsType): Promise<Environment> {
+	const resolvedConfig = readAndResolveConfig(options);
+	// console.log(JSON.stringify(options, null, 2));
+	// console.log(JSON.stringify(resolvedConfig, null, 2));
 	return executeDeployScripts<Artifacts, NamedAccounts, ArgumentsType, Deployments>(resolvedConfig, args);
 }
 

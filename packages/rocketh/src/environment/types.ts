@@ -209,29 +209,46 @@ export type Context<
 	artifacts: Artifacts;
 };
 
-type BaseConfig = {
-	networkName?: string;
+type NetworkConfigBase = {
+	name: string;
+	tags: string[];
+	fork?: boolean;
+};
+type NetworkConfigForJSONRPC = NetworkConfigBase & {
+	nodeUrl: string;
+};
+
+type NetworkConfigForEIP1193Provider = NetworkConfigBase & {
+	provider: EIP1193ProviderWithoutEvents;
+};
+
+export type NetworkConfig = NetworkConfigForJSONRPC | NetworkConfigForEIP1193Provider;
+
+export type Config = {
+	network: NetworkConfig;
+	networkTags?: string[];
 	scripts?: string;
 	deployments?: string;
+	saveDeployments?: boolean;
 
 	tags?: string[];
+
 	logLevel?: number;
 	// TODO
 	gasPricing?: {};
 };
 
-type ConfigForJSONRPC = BaseConfig & {
-	networkName: string;
-	nodeUrl: string;
+export type ResolvedConfig = Config & {
+	deployments: string;
+	scripts: string;
+	tags: string[];
+	network: {
+		name: string;
+		tags: string[];
+		fork?: boolean;
+	};
+	saveDeployments?: boolean;
 };
-
-type ConfigForEIP1193Provider = BaseConfig & {
-	provider: EIP1193ProviderWithoutEvents;
-};
-
-export type Config = ConfigForJSONRPC | ConfigForEIP1193Provider;
-
-export type ResolvedConfig = Config & {deployments: string; scripts: string; tags: string[]; networkName: string};
 
 export interface Environment<
 	Artifacts extends UnknownArtifacts = UnknownArtifacts,

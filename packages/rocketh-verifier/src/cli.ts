@@ -25,7 +25,7 @@ program
 	.option('--endpoint <value>', 'endpoint to connect to')
 	.action((options: {endpoint?: string}) => {
 		const programOptions = program.opts() as ConfigOptions;
-		const resolvedConfig = readAndResolveConfig(programOptions, {ignoreMissingRPC: true});
+		const resolvedConfig = readAndResolveConfig({...programOptions, ignoreMissingRPC: true});
 		run(resolvedConfig, {
 			verifier: {type: 'etherscan', apiKey: process.env['ETHERSCAN_API_KEY'], endpoint: options.endpoint},
 		});
@@ -37,7 +37,7 @@ program
 	.option('--endpoint <value>', 'endpoint to connect to')
 	.action((options: {endpoint?: string}) => {
 		const programOptions = program.opts() as ConfigOptions;
-		const resolvedConfig = readAndResolveConfig(programOptions, {ignoreMissingRPC: true});
+		const resolvedConfig = readAndResolveConfig({...programOptions, ignoreMissingRPC: true});
 		run(resolvedConfig, {verifier: {type: 'sourcify', endpoint: options.endpoint}});
 	});
 
@@ -48,7 +48,7 @@ program
 	// .option('--api <value>', 'api version (default to v2)')
 	.action((options: {endpoint?: string}) => {
 		const programOptions = program.opts() as ConfigOptions;
-		const resolvedConfig = readAndResolveConfig(programOptions, {ignoreMissingRPC: true});
+		const resolvedConfig = readAndResolveConfig({...programOptions, ignoreMissingRPC: true});
 		run(resolvedConfig, {verifier: {type: 'blockscout', endpoint: options.endpoint}});
 	});
 
@@ -58,7 +58,7 @@ program
 	.option('--out <value>', 'folder to write metadata into')
 	.action((options: {out?: string}) => {
 		const programOptions = program.opts() as ConfigOptions;
-		const resolvedConfig = readAndResolveConfig(programOptions, {ignoreMissingRPC: true});
+		const resolvedConfig = readAndResolveConfig({...programOptions, ignoreMissingRPC: true});
 		exportMetadata(resolvedConfig, {out: options.out || '_metadata'});
 	});
 

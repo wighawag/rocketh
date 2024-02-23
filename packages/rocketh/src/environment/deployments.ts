@@ -5,12 +5,12 @@ import {UnknownDeployments} from './types';
 
 export function loadDeployments(
 	deploymentsPath: string,
-	subPath: string,
+	networkName: string,
 	onlyABIAndAddress?: boolean,
 	expectedChain?: {chainId: string; genesisHash?: `0x${string}`; deleteDeploymentsIfDifferentGenesisHash?: boolean}
 ): {deployments: UnknownDeployments; chainId?: string; genesisHash?: `0x${string}`} {
 	const deploymentsFound: UnknownDeployments = {};
-	const deployPath = path.join(deploymentsPath, subPath);
+	const deployPath = path.join(deploymentsPath, networkName);
 
 	let filesStats;
 	try {
@@ -34,7 +34,7 @@ export function loadDeployments(
 				genesisHash = chainData.genesisHash;
 			} else {
 				throw new Error(
-					`A '.chain' or '.chainId' file is expected to be present in the deployment folder for network ${subPath}`
+					`A '.chain' or '.chainId' file is expected to be present in the deployment folder for network ${networkName}`
 				);
 			}
 		}

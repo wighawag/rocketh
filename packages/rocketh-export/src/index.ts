@@ -40,7 +40,7 @@ export async function run(
 		return;
 	}
 
-	const {deployments, chainId, genesisHash} = loadDeployments(config.deployments, config.networkName);
+	const {deployments, chainId, genesisHash} = loadDeployments(config.deployments, config.network.name);
 
 	if (!deployments || Object.keys(deployments).length === 0) {
 		console.log(`no deployments to export`);
@@ -48,7 +48,7 @@ export async function run(
 	}
 
 	if (!chainId) {
-		throw new Error(`no chainId found for ${config.networkName}`);
+		throw new Error(`no chainId found for ${config.network.name}`);
 	}
 
 	const exportData: ExportedDeployments = {
@@ -61,7 +61,7 @@ export async function run(
 			bytecode: options.includeBytecode ? d.bytecode : undefined,
 			startBlock: d.receipt?.blockNumber ? parseInt(d.receipt.blockNumber.slice(2), 16) : undefined,
 		})),
-		name: config.networkName,
+		name: config.network.name,
 	};
 
 	const js = typeof options.tojs === 'string' ? [options.tojs] : options.tojs || [];

@@ -1,5 +1,16 @@
 # rocketh-verifier
 
+## 0.9.0
+
+### Minor Changes
+
+- read config always
+
+### Patch Changes
+
+- Updated dependencies
+  - rocketh@0.10.0
+
 ## 0.8.5
 
 ### Patch Changes

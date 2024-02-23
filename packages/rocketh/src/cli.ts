@@ -1,6 +1,6 @@
 #! /usr/bin/env node
 import {loadEnv} from 'ldenv';
-import {loadAndExecuteDeployments, readConfig} from '.';
+import {ConfigOptions, loadAndExecuteDeployments, readConfig} from '.';
 import {Command} from 'commander';
 import pkg from '../package.json';
 
@@ -20,6 +20,5 @@ program
 	.parse(process.argv);
 
 const options = program.opts();
-const config = readConfig(options as any);
 
-loadAndExecuteDeployments({...config, logLevel: 1});
+loadAndExecuteDeployments({...(options as ConfigOptions), logLevel: 1});

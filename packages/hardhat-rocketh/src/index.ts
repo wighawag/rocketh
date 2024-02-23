@@ -5,7 +5,7 @@ import path from 'node:path';
 
 import {task, extendConfig} from 'hardhat/config';
 import {TASK_COMPILE} from 'hardhat/builtin-tasks/task-names';
-import {loadAndExecuteDeployments} from 'rocketh';
+import {ConfigOptions, loadAndExecuteDeployments} from 'rocketh';
 import {HardhatConfig, HardhatUserConfig} from 'hardhat/types';
 import {ArtifactGenerationConfig} from './type-extensions';
 
@@ -78,9 +78,11 @@ extendConfig((config: HardhatConfig, userConfig: Readonly<HardhatUserConfig>) =>
 
 task('deploy', 'Deploy contracts').setAction(async (args, hre) => {
 	await loadAndExecuteDeployments({
-		provider: hre.network.provider as unknown as any,
-		networkName: hre.network.name,
+		...(args as ConfigOptions),
 		logLevel: 1,
+		provider: hre.network.provider as unknown as any,
+		network: process.env.HARDHAT_FORK ? {fork: process.env.HARDHAT_FORK} : hre.network.name,
+		saveDeployments: process.env.HARDHAT_FORK ? false : undefined,
 	});
 });
 

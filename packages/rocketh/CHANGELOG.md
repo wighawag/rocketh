@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.10.0
+
+### Minor Changes
+
+- read config always
+
 ## 0.9.2
 
 ### Patch Changes

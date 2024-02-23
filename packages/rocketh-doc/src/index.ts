@@ -33,9 +33,9 @@ function filter(options: RunOptions, name: string): boolean {
 }
 
 export async function run(config: ResolvedConfig, options: RunOptions) {
-	const {deployments, chainId} = loadDeployments(config.deployments, config.networkName);
+	const {deployments, chainId} = loadDeployments(config.deployments, config.network.name);
 	if (!chainId) {
-		throw new Error(`no chainId found for ${config.networkName}`);
+		throw new Error(`no chainId found for ${config.network.name}`);
 	}
 	generate({deployments}, options);
 }

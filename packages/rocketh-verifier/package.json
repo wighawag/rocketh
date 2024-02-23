@@ -1,6 +1,6 @@
 {
 	"name": "rocketh-verifier",
-	"version": "0.8.5",
+	"version": "0.9.0",
 	"description": "submit verification proof to verifier services (blockchain explorer, sourcify...",
 	"publishConfig": {
 		"access": "public"
