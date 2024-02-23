@@ -4,7 +4,7 @@ import {run} from '.';
 import {Command} from 'commander';
 import pkg from '../package.json';
 import {ConfigOptions} from 'rocketh';
-import {RunOptions} from '../dist';
+import {RunOptions} from '.';
 
 const commandName = pkg.name;
 
