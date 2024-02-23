@@ -14,6 +14,9 @@ import {createEnvironment} from '../environment';
 import {DeployScriptFunction, DeployScriptModule, ProvidedContext} from './types';
 import {logger, setLogLevel, spin} from '../internal/logging';
 import {EIP1193GenericRequestProvider, EIP1193ProviderWithoutEvents} from 'eip-1193';
+import {getRoughGasPriceEstimate} from '../utils/eth';
+import prompts from 'prompts';
+import {formatEther} from 'viem';
 
 if (!process.env['ROCKETH_SKIP_ESBUILD']) {
 	require('esbuild-register/dist/node').register();
@@ -49,6 +52,7 @@ export type ConfigOptions = {
 	provider?: EIP1193ProviderWithoutEvents | EIP1193GenericRequestProvider;
 	ignoreMissingRPC?: boolean;
 	saveDeployments?: boolean;
+	askBeforeProceeding?: boolean;
 };
 
 export function readConfig(options: ConfigOptions): Config {
@@ -127,6 +131,7 @@ export function readConfig(options: ConfigOptions): Config {
 			scripts: options.scripts,
 			tags: typeof options.tags === 'undefined' ? undefined : options.tags.split(','),
 			logLevel: options.logLevel,
+			askBeforeProceeding: options.askBeforeProceeding,
 		};
 	} else {
 		return {
@@ -141,6 +146,7 @@ export function readConfig(options: ConfigOptions): Config {
 			scripts: options.scripts,
 			tags: typeof options.tags === 'undefined' ? undefined : options.tags.split(','),
 			logLevel: options.logLevel,
+			askBeforeProceeding: options.askBeforeProceeding,
 		};
 	}
 }
@@ -322,6 +328,30 @@ export async function executeDeployScripts<
 	}
 	for (const scriptFilePath of scriptFilePaths) {
 		recurseDependencies(scriptFilePath);
+	}
+
+	if (config.askBeforeProceeding) {
+		const gasPriceEstimate = await getRoughGasPriceEstimate(external.network.provider);
+		const prompt = await prompts({
+			type: 'confirm',
+			name: 'proceed',
+			message: `gas price is currently in this range:
+slow: ${formatEther(gasPriceEstimate.slow.maxFeePerGas)} (priority: ${formatEther(
+				gasPriceEstimate.slow.maxPriorityFeePerGas
+			)})
+average: ${formatEther(gasPriceEstimate.average.maxFeePerGas)} (priority: ${formatEther(
+				gasPriceEstimate.average.maxPriorityFeePerGas
+			)})
+fast: ${formatEther(gasPriceEstimate.fast.maxFeePerGas)} (priority: ${formatEther(
+				gasPriceEstimate.fast.maxPriorityFeePerGas
+			)})
+ 
+Do you want to proceed (note that gas price can change for each tx)`,
+		});
+
+		if (!prompt.proceed) {
+			process.exit();
+		}
 	}
 
 	for (const deployScript of scriptsToRun.concat(scriptsToRunAtTheEnd)) {

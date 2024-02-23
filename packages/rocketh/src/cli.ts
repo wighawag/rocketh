@@ -21,4 +21,4 @@ program
 
 const options = program.opts();
 
-loadAndExecuteDeployments({...(options as ConfigOptions), logLevel: 1});
+loadAndExecuteDeployments({...(options as ConfigOptions), logLevel: 1, askBeforeProceeding: true});

@@ -1,5 +1,13 @@
 # hardhat-rocketh
 
+## 4.0.1
+
+### Patch Changes
+
+- ask before proceeding option
+- Updated dependencies
+  - rocketh@0.10.1
+
 ## 4.0.0
 
 ### Minor Changes

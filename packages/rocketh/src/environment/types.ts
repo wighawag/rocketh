@@ -232,6 +232,7 @@ export type Config = {
 	saveDeployments?: boolean;
 
 	tags?: string[];
+	askBeforeProceeding?: boolean;
 
 	logLevel?: number;
 	// TODO
@@ -248,6 +249,7 @@ export type ResolvedConfig = Config & {
 		fork?: boolean;
 	};
 	saveDeployments?: boolean;
+	askBeforeProceeding?: boolean;
 };
 
 export interface Environment<

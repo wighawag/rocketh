@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.10.1
+
+### Patch Changes
+
+- ask before proceeding option
+
 ## 0.10.0
 
 ### Minor Changes

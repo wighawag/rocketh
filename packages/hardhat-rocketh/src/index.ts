@@ -83,6 +83,7 @@ task('deploy', 'Deploy contracts').setAction(async (args, hre) => {
 		provider: hre.network.provider as unknown as any,
 		network: process.env.HARDHAT_FORK ? {fork: process.env.HARDHAT_FORK} : hre.network.name,
 		saveDeployments: process.env.HARDHAT_FORK ? false : undefined,
+		askBeforeProceeding: true,
 	});
 });
 

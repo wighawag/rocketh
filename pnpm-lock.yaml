@@ -65,6 +65,9 @@ importers:
       named-logs-console:
         specifier: ^0.3.0
         version: 0.3.0
+      prompts:
+        specifier: ^2.4.2
+        version: 2.4.2
       viem:
         specifier: ^2.7.11
         version: 2.7.11(typescript@5.3.3)
@@ -75,12 +78,15 @@ importers:
       '@types/node':
         specifier: ^20.11.19
         version: 20.11.19
+      '@types/prompts':
+        specifier: ^2.4.9
+        version: 2.4.9
       abitype:
         specifier: ^1.0.0
         version: 1.0.0(typescript@5.3.3)
       eip-1193:
-        specifier: ^0.4.7
-        version: 0.4.7
+        specifier: ^0.5.0
+        version: 0.5.0
       ipfs-gateway-emulator:
         specifier: 4.2.1-ipfs.2
         version: 4.2.1-ipfs.2
@@ -110,8 +116,8 @@ importers:
         specifier: ^1.0.0
         version: 1.0.0(typescript@5.3.3)
       eip-1193:
-        specifier: ^0.4.7
-        version: 0.4.7
+        specifier: ^0.5.0
+        version: 0.5.0
       rimraf:
         specifier: ^5.0.5
         version: 5.0.5
@@ -144,8 +150,8 @@ importers:
         specifier: ^1.0.0
         version: 1.0.0(typescript@5.3.3)
       eip-1193:
-        specifier: ^0.4.7
-        version: 0.4.7
+        specifier: ^0.5.0
+        version: 0.5.0
       rimraf:
         specifier: ^5.0.5
         version: 5.0.5
@@ -181,8 +187,8 @@ importers:
         specifier: ^1.0.0
         version: 1.0.0(typescript@5.3.3)
       eip-1193:
-        specifier: ^0.4.7
-        version: 0.4.7
+        specifier: ^0.5.0
+        version: 0.5.0
       rimraf:
         specifier: ^5.0.5
         version: 5.0.5
@@ -267,8 +273,8 @@ importers:
   packages/rocketh-signer:
     devDependencies:
       eip-1193:
-        specifier: ^0.4.7
-        version: 0.4.7
+        specifier: ^0.5.0
+        version: 0.5.0
       eip-1193-signer:
         specifier: ^0.0.1
         version: 0.0.1(typescript@5.3.3)
@@ -1862,6 +1868,13 @@ packages:
       '@types/node': 20.11.19
     dev: true
 
+  /@types/prompts@2.4.9:
+    resolution: {integrity: sha512-qTxFi6Buiu8+50/+3DGIWLHM6QuWsEKugJnnP6iv2Mc4ncxE4A/OJkjuVOA+5X0X1S/nq5VJRa8Lu+nwcvbrKA==}
+    dependencies:
+      '@types/node': 20.11.19
+      kleur: 3.0.3
+    dev: true
+
   /@types/qs@6.9.11:
     resolution: {integrity: sha512-oGk0gmhnEJK4Yyk+oI7EfXsLayXatCWPHary1MtcmbAifkobT9cM9yutG/hZKIseOU0MqbIwQ/u2nn/Gb+ltuQ==}
     dev: true
@@ -2831,8 +2844,8 @@ packages:
       - zod
     dev: true
 
-  /eip-1193@0.4.7:
-    resolution: {integrity: sha512-wpAtKtTeQCE1vubTNV6o8yQD3J/4CBZBvmW8nKBSOTnKi2jr6Dr+j7Xk9OHHCP48ugsE1E/03wDs6jYTBebz6w==}
+  /eip-1193@0.5.0:
+    resolution: {integrity: sha512-E800aS6F1CW+L4Ub+DWaAqJFe4C2TOfj2fAQNNk+XT6gN2oITyYgjfj5MFOrxM0kju9cF3j9kV2v8s22kAlYkA==}
     dev: true
 
   /elliptic@6.5.4:
@@ -4143,7 +4156,6 @@ packages:
   /kleur@3.0.3:
     resolution: {integrity: sha512-eTIzlVOSUR+JxdDFepEYcBMtZ9Qqdef+rnzWdRZuMbOywu5tO2w2N7rqjoANZ5k9vywhL6Br1VRjUIgTQx4E8w==}
     engines: {node: '>=6'}
-    dev: true
 
   /kleur@4.1.5:
     resolution: {integrity: sha512-o+NO+8WrRiQEE4/7nwRJhN1HWpVmJm511pBHUxPLtp0BUISzlBplORYSmTclCnJvQq2tKu/sgl3xVpkc7ZWuQQ==}
@@ -5149,7 +5161,6 @@ packages:
     dependencies:
       kleur: 3.0.3
       sisteransi: 1.0.5
-    dev: true
 
   /pseudomap@1.0.2:
     resolution: {integrity: sha512-b/YwNhb8lk1Zz2+bXXpS/LK9OisiZZ1SNsSLxN1x2OXVEhW2Ckr/7mWE5vrC1ZTiJlD9g19jWszTmJsB+oEpFQ==}
@@ -5635,7 +5646,6 @@ packages:
 
   /sisteransi@1.0.5:
     resolution: {integrity: sha512-bLGGlR1QxBcynn2d5YmDX4MGjlZvy2MRBDRNHLJ8VI6l6+9FUiyTFNJ0IveOSP0bcXgVDPRcfGqA0pjaqUpfVg==}
-    dev: true
 
   /slash@3.0.0:
     resolution: {integrity: sha512-g9Q1haeby36OSStwb4ntCGGGaKsaVSjQ68fBxoQcutl5fS1vuY18H3wSt3jFyFtrkx+Kz0V1G85A4MyAdDMi2Q==}
