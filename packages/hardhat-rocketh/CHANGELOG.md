@@ -1,5 +1,13 @@
 # hardhat-rocketh
 
+## 4.0.2
+
+### Patch Changes
+
+- report gas use
+- Updated dependencies
+  - rocketh@0.10.2
+
 ## 4.0.1
 
 ### Patch Changes

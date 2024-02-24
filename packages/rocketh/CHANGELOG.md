@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.10.2
+
+### Patch Changes
+
+- report gas use
+
 ## 0.10.1
 
 ### Patch Changes

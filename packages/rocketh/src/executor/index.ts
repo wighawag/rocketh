@@ -53,6 +53,7 @@ export type ConfigOptions = {
 	ignoreMissingRPC?: boolean;
 	saveDeployments?: boolean;
 	askBeforeProceeding?: boolean;
+	reportGasUse?: boolean;
 };
 
 export function readConfig(options: ConfigOptions): Config {
@@ -132,6 +133,7 @@ export function readConfig(options: ConfigOptions): Config {
 			tags: typeof options.tags === 'undefined' ? undefined : options.tags.split(','),
 			logLevel: options.logLevel,
 			askBeforeProceeding: options.askBeforeProceeding,
+			reportGasUse: options.reportGasUse,
 		};
 	} else {
 		return {
@@ -147,6 +149,7 @@ export function readConfig(options: ConfigOptions): Config {
 			tags: typeof options.tags === 'undefined' ? undefined : options.tags.split(','),
 			logLevel: options.logLevel,
 			askBeforeProceeding: options.askBeforeProceeding,
+			reportGasUse: options.reportGasUse,
 		};
 	}
 }
@@ -409,6 +412,22 @@ Do you want to proceed (note that gas price can change for each tx)`,
 				// }
 			}
 		}
+	}
+
+	if (config.reportGasUse) {
+		const provider = external.network.provider;
+		const transactionHashes = provider.transactionHashes;
+
+		let totalGasUsed = 0;
+		for (const hash of transactionHashes) {
+			const transactionReceipt = await provider.request({method: 'eth_getTransactionReceipt', params: [hash]});
+			if (transactionReceipt) {
+				const gasUsed = Number(transactionReceipt.gasUsed);
+				totalGasUsed += gasUsed;
+			}
+		}
+
+		console.log({totalGasUsed});
 	}
 
 	return external;

@@ -37,6 +37,7 @@ import {ProgressIndicator, log, spin} from '../internal/logging';
 import {PendingExecution} from './types';
 import {getChain} from './utils/chains';
 import {mergeArtifacts} from './utils/artifacts';
+import {TransactionHashTracker} from './providers/TransactionHashTracker';
 
 type ReceiptResult = {receipt: EIP1193TransactionReceipt; latestBlockNumber: EIP1193QUANTITY};
 
@@ -84,10 +85,12 @@ export async function createEnvironment<
 	config: ResolvedConfig,
 	providedContext: ProvidedContext<Artifacts, NamedAccounts>
 ): Promise<{internal: InternalEnvironment; external: Environment<Artifacts, NamedAccounts, Deployments>}> {
-	const provider =
+	const rawProvider =
 		'provider' in config.network
 			? config.network.provider
 			: (new JSONRPCHTTPProvider(config.network.nodeUrl) as EIP1193ProviderWithoutEvents);
+
+	const provider = new TransactionHashTracker(rawProvider);
 
 	const transport = custom(provider);
 	const viemClient = createPublicClient({transport});

@@ -84,6 +84,7 @@ task('deploy', 'Deploy contracts').setAction(async (args, hre) => {
 		network: process.env.HARDHAT_FORK ? {fork: process.env.HARDHAT_FORK} : hre.network.name,
 		saveDeployments: process.env.HARDHAT_FORK ? false : undefined,
 		askBeforeProceeding: true,
+		reportGasUse: true,
 	});
 });
 

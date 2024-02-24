@@ -12,6 +12,7 @@ import {Abi, Narrow, AbiError, AbiEvent, AbiConstructor, AbiFallback, AbiFunctio
 import type {Address, DeployContractParameters} from 'viem';
 import type {Chain} from 'viem';
 import {ProgressIndicator} from '../internal/logging';
+import {TransactionHashTracker} from './providers/TransactionHashTracker';
 
 export type {Abi, AbiError, AbiEvent, AbiConstructor, AbiFallback, AbiFunction, AbiReceive};
 export type Libraries = {readonly [libraryName: string]: EIP1193Account};
@@ -233,6 +234,7 @@ export type Config = {
 
 	tags?: string[];
 	askBeforeProceeding?: boolean;
+	reportGasUse?: boolean;
 
 	logLevel?: number;
 	// TODO
@@ -250,6 +252,7 @@ export type ResolvedConfig = Config & {
 	};
 	saveDeployments?: boolean;
 	askBeforeProceeding?: boolean;
+	reportGasUse?: boolean;
 };
 
 export interface Environment<
@@ -262,7 +265,7 @@ export interface Environment<
 		chain: Chain;
 		name: string;
 		tags: {[tag: string]: boolean};
-		provider: EIP1193ProviderWithoutEvents;
+		provider: TransactionHashTracker;
 	};
 	deployments: Deployments;
 	accounts: ResolvedNamedAccounts<NamedAccounts>;
