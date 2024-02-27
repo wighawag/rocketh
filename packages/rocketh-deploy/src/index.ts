@@ -25,7 +25,6 @@ import {
 } from 'viem';
 import {DeployContractParameters, encodeDeployData} from 'viem';
 import {logs} from 'named-logs';
-import {ContractConstructorArgs} from 'viem/_types/types/contract';
 
 const logger = logs('rocketh-deploy');
 
@@ -43,7 +42,7 @@ export type DeployFunction = <TAbi extends Abi, TChain extends Chain = Chain>(
 	name: string,
 	args: DeploymentConstruction<TAbi>,
 	options?: DeployOptions
-) => Promise<Deployment<TAbi>>;
+) => Promise<Deployment<TAbi> & {updated: boolean}>;
 
 export type ExecuteFunction = <
 	TAbi extends Abi,
@@ -351,7 +350,7 @@ extendEnvironment((env: Environment) => {
 		name: string,
 		args: DeploymentConstruction<TAbi>,
 		options?: DeployOptions
-	): Promise<Deployment<TAbi>> {
+	): Promise<Deployment<TAbi> & {updated: boolean}> {
 		const skipIfAlreadyDeployed = options && 'skipIfAlreadyDeployed' in options && options.skipIfAlreadyDeployed;
 		const allwaysOverride = options && 'allwaysOverride' in options && options.allwaysOverride;
 
@@ -362,7 +361,7 @@ extendEnvironment((env: Environment) => {
 		const existingDeployment = env.getOrNull(name);
 		if (existingDeployment && skipIfAlreadyDeployed) {
 			logger.info(`deployment for ${name} at ${existingDeployment.address}, skipIfAlreadyDeployed: true => we skip`);
-			return existingDeployment as Deployment<TAbi>;
+			return {...(existingDeployment as Deployment<TAbi>), updated: false};
 		}
 
 		const {account, artifact, ...viemArgs} = args;
@@ -410,7 +409,7 @@ extendEnvironment((env: Environment) => {
 			const previousBytecodeWithoutCBOR = previousBytecode.slice(0, -cborLength * 2);
 			const newBytecodeWithoutCBOR = bytecode.slice(0, -cborLength * 2);
 			if (previousBytecodeWithoutCBOR === newBytecodeWithoutCBOR && previousArgsData === argsData) {
-				return existingDeployment as Deployment<TAbi>;
+				return {...(existingDeployment as Deployment<TAbi>), updated: false};
 			} else {
 				// logger.info(`-------------- WITHOUT CBOR---------------------`);
 				// logger.info(previousBytecodeWithoutCBOR);
@@ -520,10 +519,11 @@ extendEnvironment((env: Environment) => {
 
 			if (codeAlreadyDeployed !== '0x') {
 				env.showMessage(`contract was already deterministically deployed at ${expectedAddress}`);
-				return env.save(name, {
+				const deployment = await env.save(name, {
 					address: expectedAddress,
 					...partialDeployment,
 				});
+				return {...(deployment as Deployment<TAbi>), updated: true};
 			}
 
 			params[0].data = (salt + (bytecode.slice(2) || '')) as `0x${string}`;
@@ -540,7 +540,8 @@ extendEnvironment((env: Environment) => {
 			name,
 			// TODO we should have the nonce, except for wallet like metamask where it is not usre you get the nonce you start with
 		};
-		return env.savePendingDeployment(pendingDeployment);
+		const deployment = await env.savePendingDeployment(pendingDeployment);
+		return {...(deployment as Deployment<TAbi>), updated: true};
 	}
 
 	env.deploy = deploy;

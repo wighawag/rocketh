@@ -99,7 +99,7 @@ extendEnvironment((env: Environment) => {
 
 		logger.info(`router deployed at ${router.address}`);
 
-		if (!existingDeployment || existingDeployment.address.toLowerCase() !== router.address.toLowerCase()) {
+		if (!existingDeployment || router.updated) {
 			existingDeployment = await env.save(name, {
 				...router,
 				abi: mergedABI,
