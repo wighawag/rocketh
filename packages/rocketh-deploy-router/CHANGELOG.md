@@ -1,5 +1,14 @@
 # rocketh-deploy-proxy
 
+## 4.0.3
+
+### Patch Changes
+
+- router allow extra abi
+- Updated dependencies
+  - rocketh@0.10.3
+  - rocketh-deploy@4.0.3
+
 ## 4.0.2
 
 ### Patch Changes

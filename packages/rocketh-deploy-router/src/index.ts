@@ -39,11 +39,28 @@ extendEnvironment((env: Environment) => {
 	async function deployViaRouter<TAbi extends Abi>(
 		name: string,
 		args: Omit<DeploymentConstruction<typeof artifacts.Router10X60.abi>, 'artifact'>,
-		routes: Route<TAbi>[]
+		routes: Route<TAbi>[],
+		extraABIs?: Abi[]
 	): Promise<Deployment<TAbi>> {
 		const implementations: `0x${string}`[] = [];
 
-		const {sigJSMap, mergedABI, mergedDevDocs, mergedUserDocs} = mergeArtifacts(routes);
+		const namedAbis: {
+			name: string;
+			artifact: Partial<Artifact<Abi>> & {
+				abi: Abi;
+			};
+		}[] = [];
+		for (const route of routes) {
+			namedAbis.push(route);
+		}
+		if (extraABIs) {
+			for (let i = 0; i < extraABIs.length; i++) {
+				const extra = extraABIs[i];
+				namedAbis.push({name: `extra${i}`, artifact: {abi: extra}});
+			}
+		}
+
+		const {sigJSMap, mergedABI, mergedDevDocs, mergedUserDocs} = mergeArtifacts(namedAbis);
 		for (const route of routes) {
 			const deployedRoute = await env.deploy<Abi>(`${name}_Router_${route.name}_Route`, {
 				...args,

@@ -49,7 +49,7 @@ function mergeDoc(values: any, mergedDevDocs: any, field: string) {
 	}
 }
 
-export function mergeArtifacts(list: {name: string; artifact: Artifact<Abi>}[]) {
+export function mergeArtifacts(list: {name: string; artifact: Partial<Artifact<Abi>> & {abi: Abi}}[]) {
 	const mergedABI: CreateMutable<Abi> = [];
 	const added: Map<string, ArrayElement<Abi>> = new Map();
 	const mergedDevDocs: CreateMutable<DevDoc> = {kind: 'dev', version: 1, methods: {}};
