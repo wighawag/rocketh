@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.10.5
+
+### Patch Changes
+
+- fix
+
 ## 0.10.4
 
 ### Patch Changes

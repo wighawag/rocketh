@@ -179,46 +179,33 @@ extendEnvironment((env: Environment) => {
 
 		const signer = env.addressSigners[address];
 
+		const txParam: EIP1193TransactionData = {
+			to: deployment.address,
+			type: '0x2',
+			from: address,
+			chainId: `0x${env.network.chain.id.toString(16)}` as `0x${string}`,
+			data: calldata,
+			gas: viemArgs.gas && (`0x${viemArgs.gas.toString(16)}` as `0x${string}`),
+			// gasPrice: viemArgs.gasPrice && `0x${viemArgs.gasPrice.toString(16)}` as `0x${string}`,
+			maxFeePerGas: viemArgs.maxFeePerGas && (`0x${viemArgs.maxFeePerGas.toString(16)}` as `0x${string}`),
+			maxPriorityFeePerGas:
+				viemArgs.maxPriorityFeePerGas && (`0x${viemArgs.maxPriorityFeePerGas.toString(16)}` as `0x${string}`),
+			// nonce: viemArgs.nonce && (`0x${viemArgs.nonce.toString(16)}` as `0x${string}`),
+		};
+		if (viemArgs.value) {
+			txParam.value = `0x${viemArgs.value?.toString(16)}` as `0x${string}`;
+		}
+
 		let txHash: `0x${string}`;
 		if (signer.type === 'wallet' || signer.type === 'remote') {
 			txHash = await signer.signer.request({
 				method: 'eth_sendTransaction',
-				params: [
-					{
-						to: deployment.address,
-						type: '0x2',
-						from: address,
-						chainId: `0x${env.network.chain.id.toString(16)}` as `0x${string}`,
-						data: calldata,
-						gas: viemArgs.gas && (`0x${viemArgs.gas.toString(16)}` as `0x${string}`),
-						// gasPrice: viemArgs.gasPrice && `0x${viemArgs.gasPrice.toString(16)}` as `0x${string}`,
-						maxFeePerGas: viemArgs.maxFeePerGas && (`0x${viemArgs.maxFeePerGas.toString(16)}` as `0x${string}`),
-						maxPriorityFeePerGas:
-							viemArgs.maxPriorityFeePerGas && (`0x${viemArgs.maxPriorityFeePerGas.toString(16)}` as `0x${string}`),
-						value: `0x${viemArgs.value?.toString(16)}` as `0x${string}`,
-						// nonce: viemArgs.nonce && (`0x${viemArgs.nonce.toString(16)}` as `0x${string}`),
-					},
-				],
+				params: [txParam],
 			});
 		} else {
 			const rawTx = await signer.signer.request({
 				method: 'eth_signTransaction',
-				params: [
-					{
-						to: deployment.address,
-						type: '0x2',
-						from: address,
-						chainId: `0x${env.network.chain.id.toString(16)}` as `0x${string}`,
-						data: calldata,
-						gas: viemArgs.gas && (`0x${viemArgs.gas.toString(16)}` as `0x${string}`),
-						// gasPrice: viemArgs.gasPrice && `0x${viemArgs.gasPrice.toString(16)}` as `0x${string}`,
-						maxFeePerGas: viemArgs.maxFeePerGas && (`0x${viemArgs.maxFeePerGas.toString(16)}` as `0x${string}`),
-						maxPriorityFeePerGas:
-							viemArgs.maxPriorityFeePerGas && (`0x${viemArgs.maxPriorityFeePerGas.toString(16)}` as `0x${string}`),
-						value: `0x${viemArgs.value?.toString(16)}` as `0x${string}`,
-						// nonce: viemArgs.nonce && (`0x${viemArgs.nonce.toString(16)}` as `0x${string}`),
-					},
-				],
+				params: [txParam],
 			});
 
 			txHash = await env.network.provider.request({
