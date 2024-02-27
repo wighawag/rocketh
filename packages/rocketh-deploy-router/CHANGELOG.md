@@ -1,5 +1,11 @@
 # rocketh-deploy-proxy
 
+## 4.0.4
+
+### Patch Changes
+
+- forgot to add extraABIs
+
 ## 4.0.3
 
 ### Patch Changes

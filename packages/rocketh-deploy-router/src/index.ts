@@ -26,7 +26,8 @@ export type Route<TAbi extends Abi = Abi> = Omit<
 export type DeployViaRouterFunction = <TAbi extends Abi>(
 	name: string,
 	args: Omit<DeploymentConstruction<typeof artifacts.Router10X60.abi>, 'artifact'>,
-	routes: Route<TAbi>[]
+	routes: Route<TAbi>[],
+	extraABIs?: Abi[]
 ) => Promise<Deployment<TAbi>>;
 
 declare module 'rocketh' {
