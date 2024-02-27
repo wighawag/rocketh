@@ -195,7 +195,7 @@ extendEnvironment((env: Environment) => {
 						maxFeePerGas: viemArgs.maxFeePerGas && (`0x${viemArgs.maxFeePerGas.toString(16)}` as `0x${string}`),
 						maxPriorityFeePerGas:
 							viemArgs.maxPriorityFeePerGas && (`0x${viemArgs.maxPriorityFeePerGas.toString(16)}` as `0x${string}`),
-						// value: `0x${viemArgs.value?.toString(16)}` as `0x${string}`,
+						value: `0x${viemArgs.value?.toString(16)}` as `0x${string}`,
 						// nonce: viemArgs.nonce && (`0x${viemArgs.nonce.toString(16)}` as `0x${string}`),
 					},
 				],
@@ -215,7 +215,7 @@ extendEnvironment((env: Environment) => {
 						maxFeePerGas: viemArgs.maxFeePerGas && (`0x${viemArgs.maxFeePerGas.toString(16)}` as `0x${string}`),
 						maxPriorityFeePerGas:
 							viemArgs.maxPriorityFeePerGas && (`0x${viemArgs.maxPriorityFeePerGas.toString(16)}` as `0x${string}`),
-						// value: `0x${viemArgs.value?.toString(16)}` as `0x${string}`,
+						value: `0x${viemArgs.value?.toString(16)}` as `0x${string}`,
 						// nonce: viemArgs.nonce && (`0x${viemArgs.nonce.toString(16)}` as `0x${string}`),
 					},
 				],
