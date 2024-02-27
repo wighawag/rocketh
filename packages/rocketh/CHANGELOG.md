@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.10.7
+
+### Patch Changes
+
+- export eth utils like getGasPriceEstimate
+
 ## 0.10.6
 
 ### Patch Changes
