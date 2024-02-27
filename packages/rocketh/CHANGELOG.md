@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.10.6
+
+### Patch Changes
+
+- add info about network
+
 ## 0.10.5
 
 ### Patch Changes

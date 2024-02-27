@@ -334,7 +334,11 @@ export async function executeDeployScripts<
 	}
 
 	if (config.askBeforeProceeding) {
-		console.log(`Network: ${external.network.name}`);
+		console.log(
+			`Network: ${external.network.name} \n \t Chain: ${external.network.chain.name} \n \t Tags: ${Object.keys(
+				external.network.tags
+			).join("',")}`
+		);
 		const gasPriceEstimate = await getRoughGasPriceEstimate(external.network.provider);
 		const prompt = await prompts({
 			type: 'confirm',
