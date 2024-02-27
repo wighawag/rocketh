@@ -76,17 +76,20 @@ extendConfig((config: HardhatConfig, userConfig: Readonly<HardhatUserConfig>) =>
 	}
 });
 
-task('deploy', 'Deploy contracts').setAction(async (args, hre) => {
-	await loadAndExecuteDeployments({
-		...(args as ConfigOptions),
-		logLevel: 1,
-		provider: hre.network.provider as unknown as any,
-		network: process.env.HARDHAT_FORK ? {fork: process.env.HARDHAT_FORK} : hre.network.name,
-		saveDeployments: process.env.HARDHAT_FORK ? false : undefined,
-		askBeforeProceeding: true,
-		reportGasUse: true,
+task('deploy', 'Deploy contracts')
+	.addFlag('skipGasReport', 'if set, skip gas report')
+	.addFlag('skipPrompts', 'if set, skip any prompts')
+	.setAction(async (args, hre) => {
+		await loadAndExecuteDeployments({
+			...(args as ConfigOptions),
+			logLevel: 1,
+			provider: hre.network.provider as unknown as any,
+			network: process.env.HARDHAT_FORK ? {fork: process.env.HARDHAT_FORK} : hre.network.name,
+			saveDeployments: process.env.HARDHAT_FORK ? false : undefined,
+			askBeforeProceeding: args.skipPrompts ? false : true,
+			reportGasUse: args.skipGasReport ? false : true,
+		});
 	});
-});
 
 type FileTraversed = {
 	name: string;

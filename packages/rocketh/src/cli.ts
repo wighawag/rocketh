@@ -16,9 +16,18 @@ program
 	.option('-s, --scripts <value>', 'path the folder containing the deploy scripts to execute')
 	.option('-t, --tags <value>', 'comma separated list of tags to execute')
 	.option('-d, --deployments <value>', 'folder where deployments are saved')
+	.option('--skip-gas-report', 'if set skip gas report')
+	.option('--skip-prompts', 'if set skip any prompts')
 	.requiredOption('-n, --network <value>', 'network context to use')
 	.parse(process.argv);
 
 const options = program.opts();
 
-loadAndExecuteDeployments({...(options as ConfigOptions), logLevel: 1, askBeforeProceeding: true, reportGasUse: true});
+console.log(options);
+
+loadAndExecuteDeployments({
+	...(options as ConfigOptions),
+	logLevel: 1,
+	askBeforeProceeding: options.skipPrompts ? false : true,
+	reportGasUse: options.skipGasReport ? false : true,
+});

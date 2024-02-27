@@ -1,5 +1,12 @@
 # rocketh-deploy
 
+## 4.0.6
+
+### Patch Changes
+
+- Updated dependencies
+  - rocketh@0.10.4
+
 ## 4.0.5
 
 ### Patch Changes
