@@ -260,6 +260,9 @@ importers:
       abitype:
         specifier: ^1.0.0
         version: 1.0.0(typescript@5.3.3)
+      eip-1193:
+        specifier: ^0.5.0
+        version: 0.5.0
       rimraf:
         specifier: ^5.0.5
         version: 5.0.5

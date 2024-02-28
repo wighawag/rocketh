@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.10.8
+
+### Patch Changes
+
+- add ancient8 to chains + export info via rocketh-export
+
 ## 0.10.7
 
 ### Patch Changes

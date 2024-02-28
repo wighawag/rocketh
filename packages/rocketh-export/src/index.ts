@@ -1,8 +1,8 @@
-import {Abi} from 'abitype';
+import {Abi, Address} from 'abitype';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import {Deployment, ResolvedConfig, loadDeployments} from 'rocketh';
+import {Deployment, ResolvedConfig, chainTypes, getChain, loadDeployments} from 'rocketh';
 
 export interface ContractExport {
 	address: string;
@@ -10,9 +10,98 @@ export interface ContractExport {
 	// linkedData?: any; TODO
 }
 
+type ChainBlockExplorer = {
+	name: string;
+	url: string;
+	apiUrl?: string | undefined;
+};
+type ChainContract = {
+	address: Address;
+	blockCreated?: number | undefined;
+};
+
+type ChainNativeCurrency = {
+	name: string;
+	/** 2-6 characters long */
+	symbol: string;
+	decimals: number;
+};
+
+type ChainRpcUrls = {
+	http: readonly string[];
+	webSocket?: readonly string[] | undefined;
+};
+
+/**
+ * @description Combines members of an intersection into a readable type.
+ *
+ * @see {@link https://twitter.com/mattpocockuk/status/1622730173446557697?s=20&t=NdpAcmEFXY01xkqU3KO0Mg}
+ * @example
+ * Prettify<{ a: string } & { b: string } & { c: number, d: bigint }>
+ * => { a: string, b: string, c: number, d: bigint }
+ */
+type Prettify<T> = {
+	[K in keyof T]: T[K];
+} & {};
+
+export type ChainInfo = {
+	/** ID in number form */
+	id: number;
+	/** Human-readable name */
+	name: string;
+	/** Collection of block explorers */
+	blockExplorers?:
+		| {
+				[key: string]: ChainBlockExplorer;
+				default: ChainBlockExplorer;
+		  }
+		| undefined;
+	/** Collection of contracts */
+	contracts?:
+		| Prettify<
+				{
+					[key: string]: ChainContract | {[sourceId: number]: ChainContract | undefined} | undefined;
+				} & {
+					ensRegistry?: ChainContract | undefined;
+					ensUniversalResolver?: ChainContract | undefined;
+					multicall3?: ChainContract | undefined;
+				}
+		  >
+		| undefined;
+	/** Currency used by chain */
+	nativeCurrency: ChainNativeCurrency;
+	/** Collection of RPC endpoints */
+	rpcUrls: {
+		[key: string]: ChainRpcUrls;
+		default: ChainRpcUrls;
+	};
+	/** Source Chain ID (ie. the L1 chain) */
+	sourceId?: string | undefined;
+	/** Flag for test networks */
+	testnet?: boolean | undefined;
+
+	chainType: 'zksync' | 'op-stack' | 'celo' | 'default';
+
+	// this will bring in the following when reconstructed from the data above
+
+	// /** Custom chain data. */
+	// custom?: any;
+
+	// /**
+	//  * Modifies how chain data structures (ie. Blocks, Transactions, etc)
+	//  * are formatted & typed.
+	//  */
+	// formatters?: any | undefined;
+	// /** Modifies how data (ie. Transactions) is serialized. */
+	// serializers?: any | undefined;
+	// /** Modifies how fees are derived. */
+	// fees?: any | undefined;
+};
+
 export type ExportedDeployments = {
 	chainId: string;
 	genesisHash?: string;
+	chainInfo: ChainInfo;
 	name: string;
 	contracts: {[name: string]: ContractExport};
 };
@@ -51,9 +140,24 @@ export async function run(
 		throw new Error(`no chainId found for ${config.network.name}`);
 	}
 
+	const chain = getChain(chainId);
+
+	const chainInfo: ChainInfo = {
+		id: chain.id,
+		name: chain.name,
+		nativeCurrency: chain.nativeCurrency,
+		rpcUrls: chain.rpcUrls,
+		blockExplorers: chain.blockExplorers,
+		chainType: chainTypes[chainId] || 'default',
+		contracts: chain.contracts,
+		sourceId: chain.sourceId?.toString(),
+		testnet: chain.testnet,
+	};
+
 	const exportData: ExportedDeployments = {
 		chainId,
 		genesisHash,
+		chainInfo,
 		contracts: objectMap<Deployment<Abi>, ContractExport>(deployments, (d) => ({
 			abi: d.abi,
 			address: d.address,
