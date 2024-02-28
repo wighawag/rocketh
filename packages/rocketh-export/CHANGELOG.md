@@ -1,5 +1,11 @@
 # rocketh-export
 
+## 4.0.9
+
+### Patch Changes
+
+- chainInfo sourceId as viem: a number
+
 ## 4.0.8
 
 ### Patch Changes
