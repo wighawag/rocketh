@@ -77,6 +77,7 @@ extendEnvironment((env: Environment) => {
 				? await params.artifact(implementationName, {...params})
 				: await env.deploy(implementationName, {
 						...viemArgs,
+						artifact,
 						account: address,
 				  } as DeploymentConstruction<TAbi>);
 
