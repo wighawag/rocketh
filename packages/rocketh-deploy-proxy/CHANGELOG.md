@@ -1,5 +1,11 @@
 # rocketh-deploy-proxy
 
+## 4.0.12
+
+### Patch Changes
+
+- bf18849: fix
+
 ## 4.0.11
 
 ### Patch Changes
