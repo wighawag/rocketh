@@ -49,14 +49,13 @@ declare module 'rocketh' {
 extendEnvironment((env: Environment) => {
 	async function deployViaProxy<TAbi extends Abi, TChain extends Chain = Chain>(
 		name: string,
-		args: ProxyEnhancedDeploymentConstruction<TAbi, TChain>,
+		params: ProxyEnhancedDeploymentConstruction<TAbi, TChain>,
 		options?: ProxyDeployOptions
 	): Promise<Deployment<TAbi>> {
 		const proxyName = `${name}_Proxy`;
 		const implementationName = `${name}_Implementation`;
 
-		const {account, artifact, ...viemArgs} = args;
-
+		const {account, artifact, args, ...viemArgs} = params;
 		let address: `0x${string}`;
 		if (account.startsWith('0x')) {
 			address = account as `0x${string}`;
@@ -74,10 +73,11 @@ extendEnvironment((env: Environment) => {
 		const proxyArtifact = artifacts.ERC173Proxy;
 
 		const implementation =
-			typeof args.artifact === 'function'
-				? await args.artifact(implementationName, {...args})
+			typeof params.artifact === 'function'
+				? await params.artifact(implementationName, {...params})
 				: await env.deploy(implementationName, {
-						...args,
+						...viemArgs,
+						account: address,
 				  } as DeploymentConstruction<TAbi>);
 
 		logger.info(`implementation at ${implementation.address}`, `${implementationName}`);
@@ -91,7 +91,7 @@ extendEnvironment((env: Environment) => {
 
 		// TODO throw specific error if artifact not found
 		const artifactToUse =
-			typeof args.artifact === 'function'
+			typeof params.artifact === 'function'
 				? artifactFromImplementation
 				: ((typeof artifact === 'string' ? env.artifacts[artifact] : artifact) as Artifact<TAbi>);
 
@@ -101,32 +101,36 @@ extendEnvironment((env: Environment) => {
 
 		const owner = options?.owner || address;
 
-		let methodCallData: `0x${string}` | undefined;
+		let postUpgradeCalldata: `0x${string}` | undefined;
 		if (options?.execute) {
 			const method: AbiFunction | undefined = artifactToUse.abi.find(
 				(v) => v.type === 'function' && v.name === options.execute
 			) as AbiFunction;
 			if (method) {
-				// TODO better way to get args Data :D
-				const bytecode = artifactToUse.bytecode;
-				const abi = artifactToUse.abi;
-				const argsToUse: DeployContractParameters<TAbi, TChain> = {
+				postUpgradeCalldata = encodeFunctionData({
 					...viemArgs,
-					account,
-					abi,
-					bytecode,
-					chain: env.network.chain,
-				} as unknown as DeployContractParameters<TAbi, TChain>; // TODO why casting necessary here
-
-				methodCallData = encodeFunctionData({abi: [method], functionName: method.name, args: argsToUse as any});
+					args: args as unknown[],
+					account: address,
+					abi: [method],
+					functionName: method.name,
+				});
 			}
 		}
+		// let preUpgradeCalldata: `0x${string}` | undefined;
+		// if (options?.preExecute) {
+		// 	const method: AbiFunction | undefined = artifactToUse.abi.find(
+		// 		(v) => v.type === 'function' && v.name === options.preExecute
+		// 	) as AbiFunction;
+		// 	if (method) {
+		// 		preUpgradeCalldata = encodeFunctionData({...viemArgs, account, abi: [method], functionName: method.name});
+		// 	}
+		// }
 
 		if (!existingDeployment) {
 			const proxy = await env.deploy<typeof proxyArtifact.abi>(proxyName, {
-				...args,
+				...params,
 				artifact: proxyArtifact,
-				args: [implementation.address, owner, methodCallData ? methodCallData : '0x'], // TODO upgradeToAndCall argsData],
+				args: [implementation.address, owner, postUpgradeCalldata ? postUpgradeCalldata : '0x'],
 			});
 
 			logger.info(`proxy deployed at ${proxy.address}`);
@@ -159,11 +163,28 @@ extendEnvironment((env: Environment) => {
 					`different implementation old: ${currentImplementationAddress} new: ${implementation.address}, upgrade...`
 				);
 
-				if (methodCallData) {
+				// if (preUpgradeCalldata) {
+				// 	if (postUpgradeCalldata) {
+				// 		await env.execute(proxyDeployment, {
+				// 			account: address,
+				// 			functionName: 'callAndUpgradeToAndCall',
+				// 			args: [implementation.address, preUpgradeCalldata, postUpgradeCalldata],
+				// 			value: 0n, // TODO
+				// 		});
+				// 	} else {
+				// 		await env.execute(proxyDeployment, {
+				// 			account: address,
+				// 			functionName: 'callAndUpgradeToAndCall',
+				// 			args: [implementation.address, preUpgradeCalldata, '0x'],
+				// 			value: 0n, // TODO
+				// 		});
+				// 	}
+				// } else
+				if (postUpgradeCalldata) {
 					await env.execute(proxyDeployment, {
 						account: address,
 						functionName: 'upgradeToAndCall',
-						args: [implementation.address, methodCallData],
+						args: [implementation.address, postUpgradeCalldata],
 						value: 0n, // TODO
 					});
 				} else {

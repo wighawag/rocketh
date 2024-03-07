@@ -1,5 +1,11 @@
 # rocketh-deploy-proxy
 
+## 4.0.11
+
+### Patch Changes
+
+- fix postUpgradeCall
+
 ## 4.0.10
 
 ### Patch Changes
