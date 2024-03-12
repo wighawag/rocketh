@@ -1,5 +1,11 @@
 # rocketh-deploy-proxy
 
+## 4.0.12
+
+### Patch Changes
+
+- remove "updated" from saved deployment
+
 ## 4.0.11
 
 ### Patch Changes

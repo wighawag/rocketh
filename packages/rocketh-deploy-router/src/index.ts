@@ -100,8 +100,9 @@ extendEnvironment((env: Environment) => {
 		logger.info(`router deployed at ${router.address}`);
 
 		if (!existingDeployment || router.updated) {
+			const {updated, ...routerWithoutUpdated} = router;
 			existingDeployment = await env.save(name, {
-				...router,
+				...routerWithoutUpdated,
 				abi: mergedABI,
 				devdoc: mergedDevDocs,
 				userdoc: mergedUserDocs,
