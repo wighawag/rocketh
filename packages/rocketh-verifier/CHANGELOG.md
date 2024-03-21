@@ -1,5 +1,11 @@
 # rocketh-verifier
 
+## 0.9.9
+
+### Patch Changes
+
+- fix etherscan endpoint
+
 ## 0.9.8
 
 ### Patch Changes

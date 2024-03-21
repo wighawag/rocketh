@@ -167,10 +167,10 @@ export async function submitSourcesToEtherscan(
 	const etherscanApiKey = config.apiKey;
 	const all = env.deployments;
 	const networkName = env.networkName;
-	let host = config.endpoint;
-	if (!host) {
-		host = defaultEndpoints[env.chainId];
-		if (!host) {
+	let endpoint = config.endpoint;
+	if (!endpoint) {
+		endpoint = defaultEndpoints[env.chainId];
+		if (!endpoint) {
 			return logError(`Network with chainId: ${env.chainId} not supported. Please specify the endpoint manually.`);
 		}
 	}
@@ -179,7 +179,7 @@ export async function submitSourcesToEtherscan(
 		const deployment = all[name];
 		const {address, metadata: metadataString} = deployment;
 		const abiResponse = await fetch(
-			`${host}/api?module=contract&action=getabi&address=${address}&apikey=${etherscanApiKey}`
+			`${endpoint}?module=contract&action=getabi&address=${address}&apikey=${etherscanApiKey}`
 		);
 		const json = await abiResponse.json();
 		let contractABI;
@@ -322,7 +322,7 @@ export async function submitSourcesToEtherscan(
 				}
 			}
 		}
-		const submissionResponse = await fetch(`${host}`, {
+		const submissionResponse = await fetch(`${endpoint}`, {
 			method: 'POST',
 			headers: {'content-type': 'application/x-www-form-urlencoded'},
 			body: data,
@@ -349,7 +349,7 @@ export async function submitSourcesToEtherscan(
 		async function checkStatus(): Promise<string | undefined> {
 			// TODO while loop and delay :
 			const statusResponse = await fetch(
-				`${host}?apikey=${etherscanApiKey}&guid=${guid}&module=contract&action=checkverifystatus`
+				`${endpoint}?apikey=${etherscanApiKey}&guid=${guid}&module=contract&action=checkverifystatus`
 			);
 			const json = await statusResponse.json();
 
