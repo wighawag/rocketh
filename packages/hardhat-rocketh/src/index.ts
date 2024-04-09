@@ -5,8 +5,16 @@ import path from 'node:path';
 
 import {task, extendConfig} from 'hardhat/config';
 import {TASK_COMPILE} from 'hardhat/builtin-tasks/task-names';
-import {ConfigOptions, loadAndExecuteDeployments} from 'rocketh';
-import {HardhatConfig, HardhatUserConfig} from 'hardhat/types';
+import {
+	ConfigOptions,
+	Environment,
+	ProvidedContext,
+	UnknownArtifacts,
+	UnresolvedUnknownNamedAccounts,
+	loadAndExecuteDeployments,
+	loadEnvironment,
+} from 'rocketh';
+import {HardhatConfig, HardhatRuntimeEnvironment, HardhatUserConfig} from 'hardhat/types';
 import {ArtifactGenerationConfig} from './type-extensions';
 
 export * from './utils';
@@ -331,3 +339,16 @@ task(TASK_COMPILE).setAction(async (args, hre, runSuper): Promise<any> => {
 
 // TODO add docgen command ?
 // task("docgen").setAction(async (args, hre, runSuper): Promise<any> => {
+
+export function loadEnvironmentFromHardhat<
+	Artifacts extends UnknownArtifacts = UnknownArtifacts,
+	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts
+>(hre: HardhatRuntimeEnvironment, context: ProvidedContext<Artifacts, NamedAccounts>): Promise<Environment> {
+	return loadEnvironment(
+		{
+			provider: hre.network.provider as any, // TODO wrap so it gives the expected chainID even in fork
+			network: hre.network.name,
+		},
+		context
+	);
+}
