@@ -1,5 +1,12 @@
 # hardhat-rocketh
 
+## 4.0.9
+
+### Patch Changes
+
+- HARDHAT_FORK load correct env
+- 3a71b71: add loadEnvironmentFromHardhat
+
 ## 4.0.8
 
 ### Patch Changes

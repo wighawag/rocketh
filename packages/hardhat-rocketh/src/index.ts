@@ -347,7 +347,7 @@ export function loadEnvironmentFromHardhat<
 	return loadEnvironment(
 		{
 			provider: hre.network.provider as any, // TODO wrap so it gives the expected chainID even in fork
-			network: hre.network.name,
+			network: process.env.HARDHAT_FORK || hre.network.name,
 		},
 		context
 	);
