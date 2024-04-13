@@ -54,9 +54,7 @@ export type ExecuteFunction = <
 	>
 >(
 	deployment: Deployment<TAbi>,
-	args: Omit<WriteContractParameters<TAbi, TFunctionName, TArgs>, 'address' | 'abi' | 'account' | 'nonce' | 'chain'> & {
-		account: string;
-	}
+	args: ExecutionArgs<TAbi, TFunctionName, TArgs>
 ) => Promise<EIP1193DATA>;
 
 export type ExecuteFunctionByName = <
@@ -69,9 +67,7 @@ export type ExecuteFunctionByName = <
 	>
 >(
 	name: string,
-	args: Omit<WriteContractParameters<TAbi, TFunctionName, TArgs>, 'address' | 'abi' | 'account' | 'nonce' | 'chain'> & {
-		account: string;
-	}
+	args: ExecutionArgs<TAbi, TFunctionName, TArgs>
 ) => Promise<EIP1193DATA>;
 
 export type ReadFunction = <
@@ -84,9 +80,7 @@ export type ReadFunction = <
 	>
 >(
 	deployment: Deployment<TAbi>,
-	args: Omit<ReadContractParameters<TAbi, TFunctionName, TArgs>, 'address' | 'abi' | 'account' | 'nonce'> & {
-		account?: string;
-	}
+	args: ReadingArgs<TAbi, TFunctionName, TArgs>
 ) => Promise<DecodeFunctionResultReturnType<TAbi, TFunctionName>>;
 
 export type ReadFunctionByName = <
@@ -99,10 +93,32 @@ export type ReadFunctionByName = <
 	>
 >(
 	name: string,
-	args: Omit<ReadContractParameters<TAbi, TFunctionName, TArgs>, 'address' | 'abi' | 'account' | 'nonce'> & {
-		account?: string;
-	}
+	args: ReadingArgs<TAbi, TFunctionName, TArgs>
 ) => Promise<DecodeFunctionResultReturnType<TAbi, TFunctionName>>;
+
+export type ExecutionArgs<
+	TAbi extends Abi,
+	TFunctionName extends ContractFunctionName<TAbi, 'nonpayable' | 'payable'>,
+	TArgs extends ContractFunctionArgs<TAbi, 'nonpayable' | 'payable', TFunctionName> = ContractFunctionArgs<
+		TAbi,
+		'nonpayable' | 'payable',
+		TFunctionName
+	>
+> = Omit<WriteContractParameters<TAbi, TFunctionName, TArgs>, 'address' | 'abi' | 'account' | 'nonce' | 'chain'> & {
+	account: string;
+};
+
+export type ReadingArgs<
+	TAbi extends Abi,
+	TFunctionName extends ContractFunctionName<TAbi, 'pure' | 'view'>,
+	TArgs extends ContractFunctionArgs<TAbi, 'pure' | 'view', TFunctionName> = ContractFunctionArgs<
+		TAbi,
+		'pure' | 'view',
+		TFunctionName
+	>
+> = Omit<ReadContractParameters<TAbi, TFunctionName, TArgs>, 'address' | 'abi' | 'account' | 'nonce'> & {
+	account?: string;
+};
 
 export type DeployOptions = {linkedData?: any; deterministic?: boolean | `0x${string}`} & (
 	| {
@@ -145,15 +161,7 @@ extendEnvironment((env: Environment) => {
 			'nonpayable' | 'payable',
 			TFunctionName
 		>
-	>(
-		deployment: Deployment<TAbi>,
-		args: Omit<
-			WriteContractParameters<TAbi, TFunctionName, TArgs>,
-			'address' | 'abi' | 'account' | 'nonce' | 'chain'
-		> & {
-			account: string;
-		}
-	) {
+	>(deployment: Deployment<TAbi>, args: ExecutionArgs<TAbi, TFunctionName, TArgs>) {
 		const {account, ...viemArgs} = args;
 		let address: `0x${string}`;
 		if (account.startsWith('0x')) {
@@ -232,15 +240,7 @@ extendEnvironment((env: Environment) => {
 			'nonpayable' | 'payable',
 			TFunctionName
 		>
-	>(
-		name: string,
-		args: Omit<
-			WriteContractParameters<TAbi, TFunctionName, TArgs>,
-			'address' | 'abi' | 'account' | 'nonce' | 'chain'
-		> & {
-			account: string;
-		}
-	) {
+	>(name: string, args: ExecutionArgs<TAbi, TFunctionName, TArgs>) {
 		const deployment = env.getOrNull<TAbi>(name);
 		if (!deployment) {
 			throw new Error(`no deployment named ${name}`);
@@ -259,9 +259,7 @@ extendEnvironment((env: Environment) => {
 		>
 	>(
 		deployment: Deployment<TAbi>,
-		args: Omit<ReadContractParameters<TAbi, TFunctionName, TArgs>, 'address' | 'abi' | 'account' | 'nonce'> & {
-			account?: string;
-		}
+		args: ReadingArgs<TAbi, TFunctionName, TArgs>
 	): Promise<DecodeFunctionResultReturnType<TAbi, TFunctionName>> {
 		const {account, ...viemArgs} = args;
 		let address: `0x${string}` | undefined;
@@ -322,9 +320,7 @@ extendEnvironment((env: Environment) => {
 		>
 	>(
 		name: string,
-		args: Omit<ReadContractParameters<TAbi, TFunctionName, TArgs>, 'address' | 'abi' | 'account' | 'nonce'> & {
-			account?: string;
-		}
+		args: ReadingArgs<TAbi, TFunctionName, TArgs>
 	): Promise<DecodeFunctionResultReturnType<TAbi, TFunctionName>> {
 		const deployment = env.getOrNull<TAbi>(name);
 		if (!deployment) {

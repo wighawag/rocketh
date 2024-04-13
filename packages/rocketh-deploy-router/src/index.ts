@@ -1,6 +1,6 @@
 import {Abi} from 'abitype';
 import type {Artifact, DeploymentConstruction, Deployment, Environment, DevDoc, UserDoc} from 'rocketh';
-import 'rocketh-deploy';
+import '@rocketh/deploy';
 import {extendEnvironment, mergeArtifacts} from 'rocketh';
 import {DeployContractParameters} from 'viem';
 import artifactsAsModule from 'solidity-proxy/generated/artifacts';

@@ -1,35 +1,46 @@
 {
-	"name": "rocketh-doc",
-	"version": "4.0.8",
+	"name": "@rocketh/doc",
+	"version": "0.10.1",
 	"description": "can generate doc from rocketh deployments and provided template",
 	"publishConfig": {
 		"access": "public"
 	},
 	"type": "module",
-	"exports": "./dist/index.js",
+	"main": "dist/index.cjs",
+	"module": "dist/index.mjs",
 	"types": "dist/index.d.ts",
+	".": {
+		"require": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.cjs"
+		},
+		"import": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.mjs"
+		}
+	},
 	"bin": {
-		"rocketh-doc": "dist/cli.js"
+		"rocketh-doc": "dist/cli.cjs"
 	},
 	"devDependencies": {
-		"@types/fs-extra": "^11.0.4",
-		"@types/node": "^20.11.19",
+		"@types/node": "^20.12.7",
+		"pkgroll": "^2.0.2",
 		"rimraf": "^5.0.5",
 		"rocketh": "workspace:*",
-		"tsup": "^8.0.2",
-		"typescript": "^5.3.3"
+		"typescript": "^5.4.5"
 	},
 	"peerDependencies": {
 		"rocketh": "workspace:*"
 	},
 	"dependencies": {
+		"@types/fs-extra": "^11.0.4",
 		"commander": "^12.0.0",
 		"ethers": "^6.11.1",
 		"fs-extra": "^11.2.0",
 		"handlebars": "^4.7.8"
 	},
 	"scripts": {
-		"build": "rimraf dist && tsup --publicDir --entry src/index.ts --entry src/cli.ts --dts --format esm,cjs",
-		"dev": "rimraf dist && tsup --publicDir --entry src/index.ts --entry src/cli.ts --dts --format esm,cjs --watch"
+		"build": "rimraf dist && pkgroll --sourcemap",
+		"dev": "pkgroll --watch"
 	}
 }

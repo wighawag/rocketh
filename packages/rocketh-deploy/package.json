@@ -1,32 +1,42 @@
 {
-	"name": "rocketh-deploy",
-	"version": "4.0.10",
+	"name": "@rocketh/deploy",
+	"version": "0.10.1",
 	"description": "provide deploy function for rocketh",
 	"publishConfig": {
 		"access": "public"
 	},
 	"type": "module",
 	"main": "dist/index.cjs",
-	"module": "dist/index.js",
+	"module": "dist/index.mjs",
 	"types": "dist/index.d.ts",
+	".": {
+		"require": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.cjs"
+		},
+		"import": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.mjs"
+		}
+	},
 	"devDependencies": {
-		"abitype": "^1.0.0",
+		"abitype": "^1.0.2",
 		"eip-1193": "^0.5.0",
+		"pkgroll": "^2.0.2",
 		"rimraf": "^5.0.5",
 		"rocketh": "workspace:*",
-		"tsup": "^8.0.2",
-		"typescript": "^5.3.3"
+		"typescript": "^5.4.5"
 	},
 	"peerDependencies": {
 		"rocketh": "workspace:*"
 	},
 	"dependencies": {
-		"named-logs": "^0.2.2",
-		"viem": "^2.7.11"
+		"named-logs": "^0.2.4",
+		"viem": "^2.9.16"
 	},
 	"scripts": {
-		"build": "rimraf dist && tsup src/index.ts --dts --format esm,cjs",
-		"dev": "rimraf dist && tsup src/index.ts --dts --format esm,cjs --watch",
+		"build": "rimraf dist && pkgroll --sourcemap",
+		"dev": "pkgroll --watch",
 		"dev-no-reset": "tsup src/index.ts --dts --format esm,cjs --watch"
 	}
 }

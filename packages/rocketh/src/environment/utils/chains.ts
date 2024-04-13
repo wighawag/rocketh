@@ -1,6 +1,5 @@
 import type {Chain} from 'viem/chains';
 import chains from 'viem/chains';
-import * as extraChains from './extra-chains';
 
 export type ChainType = 'zksync' | 'op-stack' | 'celo' | 'default';
 
@@ -31,17 +30,6 @@ export const chainById: {[chainId: string]: Chain} = {};
 const allChains = (chains as any).default || chains;
 for (const key of Object.keys(allChains)) {
 	const chain = (allChains as any)[key] as Chain;
-	const chainId = chain.id.toString();
-	const specificChainType = chainTypesByNames[key];
-	if (specificChainType) {
-		chainTypes[chainId] = specificChainType;
-	}
-	chainById[chainId] = chain;
-}
-
-const moreChains = extraChains;
-for (const key of Object.keys(moreChains)) {
-	const chain = (moreChains as any)[key] as Chain;
 	const chainId = chain.id.toString();
 	const specificChainType = chainTypesByNames[key];
 	if (specificChainType) {

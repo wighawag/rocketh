@@ -15,9 +15,14 @@ import {loadDeployments} from 'rocketh';
 import Handlebars from 'handlebars';
 import path from 'path';
 import {Fragment, FunctionFragment} from 'ethers';
+import {dirname} from 'path';
+import {fileURLToPath} from 'url';
 
 import {DocumentationData, ErrorDoc, EventDoc, MethodDoc, ParamDoc, ReturnDoc} from './types';
+
 export * from './types';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export type RunOptions = {template?: string; output?: string; exceptSuffix?: string[]};
 

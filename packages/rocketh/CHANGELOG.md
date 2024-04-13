@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.10.9
+
+### Patch Changes
+
+- use pkgroll and @rocketh namespace
+
 ## 0.10.8
 
 ### Patch Changes

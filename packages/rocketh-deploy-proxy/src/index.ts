@@ -1,6 +1,6 @@
 import {Abi, AbiFunction} from 'abitype';
 import type {Artifact, DeploymentConstruction, Deployment, Environment} from 'rocketh';
-import 'rocketh-deploy';
+import '@rocketh/deploy';
 import type {EIP1193Account} from 'eip-1193';
 import {extendEnvironment} from 'rocketh';
 import {Chain, DeployContractParameters, encodeAbiParameters, encodeDeployData, encodeFunctionData} from 'viem';
