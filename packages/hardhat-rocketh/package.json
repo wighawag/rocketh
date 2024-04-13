@@ -1,6 +1,6 @@
 {
 	"name": "hardhat-rocketh",
-	"version": "4.0.10",
+	"version": "4.0.11",
 	"description": "rocketh plugin for hardhat",
 	"publishConfig": {
 		"access": "public"
@@ -30,6 +30,9 @@
 			}
 		}
 	},
+	"files": [
+		"dist"
+	],
 	"devDependencies": {
 		"@types/node": "^20.11.19",
 		"hardhat": "^2.20.1",
