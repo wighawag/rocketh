@@ -1,5 +1,11 @@
 # hardhat-rocketh
 
+## 4.0.10
+
+### Patch Changes
+
+- 2fae344: helpers for hardhat
+
 ## 4.0.9
 
 ### Patch Changes
