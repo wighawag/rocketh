@@ -293,6 +293,20 @@ export async function submitSourcesToEtherscan(
 		if (deployment.argsData) {
 			constructorArguments = deployment.argsData.slice(2);
 		} else {
+			// TODO ?
+			// logInfo(`no argsData found, falling back on args (hardhat-deploy v1)`);
+			// if ((deployment as any).args) {
+			// 	const constructorABI: {inputs: any[]} = deployment.abi.find(
+			// 	  (v) => v.type === 'constructor'
+			// 	);
+			// 	if (constructorABI) {
+			// 	  constructorArguements = encode
+			// 		.encode(constructor.inputs, deployment.args)
+			// 		.slice(2);
+			// 	}
+			//   } else {
+			// 	logInfo(`no args found, assuming empty constructor...`);
+			//   }
 			logInfo(`no args found, assuming empty constructor...`);
 		}
 
