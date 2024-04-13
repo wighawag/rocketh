@@ -339,16 +339,3 @@ task(TASK_COMPILE).setAction(async (args, hre, runSuper): Promise<any> => {
 
 // TODO add docgen command ?
 // task("docgen").setAction(async (args, hre, runSuper): Promise<any> => {
-
-export function loadEnvironmentFromHardhat<
-	Artifacts extends UnknownArtifacts = UnknownArtifacts,
-	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts
->(hre: HardhatRuntimeEnvironment, context: ProvidedContext<Artifacts, NamedAccounts>): Promise<Environment> {
-	return loadEnvironment(
-		{
-			provider: hre.network.provider as any, // TODO wrap so it gives the expected chainID even in fork
-			network: process.env.HARDHAT_FORK || hre.network.name,
-		},
-		context
-	);
-}

@@ -5,20 +5,44 @@
 	"publishConfig": {
 		"access": "public"
 	},
-	"main": "dist/index.js",
-	"types": "dist/index.d.ts",
+	"main": "./dist/index.cjs",
+	"module": "./dist/index.mjs",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"require": {
+				"types": "./dist/index.d.ts",
+				"default": "./dist/index.cjs"
+			},
+			"import": {
+				"types": "./dist/index.d.ts",
+				"default": "./dist/index.mjs"
+			}
+		},
+		"./helpers": {
+			"require": {
+				"types": "./dist/helpers.d.ts",
+				"default": "./dist/helpers.cjs"
+			},
+			"import": {
+				"types": "./dist/helpers.d.ts",
+				"default": "./dist/helpers.mjs"
+			}
+		}
+	},
 	"devDependencies": {
+		"@types/node": "^20.11.19",
 		"hardhat": "^2.20.1",
+		"pkgroll": "^2.0.2",
 		"rimraf": "^5.0.5",
 		"rocketh": "workspace:*",
-		"tsup": "^8.0.2",
 		"typescript": "^5.3.3"
 	},
 	"peerDependencies": {
 		"rocketh": "workspace:*"
 	},
 	"scripts": {
-		"build": "rimraf dist && tsup src/index.ts --dts --format cjs",
-		"dev": "rimraf dist && tsup src/index.ts --dts --format cjs --watch"
+		"build": "pkgroll --sourcemap",
+		"dev": "pkgroll --watch"
 	}
 }
