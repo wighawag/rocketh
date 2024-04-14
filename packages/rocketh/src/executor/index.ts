@@ -224,6 +224,7 @@ export async function executeDeployScripts<
 		});
 
 	let providedContext: ProvidedContext<Artifacts, NamedAccounts> | undefined = context;
+	const providedFromArguments = !!providedContext;
 
 	const scriptModuleByFilePath: {[filename: string]: DeployScriptModule<Artifacts, NamedAccounts, ArgumentsType>} = {};
 	const scriptPathBags: {[tag: string]: string[]} = {};
@@ -246,10 +247,12 @@ export async function executeDeployScripts<
 				}
 			}
 			scriptModuleByFilePath[scriptFilePath] = scriptModule;
-			if (providedContext && providedContext !== scriptModule.providedContext) {
-				throw new Error(`context between 2 scripts is different, please share the same across them`);
+			if (!providedFromArguments) {
+				if (providedContext && providedContext !== scriptModule.providedContext) {
+					throw new Error(`context between 2 scripts is different, please share the same across them`);
+				}
+				providedContext = scriptModule.providedContext as ProvidedContext<Artifacts, NamedAccounts>;
 			}
-			providedContext = scriptModule.providedContext as ProvidedContext<Artifacts, NamedAccounts>;
 		} catch (e) {
 			logger.error(`could not import ${filepath}`);
 			throw e;

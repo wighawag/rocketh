@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.10.11
+
+### Patch Changes
+
+- speicfy context from executor
+
 ## 0.10.10
 
 ### Patch Changes
