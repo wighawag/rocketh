@@ -174,7 +174,10 @@ export function resolveConfig(config: Config): ResolvedConfig {
 export async function loadEnvironment<
 	Artifacts extends UnknownArtifacts = UnknownArtifacts,
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts
->(options: ConfigOptions, context: ProvidedContext<Artifacts, NamedAccounts>): Promise<Environment> {
+>(
+	options: ConfigOptions,
+	context: ProvidedContext<Artifacts, NamedAccounts>
+): Promise<Environment<Artifacts, NamedAccounts, UnknownDeployments>> {
 	const resolvedConfig = readAndResolveConfig(options);
 	const {external, internal} = await createEnvironment(resolvedConfig, context);
 	return external;
@@ -183,21 +186,27 @@ export async function loadEnvironment<
 export async function loadAndExecuteDeployments<
 	Artifacts extends UnknownArtifacts = UnknownArtifacts,
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
-	ArgumentsType = undefined,
-	Deployments extends UnknownDeployments = UnknownDeployments
->(options: ConfigOptions, args?: ArgumentsType): Promise<Environment> {
+	ArgumentsType = undefined
+>(
+	options: ConfigOptions,
+	context?: ProvidedContext<Artifacts, NamedAccounts>,
+	args?: ArgumentsType
+): Promise<Environment<Artifacts, NamedAccounts, UnknownDeployments>> {
 	const resolvedConfig = readAndResolveConfig(options);
 	// console.log(JSON.stringify(options, null, 2));
 	// console.log(JSON.stringify(resolvedConfig, null, 2));
-	return executeDeployScripts<Artifacts, NamedAccounts, ArgumentsType, Deployments>(resolvedConfig, args);
+	return executeDeployScripts<Artifacts, NamedAccounts, ArgumentsType>(resolvedConfig, context, args);
 }
 
 export async function executeDeployScripts<
 	Artifacts extends UnknownArtifacts = UnknownArtifacts,
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
-	ArgumentsType = undefined,
-	Deployments extends UnknownDeployments = UnknownDeployments
->(config: ResolvedConfig, args?: ArgumentsType): Promise<Environment> {
+	ArgumentsType = undefined
+>(
+	config: ResolvedConfig,
+	context?: ProvidedContext<Artifacts, NamedAccounts>,
+	args?: ArgumentsType
+): Promise<Environment<Artifacts, NamedAccounts, UnknownDeployments>> {
 	setLogLevel(typeof config.logLevel === 'undefined' ? 0 : config.logLevel);
 
 	let filepaths;
@@ -214,7 +223,7 @@ export async function executeDeployScripts<
 			return 0;
 		});
 
-	let providedContext: ProvidedContext<Artifacts, NamedAccounts> | undefined;
+	let providedContext: ProvidedContext<Artifacts, NamedAccounts> | undefined = context;
 
 	const scriptModuleByFilePath: {[filename: string]: DeployScriptModule<Artifacts, NamedAccounts, ArgumentsType>} = {};
 	const scriptPathBags: {[tag: string]: string[]} = {};

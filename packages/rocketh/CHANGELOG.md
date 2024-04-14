@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.10.10
+
+### Patch Changes
+
+- unnamedAccounts
+
 ## 0.10.9
 
 ### Patch Changes

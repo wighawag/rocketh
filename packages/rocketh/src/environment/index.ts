@@ -7,7 +7,7 @@ import {
 	Artifact,
 	Deployment,
 	Environment,
-	NamedSigner,
+	Signer,
 	PendingDeployment,
 	PendingTransaction,
 	ResolvedAccount,
@@ -48,7 +48,7 @@ export function extendEnvironment(extension: EnvironmentExtenstion): void {
 	(globalThis as any).extensions.push(extension);
 }
 
-export type SignerProtocolFunction = (protocolString: string) => Promise<NamedSigner>;
+export type SignerProtocolFunction = (protocolString: string) => Promise<Signer>;
 export type SignerProtocol = {
 	getSigner: SignerProtocolFunction;
 };
@@ -133,7 +133,9 @@ export async function createEnvironment<
 
 	const resolvedAccounts: {[name: string]: ResolvedAccount} = {};
 
+	const allRemoteAccounts = await provider.request({method: 'eth_accounts'});
 	const accountCache: {[name: string]: ResolvedAccount} = {};
+
 	async function getAccount(
 		name: string,
 		accounts: UnresolvedUnknownNamedAccounts,
@@ -144,8 +146,7 @@ export async function createEnvironment<
 		}
 		let account: ResolvedAccount | undefined;
 		if (typeof accountDef === 'number') {
-			const accounts = await provider.request({method: 'eth_accounts'});
-			const accountPerIndex = accounts[accountDef];
+			const accountPerIndex = allRemoteAccounts[accountDef];
 			if (accountPerIndex) {
 				accountCache[name] = account = {
 					type: 'remote',
@@ -240,8 +241,8 @@ export async function createEnvironment<
 	);
 
 	const namedAccounts: {[name: string]: EIP1193Account} = {};
-	const namedSigners: {[name: string]: NamedSigner} = {};
-	const addressSigners: {[name: `0x${string}`]: NamedSigner} = {};
+	const namedSigners: {[name: string]: Signer} = {};
+	const addressSigners: {[name: `0x${string}`]: Signer} = {};
 
 	for (const entry of Object.entries(resolvedAccounts)) {
 		const name = entry[0];
@@ -251,11 +252,20 @@ export async function createEnvironment<
 		namedSigners[name] = namedSigner;
 	}
 
+	const unnamedAccounts = allRemoteAccounts.filter((v) => !addressSigners[v]);
+	for (const account of unnamedAccounts) {
+		addressSigners[account] = {
+			type: 'remote',
+			signer: provider,
+		};
+	}
+
 	const perliminaryEnvironment = {
 		config,
 		deployments: deployments as Deployments,
-		accounts: namedAccounts as ResolvedNamedAccounts<NamedAccounts>,
-		signers: namedSigners as ResolvedNamedSigners<ResolvedNamedAccounts<NamedAccounts>>,
+		namedAccounts: namedAccounts as ResolvedNamedAccounts<NamedAccounts>,
+		namedSigners: namedSigners as ResolvedNamedSigners<ResolvedNamedAccounts<NamedAccounts>>,
+		unnamedAccounts,
 		addressSigners: addressSigners,
 		artifacts: context.artifacts,
 		network: {

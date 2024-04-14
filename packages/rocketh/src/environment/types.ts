@@ -170,7 +170,7 @@ export type AccountType =
 
 export type ResolvedAccount = {
 	address: EIP1193Account;
-} & NamedSigner;
+} & Signer;
 
 export type UnknownDeployments = Record<string, Deployment<Abi>>;
 export type UnknownArtifacts = {[name: string]: Artifact};
@@ -186,13 +186,13 @@ export type ResolvedNamedAccounts<T extends UnresolvedUnknownNamedAccounts> = {
 	[Property in keyof T]: EIP1193Account;
 };
 
-export type NamedSigner =
+export type Signer =
 	| {type: 'signerOnly'; signer: EIP1193SignerProvider}
 	| {type: 'remote'; signer: EIP1193ProviderWithoutEvents}
 	| {type: 'wallet'; signer: EIP1193WalletProvider};
 
 export type ResolvedNamedSigners<T extends UnknownNamedAccounts> = {
-	[Property in keyof T]: NamedSigner;
+	[Property in keyof T]: Signer;
 };
 
 export type UnknownDeploymentsAcrossNetworks = Record<string, UnknownDeployments>;
@@ -268,9 +268,11 @@ export interface Environment<
 		provider: TransactionHashTracker;
 	};
 	deployments: Deployments;
-	accounts: ResolvedNamedAccounts<NamedAccounts>;
-	signers: ResolvedNamedSigners<ResolvedNamedAccounts<NamedAccounts>>;
-	addressSigners: {[name: `0x${string}`]: NamedSigner};
+	namedAccounts: ResolvedNamedAccounts<NamedAccounts>;
+	namedSigners: ResolvedNamedSigners<ResolvedNamedAccounts<NamedAccounts>>;
+	unnamedAccounts: EIP1193Account[];
+	// unnamedSigners: {type: 'remote'; signer: EIP1193ProviderWithoutEvents}[];
+	addressSigners: {[name: `0x${string}`]: Signer};
 	artifacts: Artifacts;
 	save<TAbi extends Abi = Abi>(name: string, deployment: Deployment<TAbi>): Promise<Deployment<TAbi>>;
 	savePendingDeployment<TAbi extends Abi = Abi>(pendingDeployment: PendingDeployment<TAbi>): Promise<Deployment<TAbi>>;

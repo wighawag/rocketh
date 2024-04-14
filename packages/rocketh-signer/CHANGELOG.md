@@ -1,5 +1,12 @@
 # @rocketh/signer
 
+## 0.10.2
+
+### Patch Changes
+
+- Updated dependencies
+  - rocketh@0.10.10
+
 ## 0.10.1
 
 ### Patch Changes

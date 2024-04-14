@@ -8,7 +8,7 @@ import type {
 	PendingDeployment,
 	PartialDeployment,
 	PendingExecution,
-	NamedSigner,
+	Signer,
 } from 'rocketh';
 import {extendEnvironment} from 'rocketh';
 import {
@@ -131,7 +131,7 @@ export type DeployOptions = {linkedData?: any; deterministic?: boolean | `0x${st
 
 async function broadcastTransaction(
 	env: Environment,
-	signer: NamedSigner,
+	signer: Signer,
 	params: [EIP1193TransactionData]
 ): Promise<`0x${string}`> {
 	if (signer.type === 'wallet' || signer.type === 'remote') {
@@ -167,8 +167,8 @@ extendEnvironment((env: Environment) => {
 		if (account.startsWith('0x')) {
 			address = account as `0x${string}`;
 		} else {
-			if (env.accounts) {
-				address = env.accounts[account];
+			if (env.namedAccounts) {
+				address = env.namedAccounts[account];
 				if (!address) {
 					throw new Error(`no address for ${account}`);
 				}
@@ -267,8 +267,8 @@ extendEnvironment((env: Environment) => {
 			if (account.startsWith('0x')) {
 				address = account as `0x${string}`;
 			} else {
-				if (env.accounts) {
-					address = env.accounts[account];
+				if (env.namedAccounts) {
+					address = env.namedAccounts[account];
 					if (!address) {
 						throw new Error(`no address for ${account}`);
 					}
@@ -352,8 +352,8 @@ extendEnvironment((env: Environment) => {
 		if (account.startsWith('0x')) {
 			address = account as `0x${string}`;
 		} else {
-			if (env.accounts) {
-				address = env.accounts[account];
+			if (env.namedAccounts) {
+				address = env.namedAccounts[account];
 				if (!address) {
 					throw new Error(`no address for ${account}`);
 				}

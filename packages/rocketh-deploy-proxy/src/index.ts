@@ -60,8 +60,8 @@ extendEnvironment((env: Environment) => {
 		if (account.startsWith('0x')) {
 			address = account as `0x${string}`;
 		} else {
-			if (env.accounts) {
-				address = env.accounts[account];
+			if (env.namedAccounts) {
+				address = env.namedAccounts[account];
 				if (!address) {
 					throw new Error(`no address for ${account}`);
 				}
