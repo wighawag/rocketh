@@ -1,5 +1,11 @@
 # @rocketh/verifier
 
+## 0.10.4
+
+### Patch Changes
+
+- chalk do not support cjs
+
 ## 0.10.3
 
 ### Patch Changes
