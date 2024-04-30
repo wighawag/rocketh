@@ -1,5 +1,13 @@
 # hardhat-rocketh
 
+## 4.0.17
+
+### Patch Changes
+
+- forgot to build
+- Updated dependencies
+  - rocketh@0.10.13
+
 ## 4.0.16
 
 ### Patch Changes
