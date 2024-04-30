@@ -21,6 +21,6 @@ program
 	.parse(process.argv);
 
 const options = program.opts();
-options.exceptSuffix = options.exceptSuffix.split(',');
-const resolvedConfig = readAndResolveConfig(options as ConfigOptions);
+options.exceptSuffix = options.exceptSuffix?.split(',') || [];
+const resolvedConfig = readAndResolveConfig({...(options as ConfigOptions), ignoreMissingRPC: true});
 run(resolvedConfig, options as RunOptions);

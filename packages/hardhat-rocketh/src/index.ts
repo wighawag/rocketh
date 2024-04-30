@@ -87,13 +87,18 @@ extendConfig((config: HardhatConfig, userConfig: Readonly<HardhatUserConfig>) =>
 task('deploy', 'Deploy contracts')
 	.addFlag('skipGasReport', 'if set, skip gas report')
 	.addFlag('skipPrompts', 'if set, skip any prompts')
+	.addOptionalParam('saveDeployments', 'if set, save deployments')
 	.setAction(async (args, hre) => {
+		let saveDeployments = args.saveDeployments;
+		if (process.env.HARDHAT_FORK) {
+			saveDeployments = false;
+		}
 		await loadAndExecuteDeployments({
 			...(args as ConfigOptions),
 			logLevel: 1,
 			provider: hre.network.provider as unknown as any,
 			network: process.env.HARDHAT_FORK ? {fork: process.env.HARDHAT_FORK} : hre.network.name,
-			saveDeployments: process.env.HARDHAT_FORK ? false : undefined,
+			saveDeployments,
 			askBeforeProceeding: args.skipPrompts ? false : true,
 			reportGasUse: args.skipGasReport ? false : true,
 		});

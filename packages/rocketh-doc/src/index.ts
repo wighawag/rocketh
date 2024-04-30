@@ -101,7 +101,7 @@ export async function runFromFolder(folder: string, options: RunOptions) {
 
 export async function generateFromDeployments(deployments: UnknownDeployments, options: RunOptions) {
 	const outputFolder = options.output || 'docs';
-	const templateFilepath = options.template || path.join(__dirname, 'default_templates/{{contracts}}.hbs');
+	const templateFilepath = options.template || path.join(__dirname, '../public/default_templates/{{contracts}}.hbs');
 	const templateName = path.basename(templateFilepath, '.hbs');
 	const templateContent = fs.readFileSync(templateFilepath, 'utf-8');
 	const template = Handlebars.compile(templateContent);

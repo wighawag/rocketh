@@ -1,5 +1,13 @@
 # @rocketh/doc
 
+## 0.10.4
+
+### Patch Changes
+
+- fixes for rocketh-doc and allow memory hardhat network to be used for it
+- Updated dependencies
+  - rocketh@0.10.12
+
 ## 0.10.3
 
 ### Patch Changes

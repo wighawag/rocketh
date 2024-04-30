@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.10.12
+
+### Patch Changes
+
+- fixes for rocketh-doc and allow memory hardhat network to be used for it
+
 ## 0.10.11
 
 ### Patch Changes

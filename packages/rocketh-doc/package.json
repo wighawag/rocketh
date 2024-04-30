@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/doc",
-	"version": "0.10.3",
+	"version": "0.10.4",
 	"description": "can generate doc from rocketh deployments and provided template",
 	"publishConfig": {
 		"access": "public"
@@ -22,6 +22,11 @@
 	"bin": {
 		"rocketh-doc": "dist/cli.cjs"
 	},
+	"files": [
+		"dist",
+		"public",
+		"src"
+	],
 	"devDependencies": {
 		"@types/node": "^20.12.7",
 		"pkgroll": "^2.0.2",

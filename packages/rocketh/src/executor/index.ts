@@ -102,7 +102,7 @@ export function readConfig(options: ConfigOptions): Config {
 						if (options.network === 'localhost') {
 							nodeUrl = 'http://127.0.0.1:8545';
 						} else {
-							logger.error(`network "${options.network}" is not configured. Please add it to the rocketh.json file`);
+							console.error(`network "${options.network}" is not configured. Please add it to the rocketh.json file`);
 							process.exit(1);
 						}
 					}
@@ -114,7 +114,7 @@ export function readConfig(options: ConfigOptions): Config {
 					if (options.network === 'localhost') {
 						nodeUrl = 'http://127.0.0.1:8545';
 					} else {
-						logger.error(`network "${options.network}" is not configured. Please add it to the rocketh.json file`);
+						console.error(`network "${options.network}" is not configured. Please add it to the rocketh.json file`);
 						process.exit(1);
 					}
 				}

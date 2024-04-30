@@ -1,5 +1,13 @@
 # hardhat-rocketh
 
+## 4.0.16
+
+### Patch Changes
+
+- fixes for rocketh-doc and allow memory hardhat network to be used for it
+- Updated dependencies
+  - rocketh@0.10.12
+
 ## 4.0.15
 
 ### Patch Changes
