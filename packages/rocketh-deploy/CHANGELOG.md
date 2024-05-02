@@ -1,5 +1,11 @@
 # @rocketh/deploy
 
+## 0.10.6
+
+### Patch Changes
+
+- rocketh-deploy: add libraries support
+
 ## 0.10.5
 
 ### Patch Changes

@@ -12,6 +12,7 @@ import type {
 } from 'rocketh';
 import {extendEnvironment} from 'rocketh';
 import {
+	Address,
 	Chain,
 	ContractFunctionArgs,
 	ContractFunctionName,
@@ -21,6 +22,7 @@ import {
 	WriteContractParameters,
 	decodeFunctionResult,
 	encodeFunctionData,
+	encodePacked,
 	keccak256,
 } from 'viem';
 import {DeployContractParameters, encodeDeployData} from 'viem';
@@ -120,7 +122,11 @@ export type ReadingArgs<
 	account?: string;
 };
 
-export type DeployOptions = {linkedData?: any; deterministic?: boolean | `0x${string}`} & (
+export type DeployOptions = {
+	linkedData?: any;
+	deterministic?: boolean | `0x${string}`;
+	libraries?: {[name: string]: Address};
+} & (
 	| {
 			skipIfAlreadyDeployed?: boolean;
 	  }
@@ -150,6 +156,69 @@ async function broadcastTransaction(
 			params: [rawTx],
 		});
 	}
+}
+
+function linkRawLibrary(bytecode: string, libraryName: string, libraryAddress: string): string {
+	const address = libraryAddress.replace('0x', '');
+	let encodedLibraryName;
+	if (libraryName.startsWith('$') && libraryName.endsWith('$')) {
+		encodedLibraryName = libraryName.slice(1, libraryName.length - 1);
+	} else {
+		encodedLibraryName = keccak256(encodePacked(['string'], [libraryName])).slice(2, 36);
+	}
+	const pattern = new RegExp(`_+\\$${encodedLibraryName}\\$_+`, 'g');
+	if (!pattern.exec(bytecode)) {
+		throw new Error(`Can't link '${libraryName}' (${encodedLibraryName}) in \n----\n ${bytecode}\n----\n`);
+	}
+	return bytecode.replace(pattern, address);
+}
+
+function linkRawLibraries(bytecode: string, libraries: {[libraryName: string]: Address}): string {
+	for (const libName of Object.keys(libraries)) {
+		const libAddress = libraries[libName];
+		bytecode = linkRawLibrary(bytecode, libName, libAddress);
+	}
+	return bytecode;
+}
+
+function linkLibraries(
+	artifact: {
+		bytecode: string;
+		linkReferences?: {
+			[libraryFileName: string]: {
+				[libraryName: string]: Array<{length: number; start: number}>;
+			};
+		};
+	},
+	libraries?: {[libraryName: string]: Address}
+) {
+	let bytecode = artifact.bytecode;
+
+	if (libraries) {
+		if (artifact.linkReferences) {
+			for (const [fileName, fileReferences] of Object.entries(artifact.linkReferences)) {
+				for (const [libName, fixups] of Object.entries(fileReferences)) {
+					const addr = libraries[libName];
+					if (addr === undefined) {
+						continue;
+					}
+
+					for (const fixup of fixups) {
+						bytecode =
+							bytecode.substring(0, 2 + fixup.start * 2) +
+							addr.substring(2) +
+							bytecode.substring(2 + (fixup.start + fixup.length) * 2);
+					}
+				}
+			}
+		} else {
+			bytecode = linkRawLibraries(bytecode, libraries);
+		}
+	}
+
+	// TODO return libraries object with path name <filepath.sol>:<name> for names
+
+	return bytecode;
 }
 
 extendEnvironment((env: Environment) => {
@@ -365,7 +434,8 @@ extendEnvironment((env: Environment) => {
 		// TODO throw specific error if artifact not found
 		const artifactToUse = (typeof artifact === 'string' ? env.artifacts[artifact] : artifact) as Artifact<TAbi>;
 
-		const bytecode = artifactToUse.bytecode;
+		const bytecode = linkLibraries(artifactToUse, options?.libraries);
+
 		const abi = artifactToUse.abi;
 
 		const argsToUse = {
