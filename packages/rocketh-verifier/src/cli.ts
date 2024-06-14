@@ -23,11 +23,19 @@ program
 	.command('etherscan')
 	.description('submit contract for verification to etherscan')
 	.option('--endpoint <value>', 'endpoint to connect to')
-	.action((options: {endpoint?: string}) => {
+	.option('--license <value>', 'source code license')
+	.option('--force-license', 'force the use of the license provided')
+	.action((options: {endpoint?: string; forceLicense: boolean; license: string}) => {
 		const programOptions = program.opts() as ConfigOptions;
 		const resolvedConfig = readAndResolveConfig({...programOptions, ignoreMissingRPC: true});
 		run(resolvedConfig, {
-			verifier: {type: 'etherscan', apiKey: process.env['ETHERSCAN_API_KEY'], endpoint: options.endpoint},
+			verifier: {
+				type: 'etherscan',
+				apiKey: process.env['ETHERSCAN_API_KEY'],
+				endpoint: options.endpoint,
+				forceLicense: options.forceLicense,
+				license: options.license,
+			},
 		});
 	});
 

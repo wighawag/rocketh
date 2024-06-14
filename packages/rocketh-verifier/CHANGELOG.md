@@ -1,5 +1,11 @@
 # @rocketh/verifier
 
+## 0.10.8
+
+### Patch Changes
+
+- fix type + allow license specification for etherscan
+
 ## 0.10.7
 
 ### Patch Changes

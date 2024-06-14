@@ -1,5 +1,11 @@
 # @rocketh/deploy-proxy
 
+## 0.10.7
+
+### Patch Changes
+
+- fix type + allow license specification for etherscan
+
 ## 0.10.6
 
 ### Patch Changes

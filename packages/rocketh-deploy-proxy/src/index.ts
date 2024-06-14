@@ -17,7 +17,7 @@ const artifacts = (artifactsAsModule as any).default
 export type ProxyDeployOptions = {
 	linkedData?: any;
 	disabled?: boolean;
-	owner: EIP1193Account;
+	owner?: EIP1193Account;
 	execute?: string;
 };
 
