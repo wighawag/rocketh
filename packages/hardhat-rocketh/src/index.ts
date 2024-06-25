@@ -14,7 +14,7 @@ import {
 	loadAndExecuteDeployments,
 	loadEnvironment,
 } from 'rocketh';
-import {HardhatConfig, HardhatRuntimeEnvironment, HardhatUserConfig} from 'hardhat/types';
+import type {HardhatConfig, HardhatRuntimeEnvironment, HardhatUserConfig} from 'hardhat/types';
 import {ArtifactGenerationConfig} from './type-extensions';
 
 export * from './utils';
