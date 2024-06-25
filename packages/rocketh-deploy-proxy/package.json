@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/deploy-proxy",
-	"version": "0.10.7",
+	"version": "0.10.8",
 	"description": "provide proxy-enabled deploy function for rocketh",
 	"publishConfig": {
 		"access": "public"
@@ -20,21 +20,21 @@
 		}
 	},
 	"devDependencies": {
-		"abitype": "^1.0.2",
+		"abitype": "^1.0.4",
 		"eip-1193": "^0.5.0",
-		"pkgroll": "^2.0.2",
-		"rimraf": "^5.0.5",
+		"pkgroll": "^2.1.1",
+		"rimraf": "^5.0.7",
 		"rocketh": "workspace:*",
-		"typescript": "^5.4.5"
+		"typescript": "^5.5.2"
 	},
 	"peerDependencies": {
 		"rocketh": "workspace:*"
 	},
 	"dependencies": {
-		"named-logs": "^0.2.4",
 		"@rocketh/deploy": "workspace:*",
+		"named-logs": "^0.2.4",
 		"solidity-proxy": "^0.4.0",
-		"viem": "^2.9.16"
+		"viem": "^2.16.2"
 	},
 	"scripts": {
 		"build": "rimraf dist && pkgroll --sourcemap",

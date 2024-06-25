@@ -1,6 +1,6 @@
 {
 	"name": "hardhat-rocketh",
-	"version": "4.0.17",
+	"version": "4.0.18",
 	"description": "rocketh plugin for hardhat",
 	"publishConfig": {
 		"access": "public"
@@ -34,15 +34,16 @@
 		"dist"
 	],
 	"devDependencies": {
-		"@types/node": "^20.12.7",
-		"hardhat": "^2.22.2",
-		"pkgroll": "^2.0.2",
-		"rimraf": "^5.0.5",
+		"@types/node": "^20.14.8",
+		"hardhat": "^2.22.5",
+		"pkgroll": "^2.1.1",
+		"rimraf": "^5.0.7",
 		"rocketh": "workspace:*",
-		"typescript": "^5.4.5"
+		"typescript": "^5.5.2"
 	},
 	"peerDependencies": {
-		"rocketh": "workspace:*"
+		"rocketh": "workspace:*",
+		"hardhat": "^2.22.5"
 	},
 	"scripts": {
 		"build": "rimraf dist && pkgroll --sourcemap",

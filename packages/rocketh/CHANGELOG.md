@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.10.14
+
+### Patch Changes
+
+- latest dependencies
+
 ## 0.10.13
 
 ### Patch Changes
