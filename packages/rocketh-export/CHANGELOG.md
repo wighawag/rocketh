@@ -1,5 +1,11 @@
 # @rocketh/export
 
+## 0.10.9
+
+### Patch Changes
+
+- export argsData when exporting bytecode
+
 ## 0.10.8
 
 ### Patch Changes

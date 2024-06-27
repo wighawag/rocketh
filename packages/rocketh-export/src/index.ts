@@ -5,8 +5,10 @@ import path from 'node:path';
 import {Deployment, ResolvedConfig, chainTypes, getChain, loadDeployments} from 'rocketh';
 
 export interface ContractExport {
-	address: string;
+	address: `0x${string}`;
 	abi: Abi;
+	argsData?: string;
+	bytecode?: `0x${string}`;
 	// linkedData?: any; TODO
 }
 
@@ -163,6 +165,7 @@ export async function run(
 			address: d.address,
 			linkedData: d.linkedData,
 			bytecode: options.includeBytecode ? d.bytecode : undefined,
+			argsData: options.includeBytecode ? d.argsData : undefined,
 			startBlock: d.receipt?.blockNumber ? parseInt(d.receipt.blockNumber.slice(2), 16) : undefined,
 		})),
 		name: config.network.name,
