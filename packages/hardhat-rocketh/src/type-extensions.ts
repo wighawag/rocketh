@@ -5,6 +5,8 @@ export type ArtifactGenerationUserConfig = {
 	js?: string[];
 	ts?: string[];
 	json?: string[];
+	jsm?: string[];
+	tsm?: string[];
 	directories?: string[];
 };
 
@@ -12,6 +14,8 @@ export type ArtifactGenerationConfig = {
 	js: string[];
 	ts: string[];
 	json: string[];
+	jsm: string[];
+	tsm: string[];
 	directories: string[];
 };
 

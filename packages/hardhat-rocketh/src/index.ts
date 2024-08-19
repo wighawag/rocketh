@@ -71,6 +71,8 @@ extendConfig((config: HardhatConfig, userConfig: Readonly<HardhatUserConfig>) =>
 		ts: ['./generated/artifacts.ts'],
 		js: [],
 		json: [],
+		tsm: [],
+		jsm: [],
 		directories: [userConfig.paths?.sources || 'contracts'],
 		...userConfig.generateArtifacts,
 	};
@@ -143,8 +145,10 @@ function writeFiles(name: string | undefined, data: any, config: ArtifactGenerat
 	const js = typeof config?.js === 'string' ? [config?.js] : config?.js || [];
 	const ts = typeof config?.ts === 'string' ? [config?.ts] : config?.ts || [];
 	const json = typeof config?.json === 'string' ? [config?.json] : config?.json || [];
+	const jsm = typeof config?.jsm === 'string' ? [config?.jsm] : config?.jsm || [];
+	const tsm = typeof config?.tsm === 'string' ? [config?.tsm] : config?.tsm || [];
 
-	if (typeof ts === 'object' && ts.length > 0) {
+	if (ts.length > 0) {
 		const newContent = `export default ${JSON.stringify(data, null, 2)} as const;`;
 		for (const tsFile of ts) {
 			if (tsFile.endsWith('.ts')) {
@@ -165,7 +169,7 @@ function writeFiles(name: string | undefined, data: any, config: ArtifactGenerat
 		}
 	}
 
-	if (typeof js === 'object' && js.length > 0) {
+	if (js.length > 0) {
 		const newContent = `export default /** @type {const} **/ (${JSON.stringify(data, null, 2)});`;
 		// const dtsContent = `export = ${JSON.stringify(data, null, 2)} as const;`;
 		const dtsContent = `declare const _default: ${JSON.stringify(data, null, 2)};export default _default;`;
@@ -194,7 +198,7 @@ function writeFiles(name: string | undefined, data: any, config: ArtifactGenerat
 		}
 	}
 
-	if (typeof json === 'object' && json.length > 0) {
+	if (json.length > 0) {
 		const newContent = JSON.stringify(data, null, 2);
 		for (const jsonFile of json) {
 			if (jsonFile.endsWith('.json')) {
@@ -211,6 +215,34 @@ function writeFiles(name: string | undefined, data: any, config: ArtifactGenerat
 					fs.mkdirSync(folderPath, {recursive: true});
 					fs.writeFileSync(filepath, newContent);
 				}
+			}
+		}
+	}
+
+	if (!name) {
+		if (tsm.length > 0) {
+			let newContent = '';
+			for (const key of Object.keys(data)) {
+				newContent += `export const ${key} = ${JSON.stringify(data[key], null, 2)} as const;`;
+			}
+			for (const tsFile of tsm) {
+				const filepath = tsFile;
+				const folderPath = path.dirname(filepath);
+				fs.mkdirSync(folderPath, {recursive: true});
+				fs.writeFileSync(filepath, newContent);
+			}
+		}
+
+		if (jsm.length > 0) {
+			let newContent = '';
+			for (const key of Object.keys(data)) {
+				newContent += `export const ${key} = /** @type {const} **/ (${JSON.stringify(data[key], null, 2)});`;
+			}
+			for (const jsFile of jsm) {
+				const filepath = jsFile;
+				const folderPath = path.dirname(filepath);
+				fs.mkdirSync(folderPath, {recursive: true});
+				fs.writeFileSync(filepath, newContent);
 			}
 		}
 	}

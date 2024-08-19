@@ -1,5 +1,11 @@
 # @rocketh/export
 
+## 0.10.10
+
+### Patch Changes
+
+- allow to export each contract as individual exported field
+
 ## 0.10.9
 
 ### Patch Changes

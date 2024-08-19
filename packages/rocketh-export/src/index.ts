@@ -124,9 +124,16 @@ function objectMap<V, N, O extends Trandformed<{}, V> = Trandformed<{}, V>>(
 
 export async function run(
 	config: ResolvedConfig,
-	options: {tojs?: string[]; tots?: string[]; tojson?: string[]; includeBytecode?: boolean}
+	options: {
+		tojs?: string[];
+		tots?: string[];
+		tojson?: string[];
+		totsm?: string[];
+		tojsm?: string[];
+		includeBytecode?: boolean;
+	}
 ) {
-	if (!options.tots && !options.tojs && !options.tojson) {
+	if (!options.tots && !options.tojs && !options.tojson && !options.tojsm && !options.totsm) {
 		console.log(`no filepath to export to are specified`);
 		return;
 	}
@@ -175,7 +182,10 @@ export async function run(
 	const ts = typeof options.tots === 'string' ? [options.tots] : options.tots || [];
 	const json = typeof options.tojson === 'string' ? [options.tojson] : options.tojson || [];
 
-	if (typeof ts === 'object' && ts.length > 0) {
+	const tsmodule = typeof options.totsm === 'string' ? [options.totsm] : options.totsm || [];
+	const jsmodule = typeof options.tojsm === 'string' ? [options.tojsm] : options.tojsm || [];
+
+	if (ts.length > 0) {
 		const newContent = `export default ${JSON.stringify(exportData, null, 2)} as const;`;
 		for (const tsFile of ts) {
 			const folderPath = path.dirname(tsFile);
@@ -184,7 +194,7 @@ export async function run(
 		}
 	}
 
-	if (typeof js === 'object' && js.length > 0) {
+	if (js.length > 0) {
 		const newContent = `export default /** @type {const} **/ (${JSON.stringify(exportData, null, 2)});`;
 		const dtsContent = `export = ${JSON.stringify(exportData, null, 2)} as const;`;
 		for (const jsFile of js) {
@@ -195,12 +205,67 @@ export async function run(
 		}
 	}
 
-	if (typeof json === 'object' && json.length > 0) {
+	if (json.length > 0) {
 		const newContent = JSON.stringify(exportData, null, 2);
 		for (const jsonFile of json) {
 			const folderPath = path.dirname(jsonFile);
 			fs.mkdirSync(folderPath, {recursive: true});
 			fs.writeFileSync(jsonFile, newContent);
+		}
+	}
+
+	if (tsmodule.length > 0) {
+		let newContent = `export const chain = ${JSON.stringify(
+			{
+				chainId: exportData.chainId,
+				genesisHash: exportData.genesisHash,
+				chainInfo: exportData.chainInfo,
+				name: exportData.name,
+			},
+			null,
+			2
+		)} as const;\n`;
+
+		for (const contractName of Object.keys(exportData.contracts)) {
+			newContent += `export const ${contractName} = ${JSON.stringify(
+				(exportData.contracts as any)[contractName],
+				null,
+				2
+			)} as const;`;
+		}
+
+		for (const tsFile of tsmodule) {
+			const folderPath = path.dirname(tsFile);
+			fs.mkdirSync(folderPath, {recursive: true});
+			fs.writeFileSync(tsFile, newContent);
+		}
+	}
+
+	if (jsmodule.length > 0) {
+		// TODO test
+		let newContent = `export const chain = /** @type {const} **/ (${JSON.stringify(
+			{
+				chainId: exportData.chainId,
+				genesisHash: exportData.genesisHash,
+				chainInfo: exportData.chainInfo,
+				name: exportData.name,
+			},
+			null,
+			2
+		)});\n`;
+
+		for (const contractName of Object.keys(exportData.contracts)) {
+			newContent += `export const ${contractName} = /** @type {const} **/ (${JSON.stringify(
+				(exportData.contracts as any)[contractName],
+				null,
+				2
+			)});`;
+		}
+
+		for (const jsFile of jsmodule) {
+			const folderPath = path.dirname(jsFile);
+			fs.mkdirSync(folderPath, {recursive: true});
+			fs.writeFileSync(jsFile, newContent);
 		}
 	}
 }

@@ -1,5 +1,11 @@
 # hardhat-rocketh
 
+## 4.0.20
+
+### Patch Changes
+
+- allow to export each contract as individual exported field
+
 ## 4.0.19
 
 ### Patch Changes
