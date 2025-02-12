@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.10.15
+
+### Patch Changes
+
+- update latest esbuil
+
 ## 0.10.14
 
 ### Patch Changes
