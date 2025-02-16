@@ -1,6 +1,6 @@
 {
 	"name": "hardhat3-rocketh",
-	"version": "0.0.2",
+	"version": "0.0.3",
 	"description": "deployment plugin for hardhat",
 	"publishConfig": {
 		"access": "public"

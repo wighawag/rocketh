@@ -2,19 +2,18 @@ import {NewTaskActionFunction} from '@ignored/hardhat-vnext/types/tasks';
 import {ConfigOptions, loadAndExecuteDeployments} from 'rocketh';
 
 interface RunActionArguments {
-	saveDeployments: boolean;
+	saveDeployments: string;
 	skipPrompts: boolean;
 }
 
 const runScriptWithHardhat: NewTaskActionFunction<RunActionArguments> = async (args, hre) => {
 	console.log(args);
-	let saveDeployments = args.saveDeployments;
+	let saveDeployments = args.saveDeployments == '' ? undefined : args.saveDeployments == 'true' ? true : false;
 	if (process.env.HARDHAT_FORK) {
 		saveDeployments = false;
 	}
 	const connection = await hre.network.connect();
 	await loadAndExecuteDeployments({
-		...(args as ConfigOptions),
 		logLevel: 1,
 		provider: connection.provider as unknown as any, // TODO type
 		network: process.env.HARDHAT_FORK ? {fork: process.env.HARDHAT_FORK} : connection.networkName,

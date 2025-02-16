@@ -1,5 +1,11 @@
 # hardhat3-rocketh
 
+## 0.0.3
+
+### Patch Changes
+
+- --save-deployments
+
 ## 0.0.2
 
 ### Patch Changes
