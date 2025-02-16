@@ -1,8 +1,8 @@
 #! /usr/bin/env node
 import {readAndResolveConfig} from 'rocketh';
-import {run} from '.';
+import {run} from './index.js';
 import {Command} from 'commander';
-import pkg from '../package.json';
+import pkg from '../package.json' with {type: 'json'};
 import {ConfigOptions} from 'rocketh';
 
 const commandName = pkg.name;

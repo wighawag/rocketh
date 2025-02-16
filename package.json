@@ -5,16 +5,17 @@
   "devDependencies": {
     "@changesets/cli": "^2.27.6",
     "set-defaults": "^0.0.2",
-    "syncpack": "^12.3.3"
+    "syncpack": "^12.3.3",
+    "zellij-launcher": "^0.0.1"
   },
   "volta": {
-    "node": "18.7.0"
+    "node": "22.14.0"
   },
   "scripts": {
     "prepare": "set-defaults .vscode",
     "prepublish": "pnpm build",
     "build": "pnpm -r build",
     "sync-deps": "syncpack fix-mismatches",
-    "start": "zellij --layout zellij.kdl a $npm_package_name || zellij --layout zellij.kdl -s $npm_package_name"
+    "start": "pnpm zellij-launcher --layout zellij.kdl a $npm_package_name || zellij --layout zellij.kdl -s $npm_package_name"
   }
 }

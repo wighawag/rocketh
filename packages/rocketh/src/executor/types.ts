@@ -5,7 +5,7 @@ import type {
 	UnknownDeployments,
 	UnknownNamedAccounts,
 	UnresolvedUnknownNamedAccounts,
-} from '../environment/types';
+} from '../environment/types.js';
 
 export type DeployScriptFunction<
 	Artifacts extends UnknownArtifacts = UnknownArtifacts,

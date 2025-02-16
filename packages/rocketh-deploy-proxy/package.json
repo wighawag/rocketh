@@ -6,23 +6,18 @@
 		"access": "public"
 	},
 	"type": "module",
-	"main": "dist/index.cjs",
-	"module": "dist/index.mjs",
-	"types": "dist/index.d.ts",
+	"module": "dist/esm/index.js",
+	"types": "dist/esm/index.d.ts",
 	".": {
-		"require": {
-			"types": "./dist/index.d.ts",
-			"default": "./dist/index.cjs"
-		},
 		"import": {
-			"types": "./dist/index.d.ts",
-			"default": "./dist/index.mjs"
+			"types": "./dist/esm/index.d.ts",
+			"default": "./dist/esm/index.js"
 		}
 	},
 	"devDependencies": {
 		"abitype": "^1.0.4",
+		"as-soon": "^0.0.11",
 		"eip-1193": "^0.5.0",
-		"pkgroll": "^2.1.1",
 		"rimraf": "^5.0.7",
 		"rocketh": "workspace:*",
 		"typescript": "^5.5.2"
@@ -37,7 +32,7 @@
 		"viem": "^2.16.2"
 	},
 	"scripts": {
-		"build": "rimraf dist && pkgroll --sourcemap",
-		"dev": "pkgroll --watch"
+		"build": "tsc --project tsconfig.json",
+		"dev": "as-soon -w src pnpm build"
 	}
 }

@@ -2,7 +2,7 @@ import chalk from 'chalk';
 import fs from 'fs-extra';
 import path from 'path';
 import {UnknownDeployments} from 'rocketh';
-import {SourcifyOptions} from '.';
+import {SourcifyOptions} from './index.js';
 
 function sleep(ms: number) {
 	return new Promise((resolve) => setTimeout(resolve, ms));

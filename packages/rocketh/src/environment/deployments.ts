@@ -1,7 +1,7 @@
 import path from 'node:path';
 import fs from 'node:fs';
-import {traverse} from '../utils/fs';
-import {UnknownDeployments} from './types';
+import {traverse} from '../utils/fs.js';
+import {UnknownDeployments} from './types.js';
 
 export function loadDeployments(
 	deploymentsPath: string,

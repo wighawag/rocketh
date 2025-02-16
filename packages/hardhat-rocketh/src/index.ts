@@ -15,9 +15,9 @@ import {
 	loadEnvironment,
 } from 'rocketh';
 import type {HardhatConfig, HardhatRuntimeEnvironment, HardhatUserConfig} from 'hardhat/types';
-import {ArtifactGenerationConfig} from './type-extensions';
+import {ArtifactGenerationConfig} from './type-extensions.js';
 
-export * from './utils';
+export * from './utils.js';
 
 function addIfNotPresent(array: string[], value: string) {
 	if (array.indexOf(value) === -1) {

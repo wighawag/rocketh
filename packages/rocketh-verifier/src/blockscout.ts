@@ -2,7 +2,7 @@ import chalk from 'chalk';
 import fs from 'fs-extra';
 import path from 'path';
 import {Abi, Deployment, UnknownDeployments} from 'rocketh';
-import {BlockscoutOptions} from '.';
+import {BlockscoutOptions} from './index.js';
 
 //https://eth.blockscout.com/api/v2/search?q=WETH
 const defaultEndpoints: {[chainId: string]: string} = {

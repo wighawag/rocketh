@@ -1,7 +1,7 @@
 import {ResolvedConfig, loadDeployments} from 'rocketh';
-import {submitSourcesToEtherscan} from './etherscan';
-import {submitSourcesToSourcify} from './sourcify';
-import {submitSourcesToBlockscout} from './blockscout';
+import {submitSourcesToEtherscan} from './etherscan.js';
+import {submitSourcesToSourcify} from './sourcify.js';
+import {submitSourcesToBlockscout} from './blockscout.js';
 
 export type EtherscanOptions = {
 	type: 'etherscan';

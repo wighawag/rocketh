@@ -3,7 +3,7 @@ import type {Artifact, DeploymentConstruction, Deployment, Environment, DevDoc, 
 import '@rocketh/deploy';
 import {extendEnvironment, mergeArtifacts} from 'rocketh';
 import {DeployContractParameters} from 'viem';
-import artifactsAsModule from 'solidity-proxy/generated/artifacts';
+import artifactsAsModule from 'solidity-proxy/generated/artifacts.js';
 import {logs} from 'named-logs';
 import {EIP1193Account} from 'eip-1193';
 

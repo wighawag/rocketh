@@ -11,8 +11,8 @@ import {
 import {Abi, Narrow, AbiError, AbiEvent, AbiConstructor, AbiFallback, AbiFunction, AbiReceive} from 'abitype';
 import type {Address, DeployContractParameters} from 'viem';
 import type {Chain} from 'viem';
-import {ProgressIndicator} from '../internal/logging';
-import {TransactionHashTracker} from './providers/TransactionHashTracker';
+import {ProgressIndicator} from '../internal/logging.js';
+import {TransactionHashTracker} from './providers/TransactionHashTracker.js';
 
 export type {Abi, AbiError, AbiEvent, AbiConstructor, AbiFallback, AbiFunction, AbiReceive};
 export type Libraries = {readonly [libraryName: string]: EIP1193Account};

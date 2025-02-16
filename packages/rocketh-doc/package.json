@@ -6,21 +6,16 @@
 		"access": "public"
 	},
 	"type": "module",
-	"main": "dist/index.cjs",
-	"module": "dist/index.mjs",
-	"types": "dist/index.d.ts",
+	"module": "dist/esm/index.js",
+	"types": "dist/esm/index.d.ts",
 	".": {
-		"require": {
-			"types": "./dist/index.d.ts",
-			"default": "./dist/index.cjs"
-		},
 		"import": {
-			"types": "./dist/index.d.ts",
-			"default": "./dist/index.mjs"
+			"types": "./dist/esm/index.d.ts",
+			"default": "./dist/esm/index.js"
 		}
 	},
 	"bin": {
-		"rocketh-doc": "dist/cli.cjs"
+		"rocketh-doc": "dist/esm/cli.js"
 	},
 	"files": [
 		"dist",
@@ -29,7 +24,7 @@
 	],
 	"devDependencies": {
 		"@types/node": "^20.14.8",
-		"pkgroll": "^2.1.1",
+		"as-soon": "^0.0.11",
 		"rimraf": "^5.0.7",
 		"rocketh": "workspace:*",
 		"typescript": "^5.5.2"
@@ -45,7 +40,7 @@
 		"handlebars": "^4.7.8"
 	},
 	"scripts": {
-		"build": "rimraf dist && pkgroll --sourcemap",
-		"dev": "pkgroll --watch"
+		"build": "tsc --project tsconfig.json",
+		"dev": "as-soon -w src pnpm build"
 	}
 }

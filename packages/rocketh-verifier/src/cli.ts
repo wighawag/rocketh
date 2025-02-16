@@ -1,11 +1,11 @@
 #! /usr/bin/env node
 import {loadEnv} from 'ldenv';
 import {readAndResolveConfig} from 'rocketh';
-import {run} from '.';
+import {run} from './index.js';
 import {Command, Option} from 'commander';
-import pkg from '../package.json';
+import pkg from '../package.json' with {type: 'json'};
 import {ConfigOptions} from 'rocketh';
-import {exportMetadata} from './metadata';
+import {exportMetadata} from './metadata.js';
 loadEnv();
 
 const commandName = `rocketh-verify`;

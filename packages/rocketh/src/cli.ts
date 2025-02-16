@@ -1,8 +1,8 @@
 #! /usr/bin/env node
 import {loadEnv} from 'ldenv';
-import {ConfigOptions, loadAndExecuteDeployments, readConfig} from '.';
+import {ConfigOptions, loadAndExecuteDeployments, readConfig} from './index.js';
 import {Command} from 'commander';
-import pkg from '../package.json';
+import pkg from '../package.json' with {type: 'json'};
 
 loadEnv();
 

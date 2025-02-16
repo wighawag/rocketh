@@ -1,5 +1,5 @@
 import {EIP1193GenericRequest, EIP1193GenericRequestProvider} from 'eip-1193';
-import {BaseProvider} from './BaseProvider';
+import {BaseProvider} from './BaseProvider.js';
 
 export class TransactionHashTracker extends BaseProvider {
 	public transactionHashes: `0x${string}`[] = [];

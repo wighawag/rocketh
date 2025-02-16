@@ -4,7 +4,7 @@ import '@rocketh/deploy';
 import type {EIP1193Account} from 'eip-1193';
 import {extendEnvironment} from 'rocketh';
 import {Chain, DeployContractParameters, encodeAbiParameters, encodeDeployData, encodeFunctionData} from 'viem';
-import artifactsAsModule from 'solidity-proxy/generated/artifacts';
+import artifactsAsModule from 'solidity-proxy/generated/artifacts.js';
 import {logs} from 'named-logs';
 
 const logger = logs('rocketh-deploy-proxy');

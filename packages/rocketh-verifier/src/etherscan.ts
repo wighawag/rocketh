@@ -2,9 +2,9 @@
 import fs from 'fs';
 import qs from 'qs';
 import chalk from 'chalk';
-import {matchAll} from './utils/match-all';
+import {matchAll} from './utils/match-all.js';
 import {Environment, UnknownDeployments} from 'rocketh';
-import {EtherscanOptions} from '.';
+import {EtherscanOptions} from './index.js';
 
 const defaultEndpoints: {[chainId: string]: string} = {
 	'1': 'https://api.etherscan.io/api',

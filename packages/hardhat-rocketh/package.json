@@ -5,28 +5,19 @@
 	"publishConfig": {
 		"access": "public"
 	},
-	"main": "./dist/index.cjs",
-	"module": "./dist/index.mjs",
-	"types": "./dist/index.d.ts",
+	"module": "./dist/cjs/index.js",
+	"types": "./dist/cjs/index.d.ts",
 	"exports": {
 		".": {
-			"require": {
-				"types": "./dist/index.d.ts",
-				"default": "./dist/index.cjs"
-			},
 			"import": {
-				"types": "./dist/index.d.ts",
-				"default": "./dist/index.mjs"
+				"types": "./dist/cjs/index.d.ts",
+				"default": "./dist/cjs/index.js"
 			}
 		},
 		"./helpers": {
-			"require": {
-				"types": "./dist/helpers.d.ts",
-				"default": "./dist/helpers.cjs"
-			},
 			"import": {
-				"types": "./dist/helpers.d.ts",
-				"default": "./dist/helpers.mjs"
+				"types": "./dist/cjs/helpers.d.ts",
+				"default": "./dist/cjs/helpers.js"
 			}
 		}
 	},
@@ -35,18 +26,18 @@
 	],
 	"devDependencies": {
 		"@types/node": "^20.14.8",
+		"as-soon": "^0.0.11",
 		"hardhat": "^2.22.5",
-		"pkgroll": "^2.1.1",
 		"rimraf": "^5.0.7",
 		"rocketh": "workspace:*",
 		"typescript": "^5.5.2"
 	},
 	"peerDependencies": {
-		"rocketh": "workspace:*",
-		"hardhat": "^2.22.5"
+		"hardhat": "^2.22.5",
+		"rocketh": "workspace:*"
 	},
 	"scripts": {
-		"build": "rimraf dist && pkgroll --sourcemap",
-		"dev": "pkgroll --watch"
+		"build": "tsc --project tsconfig.json",
+		"dev": "as-soon -w src pnpm build"
 	}
 }

@@ -1,4 +1,4 @@
-import {traverseMultipleDirectory} from '../utils/fs';
+import {traverseMultipleDirectory} from '../utils/fs.js';
 import path from 'node:path';
 import fs from 'node:fs';
 import type {
@@ -9,12 +9,12 @@ import type {
 	UnknownArtifacts,
 	UnknownDeployments,
 	UnresolvedUnknownNamedAccounts,
-} from '../environment/types';
-import {createEnvironment} from '../environment';
-import {DeployScriptFunction, DeployScriptModule, ProvidedContext} from './types';
-import {logger, setLogLevel, spin} from '../internal/logging';
+} from '../environment/types.js';
+import {createEnvironment} from '../environment/index.js';
+import {DeployScriptFunction, DeployScriptModule, ProvidedContext} from './types.js';
+import {logger, setLogLevel, spin} from '../internal/logging.js';
 import {EIP1193GenericRequestProvider, EIP1193ProviderWithoutEvents} from 'eip-1193';
-import {getRoughGasPriceEstimate} from '../utils/eth';
+import {getRoughGasPriceEstimate} from '../utils/eth.js';
 import prompts from 'prompts';
 import {formatEther} from 'viem';
 

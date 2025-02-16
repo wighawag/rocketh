@@ -17,13 +17,13 @@ import {
 	UnknownArtifacts,
 	UnknownDeployments,
 	UnresolvedUnknownNamedAccounts,
-} from './types';
+} from './types.js';
 import {JSONRPCHTTPProvider} from 'eip-1193-jsonrpc-provider';
 import {Abi, Address} from 'abitype';
-import {InternalEnvironment} from '../internal/types';
+import {InternalEnvironment} from '../internal/types.js';
 import path from 'node:path';
-import {JSONToString, stringToJSON} from '../utils/json';
-import {loadDeployments} from './deployments';
+import {JSONToString, stringToJSON} from '../utils/json.js';
+import {loadDeployments} from './deployments.js';
 import {
 	EIP1193Account,
 	EIP1193DATA,
@@ -32,12 +32,12 @@ import {
 	EIP1193Transaction,
 	EIP1193TransactionReceipt,
 } from 'eip-1193';
-import {ProvidedContext} from '../executor/types';
-import {ProgressIndicator, log, spin} from '../internal/logging';
-import {PendingExecution} from './types';
-import {getChain} from './utils/chains';
-import {mergeArtifacts} from './utils/artifacts';
-import {TransactionHashTracker} from './providers/TransactionHashTracker';
+import {ProvidedContext} from '../executor/types.js';
+import {ProgressIndicator, log, spin} from '../internal/logging.js';
+import {PendingExecution} from './types.js';
+import {getChain} from './utils/chains.js';
+import {mergeArtifacts} from './utils/artifacts.js';
+import {TransactionHashTracker} from './providers/TransactionHashTracker.js';
 
 type ReceiptResult = {receipt: EIP1193TransactionReceipt; latestBlockNumber: EIP1193QUANTITY};
 

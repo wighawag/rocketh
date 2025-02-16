@@ -5,12 +5,12 @@ layout {
 				args "-c" "${SHELL-bash}"
 			}
 			pane name="rocketh" command="bash" {
-				args "-c" "pnpm run --filter rocketh dev-no-reset; cd packages/rocketh; ${SHELL-bash}"
+				args "-c" "pnpm run --filter rocketh dev; cd packages/rocketh; ${SHELL-bash}"
 			}
 		}
 		pane split_direction="vertical" {
 			pane name="rocketh-export" command="bash" {
-				args "-c" "pnpm run --filter rocketh-export dev; cd packages/rocketh-export; ${SHELL-bash}"
+				args "-c" "pnpm run --filter @rocketh/export dev; cd packages/rocketh-export; ${SHELL-bash}"
 			}
 			pane name="hardhat-rocketh" command="bash" {
 				args "-c" "pnpm run --filter hardhat-rocketh dev; cd packages/hardhat-rocketh; ${SHELL-bash}"
@@ -19,18 +19,21 @@ layout {
 			// 	args "-c" "pnpm run --filter hardhat3-rocketh dev; cd packages/hardhat3-rocketh; ${SHELL-bash}"
 			// }
 			pane name="rocketh-deploy" command="bash" {
-				args "-c" "pnpm run --filter rocketh-deploy dev-no-reset; cd packages/rocketh-deploy; ${SHELL-bash}"
+				args "-c" "pnpm run --filter @rocketh/deploy dev; cd packages/rocketh-deploy; ${SHELL-bash}"
 			}
 		}
 		pane split_direction="vertical" {
 			pane name="rocketh-deploy-proxy" command="bash" {
-				args "-c" "pnpm run --filter rocketh-deploy-proxy dev; cd packages/rocketh-deploy-proxy; ${SHELL-bash}"
+				args "-c" "pnpm run --filter @rocketh/deploy-proxy dev; cd packages/rocketh-deploy-proxy; ${SHELL-bash}"
+			}
+			pane name="rocketh-deploy-router" command="bash" {
+				args "-c" "pnpm run --filter @rocketh/deploy-router dev; cd packages/rocketh-deploy-router; ${SHELL-bash}"
 			}
 			pane name="rocketh-signer" command="bash" {
-				args "-c" "pnpm run --filter rocketh-signer dev; cd packages/rocketh-signer; ${SHELL-bash}"
+				args "-c" "pnpm run --filter @rocketh/signer dev; cd packages/rocketh-signer; ${SHELL-bash}"
 			}
 			pane name="rocketh-verifier" command="bash" {
-				args "-c" "pnpm run --filter rocketh-verifier dev; cd packages/rocketh-verifier; ${SHELL-bash}"
+				args "-c" "pnpm run --filter @rocketh/verifier dev; cd packages/rocketh-verifier; ${SHELL-bash}"
 			}
 		}
 	}
