@@ -35,6 +35,9 @@ layout {
 			pane name="rocketh-verifier" command="bash" {
 				args "-c" "pnpm run --filter @rocketh/verifier dev; cd packages/rocketh-verifier; ${SHELL-bash}"
 			}
+			pane name="rocketh-doc" command="bash" {
+				args "-c" "pnpm run --filter @rocketh/doc dev; cd packages/rocketh-doc; ${SHELL-bash}"
+			}
 		}
 	}
 }

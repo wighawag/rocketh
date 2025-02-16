@@ -1,5 +1,19 @@
 # @rocketh/deploy
 
+## 0.10.10
+
+### Patch Changes
+
+- export dist
+
+## 0.10.9
+
+### Patch Changes
+
+- use tsx
+- Updated dependencies
+  - rocketh@0.10.16
+
 ## 0.10.8
 
 ### Patch Changes

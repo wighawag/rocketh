@@ -1,5 +1,19 @@
 # @rocketh/signer
 
+## 0.10.9
+
+### Patch Changes
+
+- export dist
+
+## 0.10.8
+
+### Patch Changes
+
+- use tsx
+- Updated dependencies
+  - rocketh@0.10.16
+
 ## 0.10.7
 
 ### Patch Changes

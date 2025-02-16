@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/deploy",
-	"version": "0.10.8",
+	"version": "0.10.10",
 	"description": "provide deploy function for rocketh",
 	"publishConfig": {
 		"access": "public"
@@ -14,6 +14,9 @@
 			"default": "./dist/esm/index.js"
 		}
 	},
+	"files": [
+		"dist"
+	],
 	"devDependencies": {
 		"abitype": "^1.0.4",
 		"as-soon": "^0.0.11",

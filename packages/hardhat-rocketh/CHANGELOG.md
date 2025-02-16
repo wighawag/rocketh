@@ -1,5 +1,31 @@
 # hardhat-rocketh
 
+## 4.0.25
+
+### Patch Changes
+
+- compile to cjs
+
+## 4.0.24
+
+### Patch Changes
+
+- fix
+
+## 4.0.23
+
+### Patch Changes
+
+- fix
+
+## 4.0.22
+
+### Patch Changes
+
+- use tsx
+- Updated dependencies
+  - rocketh@0.10.16
+
 ## 4.0.21
 
 ### Patch Changes
