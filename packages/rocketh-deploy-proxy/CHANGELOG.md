@@ -1,5 +1,13 @@
 # @rocketh/deploy-proxy
 
+## 0.10.11
+
+### Patch Changes
+
+- export dist
+- Updated dependencies
+  - @rocketh/deploy@0.10.10
+
 ## 0.10.10
 
 ### Patch Changes

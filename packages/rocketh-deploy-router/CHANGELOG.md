@@ -1,5 +1,13 @@
 # @rocketh/deploy-router
 
+## 0.10.10
+
+### Patch Changes
+
+- export dist
+- Updated dependencies
+  - @rocketh/deploy@0.10.10
+
 ## 0.10.9
 
 ### Patch Changes

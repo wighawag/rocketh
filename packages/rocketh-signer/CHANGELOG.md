@@ -1,5 +1,11 @@
 # @rocketh/signer
 
+## 0.10.9
+
+### Patch Changes
+
+- export dist
+
 ## 0.10.8
 
 ### Patch Changes

@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/export",
-	"version": "0.10.12",
+	"version": "0.10.13",
 	"description": "export deployments",
 	"publishConfig": {
 		"access": "public"
@@ -17,6 +17,9 @@
 	"bin": {
 		"rocketh-export": "dist/esm/cli.js"
 	},
+	"files": [
+		"dist"
+	],
 	"devDependencies": {
 		"@types/node": "^20.14.8",
 		"abitype": "^1.0.4",

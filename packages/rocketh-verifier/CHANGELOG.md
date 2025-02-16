@@ -1,5 +1,11 @@
 # @rocketh/verifier
 
+## 0.10.12
+
+### Patch Changes
+
+- export dist
+
 ## 0.10.11
 
 ### Patch Changes
