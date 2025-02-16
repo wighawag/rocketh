@@ -1,11 +1,12 @@
 {
-	"name": "hardhat-deploy",
-	"version": "2.0.0-alpha.1",
+	"name": "hardhat3-rocketh",
+	"version": "0.0.0",
 	"description": "deployment plugin for hardhat",
 	"publishConfig": {
 		"access": "public"
 	},
 	"type": "module",
+	"main": "dist/esm/index.js",
 	"module": "./dist/esm/index.js",
 	"types": "./dist/esm/index.d.ts",
 	"exports": {
