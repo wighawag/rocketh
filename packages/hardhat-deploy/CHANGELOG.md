@@ -1,5 +1,11 @@
 # hardhat3-rocketh
 
+## 0.0.4
+
+### Patch Changes
+
+- hardhat3: loadEnvironmentFromHardhat
+
 ## 0.0.3
 
 ### Patch Changes
