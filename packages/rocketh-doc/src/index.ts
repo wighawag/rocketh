@@ -18,9 +18,9 @@ import {Fragment, FunctionFragment} from 'ethers';
 import {dirname} from 'path';
 import {fileURLToPath} from 'url';
 
-import {DocumentationData, ErrorDoc, EventDoc, MethodDoc, ParamDoc, ReturnDoc} from './types';
+import {DocumentationData, ErrorDoc, EventDoc, MethodDoc, ParamDoc, ReturnDoc} from './types.js';
 
-export * from './types';
+export * from './types.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 

@@ -1,6 +1,6 @@
 {
 	"name": "hardhat-rocketh",
-	"version": "4.0.23",
+	"version": "4.0.24",
 	"description": "rocketh plugin for hardhat",
 	"publishConfig": {
 		"access": "public"
@@ -9,13 +9,13 @@
 	"types": "./dist/cjs/index.d.ts",
 	"exports": {
 		".": {
-			"import": {
+			"require": {
 				"types": "./dist/cjs/index.d.ts",
 				"default": "./dist/cjs/index.js"
 			}
 		},
 		"./helpers": {
-			"import": {
+			"require": {
 				"types": "./dist/cjs/helpers.d.ts",
 				"default": "./dist/cjs/helpers.js"
 			}

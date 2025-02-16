@@ -1,5 +1,11 @@
 # @rocketh/doc
 
+## 0.10.10
+
+### Patch Changes
+
+- fix
+
 ## 0.10.9
 
 ### Patch Changes
