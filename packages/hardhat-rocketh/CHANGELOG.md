@@ -1,5 +1,11 @@
 # hardhat-rocketh
 
+## 4.0.25
+
+### Patch Changes
+
+- compile to cjs
+
 ## 4.0.24
 
 ### Patch Changes

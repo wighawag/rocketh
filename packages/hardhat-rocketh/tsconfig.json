@@ -10,7 +10,7 @@
 		"esModuleInterop": true,
 		"skipLibCheck": true,
 		"resolveJsonModule": true,
-		"module": "ES6",
+		"module": "commonjs",
 		"rootDir": "./src",
 		"outDir": "./dist/cjs"
 	},
