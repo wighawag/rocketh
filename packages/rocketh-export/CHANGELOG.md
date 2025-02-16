@@ -1,5 +1,13 @@
 # @rocketh/export
 
+## 0.10.12
+
+### Patch Changes
+
+- use tsx
+- Updated dependencies
+  - rocketh@0.10.16
+
 ## 0.10.11
 
 ### Patch Changes

@@ -1,5 +1,14 @@
 # @rocketh/deploy-router
 
+## 0.10.9
+
+### Patch Changes
+
+- use tsx
+- Updated dependencies
+  - rocketh@0.10.16
+  - @rocketh/deploy@0.10.9
+
 ## 0.10.8
 
 ### Patch Changes

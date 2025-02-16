@@ -1,5 +1,13 @@
 # hardhat-rocketh
 
+## 4.0.22
+
+### Patch Changes
+
+- use tsx
+- Updated dependencies
+  - rocketh@0.10.16
+
 ## 4.0.21
 
 ### Patch Changes

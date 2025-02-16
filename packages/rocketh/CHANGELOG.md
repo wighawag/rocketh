@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.10.16
+
+### Patch Changes
+
+- use tsx
+
 ## 0.10.15
 
 ### Patch Changes
