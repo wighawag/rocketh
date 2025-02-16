@@ -1,5 +1,13 @@
 # @rocketh/export
 
+## 0.10.14
+
+### Patch Changes
+
+- hardhat3-rocketh
+- Updated dependencies
+  - rocketh@0.10.17
+
 ## 0.10.13
 
 ### Patch Changes

@@ -1,5 +1,14 @@
 # @rocketh/deploy-proxy
 
+## 0.10.12
+
+### Patch Changes
+
+- hardhat3-rocketh
+- Updated dependencies
+  - @rocketh/deploy@0.10.11
+  - rocketh@0.10.17
+
 ## 0.10.11
 
 ### Patch Changes

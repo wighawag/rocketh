@@ -1,5 +1,13 @@
 # @rocketh/doc
 
+## 0.10.11
+
+### Patch Changes
+
+- hardhat3-rocketh
+- Updated dependencies
+  - rocketh@0.10.17
+
 ## 0.10.10
 
 ### Patch Changes

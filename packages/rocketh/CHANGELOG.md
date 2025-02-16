@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.10.17
+
+### Patch Changes
+
+- hardhat3-rocketh
+
 ## 0.10.16
 
 ### Patch Changes
