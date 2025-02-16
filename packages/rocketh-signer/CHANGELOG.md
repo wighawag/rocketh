@@ -1,5 +1,11 @@
 # @rocketh/signer
 
+## 0.10.12
+
+### Patch Changes
+
+- fix deps
+
 ## 0.10.11
 
 ### Patch Changes

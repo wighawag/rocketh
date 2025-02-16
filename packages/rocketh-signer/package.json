@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/signer",
-	"version": "0.10.11",
+	"version": "0.10.12",
 	"description": "add signer to rocketh",
 	"publishConfig": {
 		"access": "public"
@@ -18,10 +18,12 @@
 	"files": [
 		"dist"
 	],
+	"dependencies": {
+		"eip-1193-signer": "^0.0.3"
+	},
 	"devDependencies": {
 		"as-soon": "^0.0.11",
 		"eip-1193": "^0.5.0",
-		"eip-1193-signer": "^0.0.3",
 		"rimraf": "^5.0.7",
 		"rocketh": "workspace:*",
 		"typescript": "^5.5.2"
