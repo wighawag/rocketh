@@ -1,5 +1,13 @@
 # hardhat-rocketh
 
+## 4.0.27
+
+### Patch Changes
+
+- fix chains import, no default export
+- Updated dependencies
+  - rocketh@0.10.18
+
 ## 4.0.26
 
 ### Patch Changes

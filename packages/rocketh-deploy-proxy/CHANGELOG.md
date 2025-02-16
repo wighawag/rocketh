@@ -1,5 +1,14 @@
 # @rocketh/deploy-proxy
 
+## 0.10.13
+
+### Patch Changes
+
+- fix chains import, no default export
+- Updated dependencies
+  - @rocketh/deploy@0.10.12
+  - rocketh@0.10.18
+
 ## 0.10.12
 
 ### Patch Changes

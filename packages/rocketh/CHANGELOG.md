@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.10.18
+
+### Patch Changes
+
+- fix chains import, no default export
+
 ## 0.10.17
 
 ### Patch Changes

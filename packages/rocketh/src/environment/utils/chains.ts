@@ -1,5 +1,5 @@
 import type {Chain} from 'viem/chains';
-import chains from 'viem/chains';
+import * as chains from 'viem/chains';
 
 export type ChainType = 'zksync' | 'op-stack' | 'celo' | 'default';
 

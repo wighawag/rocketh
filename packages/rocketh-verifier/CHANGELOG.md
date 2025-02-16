@@ -1,5 +1,13 @@
 # @rocketh/verifier
 
+## 0.10.14
+
+### Patch Changes
+
+- fix chains import, no default export
+- Updated dependencies
+  - rocketh@0.10.18
+
 ## 0.10.13
 
 ### Patch Changes

@@ -1,5 +1,13 @@
 # @rocketh/signer
 
+## 0.10.11
+
+### Patch Changes
+
+- fix chains import, no default export
+- Updated dependencies
+  - rocketh@0.10.18
+
 ## 0.10.10
 
 ### Patch Changes

@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/signer",
-	"version": "0.10.10",
+	"version": "0.10.11",
 	"description": "add signer to rocketh",
 	"publishConfig": {
 		"access": "public"
