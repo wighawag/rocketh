@@ -15,9 +15,9 @@ layout {
 			pane name="hardhat-rocketh" command="bash" {
 				args "-c" "pnpm run --filter hardhat-rocketh dev; cd packages/hardhat-rocketh; ${SHELL-bash}"
 			}
-			// pane name="hardhat3-rocketh" command="bash" {
-			// 	args "-c" "pnpm run --filter hardhat3-rocketh dev; cd packages/hardhat3-rocketh; ${SHELL-bash}"
-			// }
+			pane name="hardhat-deploy" command="bash" {
+				args "-c" "pnpm run --filter hardhat-deploy dev; cd packages/hardhat-deploy; ${SHELL-bash}"
+			}
 			pane name="rocketh-deploy" command="bash" {
 				args "-c" "pnpm run --filter @rocketh/deploy dev; cd packages/rocketh-deploy; ${SHELL-bash}"
 			}
