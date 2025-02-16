@@ -17,10 +17,7 @@ import {EIP1193GenericRequestProvider, EIP1193ProviderWithoutEvents} from 'eip-1
 import {getRoughGasPriceEstimate} from '../utils/eth.js';
 import prompts from 'prompts';
 import {formatEther} from 'viem';
-
-if (!process.env['ROCKETH_SKIP_ESBUILD']) {
-	require('esbuild-register/dist/node').register();
-}
+import {tsImport} from 'tsx/esm/api';
 
 export function execute<
 	Artifacts extends UnknownArtifacts = UnknownArtifacts,
@@ -234,10 +231,7 @@ export async function executeDeployScripts<
 		const scriptFilePath = path.resolve(filepath);
 		let scriptModule: DeployScriptModule<Artifacts, NamedAccounts, ArgumentsType>;
 		try {
-			if (require.cache) {
-				delete require.cache[scriptFilePath]; // ensure we reload it every time, so changes are taken in consideration
-			}
-			scriptModule = require(scriptFilePath);
+			scriptModule = await tsImport(scriptFilePath, import.meta.url);
 
 			if ((scriptModule as any).default) {
 				scriptModule = (scriptModule as any).default as DeployScriptModule<Artifacts, NamedAccounts, ArgumentsType>;
