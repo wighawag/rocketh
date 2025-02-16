@@ -1,5 +1,11 @@
 # hardhat-rocketh
 
+## 4.0.23
+
+### Patch Changes
+
+- fix
+
 ## 4.0.22
 
 ### Patch Changes
