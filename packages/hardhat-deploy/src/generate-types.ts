@@ -157,9 +157,15 @@ export async function generateTypes(
 	const allArtifacts: {[name: string]: any} = {};
 	const shortNameDict: {[shortName: string]: boolean} = {};
 
-	for (const filepath of artifactsPaths) {
+	const files: FileTraversed[] = traverse(paths.artifacts, [], paths.artifacts, (name) => name != 'build-info');
+
+	for (const file of files) {
+		const filepath = file.path;
+		if (file.directory || !filepath.endsWith('.json')) {
+			continue;
+		}
 		const filename = path.basename(filepath);
-		const dirname = path.relative(paths.artifacts, path.dirname(filepath));
+		const dirname = path.dirname(file.relativePath);
 
 		// const namePath = dirname.replace('.sol', '');
 		const contractName = filename.replace('.json', '');
