@@ -1,5 +1,17 @@
 # @rocketh/deploy-proxy
 
+## 1.0.0-next.0
+
+### Major Changes
+
+- first alpha release
+
+### Patch Changes
+
+- Updated dependencies
+  - @rocketh/deploy@1.0.0-next.0
+  - rocketh@1.0.0-next.0
+
 ## 0.10.13
 
 ### Patch Changes

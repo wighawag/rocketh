@@ -1,5 +1,16 @@
 # hardhat3-rocketh
 
+## 2.0.0-next.0
+
+### Major Changes
+
+- first alpha release
+
+### Patch Changes
+
+- Updated dependencies
+  - rocketh@1.0.0-next.0
+
 ## 0.0.8
 
 ### Patch Changes

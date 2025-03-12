@@ -1,0 +1,18 @@
+{
+  "mode": "pre",
+  "tag": "next",
+  "initialVersions": {
+    "hardhat-deploy": "1.0.0",
+    "rocketh": "0.10.18",
+    "@rocketh/deploy": "0.10.12",
+    "@rocketh/deploy-proxy": "0.10.13",
+    "@rocketh/deploy-router": "0.10.12",
+    "@rocketh/doc": "0.10.12",
+    "@rocketh/export": "0.10.15",
+    "@rocketh/signer": "0.10.12",
+    "@rocketh/verifier": "0.10.15"
+  },
+  "changesets": [
+    "serious-adults-cry"
+  ]
+}

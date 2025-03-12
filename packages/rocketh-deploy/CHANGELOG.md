@@ -1,5 +1,16 @@
 # @rocketh/deploy
 
+## 1.0.0-next.0
+
+### Major Changes
+
+- first alpha release
+
+### Patch Changes
+
+- Updated dependencies
+  - rocketh@1.0.0-next.0
+
 ## 0.10.12
 
 ### Patch Changes

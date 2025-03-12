@@ -1,5 +1,11 @@
 # rocketh
 
+## 1.0.0-next.0
+
+### Major Changes
+
+- first alpha release
+
 ## 0.10.18
 
 ### Patch Changes
