@@ -1,3 +1,4 @@
+import {configVariable} from 'hardhat/config';
 import {
 	EdrNetworkAccountConfig,
 	EdrNetworkAccountUserConfig,
@@ -91,15 +92,17 @@ export async function loadEnvironmentFromHardhat<
 	);
 }
 
-export function getRPC(networkName: string): string | undefined {
-	if (networkName) {
-		const uri = process.env['ETH_NODE_URI_' + networkName];
-		if (uri && uri !== '') {
-			return uri;
-		}
+export function getRPC(networkName: string): string | SensitiveString | undefined {
+	const variableName = 'ETH_NODE_URI_' + networkName;
+	let uri = process.env[variableName];
+	if (uri === 'SECRET') {
+		return configVariable(variableName);
+	}
+	if (uri && uri !== '') {
+		return uri;
 	}
 
-	let uri = process.env.ETH_NODE_URI;
+	uri = process.env.ETH_NODE_URI;
 	if (uri) {
 		uri = uri.replace('{{networkName}}', networkName);
 	}
@@ -117,9 +120,13 @@ export function getRPC(networkName: string): string | undefined {
 	return uri;
 }
 
-export function getMnemonic(networkName?: string): string {
+export function getMnemonic(networkName?: string): string | SensitiveString {
 	if (networkName) {
-		const mnemonic = process.env['MNEMONIC_' + networkName];
+		const variableName = 'MNEMONIC_' + networkName;
+		const mnemonic = process.env[variableName];
+		if (mnemonic === 'SECRET') {
+			return configVariable(variableName);
+		}
 		if (mnemonic && mnemonic !== '') {
 			return mnemonic;
 		}
@@ -132,7 +139,7 @@ export function getMnemonic(networkName?: string): string {
 	return mnemonic;
 }
 
-export function getAccounts(networkName?: string): {mnemonic: string} {
+export function getAccounts(networkName?: string): {mnemonic: string | SensitiveString} {
 	return {mnemonic: getMnemonic(networkName)};
 }
 

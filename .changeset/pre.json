@@ -13,6 +13,7 @@
     "@rocketh/verifier": "0.10.15"
   },
   "changesets": [
+    "chilly-peas-crash",
     "dirty-terms-matter",
     "serious-adults-cry"
   ]
