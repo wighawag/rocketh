@@ -12,8 +12,6 @@ export default async (): Promise<Partial<SolidityHooks>> => {
 		) {
 			const artifactsPaths = Array.from(artifacts.values()).flatMap((innerMap) => Array.from(innerMap.values()).flat());
 
-			console.log(context.config);
-			console.log(context);
 			await generateTypes(
 				{
 					root: context.config.paths.root,
