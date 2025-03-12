@@ -1,5 +1,11 @@
 # @rocketh/verifier
 
+## 0.10.15
+
+### Patch Changes
+
+- fix
+
 ## 0.10.14
 
 ### Patch Changes

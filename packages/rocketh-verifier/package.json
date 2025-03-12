@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/verifier",
-	"version": "0.10.14",
+	"version": "0.10.15",
 	"description": "submit verification proof to verifier services (blockchain explorer, sourcify...",
 	"publishConfig": {
 		"access": "public"
@@ -16,7 +16,7 @@
 		}
 	},
 	"bin": {
-		"rocketh-verify": "dist/cli.js"
+		"rocketh-verify": "dist/esm/cli.js"
 	},
 	"files": [
 		"dist"
