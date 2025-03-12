@@ -1,6 +1,6 @@
 {
 	"name": "hardhat3-rocketh",
-	"version": "0.0.5",
+	"version": "0.0.6",
 	"description": "deployment plugin for hardhat",
 	"publishConfig": {
 		"access": "public"
@@ -41,5 +41,12 @@
 	"scripts": {
 		"build": "tsc --project tsconfig.json",
 		"dev": "as-soon -w src pnpm build"
+	},
+	"dependencies": {
+		"@nomicfoundation/hardhat-errors": "3.0.0-next.0",
+		"@nomicfoundation/hardhat-zod-utils": "3.0.0-next.0",
+		"@types/debug": "^4.1.12",
+		"debug": "^4.4.0",
+		"zod": "^3.24.2"
 	}
 }

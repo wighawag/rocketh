@@ -1,10 +1,11 @@
-import {NewTaskActionFunction} from 'hardhat/types/tasks';
+import type {ArtifactGenerationConfig} from './types.js';
 
+import {assertHardhatInvariant} from '@nomicfoundation/hardhat-errors';
+import debug from 'debug';
 import fs from 'node:fs';
 import path from 'node:path';
-import {ArtifactGenerationConfig} from '../type-extensions.js';
 
-interface RunActionArguments {}
+const log = debug('hardhat3-rocketh:generate-types');
 
 type FileTraversed = {
 	name: string;
@@ -148,95 +149,29 @@ function writeFiles(name: string | undefined, data: any, config: ArtifactGenerat
 	}
 }
 
-// TODO add docgen command ?
-// task("docgen").setAction(async (args, hre, runSuper): Promise<any> => {
-
-const runScriptWithHardhat: NewTaskActionFunction<RunActionArguments> = async (args, hre) => {
-	// let previousArtifacts: {[name: string]: any} = {};
-	// try {
-	// 	previousArtifacts = JSON.parse(fs.readFileSync('./generated/_artifacts.json', 'utf-8'));
-	// } catch {}
-	// const allArtifacts: {[name: string]: any} = previousArtifacts;
+export async function generateTypes(
+	paths: {root: string; artifacts: string},
+	config: ArtifactGenerationConfig,
+	artifactsPaths: string[]
+): Promise<void> {
 	const allArtifacts: {[name: string]: any} = {};
 	const shortNameDict: {[shortName: string]: boolean} = {};
-	// for (const key of Object.keys(allArtifacts)) {
-	// 	if (!key.indexOf('/')) {
-	// 		shortNameDict[key] = true;
-	// 	}
-	// }
 
-	const compilationResult = await hre.tasks.getTask('compile').run();
+	for (const filepath of artifactsPaths) {
+		const filename = path.basename(filepath);
+		const dirname = path.relative(paths.artifacts, path.dirname(filepath));
 
-	console.log(compilationResult);
-
-	// for (const artifact of artifactResult.artifactsEmittedPerFile) {
-	// 	const filepath = `./artifacts/${artifact.file.sourceName}/${artifact.artifactsEmitted[0]}.json`;
-	// 	if (fs.existsSync(filepath)) {
-	// 		for (let i = 0; i < artifact.artifactsEmitted.length; i++) {
-	// 			const shortName = artifact.artifactsEmitted[i];
-	// 			const content = fs.readFileSync(filepath, 'utf-8');
-	// 			const parsed = JSON.parse(content);
-
-	// 			const debugFilepath = filepath.replace('.json', '.dbg.json');
-	// 			const debugContent = fs.readFileSync(debugFilepath, 'utf-8');
-	// 			const parsedDebug: {_format: string; buildInfo: string} = JSON.parse(debugContent);
-	// 			const buildInfoFilepath = path.join(path.dirname(path.resolve(debugFilepath)), parsedDebug.buildInfo);
-	// 			const buildInfoContent = fs.readFileSync(buildInfoFilepath, 'utf-8');
-	// 			const parsedBuildInfo = JSON.parse(buildInfoContent);
-	// 			const solidityOutput = parsedBuildInfo.output.contracts[artifact.file.sourceName][shortName];
-
-	// 			const artifactObject = {...parsed, ...solidityOutput};
-	// 			const fullName = `${artifact.file.sourceName}/${shortName}`;
-	// 			allArtifacts[fullName] = artifactObject;
-	// 			if (shortNameDict[shortName]) {
-	// 				delete allArtifacts[shortName];
-	// 			} else {
-	// 				allArtifacts[shortName] = artifactObject;
-	// 				shortNameDict[shortName] = true;
-	// 			}
-	// 		}
-	// 	} else {
-	// 		// this can happen for solidity file without contract exported, just error or types for example
-	// 		// throw new Error(`no artifact at ${filepath}`);
-	// 	}
-	// }
-
-	console.log(...hre.config.paths.sources.solidity);
-	// const generationConfig = hre.config.generateArtifacts;
-	const generationConfig: ArtifactGenerationConfig = {
-		ts: ['./generated/artifacts.ts'],
-		js: [],
-		json: [],
-		tsm: [],
-		jsm: [],
-		directories: [...hre.config.paths.sources.solidity],
-	};
-
-	const files: FileTraversed[] = [];
-	const directories = generationConfig.directories.map((dir) => path.relative('.', dir));
-	console.log({directories});
-	for (const directory of directories) {
-		const filesToAdd = traverse(`./artifacts/${directory}`, [], './artifacts', (name) => name != 'build-info');
-		files.push(...filesToAdd);
-	}
-
-	for (const file of files) {
-		if (file.directory || !file.path.endsWith('.json')) {
-			continue;
-		}
-		const filename = path.basename(file.path);
-		const dirname = path.dirname(file.relativePath);
 		// const namePath = dirname.replace('.sol', '');
 		const contractName = filename.replace('.json', '');
 		// const shortName = artifact.artifactsEmitted[i];
-		console.log({path: file.path});
-		const content = fs.readFileSync(file.path, 'utf-8');
+		// console.log({path: filepath});
+		const content = fs.readFileSync(filepath, 'utf-8');
 		const parsed = JSON.parse(content);
 
 		// TODO read config for artifacts folder
 		const buildInfoFilepath = path.join('artifacts', 'build-info', `${parsed.buildInfoId}.output.json`);
 
-		console.log({buildInfoFilepath});
+		// console.log({buildInfoFilepath});
 
 		const backupBuildInfoFilepath = path.join(
 			'./generated',
@@ -255,6 +190,7 @@ const runScriptWithHardhat: NewTaskActionFunction<RunActionArguments> = async (a
 			}
 
 			const parsedBuildInfo = JSON.parse(buildInfoContent);
+			// console.log({dirname, contractName});
 			const solidityOutput = parsedBuildInfo.output.contracts[dirname][contractName];
 
 			const artifactObject = {...parsed, ...solidityOutput};
@@ -282,14 +218,13 @@ const runScriptWithHardhat: NewTaskActionFunction<RunActionArguments> = async (a
 
 	for (const key of Object.keys(allArtifacts)) {
 		const artifact = allArtifacts[key];
-		writeFiles(key, artifact, generationConfig);
+		writeFiles(key, artifact, config);
 	}
 	// const json = hre.config.generateArtifacts.json || [];
 	// json.push('./generated/_artifacts.json');
 	// writeFiles(undefined, allArtifacts, {...hre.config.generateArtifacts, json: json});
 
-	writeFiles(undefined, allArtifacts, generationConfig);
+	writeFiles(undefined, allArtifacts, config);
 
-	return compilationResult;
-};
-export default runScriptWithHardhat;
+	log(`Successfully generated ${artifactsPaths.length} files!`);
+}

@@ -1,30 +1,12 @@
-// import 'hardhat/types/runtime';
-// import 'hardhat/types/config';
+import 'hardhat/types/config';
+import {ArtifactGenerationConfig, ArtifactGenerationUserConfig} from './types.js';
 
-export type ArtifactGenerationUserConfig = {
-	js?: string[];
-	ts?: string[];
-	json?: string[];
-	jsm?: string[];
-	tsm?: string[];
-	directories?: string[];
-};
+declare module 'hardhat/types/config' {
+	export interface HardhatUserConfig {
+		generateArtifacts?: ArtifactGenerationUserConfig;
+	}
 
-export type ArtifactGenerationConfig = {
-	js: string[];
-	ts: string[];
-	json: string[];
-	jsm: string[];
-	tsm: string[];
-	directories: string[];
-};
-
-// declare module 'hardhat/types/config' {
-// 	interface HardhatUserConfig {
-// 		generateArtifacts?: ArtifactGenerationUserConfig;
-// 	}
-
-// 	interface HardhatConfig {
-// 		generateArtifacts: ArtifactGenerationConfig;
-// 	}
-// }
+	export interface HardhatConfig {
+		readonly generateArtifacts: ArtifactGenerationConfig;
+	}
+}

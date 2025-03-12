@@ -1,5 +1,11 @@
 # hardhat3-rocketh
 
+## 0.0.6
+
+### Patch Changes
+
+- hardhat3-rocketh: use solidity hook to generate artifacts files
+
 ## 0.0.5
 
 ### Patch Changes
