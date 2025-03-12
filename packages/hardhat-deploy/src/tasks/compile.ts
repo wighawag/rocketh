@@ -1,4 +1,4 @@
-import {NewTaskActionFunction} from '@ignored/hardhat-vnext/types/tasks';
+import {NewTaskActionFunction} from 'hardhat/types/tasks';
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -18,7 +18,7 @@ function traverse(
 	dir: string,
 	result: any[] = [],
 	topDir?: string,
-	filter?: (name: string, stats: any) => boolean, // TODO any is Stats
+	filter?: (name: string, stats: any) => boolean // TODO any is Stats
 ): Array<FileTraversed> {
 	fs.readdirSync(dir).forEach((name) => {
 		const fPath = path.resolve(dir, name);
@@ -240,7 +240,7 @@ const runScriptWithHardhat: NewTaskActionFunction<RunActionArguments> = async (a
 
 		const backupBuildInfoFilepath = path.join(
 			'./generated',
-			buildInfoFilepath.slice(buildInfoFilepath.indexOf('/', 1)),
+			buildInfoFilepath.slice(buildInfoFilepath.indexOf('/', 1))
 		);
 		let buildInfoFilepathToUse = buildInfoFilepath;
 		if (!fs.existsSync(buildInfoFilepathToUse)) {

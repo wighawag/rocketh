@@ -1,4 +1,4 @@
-import {NewTaskActionFunction} from '@ignored/hardhat-vnext/types/tasks';
+import {NewTaskActionFunction} from 'hardhat/types/tasks';
 import {ConfigOptions, loadAndExecuteDeployments} from 'rocketh';
 
 interface RunActionArguments {

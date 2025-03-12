@@ -1,4 +1,4 @@
-import {HardhatRuntimeEnvironment} from '@ignored/hardhat-vnext/types/hre';
+import {HardhatRuntimeEnvironment} from 'hardhat/types/hre';
 import {Environment, ProvidedContext, UnknownArtifacts, UnresolvedUnknownNamedAccounts, loadEnvironment} from 'rocketh';
 
 export async function loadEnvironmentFromHardhat<

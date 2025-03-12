@@ -1,5 +1,11 @@
 # hardhat3-rocketh
 
+## 0.0.5
+
+### Patch Changes
+
+- hardhat v3 alpha
+
 ## 0.0.4
 
 ### Patch Changes
