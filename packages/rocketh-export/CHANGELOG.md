@@ -1,5 +1,12 @@
 # @rocketh/export
 
+## 1.0.0-next.1
+
+### Patch Changes
+
+- Updated dependencies
+  - rocketh@1.0.0-next.1
+
 ## 1.0.0-next.0
 
 ### Major Changes

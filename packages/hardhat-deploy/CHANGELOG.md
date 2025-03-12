@@ -1,5 +1,13 @@
 # hardhat3-rocketh
 
+## 2.0.0-next.5
+
+### Patch Changes
+
+- fixes
+- Updated dependencies
+  - rocketh@1.0.0-next.1
+
 ## 2.0.0-next.4
 
 ### Patch Changes

@@ -1,5 +1,11 @@
 # rocketh
 
+## 1.0.0-next.1
+
+### Patch Changes
+
+- fixes
+
 ## 1.0.0-next.0
 
 ### Major Changes

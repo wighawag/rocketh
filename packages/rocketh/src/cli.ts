@@ -24,7 +24,6 @@ program
 
 const options = program.opts();
 
-console.log(options);
 
 loadAndExecuteDeployments({
 	...(options as ConfigOptions),

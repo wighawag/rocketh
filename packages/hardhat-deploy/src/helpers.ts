@@ -173,7 +173,8 @@ export function populateNetworksFromEnv(
 ): Record<string, NetworkUserConfig> {
 	const newNetworks: Record<string, NetworkUserConfig> = {};
 	for (const networkName of Object.keys(networks)) {
-		if (networkName === 'hardhat') {
+		const network = networks[networkName];
+		if (network.type === 'edr') {
 			continue;
 		}
 		const url = getRPC(networkName);
