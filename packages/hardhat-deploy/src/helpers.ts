@@ -223,7 +223,7 @@ export function addForkConfiguration(networks: Record<string, NetworkUserConfig>
 	}
 
 	const existingHardhat: EdrNetworkUserConfig =
-		networks.hardhat.type === 'edr' ? networks.hardhat : {type: 'edr', chainType: 'l1'};
+		networks.hardhat && networks.hardhat.type === 'edr' ? networks.hardhat : {type: 'edr', chainType: 'l1'};
 
 	const newNetworks: Record<string, NetworkUserConfig> = {
 		...populateNetworksFromEnv(networks),
