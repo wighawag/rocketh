@@ -1,5 +1,11 @@
 # hardhat3-rocketh
 
+## 2.0.0-next.1
+
+### Patch Changes
+
+- add more helpers
+
 ## 2.0.0-next.0
 
 ### Major Changes
