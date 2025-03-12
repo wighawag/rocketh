@@ -96,7 +96,7 @@ export function getRPC(networkName: string): string | SensitiveString | undefine
 	const variableName = 'ETH_NODE_URI_' + networkName;
 	let uri = process.env[variableName];
 	if (uri === 'SECRET') {
-		return configVariable(variableName);
+		return configVariable(`SECRET_${variableName}`);
 	}
 	if (uri && uri !== '') {
 		return uri;
@@ -125,7 +125,7 @@ export function getMnemonic(networkName?: string): string | SensitiveString {
 		const variableName = 'MNEMONIC_' + networkName;
 		const mnemonic = process.env[variableName];
 		if (mnemonic === 'SECRET') {
-			return configVariable(variableName);
+			return configVariable(`SECRET_${variableName}`);
 		}
 		if (mnemonic && mnemonic !== '') {
 			return mnemonic;

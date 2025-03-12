@@ -1,5 +1,11 @@
 # hardhat3-rocketh
 
+## 2.0.0-next.4
+
+### Patch Changes
+
+- fix SECRET
+
 ## 2.0.0-next.3
 
 ### Patch Changes
