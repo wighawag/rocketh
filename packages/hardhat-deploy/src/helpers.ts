@@ -169,23 +169,27 @@ export function addNetworksFromEnv(networks?: Record<string, EdrNetworkUserConfi
 }
 
 export function populateNetworksFromEnv(
-	networks: Record<string, Omit<NetworkUserConfig, 'accounts' | 'url'>>
+	networks: Record<string, Omit<NetworkUserConfig, 'accounts' | 'url'> | EdrNetworkUserConfig>
 ): Record<string, NetworkUserConfig> {
 	const newNetworks: Record<string, NetworkUserConfig> = {};
 	for (const networkName of Object.keys(networks)) {
 		const network = networks[networkName];
 		if (network.type === 'edr') {
-			continue;
-		}
-		const url = getRPC(networkName);
-		if (url) {
-			newNetworks[networkName] = {
-				...networks[networkName],
-				url,
-				accounts: getAccounts(networkName),
-			};
+			// we leave memory network alone
+			newNetworks[networkName] = network as EdrNetworkUserConfig;
 		} else {
-			console.error(`no url for network ${networkName}`);
+			const url = getRPC(networkName);
+			if (url) {
+				newNetworks[networkName] = {
+					...network,
+					url,
+					accounts: getAccounts(networkName),
+				};
+			} else {
+				if (!('url' in network) || !network.url) {
+					console.error(`no url for network ${networkName}`);
+				}
+			}
 		}
 	}
 	return newNetworks;
