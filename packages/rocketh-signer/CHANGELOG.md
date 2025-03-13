@@ -1,5 +1,13 @@
 # @rocketh/signer
 
+## 1.0.0-next.2
+
+### Patch Changes
+
+- update deps
+- Updated dependencies
+  - rocketh@1.0.0-next.2
+
 ## 1.0.0-next.1
 
 ### Patch Changes

@@ -143,7 +143,7 @@ async function broadcastTransaction(
 	if (signer.type === 'wallet' || signer.type === 'remote') {
 		return signer.signer.request({
 			method: 'eth_sendTransaction',
-			params,
+			params: params as any, // TODO fix eip-1193 ?,
 		});
 	} else {
 		const rawTx = await signer.signer.request({
@@ -277,7 +277,7 @@ extendEnvironment((env: Environment) => {
 		if (signer.type === 'wallet' || signer.type === 'remote') {
 			txHash = await signer.signer.request({
 				method: 'eth_sendTransaction',
-				params: [txParam],
+				params: [txParam] as any, // TODO fix eip-1193 ?,,
 			});
 		} else {
 			const rawTx = await signer.signer.request({
@@ -366,7 +366,7 @@ extendEnvironment((env: Environment) => {
 					data: calldata,
 					// value: `0x${viemArgs.value?.toString(16)}` as `0x${string}`,
 				},
-			],
+			] as any, // TODO fix eip-1193 ?,,
 		})) as `0x${string}`;
 
 		const parsed = decodeFunctionResult<TAbi, TFunctionName>({

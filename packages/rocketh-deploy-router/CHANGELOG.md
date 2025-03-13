@@ -1,5 +1,14 @@
 # @rocketh/deploy-router
 
+## 1.0.0-next.2
+
+### Patch Changes
+
+- update deps
+- Updated dependencies
+  - @rocketh/deploy@1.0.0-next.2
+  - rocketh@1.0.0-next.2
+
 ## 1.0.0-next.1
 
 ### Patch Changes

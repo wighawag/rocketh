@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/deploy-proxy",
-	"version": "1.0.0-next.1",
+	"version": "1.0.0-next.2",
 	"description": "provide proxy-enabled deploy function for rocketh",
 	"publishConfig": {
 		"access": "public"
@@ -19,21 +19,21 @@
 		"dist"
 	],
 	"devDependencies": {
-		"abitype": "^1.0.4",
+		"abitype": "^1.0.8",
 		"as-soon": "^0.0.11",
-		"eip-1193": "^0.5.0",
-		"rimraf": "^5.0.7",
+		"eip-1193": "^0.6.2",
+		"rimraf": "^6.0.1",
 		"rocketh": "workspace:*",
-		"typescript": "^5.5.2"
+		"typescript": "^5.8.2"
 	},
 	"peerDependencies": {
 		"rocketh": "workspace:*"
 	},
 	"dependencies": {
 		"@rocketh/deploy": "workspace:*",
-		"named-logs": "^0.2.4",
+		"named-logs": "^0.3.2",
 		"solidity-proxy": "^0.4.0",
-		"viem": "^2.16.2"
+		"viem": "^2.23.10"
 	},
 	"scripts": {
 		"build": "tsc --project tsconfig.json",

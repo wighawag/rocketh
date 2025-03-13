@@ -5,13 +5,6 @@ function avg(arr: bigint[]) {
 	return sum / BigInt(arr.length);
 }
 
-type EIP1193FeeHistory = {
-	oldestBlock: string;
-	reward: `0x${string}`[][];
-	baseFeePerGas: string[];
-	gasUsedRatio: string[];
-};
-
 export type EstimateGasPriceOptions = {
 	blockCount: number;
 	newestBlock: EIP1193BlockTag;
@@ -41,7 +34,7 @@ export async function getGasPriceEstimate(
 
 	const historicalBlocks = optionsResolved.blockCount;
 
-	const rawFeeHistory = await provider.request<EIP1193FeeHistory>({
+	const rawFeeHistory = await provider.request({
 		method: 'eth_feeHistory',
 		params: [`0x${historicalBlocks.toString(16)}`, optionsResolved.newestBlock, optionsResolved.rewardPercentiles],
 	});

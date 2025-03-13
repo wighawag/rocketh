@@ -40,13 +40,21 @@ export function execute<
 	return scriptModule as unknown as DeployScriptModule<Artifacts, NamedAccounts, ArgumentsType, Deployments>;
 }
 
+export interface UntypedRequestArguments {
+	readonly method: string;
+	readonly params?: readonly unknown[] | object;
+}
+export type UntypedEIP1193Provider = {
+	request(requestArguments: UntypedRequestArguments): Promise<unknown>;
+};
+
 export type ConfigOptions = {
 	network?: string | {fork: string};
 	deployments?: string;
 	scripts?: string;
 	tags?: string;
 	logLevel?: number;
-	provider?: EIP1193ProviderWithoutEvents | EIP1193GenericRequestProvider;
+	provider?: EIP1193ProviderWithoutEvents | EIP1193GenericRequestProvider | UntypedEIP1193Provider;
 	ignoreMissingRPC?: boolean;
 	saveDeployments?: boolean;
 	askBeforeProceeding?: boolean;

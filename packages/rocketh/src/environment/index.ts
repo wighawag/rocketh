@@ -37,7 +37,7 @@ import {ProgressIndicator, log, spin} from '../internal/logging.js';
 import {PendingExecution} from './types.js';
 import {getChain} from './utils/chains.js';
 import {mergeArtifacts} from './utils/artifacts.js';
-import {TransactionHashTracker} from './providers/TransactionHashTracker.js';
+import {TransactionHashTracker, TransactionHashTrackerProvider} from './providers/TransactionHashTracker.js';
 
 type ReceiptResult = {receipt: EIP1193TransactionReceipt; latestBlockNumber: EIP1193QUANTITY};
 
@@ -90,7 +90,7 @@ export async function createEnvironment<
 			? config.network.provider
 			: (new JSONRPCHTTPProvider(config.network.nodeUrl) as EIP1193ProviderWithoutEvents);
 
-	const provider = new TransactionHashTracker(rawProvider);
+	const provider: TransactionHashTracker = new TransactionHashTrackerProvider(rawProvider);
 
 	const transport = custom(provider);
 	const viemClient = createPublicClient({transport});

@@ -1,17 +1,17 @@
-import {EIP1193GenericRequest, EIP1193GenericRequestProvider} from 'eip-1193';
+import {EIP1193GenericRequest, EIP1193ProviderWithoutEvents} from 'eip-1193';
 import {BaseProvider} from './BaseProvider.js';
 
-export class TransactionHashTracker extends BaseProvider {
+export class TransactionHashTrackerProvider extends BaseProvider implements EIP1193ProviderWithoutEvents {
 	public transactionHashes: `0x${string}`[] = [];
 
-	constructor(provider: EIP1193GenericRequestProvider) {
+	constructor(provider: EIP1193ProviderWithoutEvents) {
 		super(provider);
 	}
 
 	protected async _request<T = unknown, V extends EIP1193GenericRequest = EIP1193GenericRequest>(args: V): Promise<T> {
 		let response;
 		try {
-			response = await this.provider.request<T>(args);
+			response = await this.provider.request(args as any);
 		} catch (err) {
 			console.error(`failed to execute ${args.method}`, args);
 			throw err;
@@ -20,6 +20,10 @@ export class TransactionHashTracker extends BaseProvider {
 		if (args.method === 'eth_sendRawTransaction' || args.method === 'eth_sendTransaction') {
 			this.transactionHashes.push(response as `0x${string}`);
 		}
-		return response;
+		return response as T;
 	}
 }
+
+export type TransactionHashTracker = EIP1193ProviderWithoutEvents & {
+	transactionHashes: `0x${string}`[];
+};
