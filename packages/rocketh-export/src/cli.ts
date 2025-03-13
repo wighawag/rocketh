@@ -5,7 +5,7 @@ import {Command} from 'commander';
 import pkg from '../package.json' with {type: 'json'};
 import {ConfigOptions} from 'rocketh';
 
-const commandName = pkg.name;
+const commandName = "rocketh-export";
 
 const program = new Command();
 program

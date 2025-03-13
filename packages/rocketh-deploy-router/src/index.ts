@@ -7,7 +7,7 @@ import artifactsAsModule from 'solidity-proxy/generated/artifacts.js';
 import {logs} from 'named-logs';
 import {EIP1193Account} from 'eip-1193';
 
-const logger = logs('rocketh-deploy-proxy');
+const logger = logs('@rocketh/deploy-router');
 
 // fix for weird loading issue
 const artifacts = (artifactsAsModule as any).default

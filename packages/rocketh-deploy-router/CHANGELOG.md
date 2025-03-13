@@ -1,5 +1,14 @@
 # @rocketh/deploy-router
 
+## 1.0.0-next.4
+
+### Patch Changes
+
+- add @rocketh/read-execute
+- Updated dependencies
+  - @rocketh/deploy@1.0.0-next.4
+  - rocketh@1.0.0-next.4
+
 ## 1.0.0-next.3
 
 ### Patch Changes

@@ -1,4 +1,4 @@
-# rocketh-doc
+# @rocketh/doc
 
 `rocketh-doc` generates documentation from deployments files, following rocketh format composed of address,abi, etc....
 

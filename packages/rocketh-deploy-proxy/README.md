@@ -1,1 +1,1 @@
-# rocketh-deploy-proxy
+# @rocketh/deploy-proxy

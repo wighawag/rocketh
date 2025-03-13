@@ -1,13 +1,14 @@
 import {Abi, AbiFunction} from 'abitype';
 import type {Artifact, DeploymentConstruction, Deployment, Environment} from 'rocketh';
 import '@rocketh/deploy';
+import '@rocketh/read-execute';
 import type {EIP1193Account} from 'eip-1193';
 import {extendEnvironment} from 'rocketh';
-import {Chain, DeployContractParameters, encodeAbiParameters, encodeDeployData, encodeFunctionData} from 'viem';
+import {Chain, encodeFunctionData} from 'viem';
 import artifactsAsModule from 'solidity-proxy/generated/artifacts.js';
 import {logs} from 'named-logs';
 
-const logger = logs('rocketh-deploy-proxy');
+const logger = logs('@rocketh/deploy-proxy');
 
 // fix for weird loading issue
 const artifacts = (artifactsAsModule as any).default

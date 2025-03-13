@@ -6,7 +6,7 @@ import pkg from '../package.json' with {type: 'json'};
 import {ConfigOptions} from 'rocketh';
 import {RunOptions} from './index.js';
 
-const commandName = pkg.name;
+const commandName = "rocketh-doc";
 
 const program = new Command();
 program

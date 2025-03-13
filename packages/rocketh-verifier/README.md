@@ -1,1 +1,1 @@
-# rocketh-verifier
+# @rocketh/verifier

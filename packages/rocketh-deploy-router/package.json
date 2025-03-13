@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/deploy-router",
-	"version": "1.0.0-next.3",
+	"version": "1.0.0-next.4",
 	"description": "provide router based proxy deployment for rocketh",
 	"publishConfig": {
 		"access": "public"

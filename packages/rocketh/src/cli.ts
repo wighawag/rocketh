@@ -6,7 +6,7 @@ import pkg from '../package.json' with {type: 'json'};
 
 loadEnv();
 
-const commandName = pkg.name;
+const commandName = "rocketh";
 const program = new Command();
 program
 	.name(commandName)
