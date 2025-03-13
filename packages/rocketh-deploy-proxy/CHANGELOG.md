@@ -1,5 +1,14 @@
 # @rocketh/deploy-proxy
 
+## 1.0.0-next.4
+
+### Patch Changes
+
+- fix dist path
+- Updated dependencies
+  - @rocketh/deploy@1.0.0-next.3
+  - rocketh@1.0.0-next.3
+
 ## 1.0.0-next.3
 
 ### Patch Changes

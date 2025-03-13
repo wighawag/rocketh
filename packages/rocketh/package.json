@@ -1,22 +1,22 @@
 {
 	"name": "rocketh",
-	"version": "1.0.0-next.2",
+	"version": "1.0.0-next.3",
 	"description": "deploy smart contract on ethereum-compatible networks",
 	"publishConfig": {
 		"access": "public"
 	},
 	"type": "module",
-	"main": "dist/esm/index.js",
-	"module": "dist/esm/index.js",
-	"types": "dist/esm/index.d.ts",
+	"main": "dist/index.js",
+	"module": "dist/index.js",
+	"types": "dist/index.d.ts",
 	".": {
 		"import": {
-			"types": "./dist/esm/index.d.ts",
-			"default": "./dist/esm/index.js"
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
 		}
 	},
 	"bin": {
-		"rocketh": "dist/esm/cli.js"
+		"rocketh": "dist/cli.js"
 	},
 	"devDependencies": {
 		"@types/node": "^22.13.10",

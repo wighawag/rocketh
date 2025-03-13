@@ -1,5 +1,11 @@
 # rocketh
 
+## 1.0.0-next.3
+
+### Patch Changes
+
+- fix dist path
+
 ## 1.0.0-next.2
 
 ### Patch Changes
