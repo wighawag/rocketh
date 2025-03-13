@@ -1,5 +1,11 @@
 # @rocketh/deploy-proxy
 
+## 1.0.0-next.3
+
+### Patch Changes
+
+- proxy owner do the upgrade, regardless of account used to deploy the proxy
+
 ## 1.0.0-next.2
 
 ### Patch Changes

@@ -165,6 +165,24 @@ extendEnvironment((env: Environment) => {
 					`different implementation old: ${currentImplementationAddress} new: ${implementation.address}, upgrade...`
 				);
 
+				// let currentOwner: `0x${string}` | undefined;
+				// try {
+				// 	currentOwner = await env.read(proxyDeployment, {functionName: 'owner'});
+				// 	console.log({currentOwner});
+				// } catch {
+				// 	currentOwner = undefined;
+				// }
+				// if (!currentOwner) {
+				const ownerSlotData = await env.network.provider.request({
+					method: 'eth_getStorageAt',
+					params: [
+						proxyDeployment.address,
+						'0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103',
+						'latest',
+					],
+				});
+				const currentOwner = `0x${ownerSlotData.substr(-40)}`;
+
 				// if (preUpgradeCalldata) {
 				// 	if (postUpgradeCalldata) {
 				// 		await env.execute(proxyDeployment, {
@@ -184,14 +202,14 @@ extendEnvironment((env: Environment) => {
 				// } else
 				if (postUpgradeCalldata) {
 					await env.execute(proxyDeployment, {
-						account: address,
+						account: currentOwner,
 						functionName: 'upgradeToAndCall',
 						args: [implementation.address, postUpgradeCalldata],
 						value: 0n, // TODO
 					});
 				} else {
 					await env.execute(proxyDeployment, {
-						account: address,
+						account: currentOwner,
 						functionName: 'upgradeTo',
 						args: [implementation.address],
 					});
