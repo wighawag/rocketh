@@ -50,12 +50,12 @@ jobs:
         uses: actions/configure-pages@v4
       - name: Install dependencies
         run: pnpm i --ignore-scripts
-      - name: Build with VitePress
+      - name: VitePress rocketh
         run: pnpm run docs:build
 
       - name: Install dependencies for hardhat-deploy
         run: cd hardhat-deploy && pnpm i --ignore-scripts
-      - name: Build with VitePress
+      - name: VitePress hardhat-deploy
         run: cd hardhat-deploy && pnpm run docs:build && cp -r .vitepress/dist/* ../.vitepress/dist/hardhat-deploy/
         env:
           VITEPRESS_BASE: '/hardhat-deploy/'

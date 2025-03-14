@@ -29,7 +29,7 @@ export default defineConfig({
 		],
 	},
 
-	srcExclude: ['packages/*', 'demoes/*'],
+	srcExclude: ['hardhat-deploy', 'packages/*', 'demoes/*'],
 
 	rewrites(id) {
 		// console.log({ id });
