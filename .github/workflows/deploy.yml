@@ -59,6 +59,10 @@ jobs:
         run: cd hardhat-deploy && pnpm run docs:build && cp -r .vitepress/dist/* ../.vitepress/dist/hardhat-deploy/
         env:
           VITEPRESS_BASE: '/hardhat-deploy/'
+
+      - name: ls
+        run: ls .vitepress/dist
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
