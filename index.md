@@ -13,7 +13,7 @@ hero:
   actions:
     - theme: brand
       text: harhdat-deploy
-      link: /hardhat-deploy/
+      link: https://rocketh.dev/hardhat-deploy/
     - theme: alt
       text: github
       link: https://github.com/wighawag/rocketh/#readme

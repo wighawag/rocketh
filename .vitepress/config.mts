@@ -8,7 +8,7 @@ export default defineConfig({
 		// https://vitepress.dev/reference/default-theme-config
 		nav: [
 			{text: 'Home', link: '/'},
-			{text: 'hardhat-deploy', link: '/hardhat-deploy/'},
+			{text: 'hardhat-deploy', link: 'https://rocketh.dev/hardhat-deploy/'},
 		],
 
 		// sidebar: [

@@ -11,3 +11,5 @@ tmp
 
 .vitepress/cache
 .vitepress/dist
+
+hardhat-deploy
