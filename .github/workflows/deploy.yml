@@ -11,6 +11,10 @@ on:
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
+  # Add repository_dispatch to enable triggering from other repositories
+  repository_dispatch:
+    types: [deploy-docs]
+
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
   contents: read
@@ -36,7 +40,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: wighawag/hardhat-deploy
-          ref: 'v2'
+          ref: ${{ github.event.client_payload.ref || 'v2' }}
           fetch-depth: 0 # Not needed if lastUpdated is not enabled
           path: hardhat-deploy
       - name: Setup pnpm
