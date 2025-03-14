@@ -56,7 +56,7 @@ jobs:
       - name: Install dependencies for hardhat-deploy
         run: cd hardhat-deploy && pnpm i --ignore-scripts
       - name: VitePress hardhat-deploy
-        run: cd hardhat-deploy && pnpm run docs:build && mkdir -p ./.vitepress/dist/hardhat-deploy && cp -r .vitepress/dist/* ../.vitepress/dist/hardhat-deploy/
+        run: cd hardhat-deploy && pnpm run docs:build && mkdir -p ../.vitepress/dist/hardhat-deploy && cp -r .vitepress/dist/* ../.vitepress/dist/hardhat-deploy/
         env:
           VITEPRESS_BASE: '/hardhat-deploy/'
 
