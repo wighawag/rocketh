@@ -8,3 +8,6 @@ deployments/localhost
 
 *.local
 tmp
+
+.vitepress/cache
+.vitepress/dist
