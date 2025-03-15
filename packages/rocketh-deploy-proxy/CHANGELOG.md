@@ -1,5 +1,14 @@
 # @rocketh/deploy-proxy
 
+## 1.0.0-next.6
+
+### Patch Changes
+
+- Updated dependencies [9a9b3c4]
+  - rocketh@1.0.0-next.5
+  - @rocketh/deploy@1.0.0-next.5
+  - @rocketh/read-execute@1.0.0-next.2
+
 ## 1.0.0-next.5
 
 ### Patch Changes

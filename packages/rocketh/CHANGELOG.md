@@ -1,5 +1,11 @@
 # rocketh
 
+## 1.0.0-next.5
+
+### Patch Changes
+
+- 9a9b3c4: fix compatibility with hardhat-deploy v1 .chainId file
+
 ## 1.0.0-next.4
 
 ### Patch Changes
