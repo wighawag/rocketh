@@ -1,0 +1,43 @@
+{
+	"name": "@rocketh/diamond",
+	"version": "0.0.0",
+	"description": "provide diamond support for rocketh/hardhat-deploy",
+	"publishConfig": {
+		"access": "public"
+	},
+	"type": "module",
+	"main": "dist/index.js",
+	"module": "dist/index.js",
+	"types": "dist/index.d.ts",
+	".": {
+		"import": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		}
+	},
+	"files": [
+		"dist"
+	],
+	"devDependencies": {
+		"abitype": "^1.0.8",
+		"as-soon": "^0.0.11",
+		"eip-1193": "^0.6.2",
+		"rimraf": "^6.0.1",
+		"rocketh": "workspace:*",
+		"typescript": "^5.8.2"
+	},
+	"peerDependencies": {
+		"rocketh": "workspace:*"
+	},
+	"dependencies": {
+		"@rocketh/deploy": "workspace:*",
+		"@rocketh/read-execute": "workspace:*",
+		"named-logs": "^0.3.2",
+		"solidity-proxy": "^0.4.0",
+		"viem": "^2.23.10"
+	},
+	"scripts": {
+		"build": "tsc --project tsconfig.json",
+		"dev": "as-soon -w src pnpm build"
+	}
+}

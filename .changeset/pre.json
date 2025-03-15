@@ -1,24 +1,25 @@
 {
-  "mode": "pre",
-  "tag": "next",
-  "initialVersions": {
-    "rocketh": "0.10.18",
-    "@rocketh/deploy": "0.10.12",
-    "@rocketh/deploy-proxy": "0.10.13",
-    "@rocketh/deploy-router": "0.10.12",
-    "@rocketh/doc": "0.10.12",
-    "@rocketh/export": "0.10.15",
-    "@rocketh/read-execute": "0.10.0",
-    "@rocketh/signer": "0.10.12",
-    "@rocketh/verifier": "0.10.15"
-  },
-  "changesets": [
-    "cruel-teams-type",
-    "fair-trams-wave",
-    "fancy-years-vanish",
-    "ready-spies-press",
-    "salty-chicken-learn",
-    "serious-adults-cry",
-    "stale-dingos-thank"
-  ]
+	"mode": "pre",
+	"tag": "next",
+	"initialVersions": {
+		"rocketh": "0.10.18",
+		"@rocketh/deploy": "0.10.12",
+		"@rocketh/deploy-proxy": "0.10.13",
+		"@rocketh/deploy-router": "0.10.12",
+		"@rocketh/doc": "0.10.12",
+		"@rocketh/export": "0.10.15",
+		"@rocketh/read-execute": "0.10.0",
+		"@rocketh/signer": "0.10.12",
+		"@rocketh/verifier": "0.10.15",
+		"@rocketh/diamond": "0.0.0"
+	},
+	"changesets": [
+		"cruel-teams-type",
+		"fair-trams-wave",
+		"fancy-years-vanish",
+		"ready-spies-press",
+		"salty-chicken-learn",
+		"serious-adults-cry",
+		"stale-dingos-thank"
+	]
 }
