@@ -1,0 +1,4 @@
+- [ ] support hardhat-deploy v1 migrations feature ?
+- [ ] support diamond
+- [ ] support zksync
+- [ ] support upgradeIndex
