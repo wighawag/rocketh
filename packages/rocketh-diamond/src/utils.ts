@@ -1,7 +1,7 @@
 import {Abi, AbiEvent, AbiFunction} from 'abitype';
 import {toEventHash, toFunctionSelector} from 'viem';
 
-export function sigsFromABI(abi: Abi): string[] {
+export function sigsFromABI(abi: Abi): `0x${string}`[] {
 	return abi.filter((fragment) => fragment.type === 'function').map((fragment) => toFunctionSelector(fragment));
 }
 

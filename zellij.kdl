@@ -15,6 +15,9 @@ layout {
 			pane name="rocketh-deploy" command="bash" {
 				args "-c" "pnpm run --filter @rocketh/deploy dev; cd packages/rocketh-deploy; ${SHELL-bash}"
 			}
+			pane name="rocketh-diamond" command="bash" {
+				args "-c" "pnpm run --filter @rocketh/diamond dev; cd packages/rocketh-diamond; ${SHELL-bash}"
+			}
 		}
 		pane split_direction="vertical" {
 			pane name="rocketh-deploy-proxy" command="bash" {

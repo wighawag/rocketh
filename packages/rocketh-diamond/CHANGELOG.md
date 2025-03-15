@@ -1,5 +1,11 @@
 # @rocketh/diamond
 
+## 0.11.2
+
+### Patch Changes
+
+- working diamond
+
 ## 0.11.1
 
 ### Patch Changes

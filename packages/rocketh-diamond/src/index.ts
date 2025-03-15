@@ -6,7 +6,7 @@ import type {EIP1193Account} from 'eip-1193';
 import {extendEnvironment} from 'rocketh';
 import {Chain, encodeFunctionData, zeroAddress} from 'viem';
 import {logs} from 'named-logs';
-import artifactDiamond from './hardhat-deploy-v1-artifacts/Diamond.js';
+import artifactPureDiamond from './hardhat-deploy-v1-artifacts/Diamond.js';
 import artifactDiamondLoupeFact from './hardhat-deploy-v1-artifacts/DiamondLoupeFacet.js';
 import artifactDiamondCutFact from './hardhat-deploy-v1-artifacts/DiamondCutFacet.js';
 import artifactOwnershipFacet from './hardhat-deploy-v1-artifacts/OwnershipFacet.js';
@@ -16,11 +16,28 @@ import {DeployOptions} from '@rocketh/deploy';
 
 const logger = logs('@rocketh/diamond');
 
-type DiamondABI = typeof artifactDiamond.abi;
+type OwnershipFacetABI = typeof artifactOwnershipFacet.abi;
+type DiamondLoupeABI = typeof artifactDiamondLoupeFact.abi;
+type DiamondCutABI = typeof artifactDiamondCutFact.abi;
+type PureDiamondABI = typeof artifactPureDiamond.abi;
+
+// TODO merge type of PureDiamondABI & OwnershipFacetABI & DiamondLoupeABI & DiamondCutABI;
+type DiamondABI = PureDiamondABI;
+const diamondAbi = mergeABIs(
+	[artifactPureDiamond.abi, artifactOwnershipFacet.abi, artifactDiamondLoupeFact.abi, artifactDiamondCutFact.abi],
+	{
+		check: true,
+		skipSupportsInterface: true,
+	}
+);
+const artifactDiamond = {
+	...artifactPureDiamond,
+	abi: diamondAbi,
+};
 
 export type Facet = {
-	facetAddress: string;
-	functionSelectors: string[];
+	facetAddress: `0x${string}`;
+	functionSelectors: readonly `0x${string}`[];
 };
 
 export enum FacetCutAction {
@@ -34,8 +51,8 @@ export type FacetCut = Facet & {
 };
 
 export type FacetOptions = {
-	name: string;
-	contract: Artifact;
+	name?: string;
+	artifact: Artifact;
 	args?: any[];
 	linkedData?: any; // JSONable ?
 	libraries?: Libraries;
@@ -119,9 +136,11 @@ extendEnvironment((env: Environment) => {
 
 		const newSelectors: string[] = [];
 		const facetSnapshot: Facet[] = [];
-		let oldFacets: Facet[] = [];
+		let oldFacets: readonly Facet[] = [];
 		if (proxy) {
-			oldFacets = await env.read(proxy, {functionName: 'facets'});
+			oldFacets = await env.read(proxy as unknown as Deployment<DiamondLoupeABI>, {
+				functionName: 'facets',
+			});
 		}
 		// console.log({ oldFacets: JSON.stringify(oldFacets, null, "  ") });
 
@@ -129,7 +148,7 @@ extendEnvironment((env: Environment) => {
 		if (options?.defaultCutFacet === undefined || options.defaultCutFacet) {
 			facetsSet.push({
 				name: '_DefaultDiamondCutFacet',
-				contract: artifactDiamondCutFact,
+				artifact: artifactDiamondCutFact,
 				args: [],
 				deterministic: true,
 			});
@@ -137,24 +156,25 @@ extendEnvironment((env: Environment) => {
 		if (options?.defaultOwnershipFacet === undefined || options.defaultOwnershipFacet) {
 			facetsSet.push({
 				name: '_DefaultDiamondOwnershipFacet',
-				contract: artifactOwnershipFacet,
+				artifact: artifactOwnershipFacet,
 				args: [],
 				deterministic: true,
 			});
 		}
 		facetsSet.push({
 			name: '_DefaultDiamondLoupeFacet',
-			contract: artifactDiamondLoupeFact,
+			artifact: artifactDiamondLoupeFact,
 			args: [],
 			deterministic: true,
 		});
 
 		let changesDetected = !oldDeployment;
 		// will be populated
-		let abi: TAbi = artifactDiamond.abi.concat([]) as unknown as TAbi;
+		let abi: TAbi = artifactPureDiamond.abi.concat([]) as unknown as TAbi;
 		const facetCuts: FacetCut[] = [];
 		let facetFound: string | undefined;
 		const excludeSelectors: Record<string, `0x${string}`[]> = options?.excludeSelectors || {};
+		let i = 0;
 		for (const facet of facetsSet) {
 			let deterministicFacet: `0x${string}` | boolean = true;
 
@@ -179,9 +199,12 @@ extendEnvironment((env: Environment) => {
 				facetArgs = facet.args;
 				argsSpecific = true;
 			}
-			const artifact = facet.contract;
+			const artifact = facet.artifact;
 
-			const facetName = facet.name;
+			const facetName = facet.name || artifact.contractName;
+			if (!facetName) {
+				throw new Error(`artifact for facet at index: ${i} has no name, specify a name for the facet`);
+			}
 			const constructor = artifact.abi.find((fragment) => fragment.type === 'constructor');
 			if (!argsSpecific && (!constructor || constructor.inputs.length === 0)) {
 				// reset args for case where facet do not expect any and there was no specific args set on it
@@ -207,7 +230,7 @@ extendEnvironment((env: Environment) => {
 				{libraries, linkedData, deterministic: deterministicFacet}
 			);
 
-			let facetAddress: string;
+			let facetAddress: `0x${string}`;
 			// TODO updated, check if it is correct, seem to be trigger if linkedData get updated
 			if (implementation.newlyDeployed) {
 				// console.log(`facet ${facet} deployed at ${implementation.address}`);
@@ -244,10 +267,12 @@ extendEnvironment((env: Environment) => {
 			// 		}
 			// 	}
 			// }
+
+			i++;
 		}
 
-		const oldSelectors: string[] = [];
-		const oldSelectorsFacetAddress: {[selector: string]: string} = {};
+		const oldSelectors: `0x${string}`[] = [];
+		const oldSelectorsFacetAddress: {[selector: `0x${string}`]: `0x${string}`} = {};
 		for (const oldFacet of oldFacets) {
 			for (const selector of oldFacet.functionSelectors) {
 				oldSelectors.push(selector);
@@ -256,8 +281,8 @@ extendEnvironment((env: Environment) => {
 		}
 
 		for (const newFacet of facetSnapshot) {
-			const selectorsToAdd: string[] = [];
-			const selectorsToReplace: string[] = [];
+			const selectorsToAdd: `0x${string}`[] = [];
+			const selectorsToReplace: `0x${string}`[] = [];
 
 			for (const selector of newFacet.functionSelectors) {
 				// TODO fix in master >0 to transform into >= 0
@@ -289,7 +314,7 @@ extendEnvironment((env: Environment) => {
 			}
 		}
 
-		const selectorsToDelete: string[] = [];
+		const selectorsToDelete: `0x${string}`[] = [];
 		for (const selector of oldSelectors) {
 			if (newSelectors.indexOf(selector) === -1) {
 				selectorsToDelete.push(selector);
@@ -305,8 +330,8 @@ extendEnvironment((env: Environment) => {
 			});
 		}
 
-		let executeData = '0x';
-		let executeAddress = '0x0000000000000000000000000000000000000000';
+		let executeData: `0x${string}` = '0x';
+		let executeAddress: `0x${string}` = '0x0000000000000000000000000000000000000000';
 		// TODO
 		// if (options.execute) {
 		// 	let addressSpecified: string | undefined;
@@ -466,7 +491,7 @@ extendEnvironment((env: Environment) => {
 					proxyName,
 					{
 						...params,
-						artifact: artifactDiamond,
+						artifact: artifactDiamond as unknown as Artifact<DiamondABI>,
 						args: diamondConstructorArgs as any,
 					},
 					{
@@ -475,8 +500,9 @@ extendEnvironment((env: Environment) => {
 					}
 				);
 
-				await env.save<DiamondABI>(name, {
+				await env.save<TAbi>(name, {
 					...proxy,
+					abi,
 					linkedData: options.linkedData,
 					facets: facetSnapshot,
 					execute: options.execute,
@@ -485,7 +511,7 @@ extendEnvironment((env: Environment) => {
 				if (!oldDeployment) {
 					throw new Error(`Cannot find Deployment for ${name}`);
 				}
-				const currentOwner = await env.read(proxy as unknown as Deployment<typeof artifactOwnershipFacet.abi>, {
+				const currentOwner = await env.read(proxy as unknown as Deployment<OwnershipFacetABI>, {
 					functionName: 'owner',
 				});
 				if (currentOwner.toLowerCase() !== expectedOwner.toLowerCase()) {
@@ -495,14 +521,17 @@ extendEnvironment((env: Environment) => {
 					throw new Error('The Diamond belongs to no-one. It cannot be upgraded anymore');
 				}
 
-				const txHash = await env.execute(proxy, {
+				const txHash = await env.execute(proxy as unknown as Deployment<DiamondCutABI>, {
 					...params,
 					functionName: 'diamondCut',
 					args: [
 						facetCuts,
-						executeData === '0x' ? '0x0000000000000000000000000000000000000000' : executeAddress || proxy.address, // TODO  || proxy.address should not be required, the facet should have been found
+						executeData === '0x'
+							? ('0x0000000000000000000000000000000000000000' as `0x${string}`)
+							: executeAddress || proxy.address, // TODO  || proxy.address should not be required, the facet should have been found
 						executeData,
 					],
+					value: undefined,
 				});
 
 				const diamondDeployment: Deployment<TAbi> = {
