@@ -27,6 +27,7 @@
 		"as-soon": "^0.0.11",
 		"eip-1193": "^0.6.2",
 		"rimraf": "^6.0.1",
+		"rocketh": "workspace:*",
 		"typescript": "^5.8.2"
 	},
 	"peerDependencies": {
@@ -36,8 +37,7 @@
 		"@types/fs-extra": "^11.0.4",
 		"chalk": "5.4.1",
 		"commander": "^13.1.0",
-		"fs-extra": "^11.3.0",
-		"rocketh": "workspace:*"
+		"fs-extra": "^11.3.0"
 	},
 	"scripts": {
 		"build": "tsc --project tsconfig.json",
