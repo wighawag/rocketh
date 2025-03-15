@@ -19,6 +19,8 @@
 		"dist"
 	],
 	"devDependencies": {
+		"@rocketh/deploy": "workspace:*",
+		"@rocketh/read-execute": "workspace:*",
 		"abitype": "^1.0.8",
 		"as-soon": "^0.0.11",
 		"eip-1193": "^0.6.2",
@@ -27,11 +29,11 @@
 		"typescript": "^5.8.2"
 	},
 	"peerDependencies": {
+		"@rocketh/deploy": "workspace:*",
+		"@rocketh/read-execute": "workspace:*",
 		"rocketh": "workspace:*"
 	},
 	"dependencies": {
-		"@rocketh/deploy": "workspace:*",
-		"@rocketh/read-execute": "workspace:*",
 		"named-logs": "^0.3.2",
 		"solidity-proxy": "^0.4.0",
 		"viem": "^2.23.10"
