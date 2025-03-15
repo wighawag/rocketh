@@ -192,12 +192,6 @@ importers:
 
   packages/rocketh-diamond:
     dependencies:
-      '@rocketh/deploy':
-        specifier: workspace:*
-        version: link:../rocketh-deploy
-      '@rocketh/read-execute':
-        specifier: workspace:*
-        version: link:../rocketh-read-execute
       named-logs:
         specifier: ^0.3.2
         version: 0.3.2
@@ -208,6 +202,12 @@ importers:
         specifier: ^2.23.10
         version: 2.23.10(typescript@5.8.2)(zod@3.24.2)
     devDependencies:
+      '@rocketh/deploy':
+        specifier: workspace:*
+        version: link:../rocketh-deploy
+      '@rocketh/read-execute':
+        specifier: workspace:*
+        version: link:../rocketh-read-execute
       abitype:
         specifier: ^1.0.8
         version: 1.0.8(typescript@5.8.2)(zod@3.24.2)
