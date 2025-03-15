@@ -4,12 +4,15 @@ import '@rocketh/deploy';
 import '@rocketh/read-execute';
 import type {EIP1193Account} from 'eip-1193';
 import {extendEnvironment} from 'rocketh';
-import {Chain, encodeFunctionData} from 'viem';
+import {Chain, encodeFunctionData, zeroAddress} from 'viem';
 import {logs} from 'named-logs';
 import artifactDiamond from './hardhat-deploy-v1-artifacts/Diamond.js';
 import artifactDiamondLoupeFact from './hardhat-deploy-v1-artifacts/DiamondLoupeFacet.js';
 import artifactDiamondCutFact from './hardhat-deploy-v1-artifacts/DiamondCutFacet.js';
 import artifactOwnershipFacet from './hardhat-deploy-v1-artifacts/OwnershipFacet.js';
+import artifactDiamondERC165Init from './hardhat-deploy-v1-artifacts/DiamondERC165Init.js';
+import {filterABI, mergeABIs, sigsFromABI} from './utils.js';
+import {DeployOptions} from '@rocketh/deploy';
 
 const logger = logs('@rocketh/diamond');
 
@@ -40,43 +43,46 @@ export type FacetOptions = {
 };
 export type DiamondFacets = Array<FacetOptions>;
 
-export type DiamondDeployOptions = {
-	linkedData?: any;
-	disabled?: boolean;
+export type DiamondDeployOptions = Omit<DeployOptions, 'skipIfAlreadyDeployed' | 'alwaysOverride' | 'deterministic'> & {
+	facets: DiamondFacets;
 	owner?: EIP1193Account;
 	execute?: string;
 	defaultCutFacet?: boolean;
 	defaultOwnershipFacet?: boolean;
+	diamondContractArgs?: any[];
 	excludeSelectors?: {
-		[facetName: string]: string[];
+		[facetName: string]: `0x${string}`[];
 	};
-	libraries?: Libraries;
 	facetsArgs?: any[];
+	deterministicSalt?: `0x${string}`;
 };
 
 // TODO omit nonce ? // TODO omit chain ? same for rocketh-deploy
-export type DiamondDeploymentConstruction<TAbi extends Abi> = Omit<DeploymentConstruction<TAbi>, 'artifact'> & {
-	facets: DiamondFacets;
+export type DiamondDeploymentConstruction<TAbi extends Abi> = Omit<
+	DeploymentConstruction<TAbi>,
+	'artifact' | 'args'
+> & {
+	artifact?: Artifact;
 };
 
-export type DeployViaProxyFunction = <TAbi extends Abi>(
+export type DeployViaDiamondFunction = <TAbi extends Abi>(
 	name: string,
 	params: DiamondDeploymentConstruction<TAbi>,
-	options?: DiamondDeployOptions
-) => Promise<Deployment<TAbi>>;
+	options: DiamondDeployOptions
+) => Promise<Deployment<TAbi> & {newlyDeployed: boolean}>;
 
 declare module 'rocketh' {
 	interface Environment {
-		diamond: DeployViaProxyFunction;
+		diamond: DeployViaDiamondFunction;
 	}
 }
 
 extendEnvironment((env: Environment) => {
-	async function diamond<TAbi extends Abi, TChain extends Chain = Chain>(
+	async function diamond<TAbi extends Abi>(
 		name: string,
 		params: DiamondDeploymentConstruction<TAbi>,
-		options?: DiamondDeployOptions
-	): Promise<Deployment<TAbi>> {
+		options: DiamondDeployOptions
+	): Promise<Deployment<TAbi> & {newlyDeployed: boolean}> {
 		let proxy: Deployment<DiamondABI> | undefined;
 		const proxyName = `${name}_DiamondProxy`;
 
@@ -89,7 +95,7 @@ extendEnvironment((env: Environment) => {
 		// return _old_deployViaDiamondProxy(name, options);
 		// }
 
-		const {account, args, ...viemArgs} = params;
+		const {account, ...viemArgs} = params;
 		let deployerAddress: `0x${string}`;
 		if (account.startsWith('0x')) {
 			deployerAddress = account as `0x${string}`;
@@ -119,7 +125,7 @@ extendEnvironment((env: Environment) => {
 		}
 		// console.log({ oldFacets: JSON.stringify(oldFacets, null, "  ") });
 
-		const facetsSet = [...params.facets];
+		const facetsSet = options.facets;
 		if (options?.defaultCutFacet === undefined || options.defaultCutFacet) {
 			facetsSet.push({
 				name: '_DefaultDiamondCutFacet',
@@ -144,10 +150,11 @@ extendEnvironment((env: Environment) => {
 		});
 
 		let changesDetected = !oldDeployment;
-		let abi: any[] = artifactDiamond.abi.concat([]);
+		// will be populated
+		let abi: TAbi = artifactDiamond.abi.concat([]) as unknown as TAbi;
 		const facetCuts: FacetCut[] = [];
 		let facetFound: string | undefined;
-		const excludeSelectors: Record<string, string[]> = options?.excludeSelectors || {};
+		const excludeSelectors: Record<string, `0x${string}`[]> = options?.excludeSelectors || {};
 		for (const facet of facetsSet) {
 			let deterministicFacet: `0x${string}` | boolean = true;
 
@@ -180,12 +187,11 @@ extendEnvironment((env: Environment) => {
 				// reset args for case where facet do not expect any and there was no specific args set on it
 				facetArgs = [];
 			}
-			let excludeSighashes: Set<string> = new Set();
+			let excludeSighashes: Set<`0x${string}`> = new Set();
 			if (facetName in excludeSelectors) {
-				const iface = new Interface(artifact.abi);
-				excludeSighashes = new Set(excludeSelectors[facetName].map((selector) => iface.getSighash(selector)));
+				excludeSighashes = new Set(excludeSelectors[facetName]);
 			}
-			abi = mergeABIs([abi, filterABI(artifact.abi, excludeSighashes)], {
+			abi = mergeABIs<TAbi>([abi, filterABI(artifact.abi, excludeSighashes)], {
 				check: true,
 				skipSupportsInterface: false,
 			});
@@ -203,7 +209,7 @@ extendEnvironment((env: Environment) => {
 
 			let facetAddress: string;
 			// TODO updated, check if it is correct, seem to be trigger if linkedData get updated
-			if (implementation.updated) {
+			if (implementation.newlyDeployed) {
 				// console.log(`facet ${facet} deployed at ${implementation.address}`);
 				facetAddress = implementation.address;
 				const newFacet = {
@@ -299,9 +305,9 @@ extendEnvironment((env: Environment) => {
 			});
 		}
 
+		let executeData = '0x';
+		let executeAddress = '0x0000000000000000000000000000000000000000';
 		// TODO
-		// let executeData = '0x';
-		// let executeAddress = '0x0000000000000000000000000000000000000000';
 		// if (options.execute) {
 		// 	let addressSpecified: string | undefined;
 		// 	let executionContract = new Contract('0x0000000000000000000000000000000000000001', abi);
@@ -344,7 +350,7 @@ extendEnvironment((env: Environment) => {
 
 		if (changesDetected) {
 			if (!proxy) {
-				const diamondConstructorArgs = options.diamondContractArgs || ['{owner}', '{facetCuts}', '{initializations}'];
+				const diamondConstructorArgs = options?.diamondContractArgs || ['{owner}', '{facetCuts}', '{initializations}'];
 
 				const initializationsArgIndex = diamondConstructorArgs.indexOf('{initializations}');
 				const erc165InitArgIndex = diamondConstructorArgs.indexOf('{erc165}');
@@ -359,7 +365,7 @@ extendEnvironment((env: Environment) => {
 
 				// TODO option to add more to the list
 				// else mechanism to set it up differently ? LoupeFacet without supportsInterface
-				const interfaceList = ['0x48e2b093'];
+				const interfaceList: `0x${string}`[] = ['0x48e2b093'];
 				if (options?.defaultCutFacet) {
 					interfaceList.push('0x1f931c1c');
 				}
@@ -369,41 +375,39 @@ extendEnvironment((env: Environment) => {
 
 				if (initializationsArgIndex >= 0 || erc165InitArgIndex >= 0) {
 					// TODO:TMP
-					const diamondERC165InitDeployment = await env.deploy('_DefaultDiamondERC165Init', {});
-					const diamondERC165InitDeployment = await _deployOne('_DefaultDiamondERC165Init', {
-						from: options.from,
-						deterministicDeployment: true,
-						contract: diamondERC165Init,
-						autoMine: options.autoMine,
-						estimateGasExtra: options.estimateGasExtra,
-						estimatedGasLimit: options.estimatedGasLimit,
-						gasPrice: options.gasPrice,
-						maxFeePerGas: options.maxFeePerGas,
-						maxPriorityFeePerGas: options.maxPriorityFeePerGas,
-						log: options.log,
-					});
-					const diamondERC165InitContract = new Contract(
-						diamondERC165InitDeployment.address,
-						diamondERC165InitDeployment.abi
+					const diamondERC165InitDeployment = await env.deploy(
+						'_DefaultDiamondERC165Init',
+						{
+							...params,
+							artifact: artifactDiamondERC165Init,
+							args: [],
+						},
+						{deterministic: true}
 					);
-					const interfaceInitTx = await diamondERC165InitContract.populateTransaction.setERC165(interfaceList, []);
+
+					const interfaceInitCallData = encodeFunctionData({
+						abi: artifactDiamondERC165Init.abi,
+						functionName: 'setERC165',
+						args: [interfaceList, []],
+					});
+
 					if (initializationsArgIndex >= 0) {
 						const initializations = [];
 						initializations.push({
-							initContract: interfaceInitTx.to,
-							initData: interfaceInitTx.data,
+							initContract: diamondERC165InitDeployment.address,
+							initData: interfaceInitCallData,
 						});
 						diamondConstructorArgs[initializationsArgIndex] = initializations;
 					} else {
 						diamondConstructorArgs[erc165InitArgIndex] = {
-							initContract: interfaceInitTx.to,
-							initData: interfaceInitTx.data,
+							initContract: diamondERC165InitDeployment.address,
+							initData: interfaceInitCallData,
 						};
 					}
 				}
 
 				if (ownerArgIndex >= 0) {
-					diamondConstructorArgs[ownerArgIndex] = owner;
+					diamondConstructorArgs[ownerArgIndex] = expectedOwner;
 				} else {
 					// TODO ?
 				}
@@ -439,8 +443,6 @@ extendEnvironment((env: Environment) => {
 					}
 				}
 
-				let deterministicDiamondAlreadyDeployed = false;
-				let expectedAddress: string | undefined = undefined;
 				let salt = '0x0000000000000000000000000000000000000000000000000000000000000000';
 				if (typeof options.deterministicSalt !== 'undefined') {
 					if (typeof options.deterministicSalt === 'string') {
@@ -448,94 +450,62 @@ extendEnvironment((env: Environment) => {
 							throw new Error(
 								`deterministicSalt cannot be 0x000..., it needs to be a non-zero bytes32 salt. This is to ensure you are explicitly specifying different addresses for multiple diamonds`
 							);
-						} else {
-							if (options.deterministicSalt.length !== 66) {
-								throw new Error(
-									`deterministicSalt needs to be a string of 66 hexadecimal characters (including the 0x prefix)`
-								);
-							}
-							salt = options.deterministicSalt;
-
-							const factory = new DeploymentFactory(getArtifact, diamondArtifact, diamondConstructorArgs, network);
-
-							const create2DeployerAddress = await deploymentManager.getDeterministicDeploymentFactoryAddress();
-							expectedAddress = await factory.getCreate2Address(create2DeployerAddress, salt);
-							const code = await provider.getCode(expectedAddress);
-							if (code !== '0x') {
-								deterministicDiamondAlreadyDeployed = true;
-							}
 						}
+						if (options.deterministicSalt.length !== 66) {
+							throw new Error(
+								`deterministicSalt needs to be a string of 66 hexadecimal characters (including the 0x prefix)`
+							);
+						}
+						salt = options.deterministicSalt;
 					} else {
 						throw new Error(`deterministicSalt need to be a string, an non-zero bytes32 salt`);
 					}
 				}
 
-				if (expectedAddress && deterministicDiamondAlreadyDeployed) {
-					proxy = {
-						...diamondArtifact,
-						address: expectedAddress,
-						args: diamondConstructorArgs,
-					};
-					await saveDeployment(proxyName, proxy);
-					await saveDeployment(name, {
-						...proxy,
-						linkedData: options.linkedData,
-						facets: facetSnapshot,
-						abi,
-					});
-					await _deployViaDiamondProxy(name, options); // this would not recurse again as the name and proxyName are now saved
-				} else {
-					proxy = await _deployOne(proxyName, {
-						contract: diamondArtifact,
-						from: options.from,
-						args: diamondConstructorArgs,
-						autoMine: options.autoMine,
-						deterministicDeployment: options.deterministicSalt,
-						estimateGasExtra: options.estimateGasExtra,
-						estimatedGasLimit: options.estimatedGasLimit,
-						gasLimit: options.gasLimit,
-						gasPrice: options.gasPrice,
-						log: options.log,
-						nonce: options.nonce,
-						maxFeePerGas: options.maxFeePerGas,
-						maxPriorityFeePerGas: options.maxPriorityFeePerGas,
-						value: options.value,
-					});
+				proxy = await env.deploy(
+					proxyName,
+					{
+						...params,
+						artifact: artifactDiamond,
+						args: diamondConstructorArgs as any,
+					},
+					{
+						deterministic: options.deterministicSalt,
+						skipIfAlreadyDeployed: true,
+					}
+				);
 
-					await saveDeployment(proxyName, {...proxy, abi});
-					await saveDeployment(name, {
-						...proxy,
-						linkedData: options.linkedData,
-						facets: facetSnapshot,
-						abi,
-						execute: options.execute,
-					});
-				}
+				await env.save<DiamondABI>(name, {
+					...proxy,
+					linkedData: options.linkedData,
+					facets: facetSnapshot,
+					execute: options.execute,
+				});
 			} else {
 				if (!oldDeployment) {
 					throw new Error(`Cannot find Deployment for ${name}`);
 				}
-				const currentOwner = await read(proxyName, 'owner');
-				if (currentOwner.toLowerCase() !== owner.toLowerCase()) {
+				const currentOwner = await env.read(proxy as unknown as Deployment<typeof artifactOwnershipFacet.abi>, {
+					functionName: 'owner',
+				});
+				if (currentOwner.toLowerCase() !== expectedOwner.toLowerCase()) {
 					throw new Error('To change owner, you need to call `transferOwnership`');
 				}
-				if (currentOwner === AddressZero) {
+				if (currentOwner === zeroAddress) {
 					throw new Error('The Diamond belongs to no-one. It cannot be upgraded anymore');
 				}
 
-				const executeReceipt = await execute(
-					name,
-					{...options, from: currentOwner},
-					'diamondCut',
-					facetCuts,
-					executeData === '0x' ? '0x0000000000000000000000000000000000000000' : executeAddress || proxy.address, // TODO  || proxy.address should not be required, the facet should have been found
-					executeData
-				);
-				if (!executeReceipt) {
-					throw new Error('failed to execute');
-				}
+				const txHash = await env.execute(proxy, {
+					...params,
+					functionName: 'diamondCut',
+					args: [
+						facetCuts,
+						executeData === '0x' ? '0x0000000000000000000000000000000000000000' : executeAddress || proxy.address, // TODO  || proxy.address should not be required, the facet should have been found
+						executeData,
+					],
+				});
 
-				const diamondDeployment: DeploymentSubmission = {
+				const diamondDeployment: Deployment<TAbi> = {
 					...oldDeployment,
 					linkedData: options.linkedData,
 					address: proxy.address,
@@ -544,17 +514,17 @@ extendEnvironment((env: Environment) => {
 					execute: options.execute, // TODO add receipt + tx hash
 				};
 
-				// TODO reenable history with options
-				if (oldDeployment.history) {
-					diamondDeployment.history = diamondDeployment.history
-						? diamondDeployment.history.concat([oldDeployment])
-						: [oldDeployment];
-				}
+				// // TODO reenable history with options
+				// if (oldDeployment.history && oldDeployment.history) {
+				// 	diamondDeployment.history = diamondDeployment.history
+				// 		? diamondDeployment.history.concat([oldDeployment])
+				// 		: [oldDeployment];
+				// }
 
-				await saveDeployment(name, diamondDeployment);
+				await env.save(name, diamondDeployment);
 			}
 
-			const deployment = await partialExtension.get(name);
+			const deployment = env.get<TAbi>(name);
 			return {
 				...deployment,
 				newlyDeployed: true,
@@ -574,7 +544,7 @@ extendEnvironment((env: Environment) => {
 			// //   : [oldDeployment];
 			// await saveDeployment(name, proxiedDeployment);
 
-			const deployment = await partialExtension.get(name);
+			const deployment = await env.get<TAbi>(name);
 			return {
 				...deployment,
 				newlyDeployed: false,

@@ -7,6 +7,7 @@ import {extendEnvironment} from 'rocketh';
 import {Chain, encodeFunctionData} from 'viem';
 import artifactsAsModule from 'solidity-proxy/generated/artifacts.js';
 import {logs} from 'named-logs';
+import {DeployOptions} from '@rocketh/deploy';
 
 const logger = logs('@rocketh/deploy-proxy');
 
@@ -15,9 +16,7 @@ const artifacts = (artifactsAsModule as any).default
 	? ((artifactsAsModule as any).default as typeof artifactsAsModule)
 	: artifactsAsModule;
 
-export type ProxyDeployOptions = {
-	linkedData?: any;
-	disabled?: boolean;
+export type ProxyDeployOptions = Omit<DeployOptions, 'skipIfAlreadyDeployed' | 'alwaysOverride'> & {
 	owner?: EIP1193Account;
 	execute?: string;
 };
@@ -76,12 +75,16 @@ extendEnvironment((env: Environment) => {
 		const implementation =
 			typeof params.artifact === 'function'
 				? await params.artifact(implementationName, {...params})
-				: await env.deploy(implementationName, {
-						...viemArgs,
-						args,
-						artifact,
-						account: address,
-				  } as DeploymentConstruction<TAbi>);
+				: await env.deploy(
+						implementationName,
+						{
+							...viemArgs,
+							args,
+							artifact,
+							account: address,
+						} as DeploymentConstruction<TAbi>,
+						{alwaysOverride: true, deterministic: true, libraries: options?.libraries}
+				  );
 
 		logger.info(`implementation at ${implementation.address}`, `${implementationName}`);
 
@@ -130,11 +133,18 @@ extendEnvironment((env: Environment) => {
 		// }
 
 		if (!existingDeployment) {
-			const proxy = await env.deploy<typeof proxyArtifact.abi>(proxyName, {
-				...params,
-				artifact: proxyArtifact,
-				args: [implementation.address, owner, postUpgradeCalldata ? postUpgradeCalldata : '0x'],
-			});
+			const proxy = await env.deploy<typeof proxyArtifact.abi>(
+				proxyName,
+				{
+					...params,
+					artifact: proxyArtifact,
+					args: [implementation.address, owner, postUpgradeCalldata ? postUpgradeCalldata : '0x'],
+				},
+				{
+					skipIfAlreadyDeployed: true,
+					deterministic: options?.deterministic,
+				}
+			);
 
 			logger.info(`proxy deployed at ${proxy.address}`);
 

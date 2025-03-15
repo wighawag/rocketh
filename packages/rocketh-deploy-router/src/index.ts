@@ -23,12 +23,17 @@ export type Route<TAbi extends Abi = Abi> = Omit<
 	artifact: Artifact<TAbi>;
 };
 
+export type RouterEnhancedDeploymentConstruction = Omit<
+	DeploymentConstruction<typeof artifacts.Router10X60.abi>,
+	'artifact'
+>;
+
 export type DeployViaRouterFunction = <TAbi extends Abi>(
 	name: string,
-	args: Omit<DeploymentConstruction<typeof artifacts.Router10X60.abi>, 'artifact'>,
+	params: RouterEnhancedDeploymentConstruction,
 	routes: Route<TAbi>[],
 	extraABIs?: Abi[]
-) => Promise<Deployment<TAbi>>;
+) => Promise<Deployment<TAbi> & {newlyDeployed: boolean}>;
 
 declare module 'rocketh' {
 	interface Environment {
@@ -39,10 +44,10 @@ declare module 'rocketh' {
 extendEnvironment((env: Environment) => {
 	async function deployViaRouter<TAbi extends Abi>(
 		name: string,
-		args: Omit<DeploymentConstruction<typeof artifacts.Router10X60.abi>, 'artifact'>,
+		params: Omit<DeploymentConstruction<typeof artifacts.Router10X60.abi>, 'artifact'>,
 		routes: Route<TAbi>[],
 		extraABIs?: Abi[]
-	): Promise<Deployment<TAbi>> {
+	): Promise<Deployment<TAbi> & {newlyDeployed: boolean}> {
 		const implementations: `0x${string}`[] = [];
 
 		const namedAbis: {
@@ -64,7 +69,7 @@ extendEnvironment((env: Environment) => {
 		const {sigJSMap, mergedABI, mergedDevDocs, mergedUserDocs} = mergeArtifacts(namedAbis);
 		for (const route of routes) {
 			const deployedRoute = await env.deploy<Abi>(`${name}_Router_${route.name}_Route`, {
-				...args,
+				...params,
 				artifact: route.artifact,
 				args: route.args as unknown[],
 			});
@@ -81,7 +86,7 @@ extendEnvironment((env: Environment) => {
 
 		const sigMap = unorderedSigMap.sort();
 
-		let existingDeployment = env.getOrNull(name);
+		let existingDeployment = env.getOrNull<TAbi>(name);
 
 		const routeParams = {
 			fallbackImplementation,
@@ -92,26 +97,28 @@ extendEnvironment((env: Environment) => {
 		logger.info(`routes`, routeParams);
 
 		const router = await env.deploy<typeof artifacts.Router10X60.abi>(`${name}_Router`, {
-			...args,
+			...params,
 			artifact: artifacts.Router10X60,
 			args: [routeParams],
 		});
 
 		logger.info(`router deployed at ${router.address}`);
 
-		if (!existingDeployment || router.updated) {
-			const {updated, ...routerWithoutUpdated} = router;
-			existingDeployment = await env.save(name, {
-				...routerWithoutUpdated,
-				abi: mergedABI,
+		if (!existingDeployment || router.newlyDeployed) {
+			const {newlyDeployed, ...routerWithoutDeployedFlag} = router;
+			existingDeployment = await env.save<TAbi>(name, {
+				...routerWithoutDeployedFlag,
+				abi: mergedABI as unknown as TAbi,
 				devdoc: mergedDevDocs,
 				userdoc: mergedUserDocs,
 			});
 
 			logger.info(`save with merged ABI: ${name}`);
+
+			return {...existingDeployment, newlyDeployed: true};
 		}
 
-		return existingDeployment as Deployment<TAbi>;
+		return {...existingDeployment, newlyDeployed: false};
 	}
 
 	env.deployViaRouter = deployViaRouter;

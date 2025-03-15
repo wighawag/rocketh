@@ -141,7 +141,7 @@ export type Deployment<TAbi extends Abi> = {
 	} & any;
 	readonly storageLayout?: StorageLayout;
 	readonly userdoc?: UserDoc;
-};
+} & Record<string, unknown>;
 
 export type Artifact<TAbi extends Abi = Abi> = {
 	readonly abi: TAbi;
