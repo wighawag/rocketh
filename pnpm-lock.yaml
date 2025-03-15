@@ -238,9 +238,6 @@ importers:
       fs-extra:
         specifier: ^11.3.0
         version: 11.3.0
-      rocketh:
-        specifier: workspace:*
-        version: link:../rocketh
     devDependencies:
       '@types/node':
         specifier: ^22.13.10
@@ -257,6 +254,9 @@ importers:
       rimraf:
         specifier: ^6.0.1
         version: 6.0.1
+      rocketh:
+        specifier: workspace:*
+        version: link:../rocketh
       typescript:
         specifier: ^5.8.2
         version: 5.8.2
@@ -334,9 +334,6 @@ importers:
       qs:
         specifier: ^6.14.0
         version: 6.14.0
-      rocketh:
-        specifier: workspace:*
-        version: link:../rocketh
     devDependencies:
       '@types/node':
         specifier: ^22.13.10
@@ -347,6 +344,9 @@ importers:
       rimraf:
         specifier: ^6.0.1
         version: 6.0.1
+      rocketh:
+        specifier: workspace:*
+        version: link:../rocketh
       typescript:
         specifier: ^5.8.2
         version: 5.8.2
