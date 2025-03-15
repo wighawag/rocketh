@@ -276,8 +276,13 @@ export async function createEnvironment<
 		},
 	};
 
-	function ensureDeploymentFolder(): string {
+	function getDeploymentFolder(): string {
 		const folderPath = path.join(config.deployments, context.network.name);
+		return folderPath;
+	}
+
+	function ensureDeploymentFolder(): string {
+		const folderPath = getDeploymentFolder();
 		fs.mkdirSync(folderPath, {recursive: true});
 		// const chainIdFilepath = path.join(folderPath, '.chainId');
 		// if (!fs.existsSync(chainIdFilepath)) {
@@ -359,7 +364,7 @@ export async function createEnvironment<
 		if (!context.network.saveDeployments) {
 			return;
 		}
-		const folderPath = ensureDeploymentFolder();
+		const folderPath = getDeploymentFolder();
 		const filepath = path.join(folderPath, '.pending_transactions.json');
 		let existingPendingTansactions: PendingTransaction[];
 		try {
