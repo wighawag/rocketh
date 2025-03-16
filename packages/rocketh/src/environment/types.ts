@@ -298,7 +298,7 @@ export type PartialDeployment<TAbi extends Abi = Abi> = Artifact<TAbi> & {
 
 export type PendingDeployment<TAbi extends Abi = Abi> = {
 	type: 'deployment';
-	name: string;
+	name?: string;
 	transaction: {
 		hash: `0x${string}`;
 		nonce?: `0x${string}`;

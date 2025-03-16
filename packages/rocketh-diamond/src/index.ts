@@ -86,7 +86,6 @@ export type ExecuteOptions<
 	>
 > = ExecutionArgs<TAbi, TFunctionName, TArgs> & {
 	type: 'artifact';
-	name?: string;
 	artifact: Artifact<TAbi>;
 };
 
@@ -376,17 +375,13 @@ extendEnvironment((env: Environment) => {
 		if (options.execute) {
 			let addressSpecified: `0x${string}` | undefined;
 			if (options.execute.type === 'artifact') {
-				const name = options.execute.name || options.execute.artifact.contractName;
-				if (!name) {
-					throw new Error(`artifact has no name, pleae provide a name for it in the diamond execute options`);
-				}
 				const executionDeployment = await env.deploy(
-					name, // TODO provide '' to not save it
+					'', // we do not save it as it is deterministic anyway
 					{
 						...params,
 						artifact: options.execute.artifact,
 						args: [], // we expect artifact use for execute to have no contructor args
-						// TODO support these ?
+						// TODO support these with constructor arguments ?
 					},
 					{
 						deterministic: true,

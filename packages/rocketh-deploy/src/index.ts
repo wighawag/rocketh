@@ -129,7 +129,7 @@ function linkLibraries(
 
 extendEnvironment((env: Environment) => {
 	async function deploy<TAbi extends Abi>(
-		name: string,
+		name: string, // '' allow to not save it
 		args: DeploymentConstruction<TAbi>,
 		options?: DeployOptions
 	): Promise<Deployment<TAbi> & {newlyDeployed: boolean}> {
@@ -140,7 +140,7 @@ extendEnvironment((env: Environment) => {
 			throw new Error(`conflicting options: "allwaysOverride" and "skipIfAlreadyDeployed"`);
 		}
 
-		const existingDeployment = env.getOrNull(name);
+		const existingDeployment = name && env.getOrNull(name);
 		if (existingDeployment && skipIfAlreadyDeployed) {
 			logger.info(`deployment for ${name} at ${existingDeployment.address}, skipIfAlreadyDeployed: true => we skip`);
 			return {...(existingDeployment as Deployment<TAbi>), newlyDeployed: false};
@@ -302,11 +302,15 @@ extendEnvironment((env: Environment) => {
 
 			if (codeAlreadyDeployed !== '0x') {
 				env.showMessage(`contract was already deterministically deployed at ${expectedAddress}`);
-				const deployment = await env.save(name, {
-					address: expectedAddress,
-					...partialDeployment,
-				});
-				return {...(deployment as Deployment<TAbi>), newlyDeployed: false};
+				if (name) {
+					const deployment = await env.save(name, {
+						address: expectedAddress,
+						...partialDeployment,
+					});
+					return {...(deployment as Deployment<TAbi>), newlyDeployed: false};
+				} else {
+					return {address: expectedAddress, ...partialDeployment, newlyDeployed: false};
+				}
 			}
 
 			params[0].data = (salt + (bytecode.slice(2) || '')) as `0x${string}`;

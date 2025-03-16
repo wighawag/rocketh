@@ -581,7 +581,11 @@ export async function createEnvironment<
 				transactionIndex: receipt.transactionIndex,
 			},
 		};
-		return save(pendingDeployment.name, deployment);
+		if (pendingDeployment.name) {
+			return save(pendingDeployment.name, deployment);
+		} else {
+			return deployment;
+		}
 	}
 
 	async function savePendingExecution(pendingExecution: PendingExecution) {
