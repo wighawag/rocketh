@@ -27,17 +27,20 @@ export function execute<
 >(
 	context: ProvidedContext<Artifacts, NamedAccounts>,
 	callback: DeployScriptFunction<Artifacts, ResolvedNamedAccounts<NamedAccounts>, ArgumentsType, Deployments>,
-	options: {tags?: string[]; dependencies?: string[]}
+	options: {tags?: string[]; dependencies?: string[]; id?: string}
 ): DeployScriptModule<Artifacts, NamedAccounts, ArgumentsType, Deployments> {
-	const scriptModule = (
+	const scriptModule: DeployScriptModule<Artifacts, NamedAccounts, ArgumentsType, Deployments> = (
 		env: Environment<Artifacts, ResolvedNamedAccounts<NamedAccounts>, Deployments>,
 		args?: ArgumentsType
 	) => callback(env, args);
 	scriptModule.providedContext = context;
 	scriptModule.tags = options.tags;
 	scriptModule.dependencies = options.dependencies;
+	scriptModule.id = options.id;
+	// scriptModule.skip
+
 	// TODO id + skip
-	return scriptModule as unknown as DeployScriptModule<Artifacts, NamedAccounts, ArgumentsType, Deployments>;
+	return scriptModule;
 }
 
 export interface UntypedRequestArguments {
@@ -379,10 +382,10 @@ Do you want to proceed (note that gas price can change for each tx)`,
 	for (const deployScript of scriptsToRun.concat(scriptsToRunAtTheEnd)) {
 		const filename = path.basename(deployScript.filePath);
 		const relativeFilepath = path.relative('.', deployScript.filePath);
-		// if (deployScript.func.id && this.db.migrations[deployScript.func.id]) {
-		// 	logger.info(`skipping ${filename} as migrations already executed and complete`);
-		// 	continue;
-		// }
+		if (deployScript.func.id && external.hasMigrationBeenDone(deployScript.func.id)) {
+			logger.info(`skipping ${filename} as migrations already executed and complete`);
+			continue;
+		}
 		let skip = false;
 		const spinner = spin(`- Executing ${filename}`);
 		if (deployScript.func.skip) {
@@ -406,29 +409,12 @@ Do you want to proceed (note that gas price can change for each tx)`,
 				throw e;
 			}
 			if (result && typeof result === 'boolean') {
-				// if (!deployScript.func.id) {
-				// 	throw new Error(
-				// 		`${deployScript.filePath} return true to not be executed again, but does not provide an id. the script function needs to have the field "id" to be set`
-				// 	);
-				// }
-				// this.db.migrations[deployScript.func.id] = Math.floor(Date.now() / 1000);
-
-				const deploymentFolderPath = config.deployments;
-
-				// TODO refactor to extract this whole path and folder existence stuff
-				// const toSave = this.db.writeDeploymentsToFiles && this.network.saveDeployments;
-				// if (toSave) {
-				// 	try {
-				// 		fs.mkdirSync(this.deploymentsPath);
-				// 	} catch (e) {}
-				// 	try {
-				// 		fs.mkdirSync(path.join(this.deploymentsPath, deploymentFolderPath));
-				// 	} catch (e) {}
-				// 	fs.writeFileSync(
-				// 		path.join(this.deploymentsPath, deploymentFolderPath, '.migrations.json'),
-				// 		JSON.stringify(this.db.migrations, null, '  ')
-				// 	);
-				// }
+				if (!deployScript.func.id) {
+					throw new Error(
+						`${deployScript.filePath} return true to not be executed again, but does not provide an id. the script function needs to have the field "id" to be set`
+					);
+				}
+				internal.recordMigration(deployScript.func.id);
 			}
 		}
 	}

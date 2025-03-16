@@ -283,6 +283,8 @@ export interface Environment<
 	fromAddressToNamedABIOrNull<TAbi extends Abi>(address: Address): {mergedABI: TAbi; names: string[]} | null;
 	showMessage(message: string): void;
 	showProgress(message?: string): ProgressIndicator;
+
+	hasMigrationBeenDone(id: string): boolean;
 }
 
 export type DeploymentConstruction<TAbi extends Abi> = Omit<

@@ -8,16 +8,26 @@ export function loadDeployments(
 	networkName: string,
 	onlyABIAndAddress?: boolean,
 	expectedChain?: {chainId: string; genesisHash?: `0x${string}`; deleteDeploymentsIfDifferentGenesisHash?: boolean}
-): {deployments: UnknownDeployments; chainId?: string; genesisHash?: `0x${string}`} {
+): {
+	deployments: UnknownDeployments;
+	migrations: Record<string, number>;
+	chainId?: string;
+	genesisHash?: `0x${string}`;
+} {
 	const deploymentsFound: UnknownDeployments = {};
 	const deployPath = path.join(deploymentsPath, networkName);
 
 	let filesStats;
 	try {
-		filesStats = traverse(deployPath, undefined, undefined, (name) => !name.startsWith('.') && name !== 'solcInputs');
+		filesStats = traverse(
+			deployPath,
+			undefined,
+			undefined,
+			(name) => !(name.startsWith('.') && name !== '.migrations.json') && name !== 'solcInputs'
+		);
 	} catch (e) {
 		// console.log('no folder at ' + deployPath);
-		return {deployments: {}};
+		return {deployments: {}, migrations: {}};
 	}
 	let chainId: string;
 	let genesisHash: `0x${string}` | undefined;
@@ -50,7 +60,7 @@ export function loadDeployments(
 						// we delete the old folder
 
 						fs.rmSync(deployPath, {recursive: true, force: true});
-						return {deployments: {}};
+						return {deployments: {}, migrations: {}};
 					} else {
 						throw new Error(
 							`Loading deployment in folder '${deployPath}' (with genesisHash: ${genesisHash}) for a different genesisHash (${expectedChain.genesisHash})`
@@ -71,8 +81,19 @@ export function loadDeployments(
 			}
 		}
 	} else {
-		return {deployments: {}};
+		return {deployments: {}, migrations: {}};
 	}
+
+	let migrations: Record<string, number> = {};
+	const migrationsFilepath = path.join(deployPath, '.migrations.json');
+	if (fs.existsSync(migrationsFilepath)) {
+		try {
+			migrations = JSON.parse(fs.readFileSync(migrationsFilepath, 'utf-8'));
+		} catch (err) {
+			console.error(`failed to parse .migrations.json`);
+		}
+	}
+
 	let fileNames = filesStats.map((a) => a.relativePath);
 	fileNames = fileNames.sort((a, b) => {
 		if (a < b) {
@@ -85,7 +106,7 @@ export function loadDeployments(
 	});
 
 	for (const fileName of fileNames) {
-		if (fileName.substring(fileName.length - 5) === '.json') {
+		if (fileName.substring(fileName.length - 5) === '.json' && fileName !== '.migrations.json') {
 			const deploymentFileName = path.join(deployPath, fileName);
 			let deployment = JSON.parse(fs.readFileSync(deploymentFileName).toString());
 			// truffleChainId argument:
@@ -110,5 +131,5 @@ export function loadDeployments(
 			deploymentsFound[name] = deployment;
 		}
 	}
-	return {deployments: deploymentsFound, chainId, genesisHash};
+	return {deployments: deploymentsFound, migrations, chainId, genesisHash};
 }

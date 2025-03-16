@@ -227,7 +227,7 @@ export async function createEnvironment<
 
 	// console.log(`context`, JSON.stringify(context.network, null, 2));
 
-	const {deployments} = loadDeployments(
+	const {deployments, migrations} = loadDeployments(
 		config.deployments,
 		context.network.name,
 		false,
@@ -322,6 +322,18 @@ export async function createEnvironment<
 
 	function getOrNull<TAbi extends Abi>(name: string): Deployment<TAbi> | null {
 		return (deployments[name] || null) as Deployment<TAbi> | null;
+	}
+
+	function hasMigrationBeenDone(id: string): boolean {
+		return migrations[id] ? true : false;
+	}
+
+	function recordMigration(id: string): void {
+		migrations[id] = Math.floor(Date.now() / 1000);
+		if (context.network.saveDeployments) {
+			const folderPath = ensureDeploymentFolder();
+			fs.writeFileSync(`${folderPath}/.migrations.json`, JSON.stringify(migrations));
+		}
 	}
 
 	function fromAddressToNamedABIOrNull<TAbi extends Abi>(address: Address): {mergedABI: TAbi; names: string[]} | null {
@@ -670,6 +682,7 @@ export async function createEnvironment<
 		fromAddressToNamedABIOrNull,
 		showMessage,
 		showProgress,
+		hasMigrationBeenDone,
 	};
 	for (const extension of (globalThis as any).extensions) {
 		env = extension(env);
@@ -680,6 +693,7 @@ export async function createEnvironment<
 		internal: {
 			exportDeploymentsAsTypes,
 			recoverTransactionsIfAny,
+			recordMigration,
 		},
 	};
 }
