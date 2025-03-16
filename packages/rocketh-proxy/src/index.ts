@@ -9,12 +9,13 @@ import {logs} from 'named-logs';
 import {DeployOptions} from '@rocketh/deploy';
 import {checkUpgradeIndex, replaceTemplateArgs} from './utils.js';
 import ERC1967Proxy from './hardhat-deploy-v1-artifacts/ERC1967Proxy.js';
-import ERC173Proxy from './solidity-proxy-artifacts/ERC173Proxy.js';
-import ERC173ProxyWithReceive from './solidity-proxy-artifacts/ERC173ProxyWithReceive.js';
+import ERC173Proxy from './hardhat-deploy-v1-artifacts/EIP173Proxy.js';
+import ERC173ProxyWithReceive from './hardhat-deploy-v1-artifacts/EIP173ProxyWithReceive.js';
 
 const logger = logs('@rocketh/proxy');
 
 export type ProxyDeployOptions = Omit<DeployOptions, 'skipIfAlreadyDeployed' | 'alwaysOverride'> & {
+	proxyDisabled?: boolean;
 	owner?: EIP1193Account;
 	execute?: string;
 	upgradeIndex?: number;
@@ -46,6 +47,13 @@ export type ProxyEnhancedDeploymentConstruction<TAbi extends Abi, TChain extends
 	artifact: string | Artifact<TAbi> | ImplementationDeployer<TAbi, TChain>;
 };
 
+export type ProxyEnhancedDeploymentConstructionWithoutFunction<TAbi extends Abi, TChain extends Chain = Chain> = Omit<
+	DeploymentConstruction<TAbi>,
+	'artifact'
+> & {
+	artifact: string | Artifact<TAbi>;
+};
+
 export type DeployViaProxyFunction = <TAbi extends Abi, TChain extends Chain = Chain>(
 	name: string,
 	params: ProxyEnhancedDeploymentConstruction<TAbi, TChain>,
@@ -68,6 +76,19 @@ extendEnvironment((env: Environment) => {
 		const implementationName = `${name}_Implementation`;
 
 		let existingDeployment = env.getOrNull<TAbi>(name);
+
+		if (options?.proxyDisabled) {
+			if (existingDeployment) {
+				throw new Error(`cannot deploy ${name} with proxyDisabled, already deployed`);
+			} else {
+				if (typeof params.artifact === 'function') {
+					return params.artifact(name, params);
+				} else {
+					// TODO any ?
+					return env.deploy<TAbi, TChain>(name, params as any, options);
+				}
+			}
+		}
 		const deployResult = checkUpgradeIndex(existingDeployment, options?.upgradeIndex);
 		if (deployResult) {
 			return deployResult;
