@@ -1,5 +1,15 @@
 # @rocketh/signer
 
+## 0.11.2
+
+### Patch Changes
+
+- Updated dependencies [f2959f3]
+- Updated dependencies [169b618]
+- Updated dependencies [aaba9cb]
+- Updated dependencies [fee5656]
+  - rocketh@0.11.2
+
 ## 0.11.1
 
 ### Patch Changes

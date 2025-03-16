@@ -1,5 +1,18 @@
 # @rocketh/deploy
 
+## 0.11.2
+
+### Patch Changes
+
+- f2959f3: display <no-name>
+- aaba9cb: allow to not save deployment + use it for diamond unamed artifact execution
+- fee5656: upgradeIndex and numDeployments tracking
+- Updated dependencies [f2959f3]
+- Updated dependencies [169b618]
+- Updated dependencies [aaba9cb]
+- Updated dependencies [fee5656]
+  - rocketh@0.11.2
+
 ## 0.11.1
 
 ### Patch Changes

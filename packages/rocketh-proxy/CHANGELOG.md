@@ -1,5 +1,21 @@
 # @rocketh/proxy
 
+## 0.11.2
+
+### Patch Changes
+
+- d7dbbbd: support UUPS + ERC173WithReceive
+- 858c537: add contract helper for proxy and diamond
+- fee5656: upgradeIndex and numDeployments tracking
+- e2dff3f: embed solidity-proxy artifacts
+- Updated dependencies [f2959f3]
+- Updated dependencies [169b618]
+- Updated dependencies [aaba9cb]
+- Updated dependencies [fee5656]
+  - @rocketh/deploy@0.11.2
+  - rocketh@0.11.2
+  - @rocketh/read-execute@0.11.2
+
 ## 0.11.1
 
 ### Patch Changes
