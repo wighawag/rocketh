@@ -60,10 +60,39 @@ export type FacetOptions = {
 };
 export type DiamondFacets = Array<FacetOptions>;
 
+// export type ExecutionArgs<
+// 	TAbi extends Abi,
+// 	TFunctionName extends ContractFunctionName<TAbi, 'nonpayable' | 'payable'>,
+// 	TArgs extends ContractFunctionArgs<TAbi, 'nonpayable' | 'payable', TFunctionName> = ContractFunctionArgs<
+// 		TAbi,
+// 		'nonpayable' | 'payable',
+// 		TFunctionName
+// 	>
+// > = Omit<WriteContractParameters<TAbi, TFunctionName, TArgs>, 'address' | 'abi' | 'account' | 'nonce' | 'chain'> & {
+// 	account: string;
+// };
+
+// export type ExecuteFunction = <
+// 	TAbi extends Abi,
+// 	TFunctionName extends ContractFunctionName<TAbi, 'nonpayable' | 'payable'>,
+// 	TArgs extends ContractFunctionArgs<TAbi, 'nonpayable' | 'payable', TFunctionName> = ContractFunctionArgs<
+// 		TAbi,
+// 		'nonpayable' | 'payable',
+// 		TFunctionName
+// 	>
+// >(
+// 	deployment: Deployment<TAbi>,
+// 	args: ExecutionArgs<TAbi, TFunctionName, TArgs>
+// ) => Promise<EIP1193DATA>;
+
 export type DiamondDeployOptions = Omit<DeployOptions, 'skipIfAlreadyDeployed' | 'alwaysOverride' | 'deterministic'> & {
 	facets: DiamondFacets;
 	owner?: EIP1193Account;
-	execute?: string;
+	execute?: {
+		contract?: {name?: string; artifact: Artifact; args?: any[]};
+		methodName: string;
+		args: any[];
+	};
 	defaultCutFacet?: boolean;
 	defaultOwnershipFacet?: boolean;
 	diamondContractArgs?: any[];
@@ -172,7 +201,7 @@ extendEnvironment((env: Environment) => {
 		// will be populated
 		let abi: TAbi = artifactPureDiamond.abi.concat([]) as unknown as TAbi;
 		const facetCuts: FacetCut[] = [];
-		let facetFound: string | undefined;
+		let executionFacetFound: `0x${string}` | undefined;
 		const excludeSelectors: Record<string, `0x${string}`[]> = options?.excludeSelectors || {};
 		let i = 0;
 		for (const facet of facetsSet) {
@@ -252,21 +281,20 @@ extendEnvironment((env: Environment) => {
 				newSelectors.push(...newFacet.functionSelectors);
 			}
 
-			// TODO
-			// if (options.execute && !options.execute.contract) {
-			// 	const methods = artifact.abi.filter((v) => v.name === options.execute?.methodName);
-			// 	if (methods.length > 0) {
-			// 		if (methods.length > 1) {
-			// 			throw new Error(`multiple method named "${options.execute.methodName}" found in facet`);
-			// 		} else {
-			// 			if (facetFound) {
-			// 				throw new Error(`multiple facet with method named "${options.execute.methodName}"`);
-			// 			} else {
-			// 				facetFound = facetAddress;
-			// 			}
-			// 		}
-			// 	}
-			// }
+			if (options.execute && !options.execute.contract) {
+				const methods = artifact.abi.filter((v) => (v as any).name === options.execute?.methodName);
+				if (methods.length > 0) {
+					if (methods.length > 1) {
+						throw new Error(`multiple method named "${options.execute.methodName}" found in facet`);
+					} else {
+						if (executionFacetFound) {
+							throw new Error(`multiple facet with method named "${options.execute.methodName}"`);
+						} else {
+							executionFacetFound = facetAddress;
+						}
+					}
+				}
+			}
 
 			i++;
 		}
@@ -332,46 +360,36 @@ extendEnvironment((env: Environment) => {
 
 		let executeData: `0x${string}` = '0x';
 		let executeAddress: `0x${string}` = '0x0000000000000000000000000000000000000000';
-		// TODO
-		// if (options.execute) {
-		// 	let addressSpecified: string | undefined;
-		// 	let executionContract = new Contract('0x0000000000000000000000000000000000000001', abi);
-		// 	if (options.execute.contract) {
-		// 		if (typeof options.execute.contract === 'string') {
-		// 			const executionDeployment = await _deployOne(options.execute.contract, {
-		// 				from: options.from,
-		// 				autoMine: options.autoMine,
-		// 				estimateGasExtra: options.estimateGasExtra,
-		// 				estimatedGasLimit: options.estimatedGasLimit,
-		// 				gasPrice: options.gasPrice,
-		// 				maxFeePerGas: options.maxFeePerGas,
-		// 				maxPriorityFeePerGas: options.maxPriorityFeePerGas,
-		// 				log: options.log,
-		// 				deterministicDeployment: true,
-		// 			});
-		// 			executionContract = new Contract(executionDeployment.address, executionDeployment.abi);
-		// 			addressSpecified = executionContract.address;
-		// 		} else {
-		// 			const executionDeployment = await _deployOne(options.execute.contract.name, {
-		// 				from: options.from,
-		// 				contract: options.execute.contract.artifact,
-		// 				args: options.execute.contract.args,
-		// 				autoMine: options.autoMine,
-		// 				estimateGasExtra: options.estimateGasExtra,
-		// 				estimatedGasLimit: options.estimatedGasLimit,
-		// 				gasPrice: options.gasPrice,
-		// 				maxFeePerGas: options.maxFeePerGas,
-		// 				maxPriorityFeePerGas: options.maxPriorityFeePerGas,
-		// 				log: options.log,
-		// 				deterministicDeployment: true,
-		// 			});
-		// 			executionContract = new Contract(executionDeployment.address, executionDeployment.abi);
-		// 		}
-		// 	}
-		// 	const txData = await executionContract.populateTransaction[options.execute.methodName](...options.execute.args);
-		// 	executeData = txData.data || '0x';
-		// 	executeAddress = addressSpecified || facetFound || '0x0000000000000000000000000000000000000000';
-		// }
+
+		if (options.execute) {
+			let addressSpecified: `0x${string}` | undefined;
+			if (options.execute.contract) {
+				const name = options.execute.contract.name || options.execute.contract.artifact.contractName;
+				if (!name) {
+					throw new Error(`artifact has no name, pleae provide a name for the contract`);
+				}
+				const executionDeployment = await env.deploy(
+					name, // TODO provide '' to not save it
+					{
+						...params,
+						artifact: options.execute.contract.artifact,
+						args: options.execute.contract.args,
+					},
+					{
+						deterministic: true,
+					}
+				);
+
+				addressSpecified = executionDeployment.address;
+
+				executeData = encodeFunctionData({
+					abi: executionDeployment.abi,
+					functionName: options.execute.methodName,
+					args: options.execute.args,
+				});
+			}
+			executeAddress = addressSpecified || executionFacetFound || '0x0000000000000000000000000000000000000000';
+		}
 
 		if (changesDetected) {
 			if (!proxy) {
