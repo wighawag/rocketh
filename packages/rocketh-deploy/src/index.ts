@@ -133,6 +133,7 @@ extendEnvironment((env: Environment) => {
 		args: DeploymentConstruction<TAbi>,
 		options?: DeployOptions
 	): Promise<Deployment<TAbi> & {newlyDeployed: boolean}> {
+		const nameToDisplay = name || '<no name>';
 		const skipIfAlreadyDeployed = options && 'skipIfAlreadyDeployed' in options && options.skipIfAlreadyDeployed;
 		const allwaysOverride = options && 'allwaysOverride' in options && options.allwaysOverride;
 
@@ -142,7 +143,9 @@ extendEnvironment((env: Environment) => {
 
 		const existingDeployment = name && env.getOrNull(name);
 		if (existingDeployment && skipIfAlreadyDeployed) {
-			logger.info(`deployment for ${name} at ${existingDeployment.address}, skipIfAlreadyDeployed: true => we skip`);
+			logger.info(
+				`deployment for ${nameToDisplay} at ${existingDeployment.address}, skipIfAlreadyDeployed: true => we skip`
+			);
 			return {...(existingDeployment as Deployment<TAbi>), newlyDeployed: false};
 		}
 
@@ -179,7 +182,7 @@ extendEnvironment((env: Environment) => {
 		const argsData = `0x${calldata.replace(bytecode, '')}` as `0x${string}`;
 
 		if (existingDeployment) {
-			logger.info(`existing deployment for ${name} at ${existingDeployment.address}`);
+			logger.info(`existing deployment for ${nameToDisplay} at ${existingDeployment.address}`);
 		}
 
 		if (existingDeployment && !allwaysOverride) {

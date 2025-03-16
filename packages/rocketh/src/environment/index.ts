@@ -502,7 +502,8 @@ export async function createEnvironment<
 		pendingDeployment: PendingDeployment<TAbi>,
 		transaction?: EIP1193Transaction | null
 	): Promise<Deployment<TAbi>> {
-		const message = `  - Deploying ${pendingDeployment.name} with tx:\n      ${pendingDeployment.transaction.hash}${
+		const nameToDisplay = pendingDeployment.name || '<no name>';
+		const message = `  - Deploying ${nameToDisplay} with tx:\n      ${pendingDeployment.transaction.hash}${
 			transaction ? `\n      ${displayTransaction(transaction)}` : ''
 		}`;
 		const {receipt, latestBlockNumber} = await waitForTransaction(pendingDeployment.transaction.hash, {
@@ -514,7 +515,7 @@ export async function createEnvironment<
 		const contractAddress = pendingDeployment.expectedAddress || receipt.contractAddress;
 		if (!contractAddress) {
 			console.error(receipt);
-			throw new Error(`no contract address found for ${pendingDeployment.name}`);
+			throw new Error(`no contract address found for ${nameToDisplay}`);
 		}
 
 		showMessage(`    => ${contractAddress}`);
