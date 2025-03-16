@@ -294,9 +294,6 @@ importers:
       named-logs:
         specifier: ^0.3.2
         version: 0.3.2
-      solidity-proxy:
-        specifier: ^0.4.0
-        version: 0.4.0
       viem:
         specifier: ^2.23.10
         version: 2.23.10(typescript@5.8.2)(zod@3.24.2)

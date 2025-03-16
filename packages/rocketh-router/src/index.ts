@@ -3,16 +3,11 @@ import type {Artifact, DeploymentConstruction, Deployment, Environment, DevDoc, 
 import '@rocketh/deploy';
 import {extendEnvironment, mergeArtifacts} from 'rocketh';
 import {DeployContractParameters} from 'viem';
-import artifactsAsModule from 'solidity-proxy/generated/artifacts.js';
 import {logs} from 'named-logs';
 import {EIP1193Account} from 'eip-1193';
+import Router10X60 from './solidity-proxy-artifacts/Router10x60.js';
 
 const logger = logs('@rocketh/router');
-
-// fix for weird loading issue
-const artifacts = (artifactsAsModule as any).default
-	? ((artifactsAsModule as any).default as typeof artifactsAsModule)
-	: artifactsAsModule;
 
 export type Route<TAbi extends Abi = Abi> = Omit<
 	DeployContractParameters<TAbi>,
@@ -23,10 +18,7 @@ export type Route<TAbi extends Abi = Abi> = Omit<
 	artifact: Artifact<TAbi>;
 };
 
-export type RouterEnhancedDeploymentConstruction = Omit<
-	DeploymentConstruction<typeof artifacts.Router10X60.abi>,
-	'artifact'
->;
+export type RouterEnhancedDeploymentConstruction = Omit<DeploymentConstruction<typeof Router10X60.abi>, 'artifact'>;
 
 export type DeployViaRouterFunction = <TAbi extends Abi>(
 	name: string,
@@ -44,7 +36,7 @@ declare module 'rocketh' {
 extendEnvironment((env: Environment) => {
 	async function deployViaRouter<TAbi extends Abi>(
 		name: string,
-		params: Omit<DeploymentConstruction<typeof artifacts.Router10X60.abi>, 'artifact'>,
+		params: Omit<DeploymentConstruction<typeof Router10X60.abi>, 'artifact'>,
 		routes: Route<TAbi>[],
 		extraABIs?: Abi[]
 	): Promise<Deployment<TAbi> & {newlyDeployed: boolean}> {
@@ -96,9 +88,9 @@ extendEnvironment((env: Environment) => {
 
 		logger.info(`routes`, routeParams);
 
-		const router = await env.deploy<typeof artifacts.Router10X60.abi>(`${name}_Router`, {
+		const router = await env.deploy<typeof Router10X60.abi>(`${name}_Router`, {
 			...params,
-			artifact: artifacts.Router10X60,
+			artifact: Router10X60,
 			args: [routeParams],
 		});
 
