@@ -22,11 +22,13 @@ declare module 'rocketh' {
 	}
 }
 
+export type DeployResult<TAbi extends Abi> = Deployment<TAbi> & {newlyDeployed: boolean};
+
 export type DeployFunction = <TAbi extends Abi, TChain extends Chain = Chain>(
 	name: string,
 	args: DeploymentConstruction<TAbi>,
 	options?: DeployOptions
-) => Promise<Deployment<TAbi> & {newlyDeployed: boolean}>;
+) => Promise<DeployResult<TAbi>>;
 
 export type DeployOptions = {
 	linkedData?: any;
@@ -132,7 +134,7 @@ extendEnvironment((env: Environment) => {
 		name: string, // '' allow to not save it
 		args: DeploymentConstruction<TAbi>,
 		options?: DeployOptions
-	): Promise<Deployment<TAbi> & {newlyDeployed: boolean}> {
+	): Promise<DeployResult<TAbi>> {
 		const nameToDisplay = name || '<no name>';
 		const skipIfAlreadyDeployed = options && 'skipIfAlreadyDeployed' in options && options.skipIfAlreadyDeployed;
 		const allwaysOverride = options && 'allwaysOverride' in options && options.allwaysOverride;
@@ -306,10 +308,14 @@ extendEnvironment((env: Environment) => {
 			if (codeAlreadyDeployed !== '0x') {
 				env.showMessage(`contract was already deterministically deployed at ${expectedAddress}`);
 				if (name) {
-					const deployment = await env.save(name, {
-						address: expectedAddress,
-						...partialDeployment,
-					});
+					const deployment = await env.save(
+						name,
+						{
+							address: expectedAddress,
+							...partialDeployment,
+						},
+						{doNotCountAsNewDeployment: true}
+					);
 					return {...(deployment as Deployment<TAbi>), newlyDeployed: false};
 				} else {
 					return {address: expectedAddress, ...partialDeployment, newlyDeployed: false};

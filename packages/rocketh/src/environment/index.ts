@@ -363,8 +363,21 @@ export async function createEnvironment<
 		return n;
 	}
 
-	async function save<TAbi extends Abi>(name: string, deployment: Deployment<TAbi>): Promise<Deployment<TAbi>> {
-		deployments[name] = deployment;
+	async function save<TAbi extends Abi>(
+		name: string,
+		deployment: Deployment<TAbi>,
+		options?: {doNotCountAsNewDeployment?: boolean}
+	): Promise<Deployment<TAbi>> {
+		if (!options?.doNotCountAsNewDeployment) {
+			let numDeployments = 1;
+			const oldDeployment = deployments[name];
+			if (oldDeployment) {
+				numDeployments = (oldDeployment.numDeployments || 1) + 1;
+			}
+			deployments[name] = {...deployment, numDeployments};
+		} else {
+			deployments[name] = {...deployment, numDeployments: 1};
+		}
 		if (context.network.saveDeployments) {
 			const folderPath = ensureDeploymentFolder();
 			fs.writeFileSync(`${folderPath}/${name}.json`, JSONToString(deployment, 2));

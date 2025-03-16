@@ -526,13 +526,19 @@ extendEnvironment((env: Environment) => {
 					}
 				);
 
-				await env.save<TAbi>(name, {
-					...proxy,
-					abi,
-					linkedData: options.linkedData,
-					facets: facetSnapshot,
-					execute: options.execute,
-				});
+				await env.save<TAbi>(
+					name,
+					{
+						...proxy,
+						abi,
+						linkedData: options.linkedData,
+						facets: facetSnapshot,
+						execute: options.execute,
+					},
+					{
+						doNotCountAsNewDeployment: proxy.newlyDeployed ? false : true,
+					}
+				);
 			} else {
 				if (!oldDeployment) {
 					throw new Error(`Cannot find Deployment for ${name}`);

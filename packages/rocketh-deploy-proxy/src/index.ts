@@ -8,6 +8,7 @@ import {Chain, encodeFunctionData} from 'viem';
 import artifactsAsModule from 'solidity-proxy/generated/artifacts.js';
 import {logs} from 'named-logs';
 import {DeployOptions} from '@rocketh/deploy';
+import {checkUpgradeIndex} from './utils.js';
 
 const logger = logs('@rocketh/deploy-proxy');
 
@@ -19,6 +20,15 @@ const artifacts = (artifactsAsModule as any).default
 export type ProxyDeployOptions = Omit<DeployOptions, 'skipIfAlreadyDeployed' | 'alwaysOverride'> & {
 	owner?: EIP1193Account;
 	execute?: string;
+	upgradeIndex?: number;
+	// proxyContract?: Artifact,// default to EIP173Proxy
+	// proxyArgs?: any[]; // default to ["{implementation}", "{admin}", "{data}"]
+	// viaAdminContract?:
+	// 	| string
+	// 	| {
+	// 			name: string;
+	// 			artifact?: string | ArtifactData;
+	// 	  };
 };
 
 export type ImplementationDeployer<TAbi extends Abi, TChain extends Chain> = (
@@ -36,7 +46,7 @@ export type ProxyEnhancedDeploymentConstruction<TAbi extends Abi, TChain extends
 
 export type DeployViaProxyFunction = <TAbi extends Abi, TChain extends Chain = Chain>(
 	name: string,
-	args: ProxyEnhancedDeploymentConstruction<TAbi, TChain>,
+	params: ProxyEnhancedDeploymentConstruction<TAbi, TChain>,
 	options?: ProxyDeployOptions
 ) => Promise<Deployment<TAbi>>;
 
@@ -54,6 +64,12 @@ extendEnvironment((env: Environment) => {
 	): Promise<Deployment<TAbi>> {
 		const proxyName = `${name}_Proxy`;
 		const implementationName = `${name}_Implementation`;
+
+		let existingDeployment = env.getOrNull<TAbi>(name);
+		const deployResult = checkUpgradeIndex(existingDeployment, options?.upgradeIndex);
+		if (deployResult) {
+			return deployResult;
+		}
 
 		const {account, artifact, args, ...viemArgs} = params;
 		let address: `0x${string}`;
@@ -101,8 +117,6 @@ extendEnvironment((env: Environment) => {
 				? artifactFromImplementation
 				: ((typeof artifact === 'string' ? env.artifacts[artifact] : artifact) as Artifact<TAbi>);
 
-		let existingDeployment = env.getOrNull<TAbi>(name);
-
 		logger.info(`existingDeployment at ${existingDeployment?.address}`);
 
 		const owner = options?.owner || address;
@@ -120,6 +134,8 @@ extendEnvironment((env: Environment) => {
 					abi: [method],
 					functionName: method.name,
 				});
+			} else {
+				throw new Error(`Method ${options.execute} not found in artifact ${artifactToUse.abi}`);
 			}
 		}
 		// let preUpgradeCalldata: `0x${string}` | undefined;

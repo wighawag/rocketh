@@ -128,6 +128,7 @@ export type Deployment<TAbi extends Abi> = {
 	readonly bytecode: EIP1193DATA;
 	readonly argsData: EIP1193DATA;
 	readonly metadata: string;
+	readonly numDeployments?: number;
 	readonly libraries?: Libraries;
 	readonly linkedData?: any; // TODO
 	readonly deployedBytecode?: EIP1193DATA;
@@ -274,7 +275,11 @@ export interface Environment<
 	// unnamedSigners: {type: 'remote'; signer: EIP1193ProviderWithoutEvents}[];
 	addressSigners: {[name: `0x${string}`]: Signer};
 	artifacts: Artifacts;
-	save<TAbi extends Abi = Abi>(name: string, deployment: Deployment<TAbi>): Promise<Deployment<TAbi>>;
+	save<TAbi extends Abi = Abi>(
+		name: string,
+		deployment: Deployment<TAbi>,
+		options?: {doNotCountAsNewDeployment?: boolean}
+	): Promise<Deployment<TAbi>>;
 	savePendingDeployment<TAbi extends Abi = Abi>(pendingDeployment: PendingDeployment<TAbi>): Promise<Deployment<TAbi>>;
 	savePendingExecution(pendingExecution: PendingExecution): Promise<EIP1193TransactionReceipt>;
 	get<TAbi extends Abi>(name: string): Deployment<TAbi>;
