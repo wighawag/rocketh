@@ -16,7 +16,8 @@
 		}
 	},
 	"files": [
-		"dist"
+		"dist",
+		"solc_0_8"
 	],
 	"devDependencies": {
 		"@rocketh/deploy": "workspace:*",

@@ -1,2 +1,4 @@
-- [ ] support zksync
-- [ ] support upgradeIndex
+- [ ] support zksync (once hardhat v3 supports it)
+- [ ] rename @rocketh/proxy ?
+- [ ] test proxies
+- [ ] test contract imports
