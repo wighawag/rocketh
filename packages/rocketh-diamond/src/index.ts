@@ -1,10 +1,16 @@
-import {Abi, AbiFunction} from 'abitype';
+import {Abi} from 'abitype';
 import type {Artifact, DeploymentConstruction, Deployment, Environment, Libraries} from 'rocketh';
 import '@rocketh/deploy';
 import '@rocketh/read-execute';
 import type {EIP1193Account} from 'eip-1193';
 import {extendEnvironment} from 'rocketh';
-import {Chain, encodeFunctionData, zeroAddress} from 'viem';
+import {
+	ContractFunctionArgs,
+	ContractFunctionName,
+	encodeFunctionData,
+	WriteContractParameters,
+	zeroAddress,
+} from 'viem';
 import {logs} from 'named-logs';
 import artifactPureDiamond from './hardhat-deploy-v1-artifacts/Diamond.js';
 import artifactDiamondLoupeFact from './hardhat-deploy-v1-artifacts/DiamondLoupeFacet.js';
@@ -60,39 +66,45 @@ export type FacetOptions = {
 };
 export type DiamondFacets = Array<FacetOptions>;
 
-// export type ExecutionArgs<
-// 	TAbi extends Abi,
-// 	TFunctionName extends ContractFunctionName<TAbi, 'nonpayable' | 'payable'>,
-// 	TArgs extends ContractFunctionArgs<TAbi, 'nonpayable' | 'payable', TFunctionName> = ContractFunctionArgs<
-// 		TAbi,
-// 		'nonpayable' | 'payable',
-// 		TFunctionName
-// 	>
-// > = Omit<WriteContractParameters<TAbi, TFunctionName, TArgs>, 'address' | 'abi' | 'account' | 'nonce' | 'chain'> & {
-// 	account: string;
-// };
+export type ExecutionArgs<
+	TAbi extends Abi,
+	TFunctionName extends ContractFunctionName<TAbi, 'nonpayable' | 'payable'>,
+	TArgs extends ContractFunctionArgs<TAbi, 'nonpayable' | 'payable', TFunctionName> = ContractFunctionArgs<
+		TAbi,
+		'nonpayable' | 'payable',
+		TFunctionName
+	>
+> = Pick<WriteContractParameters<TAbi, TFunctionName, TArgs>, 'args' | 'functionName'>;
 
-// export type ExecuteFunction = <
-// 	TAbi extends Abi,
-// 	TFunctionName extends ContractFunctionName<TAbi, 'nonpayable' | 'payable'>,
-// 	TArgs extends ContractFunctionArgs<TAbi, 'nonpayable' | 'payable', TFunctionName> = ContractFunctionArgs<
-// 		TAbi,
-// 		'nonpayable' | 'payable',
-// 		TFunctionName
-// 	>
-// >(
-// 	deployment: Deployment<TAbi>,
-// 	args: ExecutionArgs<TAbi, TFunctionName, TArgs>
-// ) => Promise<EIP1193DATA>;
+export type ExecuteOptions<
+	TAbi extends Abi,
+	TFunctionName extends ContractFunctionName<TAbi, 'nonpayable' | 'payable'>,
+	TArgs extends ContractFunctionArgs<TAbi, 'nonpayable' | 'payable', TFunctionName> = ContractFunctionArgs<
+		TAbi,
+		'nonpayable' | 'payable',
+		TFunctionName
+	>
+> = ExecutionArgs<TAbi, TFunctionName, TArgs> & {
+	type: 'artifact';
+	name?: string;
+	artifact: Artifact<TAbi>;
+};
 
-export type DiamondDeployOptions = Omit<DeployOptions, 'skipIfAlreadyDeployed' | 'alwaysOverride' | 'deterministic'> & {
+export type DiamondDeployOptions<
+	TAbi extends Abi = Abi,
+	TFunctionName extends ContractFunctionName<TAbi, 'nonpayable' | 'payable'> = ContractFunctionName<
+		TAbi,
+		'nonpayable' | 'payable'
+	>,
+	TArgs extends ContractFunctionArgs<TAbi, 'nonpayable' | 'payable', TFunctionName> = ContractFunctionArgs<
+		TAbi,
+		'nonpayable' | 'payable',
+		TFunctionName
+	>
+> = Omit<DeployOptions, 'skipIfAlreadyDeployed' | 'alwaysOverride' | 'deterministic'> & {
 	facets: DiamondFacets;
 	owner?: EIP1193Account;
-	execute?: {
-		contract?: {name?: string; artifact: Artifact; args?: any[]};
-		methodName: string;
-		args: any[];
-	};
+	execute?: ExecuteOptions<TAbi, TFunctionName, TArgs> | {type: 'facet'; functionName: string; args: any[]};
 	defaultCutFacet?: boolean;
 	defaultOwnershipFacet?: boolean;
 	diamondContractArgs?: any[];
@@ -281,14 +293,14 @@ extendEnvironment((env: Environment) => {
 				newSelectors.push(...newFacet.functionSelectors);
 			}
 
-			if (options.execute && !options.execute.contract) {
-				const methods = artifact.abi.filter((v) => (v as any).name === options.execute?.methodName);
+			if (options.execute && options.execute.type == 'facet') {
+				const methods = artifact.abi.filter((v) => (v as any).name === options.execute?.functionName);
 				if (methods.length > 0) {
 					if (methods.length > 1) {
-						throw new Error(`multiple method named "${options.execute.methodName}" found in facet`);
+						throw new Error(`multiple method named "${options.execute.functionName}" found in facet`);
 					} else {
 						if (executionFacetFound) {
-							throw new Error(`multiple facet with method named "${options.execute.methodName}"`);
+							throw new Error(`multiple facet with method named "${options.execute.functionName}"`);
 						} else {
 							executionFacetFound = facetAddress;
 						}
@@ -363,17 +375,18 @@ extendEnvironment((env: Environment) => {
 
 		if (options.execute) {
 			let addressSpecified: `0x${string}` | undefined;
-			if (options.execute.contract) {
-				const name = options.execute.contract.name || options.execute.contract.artifact.contractName;
+			if (options.execute.type === 'artifact') {
+				const name = options.execute.name || options.execute.artifact.contractName;
 				if (!name) {
-					throw new Error(`artifact has no name, pleae provide a name for the contract`);
+					throw new Error(`artifact has no name, pleae provide a name for it in the diamond execute options`);
 				}
 				const executionDeployment = await env.deploy(
 					name, // TODO provide '' to not save it
 					{
 						...params,
-						artifact: options.execute.contract.artifact,
-						args: options.execute.contract.args,
+						artifact: options.execute.artifact,
+						args: [], // we expect artifact use for execute to have no contructor args
+						// TODO support these ?
 					},
 					{
 						deterministic: true,
@@ -384,7 +397,7 @@ extendEnvironment((env: Environment) => {
 
 				executeData = encodeFunctionData({
 					abi: executionDeployment.abi,
-					functionName: options.execute.methodName,
+					functionName: options.execute.functionName,
 					args: options.execute.args,
 				});
 			}
