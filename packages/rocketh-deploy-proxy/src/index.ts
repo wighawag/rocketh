@@ -5,18 +5,14 @@ import '@rocketh/read-execute';
 import type {EIP1193Account} from 'eip-1193';
 import {extendEnvironment} from 'rocketh';
 import {Chain, encodeFunctionData} from 'viem';
-import artifactsAsModule from 'solidity-proxy/generated/artifacts.js';
 import {logs} from 'named-logs';
 import {DeployOptions} from '@rocketh/deploy';
 import {checkUpgradeIndex, replaceTemplateArgs} from './utils.js';
 import ERC1967Proxy from './hardhat-deploy-v1-artifacts/ERC1967Proxy.js';
+import ERC173Proxy from './solidity-proxy-artifacts/ERC173Proxy.js';
+import ERC173ProxyWithReceive from './solidity-proxy-artifacts/ERC173ProxyWithReceive.js';
 
 const logger = logs('@rocketh/deploy-proxy');
-
-// fix for weird loading issue
-const artifacts = (artifactsAsModule as any).default
-	? ((artifactsAsModule as any).default as typeof artifactsAsModule)
-	: artifactsAsModule;
 
 export type ProxyDeployOptions = Omit<DeployOptions, 'skipIfAlreadyDeployed' | 'alwaysOverride'> & {
 	owner?: EIP1193Account;
@@ -93,16 +89,16 @@ extendEnvironment((env: Environment) => {
 		}
 
 		let proxyArgsTemplate = ['{implementation}', '{admin}', '{data}'];
-		let proxyArtifact: Artifact = artifacts.ERC173Proxy;
+		let proxyArtifact: Artifact = ERC173Proxy;
 		if (options?.proxyContract) {
 			if (typeof options.proxyContract === 'string') {
 				switch (options.proxyContract) {
 					case 'ERC173Proxy':
-						proxyArtifact = artifacts.ERC173Proxy;
+						proxyArtifact = ERC173Proxy;
 						proxyArgsTemplate = ['{implementation}', '{admin}', '{data}'];
 						break;
 					case 'ERC173ProxyWithReceive':
-						proxyArtifact = artifacts.ERC173ProxyWithReceive;
+						proxyArtifact = ERC173ProxyWithReceive;
 						proxyArgsTemplate = ['{implementation}', '{admin}', '{data}'];
 						break;
 					case 'UUPS':
