@@ -51,3 +51,39 @@ export function checkUpgradeIndex<TAbi extends Abi>(
 		}
 	}
 }
+
+export function replaceTemplateArgs(
+	proxyArgsTemplate: string[],
+	{
+		implementationAddress,
+		proxyAdmin,
+		data,
+		proxyAddress,
+	}: {
+		implementationAddress: string;
+		proxyAdmin: string;
+		data: string;
+		proxyAddress?: string;
+	}
+): any[] {
+	const proxyArgs: any[] = [];
+	for (let i = 0; i < proxyArgsTemplate.length; i++) {
+		const argValue = proxyArgsTemplate[i];
+		if (argValue === '{implementation}') {
+			proxyArgs.push(implementationAddress);
+		} else if (argValue === '{admin}') {
+			proxyArgs.push(proxyAdmin);
+		} else if (argValue === '{data}') {
+			proxyArgs.push(data);
+		} else if (argValue === '{proxy}') {
+			if (!proxyAddress) {
+				throw new Error(`Expected proxy address but none was specified.`);
+			}
+			proxyArgs.push(proxyAddress);
+		} else {
+			proxyArgs.push(argValue);
+		}
+	}
+
+	return proxyArgs;
+}

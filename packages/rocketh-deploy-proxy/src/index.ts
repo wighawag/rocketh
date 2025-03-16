@@ -8,7 +8,8 @@ import {Chain, encodeFunctionData} from 'viem';
 import artifactsAsModule from 'solidity-proxy/generated/artifacts.js';
 import {logs} from 'named-logs';
 import {DeployOptions} from '@rocketh/deploy';
-import {checkUpgradeIndex} from './utils.js';
+import {checkUpgradeIndex, replaceTemplateArgs} from './utils.js';
+import ERC1967Proxy from './hardhat-deploy-v1-artifacts/ERC1967Proxy.js';
 
 const logger = logs('@rocketh/deploy-proxy');
 
@@ -21,8 +22,13 @@ export type ProxyDeployOptions = Omit<DeployOptions, 'skipIfAlreadyDeployed' | '
 	owner?: EIP1193Account;
 	execute?: string;
 	upgradeIndex?: number;
-	// proxyContract?: Artifact,// default to EIP173Proxy
-	// proxyArgs?: any[]; // default to ["{implementation}", "{admin}", "{data}"]
+	proxyContract?: // | {
+	// 		type: 'custom';
+	// 		artifact: Artifact;
+	// 		args?: any[]; // default to ["{implementation}", "{admin}", "{data}"]
+	//   }
+	'ERC173Proxy' | 'ERC173ProxyWithReceive' | 'UUPS';
+	// | 'Transparent' // default to ERC173Proxy
 	// viaAdminContract?:
 	// 	| string
 	// 	| {
@@ -86,7 +92,32 @@ extendEnvironment((env: Environment) => {
 			}
 		}
 
-		const proxyArtifact = artifacts.ERC173Proxy;
+		let proxyArgsTemplate = ['{implementation}', '{admin}', '{data}'];
+		let proxyArtifact: Artifact = artifacts.ERC173Proxy;
+		if (options?.proxyContract) {
+			if (typeof options.proxyContract === 'string') {
+				switch (options.proxyContract) {
+					case 'ERC173Proxy':
+						proxyArtifact = artifacts.ERC173Proxy;
+						proxyArgsTemplate = ['{implementation}', '{admin}', '{data}'];
+						break;
+					case 'ERC173ProxyWithReceive':
+						proxyArtifact = artifacts.ERC173ProxyWithReceive;
+						proxyArgsTemplate = ['{implementation}', '{admin}', '{data}'];
+						break;
+					case 'UUPS':
+						proxyArtifact = ERC1967Proxy;
+						proxyArgsTemplate = ['{implementation}', '{data}'];
+						break;
+					default:
+						throw new Error(`unknown proxy contract ${options.proxyContract}`);
+				}
+				proxyArtifact = env.artifacts[options.proxyContract];
+			}
+			// else {
+			// 	proxyArtifact = options.proxyContract;
+			// }
+		}
 
 		const implementation =
 			typeof params.artifact === 'function'
@@ -154,7 +185,11 @@ extendEnvironment((env: Environment) => {
 				{
 					...params,
 					artifact: proxyArtifact,
-					args: [implementation.address, owner, postUpgradeCalldata ? postUpgradeCalldata : '0x'],
+					args: replaceTemplateArgs(proxyArgsTemplate, {
+						implementationAddress: implementation.address,
+						proxyAdmin: owner,
+						data: postUpgradeCalldata ? postUpgradeCalldata : '0x',
+					}),
 				},
 				{
 					skipIfAlreadyDeployed: true,
