@@ -20,11 +20,11 @@ layout {
 			}
 		}
 		pane split_direction="vertical" {
-			pane name="rocketh-deploy-proxy" command="bash" {
-				args "-c" "pnpm run --filter @rocketh/deploy-proxy dev; cd packages/rocketh-deploy-proxy; ${SHELL-bash}"
+			pane name="rocketh-proxy" command="bash" {
+				args "-c" "pnpm run --filter @rocketh/proxy dev; cd packages/rocketh-proxy; ${SHELL-bash}"
 			}
-			pane name="rocketh-deploy-router" command="bash" {
-				args "-c" "pnpm run --filter @rocketh/deploy-router dev; cd packages/rocketh-deploy-router; ${SHELL-bash}"
+			pane name="rocketh-router" command="bash" {
+				args "-c" "pnpm run --filter @rocketh/router dev; cd packages/rocketh-router; ${SHELL-bash}"
 			}
 			pane name="rocketh-signer" command="bash" {
 				args "-c" "pnpm run --filter @rocketh/signer dev; cd packages/rocketh-signer; ${SHELL-bash}"

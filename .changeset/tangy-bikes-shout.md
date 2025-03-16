@@ -1,5 +1,5 @@
 ---
-'@rocketh/deploy-proxy': patch
+'@rocketh/proxy': patch
 ---
 
 embed solidity-proxy artifacts

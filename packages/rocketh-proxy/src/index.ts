@@ -12,7 +12,7 @@ import ERC1967Proxy from './hardhat-deploy-v1-artifacts/ERC1967Proxy.js';
 import ERC173Proxy from './solidity-proxy-artifacts/ERC173Proxy.js';
 import ERC173ProxyWithReceive from './solidity-proxy-artifacts/ERC173ProxyWithReceive.js';
 
-const logger = logs('@rocketh/deploy-proxy');
+const logger = logs('@rocketh/proxy');
 
 export type ProxyDeployOptions = Omit<DeployOptions, 'skipIfAlreadyDeployed' | 'alwaysOverride'> & {
 	owner?: EIP1193Account;

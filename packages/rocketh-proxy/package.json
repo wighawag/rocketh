@@ -1,7 +1,7 @@
 {
-	"name": "@rocketh/deploy-router",
+	"name": "@rocketh/proxy",
 	"version": "0.11.1",
-	"description": "provide router based proxy deployment for rocketh",
+	"description": "provide proxy-enabled deploy function for rocketh",
 	"publishConfig": {
 		"access": "public"
 	},
@@ -16,10 +16,12 @@
 		}
 	},
 	"files": [
-		"dist"
+		"dist",
+		"solc_0_8"
 	],
 	"devDependencies": {
 		"@rocketh/deploy": "workspace:*",
+		"@rocketh/read-execute": "workspace:*",
 		"abitype": "^1.0.8",
 		"as-soon": "^0.0.11",
 		"eip-1193": "^0.6.2",
@@ -29,12 +31,11 @@
 	},
 	"peerDependencies": {
 		"@rocketh/deploy": "workspace:*",
+		"@rocketh/read-execute": "workspace:*",
 		"rocketh": "workspace:*"
 	},
 	"dependencies": {
-		"ethers": "^6.13.5",
 		"named-logs": "^0.3.2",
-		"solidity-proxy": "^0.4.0",
 		"viem": "^2.23.10"
 	},
 	"scripts": {

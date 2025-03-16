@@ -352,7 +352,7 @@
 
 ### Patch Changes
 
-- latest update + rocketh-deploy-router
+- latest update + rocketh-router
 
 ## 0.6.0
 

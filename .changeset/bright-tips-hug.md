@@ -1,5 +1,5 @@
 ---
-'@rocketh/deploy-proxy': patch
+'@rocketh/proxy': patch
 ---
 
 support UUPS + ERC173WithReceive

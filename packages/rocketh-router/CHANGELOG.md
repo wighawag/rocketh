@@ -1,4 +1,4 @@
-# @rocketh/deploy-proxy
+# @rocketh/router
 
 ## 0.11.1
 
@@ -8,18 +8,16 @@
 - Updated dependencies
   - rocketh@0.11.1
   - @rocketh/deploy@0.11.1
-  - @rocketh/read-execute@0.11.1
 
-## 1.0.0-next.6
+## 1.0.0-next.5
 
 ### Patch Changes
 
 - Updated dependencies [9a9b3c4]
   - rocketh@1.0.0-next.5
   - @rocketh/deploy@1.0.0-next.5
-  - @rocketh/read-execute@1.0.0-next.2
 
-## 1.0.0-next.5
+## 1.0.0-next.4
 
 ### Patch Changes
 
@@ -27,9 +25,8 @@
 - Updated dependencies
   - @rocketh/deploy@1.0.0-next.4
   - rocketh@1.0.0-next.4
-  - @rocketh/read-execute@1.0.0-next.1
 
-## 1.0.0-next.4
+## 1.0.0-next.3
 
 ### Patch Changes
 
@@ -37,12 +34,6 @@
 - Updated dependencies
   - @rocketh/deploy@1.0.0-next.3
   - rocketh@1.0.0-next.3
-
-## 1.0.0-next.3
-
-### Patch Changes
-
-- proxy owner do the upgrade, regardless of account used to deploy the proxy
 
 ## 1.0.0-next.2
 
@@ -73,7 +64,7 @@
   - @rocketh/deploy@1.0.0-next.0
   - rocketh@1.0.0-next.0
 
-## 0.10.13
+## 0.10.12
 
 ### Patch Changes
 
@@ -82,7 +73,7 @@
   - @rocketh/deploy@0.10.12
   - rocketh@0.10.18
 
-## 0.10.12
+## 0.10.11
 
 ### Patch Changes
 
@@ -91,7 +82,7 @@
   - @rocketh/deploy@0.10.11
   - rocketh@0.10.17
 
-## 0.10.11
+## 0.10.10
 
 ### Patch Changes
 
@@ -99,7 +90,7 @@
 - Updated dependencies
   - @rocketh/deploy@0.10.10
 
-## 0.10.10
+## 0.10.9
 
 ### Patch Changes
 
@@ -108,7 +99,7 @@
   - rocketh@0.10.16
   - @rocketh/deploy@0.10.9
 
-## 0.10.9
+## 0.10.8
 
 ### Patch Changes
 
@@ -116,7 +107,7 @@
   - rocketh@0.10.15
   - @rocketh/deploy@0.10.8
 
-## 0.10.8
+## 0.10.7
 
 ### Patch Changes
 
@@ -124,12 +115,6 @@
 - Updated dependencies
   - @rocketh/deploy@0.10.7
   - rocketh@0.10.14
-
-## 0.10.7
-
-### Patch Changes
-
-- fix type + allow license specification for etherscan
 
 ## 0.10.6
 
@@ -166,7 +151,6 @@
 
 ### Patch Changes
 
-- unnamedAccounts
 - Updated dependencies
   - @rocketh/deploy@0.10.2
   - rocketh@0.10.10

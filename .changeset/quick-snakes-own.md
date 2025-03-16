@@ -1,5 +1,5 @@
 ---
-'@rocketh/deploy-proxy': patch
+'@rocketh/proxy': patch
 '@rocketh/diamond': patch
 '@rocketh/deploy': patch
 'rocketh': patch
