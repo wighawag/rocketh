@@ -1,5 +1,13 @@
 # @rocketh/deploy
 
+## 0.11.5
+
+### Patch Changes
+
+- 4426c7d: remove .json config file + support custom deterministic deployment factory
+- Updated dependencies [4426c7d]
+  - rocketh@0.11.5
+
 ## 0.11.4
 
 ### Patch Changes
