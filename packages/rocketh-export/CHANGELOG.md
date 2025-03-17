@@ -1,5 +1,13 @@
 # @rocketh/export
 
+## 0.11.3
+
+### Patch Changes
+
+- 2431e8f: remove the use of context
+- Updated dependencies [2431e8f]
+  - rocketh@0.11.3
+
 ## 0.11.2
 
 ### Patch Changes

@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.11.3
+
+### Patch Changes
+
+- 2431e8f: remove the use of context
+
 ## 0.11.2
 
 ### Patch Changes

@@ -1,5 +1,15 @@
 # @rocketh/diamond
 
+## 0.11.4
+
+### Patch Changes
+
+- 3f39d5c: use hardhat-deloy v1 proxies + add proxyDisabled option
+- Updated dependencies [2431e8f]
+  - @rocketh/deploy@0.11.3
+  - rocketh@0.11.3
+  - @rocketh/read-execute@0.11.3
+
 ## 0.11.3
 
 ### Patch Changes
