@@ -240,10 +240,12 @@ extendEnvironment((env: Environment) => {
 
 		let expectedAddress: `0x${string}` | undefined = undefined;
 		if (options?.deterministic) {
-			// TODO make these configurable
-			const deterministicFactoryAddress = `0x4e59b44847b379578588920ca78fbf26c0b4956c`;
-			const deterministicFactoryDeployerAddress = `0x3fab184622dc19b6109349b94811493bf2a45362`;
-			const factoryDeploymentData = `0xf8a58085174876e800830186a08080b853604580600e600039806000f350fe7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe03601600081602082378035828234f58015156039578182fd5b8082525050506014600cf31ba02222222222222222222222222222222222222222222222222222222222222222a02222222222222222222222222222222222222222222222222222222222222222`;
+			const deterministicDeploymentInfo = env.config.network.deterministicDeployment;
+
+			const deterministicFactoryAddress = deterministicDeploymentInfo.factory;
+			const deterministicFactoryDeployerAddress = deterministicDeploymentInfo.deployer;
+			const factoryDeploymentData = deterministicDeploymentInfo.signedTx;
+			const funding = BigInt(deterministicDeploymentInfo.funding);
 
 			const code = await env.network.provider.request({
 				method: 'eth_getCode',
@@ -255,8 +257,8 @@ extendEnvironment((env: Environment) => {
 					params: [deterministicFactoryDeployerAddress, 'latest'],
 				});
 				const balance = BigInt(balanceHexString);
-				if (balance < 10000000000000000n) {
-					const need = 10000000000000000n - balance;
+				if (balance < funding) {
+					const need = funding - balance;
 					const balanceToSend = `0x${need.toString(16)}` as `0x${string}`;
 					const txHash = await broadcastTransaction(env, signer, [
 						{

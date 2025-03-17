@@ -13,6 +13,7 @@ import type {Address, DeployContractParameters} from 'viem';
 import type {Chain} from 'viem';
 import {ProgressIndicator} from '../internal/logging.js';
 import {TransactionHashTracker} from './providers/TransactionHashTracker.js';
+import {DeterministicDeploymentInfo} from '../executor/index.js';
 
 export type {Abi, AbiError, AbiEvent, AbiConstructor, AbiFallback, AbiFunction, AbiReceive};
 export type Libraries = {readonly [libraryName: string]: EIP1193Account};
@@ -202,6 +203,7 @@ type NetworkConfigBase = {
 	name: string;
 	tags: string[];
 	fork?: boolean;
+	deterministicDeployment?: DeterministicDeploymentInfo;
 };
 type NetworkConfigForJSONRPC = NetworkConfigBase & {
 	nodeUrl: string;
@@ -239,6 +241,7 @@ export type ResolvedConfig<AccountsType extends UnresolvedUnknownNamedAccounts =
 			name: string;
 			tags: string[];
 			fork?: boolean;
+			deterministicDeployment: DeterministicDeploymentInfo;
 		};
 		saveDeployments?: boolean;
 		askBeforeProceeding?: boolean;

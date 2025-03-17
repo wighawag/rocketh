@@ -66,12 +66,23 @@ export type ConfigOptions = {
 	reportGasUse?: boolean;
 };
 
+export type DeterministicDeploymentInfo = {
+	factory: `0x${string}`;
+	deployer: `0x${string}`;
+	funding: string;
+	signedTx: `0x${string}`;
+};
 type Networks = {[name: string]: {rpcUrl?: string; tags?: string[]}};
 export type UserConfig<NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts> = {
 	networks?: Networks;
 	deployments?: string;
 	scripts?: string;
 	accounts?: NamedAccounts;
+	deterministicDeployment?:
+		| {
+				[network: string]: DeterministicDeploymentInfo;
+		  }
+		| ((network: string) => DeterministicDeploymentInfo | undefined);
 };
 
 export async function readConfig<NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts>(
@@ -83,20 +94,16 @@ export async function readConfig<NamedAccounts extends UnresolvedUnknownNamedAcc
 	// TODO more sophisticated config file finding mechanism (look up parents, etc..)
 	const tsFilePath = path.join(process.cwd(), 'rocketh.ts');
 	const jsFilePath = path.join(process.cwd(), 'rocketh.js');
-	const jsonFilePath = path.join(process.cwd(), 'rocketh.json');
 
 	const tsVersionExists = fs.existsSync(tsFilePath);
 	const jsVersionExists = fs.existsSync(jsFilePath);
-	const jsonVersionExists = fs.existsSync(jsonFilePath);
-	const existingConfigs = [tsVersionExists, jsVersionExists, jsonVersionExists].filter(Boolean).length;
+	const existingConfigs = [tsVersionExists, jsVersionExists].filter(Boolean).length;
 
 	// console.log({tsFilePath, tsVersionExists, existingConfigs});
 
 	// Throw error if multiple config files exist
 	if (existingConfigs > 1) {
-		throw new Error(
-			'Multiple configuration files found. Please use only one of: rocketh.ts, rocketh.js, or rocketh.json'
-		);
+		throw new Error('Multiple configuration files found. Please use only one of: rocketh.ts, rocketh.js');
 	}
 	if (tsVersionExists) {
 		const moduleLoaded = await tsImport(tsFilePath, import.meta.url);
@@ -112,11 +119,6 @@ export async function readConfig<NamedAccounts extends UnresolvedUnknownNamedAcc
 	} else if (jsVersionExists) {
 		const moduleLoaded = await tsImport(jsFilePath, import.meta.url);
 		configFile = moduleLoaded.config;
-	} else if (jsonVersionExists) {
-		try {
-			const configString = fs.readFileSync(jsonFilePath, 'utf-8');
-			configFile = JSON.parse(configString);
-		} catch {}
 	}
 
 	if (configFile) {
@@ -224,9 +226,16 @@ export async function readAndResolveConfig<
 export function resolveConfig<NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts>(
 	config: Config<NamedAccounts>
 ): ResolvedConfig<NamedAccounts> {
+	let deterministicDeployment: DeterministicDeploymentInfo = {
+		factory: '0x4e59b44847b379578588920ca78fbf26c0b4956c',
+		deployer: '0x3fab184622dc19b6109349b94811493bf2a45362',
+		funding: '10000000000000000',
+		signedTx:
+			'0xf8a58085174876e800830186a08080b853604580600e600039806000f350fe7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe03601600081602082378035828234f58015156039578182fd5b8082525050506014600cf31ba02222222222222222222222222222222222222222222222222222222222222222a02222222222222222222222222222222222222222222222222222222222222222',
+	};
 	const resolvedConfig: ResolvedConfig<NamedAccounts> = {
 		...config,
-		network: config.network,
+		network: {...config.network, deterministicDeployment},
 		deployments: config.deployments || 'deployments',
 		scripts: config.scripts || 'deploy',
 		tags: config.tags || [],
