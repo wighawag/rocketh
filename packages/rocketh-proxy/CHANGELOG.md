@@ -1,5 +1,11 @@
 # @rocketh/proxy
 
+## 0.11.4
+
+### Patch Changes
+
+- 5c2e671: fix UUPS support
+
 ## 0.11.3
 
 ### Patch Changes
