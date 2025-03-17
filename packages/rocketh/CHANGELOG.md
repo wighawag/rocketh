@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.11.4
+
+### Patch Changes
+
+- add default tags option for network
+
 ## 0.11.3
 
 ### Patch Changes

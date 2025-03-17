@@ -139,7 +139,12 @@ export async function readConfig<NamedAccounts extends UnresolvedUnknownNamedAcc
 		}
 	}
 
-	let networkTags: string[] = (configFile?.networks && configFile?.networks[networkName]?.tags) || [];
+	let defaultTags: string[] = [];
+
+	let networkTags: string[] =
+		(configFile?.networks && (configFile?.networks[networkName]?.tags || configFile?.networks['default']?.tags)) ||
+		defaultTags;
+
 	if (!options.provider) {
 		let nodeUrl: string;
 		if (typeof fromEnv === 'string') {
