@@ -11,27 +11,41 @@ import {checkUpgradeIndex, replaceTemplateArgs} from './utils.js';
 import ERC1967Proxy from './hardhat-deploy-v1-artifacts/ERC1967Proxy.js';
 import ERC173Proxy from './hardhat-deploy-v1-artifacts/EIP173Proxy.js';
 import ERC173ProxyWithReceive from './hardhat-deploy-v1-artifacts/EIP173ProxyWithReceive.js';
+import TransparentUpgradeableProxy from './hardhat-deploy-v1-artifacts/TransparentUpgradeableProxy.js';
+import OptimizedTransparentUpgradeableProxy from './hardhat-deploy-v1-artifacts/OptimizedTransparentUpgradeableProxy.js';
+import DefaultProxyAdmin from './hardhat-deploy-v1-artifacts/ProxyAdmin.js';
 
 const logger = logs('@rocketh/proxy');
+
+export type PredefinedProxyContract =
+	| 'ERC173Proxy'
+	| 'ERC173ProxyWithReceive'
+	| 'UUPS'
+	| 'SharedAdminOpenZeppelinTransparentProxy'
+	| 'SharedAdminOptimizedTransparentProxy';
 
 export type ProxyDeployOptions = Omit<DeployOptions, 'skipIfAlreadyDeployed' | 'alwaysOverride'> & {
 	proxyDisabled?: boolean;
 	owner?: EIP1193Account;
 	execute?: string;
 	upgradeIndex?: number;
-	proxyContract?: // | {
+	proxyContract?:
+		| PredefinedProxyContract
+		| ({type: PredefinedProxyContract} & {
+				type: 'SharedAdminOpenZeppelinTransparentProxy' | 'SharedAdminOptimizedTransparentProxy';
+				proxyAdminName?: string;
+		  });
+	// | {
 	// 		type: 'custom';
 	// 		artifact: Artifact;
 	// 		args?: any[]; // default to ["{implementation}", "{admin}", "{data}"]
-	//   }
-	'ERC173Proxy' | 'ERC173ProxyWithReceive' | 'UUPS';
-	// | 'Transparent' // default to ERC173Proxy
 	// viaAdminContract?:
 	// 	| string
 	// 	| {
 	// 			name: string;
 	// 			artifact?: string | ArtifactData;
-	// 	  };
+	// 	  }
+	//   };
 };
 
 export type ImplementationDeployer<TAbi extends Abi, TChain extends Chain> = (
@@ -113,30 +127,50 @@ extendEnvironment((env: Environment) => {
 			}
 		}
 
+		let viaAdminContract: {artifactName: 'DefaultProxyAdmin'; proxyAdminName: string} | undefined;
+
 		let proxyArgsTemplate = ['{implementation}', '{admin}', '{data}'];
 		let proxyArtifact: Artifact = ERC173Proxy;
 		if (options?.proxyContract) {
-			if (typeof options.proxyContract === 'string') {
-				switch (options.proxyContract) {
-					case 'ERC173Proxy':
-						proxyArtifact = ERC173Proxy;
-						proxyArgsTemplate = ['{implementation}', '{admin}', '{data}'];
-						break;
-					case 'ERC173ProxyWithReceive':
-						proxyArtifact = ERC173ProxyWithReceive;
-						proxyArgsTemplate = ['{implementation}', '{admin}', '{data}'];
-						break;
-					case 'UUPS':
-						proxyArtifact = ERC1967Proxy;
-						proxyArgsTemplate = ['{implementation}', '{data}'];
-						break;
-					default:
-						throw new Error(`unknown proxy contract ${options.proxyContract}`);
-				}
+			const proxyContractDefinition =
+				typeof options.proxyContract === 'string' ? options.proxyContract : options.proxyContract.type;
+
+			switch (proxyContractDefinition) {
+				case 'ERC173Proxy':
+					proxyArtifact = ERC173Proxy;
+					proxyArgsTemplate = ['{implementation}', '{admin}', '{data}'];
+					break;
+				case 'ERC173ProxyWithReceive':
+					proxyArtifact = ERC173ProxyWithReceive;
+					proxyArgsTemplate = ['{implementation}', '{admin}', '{data}'];
+					break;
+				case 'UUPS':
+					proxyArtifact = ERC1967Proxy;
+					proxyArgsTemplate = ['{implementation}', '{data}'];
+					break;
+				case 'SharedAdminOpenZeppelinTransparentProxy':
+					proxyArtifact = TransparentUpgradeableProxy;
+					proxyArgsTemplate = ['{implementation}', '{admin}', '{data}'];
+					viaAdminContract = {
+						artifactName: 'DefaultProxyAdmin',
+						proxyAdminName:
+							(typeof options.proxyContract === 'object' && options.proxyContract.proxyAdminName) ||
+							'DefaultProxyAdmin',
+					};
+					break;
+				case 'SharedAdminOptimizedTransparentProxy':
+					proxyArtifact = OptimizedTransparentUpgradeableProxy;
+					proxyArgsTemplate = ['{implementation}', '{admin}', '{data}'];
+					viaAdminContract = {
+						artifactName: 'DefaultProxyAdmin',
+						proxyAdminName:
+							(typeof options.proxyContract === 'object' && options.proxyContract.proxyAdminName) ||
+							'DefaultProxyAdmin',
+					};
+					break;
+				default:
+					throw new Error(`unknown proxy contract ${options.proxyContract}`);
 			}
-			// else {
-			// 	proxyArtifact = options.proxyContract;
-			// }
 		}
 
 		const implementationDeployment =
@@ -167,7 +201,50 @@ extendEnvironment((env: Environment) => {
 
 		logger.info(`existingDeployment at ${existingDeployment?.address}`);
 
-		const owner = options?.owner || address;
+		const expectedOwner = options?.owner || address;
+		let proxyAdmin = expectedOwner;
+
+		let proxyAdminContract:
+			| {
+					deployment: Deployment<typeof DefaultProxyAdmin.abi>;
+					owner: `0x${string}`;
+			  }
+			| undefined;
+		if (viaAdminContract?.artifactName === 'DefaultProxyAdmin') {
+			const proxyAdminOwner = expectedOwner;
+			const proxyAdminName = viaAdminContract.proxyAdminName;
+			let proxyAdminDeployed: Deployment<typeof DefaultProxyAdmin.abi> | null = env.getOrNull(proxyAdminName);
+
+			if (!proxyAdminDeployed) {
+				const proxyAdminDeployment = await env.deploy(
+					proxyAdminName,
+					{
+						...params,
+						artifact: DefaultProxyAdmin,
+						args: [proxyAdminOwner],
+					},
+					{
+						deterministic: options?.deterministic,
+					}
+				);
+				proxyAdminDeployed = proxyAdminDeployment;
+			}
+
+			const currentProxyAdminOwner = await env.read(proxyAdminDeployed, {functionName: 'owner'});
+
+			if (currentProxyAdminOwner.toLowerCase() !== expectedOwner.toLowerCase()) {
+				throw new Error(`To change owner/admin, you need to call transferOwnership on ${proxyAdminName}`);
+			}
+			if (currentProxyAdminOwner === zeroAddress) {
+				throw new Error(`The Proxy Admin (${proxyAdminName}) belongs to no-one. The Proxy cannot be upgraded anymore`);
+			}
+			proxyAdmin = proxyAdminDeployed.address;
+
+			proxyAdminContract = {
+				deployment: proxyAdminDeployed,
+				owner: currentProxyAdminOwner.toLowerCase() as `0x${string}`,
+			};
+		}
 
 		let postUpgradeCalldata: `0x${string}` | undefined;
 		if (options?.execute) {
@@ -204,7 +281,7 @@ extendEnvironment((env: Environment) => {
 					artifact: proxyArtifact,
 					args: replaceTemplateArgs(proxyArgsTemplate, {
 						implementationAddress: implementationDeployment.address,
-						proxyAdmin: owner,
+						proxyAdmin: proxyAdmin,
 						data: postUpgradeCalldata ? postUpgradeCalldata : '0x',
 					}),
 				},
@@ -303,19 +380,36 @@ extendEnvironment((env: Environment) => {
 					}
 				}
 
-				if (useUpgradeToAndCall) {
-					await env.execute(deploymentToUseForUpgrade, {
-						account: currentOwner,
-						functionName: 'upgradeToAndCall',
-						args: [implementationDeployment.address, postUpgradeCalldata || '0x'],
-						value: 0n, // TODO
-					});
+				if (proxyAdminContract) {
+					if (useUpgradeToAndCall) {
+						await env.execute(proxyAdminContract.deployment, {
+							account: proxyAdminContract.owner,
+							functionName: 'upgradeAndCall',
+							args: [proxyDeployment.address, implementationDeployment.address, postUpgradeCalldata || '0x'],
+							value: 0n, // TODO
+						});
+					} else {
+						await env.execute(proxyAdminContract.deployment, {
+							account: proxyAdminContract.owner,
+							functionName: 'upgrade',
+							args: [proxyDeployment.address, implementationDeployment.address],
+						});
+					}
 				} else {
-					await env.execute(deploymentToUseForUpgrade, {
-						account: currentOwner,
-						functionName: 'upgradeTo',
-						args: [implementationDeployment.address],
-					});
+					if (useUpgradeToAndCall) {
+						await env.execute(deploymentToUseForUpgrade, {
+							account: currentOwner,
+							functionName: 'upgradeToAndCall',
+							args: [implementationDeployment.address, postUpgradeCalldata || '0x'],
+							value: 0n, // TODO
+						});
+					} else {
+						await env.execute(deploymentToUseForUpgrade, {
+							account: currentOwner,
+							functionName: 'upgradeTo',
+							args: [implementationDeployment.address],
+						});
+					}
 				}
 			}
 			existingDeployment = await env.save(name, {

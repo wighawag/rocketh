@@ -1,5 +1,11 @@
 # @rocketh/proxy
 
+## 0.11.7
+
+### Patch Changes
+
+- add support for transparent proxies with shared proxy admin contract
+
 ## 0.11.6
 
 ### Patch Changes
