@@ -555,6 +555,7 @@ extendEnvironment((env: Environment) => {
 
 				const txHash = await env.execute(proxy as unknown as Deployment<DiamondCutABI>, {
 					...params,
+					account: expectedOwner,
 					functionName: 'diamondCut',
 					args: [
 						facetCuts,

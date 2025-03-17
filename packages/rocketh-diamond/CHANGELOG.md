@@ -1,5 +1,11 @@
 # @rocketh/diamond
 
+## 0.11.5
+
+### Patch Changes
+
+- diamond owner do the upgrade, not deployer
+
 ## 0.11.4
 
 ### Patch Changes
