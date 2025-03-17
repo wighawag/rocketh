@@ -25,9 +25,9 @@ program
 	.option('--endpoint <value>', 'endpoint to connect to')
 	.option('--license <value>', 'source code license')
 	.option('--force-license', 'force the use of the license provided')
-	.action((options: {endpoint?: string; forceLicense: boolean; license: string}) => {
+	.action(async (options: {endpoint?: string; forceLicense: boolean; license: string}) => {
 		const programOptions = program.opts() as ConfigOptions;
-		const resolvedConfig = readAndResolveConfig({...programOptions, ignoreMissingRPC: true});
+		const resolvedConfig = await readAndResolveConfig({...programOptions, ignoreMissingRPC: true});
 		run(resolvedConfig, {
 			verifier: {
 				type: 'etherscan',
@@ -43,9 +43,9 @@ program
 	.command('sourcify')
 	.description('submit contract for verification to sourcify')
 	.option('--endpoint <value>', 'endpoint to connect to')
-	.action((options: {endpoint?: string}) => {
+	.action(async (options: {endpoint?: string}) => {
 		const programOptions = program.opts() as ConfigOptions;
-		const resolvedConfig = readAndResolveConfig({...programOptions, ignoreMissingRPC: true});
+		const resolvedConfig = await readAndResolveConfig({...programOptions, ignoreMissingRPC: true});
 		run(resolvedConfig, {verifier: {type: 'sourcify', endpoint: options.endpoint}});
 	});
 
@@ -54,9 +54,9 @@ program
 	.description('submit contract for verification to blockscout')
 	.option('--endpoint <value>', 'endpoint to connect to')
 	// .option('--api <value>', 'api version (default to v2)')
-	.action((options: {endpoint?: string}) => {
+	.action(async (options: {endpoint?: string}) => {
 		const programOptions = program.opts() as ConfigOptions;
-		const resolvedConfig = readAndResolveConfig({...programOptions, ignoreMissingRPC: true});
+		const resolvedConfig = await readAndResolveConfig({...programOptions, ignoreMissingRPC: true});
 		run(resolvedConfig, {verifier: {type: 'blockscout', endpoint: options.endpoint}});
 	});
 
@@ -64,9 +64,9 @@ program
 	.command('metadata')
 	.description('export metadata')
 	.option('--out <value>', 'folder to write metadata into')
-	.action((options: {out?: string}) => {
+	.action(async (options: {out?: string}) => {
 		const programOptions = program.opts() as ConfigOptions;
-		const resolvedConfig = readAndResolveConfig({...programOptions, ignoreMissingRPC: true});
+		const resolvedConfig = await readAndResolveConfig({...programOptions, ignoreMissingRPC: true});
 		exportMetadata(resolvedConfig, {out: options.out || '_metadata'});
 	});
 

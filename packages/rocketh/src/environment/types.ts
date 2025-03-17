@@ -198,19 +198,6 @@ export type ResolvedNamedSigners<T extends UnknownNamedAccounts> = {
 
 export type UnknownDeploymentsAcrossNetworks = Record<string, UnknownDeployments>;
 
-export type Context<
-	Artifacts extends UnknownArtifacts = UnknownArtifacts,
-	NamedAccounts extends UnknownNamedAccounts = UnknownNamedAccounts
-> = {
-	network: {
-		name: string;
-		tags: {[tag: string]: boolean};
-		saveDeployments: boolean;
-	};
-	accounts: NamedAccounts;
-	artifacts: Artifacts;
-};
-
 type NetworkConfigBase = {
 	name: string;
 	tags: string[];
@@ -226,7 +213,7 @@ type NetworkConfigForEIP1193Provider = NetworkConfigBase & {
 
 export type NetworkConfig = NetworkConfigForJSONRPC | NetworkConfigForEIP1193Provider;
 
-export type Config = {
+export type Config<AccountsType extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts> = {
 	network: NetworkConfig;
 	networkTags?: string[];
 	scripts?: string;
@@ -240,24 +227,26 @@ export type Config = {
 	logLevel?: number;
 	// TODO
 	gasPricing?: {};
+	accounts?: AccountsType;
 };
 
-export type ResolvedConfig = Config & {
-	deployments: string;
-	scripts: string;
-	tags: string[];
-	network: {
-		name: string;
+export type ResolvedConfig<AccountsType extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts> =
+	Config & {
+		deployments: string;
+		scripts: string;
 		tags: string[];
-		fork?: boolean;
+		network: {
+			name: string;
+			tags: string[];
+			fork?: boolean;
+		};
+		saveDeployments?: boolean;
+		askBeforeProceeding?: boolean;
+		reportGasUse?: boolean;
+		accounts: AccountsType;
 	};
-	saveDeployments?: boolean;
-	askBeforeProceeding?: boolean;
-	reportGasUse?: boolean;
-};
 
 export interface Environment<
-	Artifacts extends UnknownArtifacts = UnknownArtifacts,
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Deployments extends UnknownDeployments = UnknownDeployments
 > {
@@ -274,7 +263,6 @@ export interface Environment<
 	unnamedAccounts: EIP1193Account[];
 	// unnamedSigners: {type: 'remote'; signer: EIP1193ProviderWithoutEvents}[];
 	addressSigners: {[name: `0x${string}`]: Signer};
-	artifacts: Artifacts;
 	save<TAbi extends Abi = Abi>(
 		name: string,
 		deployment: Deployment<TAbi>,
@@ -295,7 +283,7 @@ export interface Environment<
 export type DeploymentConstruction<TAbi extends Abi> = Omit<
 	DeployContractParameters<TAbi>,
 	'bytecode' | 'account' | 'abi' | 'chain'
-> & {account: string | EIP1193Account; artifact: string | Artifact<TAbi>};
+> & {account: string | EIP1193Account; artifact: Artifact<TAbi>};
 
 export type PartialDeployment<TAbi extends Abi = Abi> = Artifact<TAbi> & {
 	argsData: EIP1193DATA;

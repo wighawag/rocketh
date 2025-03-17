@@ -167,7 +167,7 @@ extendEnvironment((env: Environment) => {
 		}
 
 		// TODO throw specific error if artifact not found
-		const artifactToUse = (typeof artifact === 'string' ? env.artifacts[artifact] : artifact) as Artifact<TAbi>;
+		const artifactToUse = artifact;
 
 		const bytecode = linkLibraries(artifactToUse, options?.libraries);
 

@@ -32,7 +32,6 @@ import {
 	EIP1193Transaction,
 	EIP1193TransactionReceipt,
 } from 'eip-1193';
-import {ProvidedContext} from '../executor/types.js';
 import {ProgressIndicator, log, spin} from '../internal/logging.js';
 import {PendingExecution} from './types.js';
 import {getChain} from './utils/chains.js';
@@ -78,13 +77,11 @@ function displayTransaction(transaction: EIP1193Transaction) {
 }
 
 export async function createEnvironment<
-	Artifacts extends UnknownArtifacts = UnknownArtifacts,
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Deployments extends UnknownDeployments = UnknownDeployments
 >(
-	config: ResolvedConfig,
-	providedContext: ProvidedContext<Artifacts, NamedAccounts>
-): Promise<{internal: InternalEnvironment; external: Environment<Artifacts, NamedAccounts, Deployments>}> {
+	config: ResolvedConfig<NamedAccounts>
+): Promise<{internal: InternalEnvironment; external: Environment<NamedAccounts, Deployments>}> {
 	const rawProvider =
 		'provider' in config.network
 			? config.network.provider
@@ -206,17 +203,16 @@ export async function createEnvironment<
 		return account;
 	}
 
-	if (providedContext.accounts) {
-		const accountNames = Object.keys(providedContext.accounts);
+	if (config.accounts) {
+		const accountNames = Object.keys(config.accounts);
 		for (const accountName of accountNames) {
-			let account = await getAccount(accountName, providedContext.accounts, providedContext.accounts[accountName]);
+			let account = await getAccount(accountName, config.accounts, config.accounts[accountName]);
 			(resolvedAccounts as any)[accountName] = account;
 		}
 	}
 
 	const context = {
 		accounts: resolvedAccounts,
-		artifacts: providedContext.artifacts as Artifacts,
 		network: {
 			name: networkName,
 			fork: config.network.fork,
@@ -267,7 +263,6 @@ export async function createEnvironment<
 		namedSigners: namedSigners as ResolvedNamedSigners<ResolvedNamedAccounts<NamedAccounts>>,
 		unnamedAccounts,
 		addressSigners: addressSigners,
-		artifacts: context.artifacts,
 		network: {
 			chain: getChain(chainId),
 			name: context.network.name,
@@ -684,7 +679,7 @@ export async function createEnvironment<
 		return spin(message);
 	}
 
-	let env: Environment<Artifacts, NamedAccounts, Deployments> = {
+	let env: Environment<NamedAccounts, Deployments> = {
 		...perliminaryEnvironment,
 		save,
 		savePendingDeployment,

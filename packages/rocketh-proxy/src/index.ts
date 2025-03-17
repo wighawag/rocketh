@@ -44,14 +44,14 @@ export type ProxyEnhancedDeploymentConstruction<TAbi extends Abi, TChain extends
 	DeploymentConstruction<TAbi>,
 	'artifact'
 > & {
-	artifact: string | Artifact<TAbi> | ImplementationDeployer<TAbi, TChain>;
+	artifact: Artifact<TAbi> | ImplementationDeployer<TAbi, TChain>;
 };
 
 export type ProxyEnhancedDeploymentConstructionWithoutFunction<TAbi extends Abi, TChain extends Chain = Chain> = Omit<
 	DeploymentConstruction<TAbi>,
 	'artifact'
 > & {
-	artifact: string | Artifact<TAbi>;
+	artifact: Artifact<TAbi>;
 };
 
 export type DeployViaProxyFunction = <TAbi extends Abi, TChain extends Chain = Chain>(
@@ -96,6 +96,10 @@ extendEnvironment((env: Environment) => {
 
 		const {account, artifact, args, ...viemArgs} = params;
 		let address: `0x${string}`;
+
+		if (!account) {
+			throw new Error(`no account specified`);
+		}
 		if (account.startsWith('0x')) {
 			address = account as `0x${string}`;
 		} else {
@@ -129,14 +133,13 @@ extendEnvironment((env: Environment) => {
 					default:
 						throw new Error(`unknown proxy contract ${options.proxyContract}`);
 				}
-				proxyArtifact = env.artifacts[options.proxyContract];
 			}
 			// else {
 			// 	proxyArtifact = options.proxyContract;
 			// }
 		}
 
-		const implementation =
+		const implementationDeployment =
 			typeof params.artifact === 'function'
 				? await params.artifact(implementationName, {...params})
 				: await env.deploy(
@@ -150,20 +153,17 @@ extendEnvironment((env: Environment) => {
 						{alwaysOverride: true, deterministic: true, libraries: options?.libraries}
 				  );
 
-		logger.info(`implementation at ${implementation.address}`, `${implementationName}`);
+		logger.info(`implementation at ${implementationDeployment.address}`, `${implementationName}`);
 
 		const {
 			address: implementationAddress,
 			argsData: implementationArgsData,
 			transaction,
-			...artifactFromImplementation
-		} = implementation;
+			...artifactFromImplementationDeployment
+		} = implementationDeployment;
 
 		// TODO throw specific error if artifact not found
-		const artifactToUse =
-			typeof params.artifact === 'function'
-				? artifactFromImplementation
-				: ((typeof artifact === 'string' ? env.artifacts[artifact] : artifact) as Artifact<TAbi>);
+		const artifactToUse = artifactFromImplementationDeployment;
 
 		logger.info(`existingDeployment at ${existingDeployment?.address}`);
 
@@ -203,7 +203,7 @@ extendEnvironment((env: Environment) => {
 					...params,
 					artifact: proxyArtifact,
 					args: replaceTemplateArgs(proxyArgsTemplate, {
-						implementationAddress: implementation.address,
+						implementationAddress: implementationDeployment.address,
 						proxyAdmin: owner,
 						data: postUpgradeCalldata ? postUpgradeCalldata : '0x',
 					}),
@@ -239,9 +239,9 @@ extendEnvironment((env: Environment) => {
 			});
 			const currentImplementationAddress = `0x${implementationSlotData.substr(-40)}`;
 
-			if (currentImplementationAddress.toLowerCase() !== implementation.address.toLowerCase()) {
+			if (currentImplementationAddress.toLowerCase() !== implementationDeployment.address.toLowerCase()) {
 				logger.info(
-					`different implementation old: ${currentImplementationAddress} new: ${implementation.address}, upgrade...`
+					`different implementation old: ${currentImplementationAddress} new: ${implementationDeployment.address}, upgrade...`
 				);
 
 				// let currentOwner: `0x${string}` | undefined;
@@ -279,18 +279,25 @@ extendEnvironment((env: Environment) => {
 				// 		});
 				// 	}
 				// } else
-				if (postUpgradeCalldata) {
+				let useUpgradeToAndCall = !!postUpgradeCalldata;
+				if (!useUpgradeToAndCall) {
+					if (!proxyDeployment.abi.find((v) => v.type === 'function' && v.name === 'upgradeTo')) {
+						useUpgradeToAndCall = true;
+					}
+				}
+
+				if (useUpgradeToAndCall) {
 					await env.execute(proxyDeployment, {
 						account: currentOwner,
 						functionName: 'upgradeToAndCall',
-						args: [implementation.address, postUpgradeCalldata],
+						args: [implementationDeployment.address, postUpgradeCalldata || '0x'],
 						value: 0n, // TODO
 					});
 				} else {
 					await env.execute(proxyDeployment, {
 						account: currentOwner,
 						functionName: 'upgradeTo',
-						args: [implementation.address],
+						args: [implementationDeployment.address],
 					});
 				}
 			}

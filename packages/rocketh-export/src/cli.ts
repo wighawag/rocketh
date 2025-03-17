@@ -29,7 +29,7 @@ program
 	.parse(process.argv);
 
 const options = program.opts();
-const resolvedConfig = readAndResolveConfig({...(options as ConfigOptions), ignoreMissingRPC: true});
+const resolvedConfig = await readAndResolveConfig({...(options as ConfigOptions), ignoreMissingRPC: true});
 run(resolvedConfig, {
 	tots: options.ts ? options.ts.split(',') : undefined,
 	tojson: options.json ? options.json.split(',') : undefined,

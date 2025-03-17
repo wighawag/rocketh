@@ -11,7 +11,7 @@ import type {
 	UnresolvedUnknownNamedAccounts,
 } from '../environment/types.js';
 import {createEnvironment} from '../environment/index.js';
-import {DeployScriptFunction, DeployScriptModule, ProvidedContext} from './types.js';
+import {DeployScriptFunction, DeployScriptModule} from './types.js';
 import {logger, setLogLevel, spin} from '../internal/logging.js';
 import {EIP1193GenericRequestProvider, EIP1193ProviderWithoutEvents} from 'eip-1193';
 import {getRoughGasPriceEstimate} from '../utils/eth.js';
@@ -20,28 +20,30 @@ import {formatEther} from 'viem';
 import {tsImport} from 'tsx/esm/api';
 
 export function execute<
-	Artifacts extends UnknownArtifacts = UnknownArtifacts,
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	ArgumentsType = undefined,
 	Deployments extends UnknownDeployments = UnknownDeployments
 >(
-	context: ProvidedContext<Artifacts, NamedAccounts>,
-	callback: DeployScriptFunction<Artifacts, ResolvedNamedAccounts<NamedAccounts>, ArgumentsType, Deployments>,
+	callback: DeployScriptFunction<ResolvedNamedAccounts<NamedAccounts>, ArgumentsType, Deployments>,
 	options: {tags?: string[]; dependencies?: string[]; id?: string}
-): DeployScriptModule<Artifacts, NamedAccounts, ArgumentsType, Deployments> {
-	const scriptModule: DeployScriptModule<Artifacts, NamedAccounts, ArgumentsType, Deployments> = (
-		env: Environment<Artifacts, ResolvedNamedAccounts<NamedAccounts>, Deployments>,
+): DeployScriptModule<NamedAccounts, ArgumentsType, Deployments> {
+	const scriptModule: DeployScriptModule<NamedAccounts, ArgumentsType, Deployments> = (
+		env: Environment<ResolvedNamedAccounts<NamedAccounts>, Deployments>,
 		args?: ArgumentsType
 	) => callback(env, args);
-	scriptModule.providedContext = context;
 	scriptModule.tags = options.tags;
 	scriptModule.dependencies = options.dependencies;
 	scriptModule.id = options.id;
-	// scriptModule.skip
-
-	// TODO id + skip
+	// TODO runAtTheEnd ?
 	return scriptModule;
 }
+
+export type NamedAccountExecuteFunction<
+	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts
+> = <ArgumentsType = undefined, Deployments extends UnknownDeployments = UnknownDeployments>(
+	callback: DeployScriptFunction<ResolvedNamedAccounts<NamedAccounts>, ArgumentsType, Deployments>,
+	options: {tags?: string[]; dependencies?: string[]; id?: string}
+) => DeployScriptModule<NamedAccounts, ArgumentsType, Deployments>;
 
 export interface UntypedRequestArguments {
 	readonly method: string;
@@ -64,14 +66,58 @@ export type ConfigOptions = {
 	reportGasUse?: boolean;
 };
 
-export function readConfig(options: ConfigOptions): Config {
-	type Networks = {[name: string]: {rpcUrl?: string; tags?: string[]}};
-	type ConfigFile = {networks: Networks; deployments?: string; scripts?: string};
+type Networks = {[name: string]: {rpcUrl?: string; tags?: string[]}};
+export type UserConfig<NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts> = {
+	networks?: Networks;
+	deployments?: string;
+	scripts?: string;
+	accounts?: NamedAccounts;
+};
+
+export async function readConfig<NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts>(
+	options: ConfigOptions
+): Promise<Config<NamedAccounts>> {
+	type ConfigFile = UserConfig<NamedAccounts>;
 	let configFile: ConfigFile | undefined;
-	try {
-		const configString = fs.readFileSync('./rocketh.json', 'utf-8');
-		configFile = JSON.parse(configString);
-	} catch {}
+
+	// TODO more sophisticated config file finding mechanism (look up parents, etc..)
+	const tsFilePath = path.join(process.cwd(), 'rocketh.ts');
+	const jsFilePath = path.join(process.cwd(), 'rocketh.js');
+	const jsonFilePath = path.join(process.cwd(), 'rocketh.json');
+
+	const tsVersionExists = fs.existsSync(tsFilePath);
+	const jsVersionExists = fs.existsSync(jsFilePath);
+	const jsonVersionExists = fs.existsSync(jsonFilePath);
+	const existingConfigs = [tsVersionExists, jsVersionExists, jsonVersionExists].filter(Boolean).length;
+
+	// console.log({tsFilePath, tsVersionExists, existingConfigs});
+
+	// Throw error if multiple config files exist
+	if (existingConfigs > 1) {
+		throw new Error(
+			'Multiple configuration files found. Please use only one of: rocketh.ts, rocketh.js, or rocketh.json'
+		);
+	}
+	if (tsVersionExists) {
+		const moduleLoaded = await tsImport(tsFilePath, import.meta.url);
+		configFile = moduleLoaded.config;
+		// console.log({tsVersionExists: configFile});
+		// if ((configFile as any).default) {
+		// 	configFile = (configFile as any).default as ConfigFile;
+		// 	if ((configFile as any).default) {
+		// 		logger.warn(`double default...`);
+		// 		configFile = (configFile as any).default as ConfigFile;
+		// 	}
+		// }
+	} else if (jsVersionExists) {
+		const moduleLoaded = await tsImport(jsFilePath, import.meta.url);
+		configFile = moduleLoaded.config;
+	} else if (jsonVersionExists) {
+		try {
+			const configString = fs.readFileSync(jsonFilePath, 'utf-8');
+			configFile = JSON.parse(configString);
+		} catch {}
+	}
 
 	if (configFile) {
 		if (!options.deployments && configFile.deployments) {
@@ -142,6 +188,7 @@ export function readConfig(options: ConfigOptions): Config {
 			logLevel: options.logLevel,
 			askBeforeProceeding: options.askBeforeProceeding,
 			reportGasUse: options.reportGasUse,
+			accounts: configFile?.accounts,
 		};
 	} else {
 		return {
@@ -158,63 +205,59 @@ export function readConfig(options: ConfigOptions): Config {
 			logLevel: options.logLevel,
 			askBeforeProceeding: options.askBeforeProceeding,
 			reportGasUse: options.reportGasUse,
+			accounts: configFile?.accounts,
 		};
 	}
 }
 
-export function readAndResolveConfig(options: ConfigOptions): ResolvedConfig {
-	return resolveConfig(readConfig(options));
+export async function readAndResolveConfig<
+	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts
+>(options: ConfigOptions): Promise<ResolvedConfig<NamedAccounts>> {
+	return resolveConfig<NamedAccounts>(await readConfig<NamedAccounts>(options));
 }
 
-export function resolveConfig(config: Config): ResolvedConfig {
-	const resolvedConfig: ResolvedConfig = {
+export function resolveConfig<NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts>(
+	config: Config<NamedAccounts>
+): ResolvedConfig<NamedAccounts> {
+	const resolvedConfig: ResolvedConfig<NamedAccounts> = {
 		...config,
-		network: config.network, // TODO default to || {name: 'memory'....}
+		network: config.network,
 		deployments: config.deployments || 'deployments',
 		scripts: config.scripts || 'deploy',
 		tags: config.tags || [],
 		networkTags: config.networkTags || [],
 		saveDeployments: config.saveDeployments,
+		accounts: config.accounts || ({} as NamedAccounts),
 	};
 	return resolvedConfig;
 }
 
 export async function loadEnvironment<
-	Artifacts extends UnknownArtifacts = UnknownArtifacts,
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts
->(
-	options: ConfigOptions,
-	context: ProvidedContext<Artifacts, NamedAccounts>
-): Promise<Environment<Artifacts, NamedAccounts, UnknownDeployments>> {
-	const resolvedConfig = readAndResolveConfig(options);
-	const {external, internal} = await createEnvironment(resolvedConfig, context);
+>(options: ConfigOptions): Promise<Environment<NamedAccounts, UnknownDeployments>> {
+	const resolvedConfig = await readAndResolveConfig<NamedAccounts>(options);
+	// console.log(JSON.stringify(resolvedConfig, null, 2));
+	const {external, internal} = await createEnvironment(resolvedConfig);
 	return external;
 }
 
 export async function loadAndExecuteDeployments<
-	Artifacts extends UnknownArtifacts = UnknownArtifacts,
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	ArgumentsType = undefined
->(
-	options: ConfigOptions,
-	context?: ProvidedContext<Artifacts, NamedAccounts>,
-	args?: ArgumentsType
-): Promise<Environment<Artifacts, NamedAccounts, UnknownDeployments>> {
-	const resolvedConfig = readAndResolveConfig(options);
+>(options: ConfigOptions, args?: ArgumentsType): Promise<Environment<NamedAccounts, UnknownDeployments>> {
+	const resolvedConfig = await readAndResolveConfig<NamedAccounts>(options);
 	// console.log(JSON.stringify(options, null, 2));
 	// console.log(JSON.stringify(resolvedConfig, null, 2));
-	return executeDeployScripts<Artifacts, NamedAccounts, ArgumentsType>(resolvedConfig, context, args);
+	return executeDeployScripts<NamedAccounts, ArgumentsType>(resolvedConfig, args);
 }
 
 export async function executeDeployScripts<
-	Artifacts extends UnknownArtifacts = UnknownArtifacts,
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	ArgumentsType = undefined
 >(
-	config: ResolvedConfig,
-	context?: ProvidedContext<Artifacts, NamedAccounts>,
+	config: ResolvedConfig<NamedAccounts>,
 	args?: ArgumentsType
-): Promise<Environment<Artifacts, NamedAccounts, UnknownDeployments>> {
+): Promise<Environment<NamedAccounts, UnknownDeployments>> {
 	setLogLevel(typeof config.logLevel === 'undefined' ? 0 : config.logLevel);
 
 	let filepaths;
@@ -231,33 +274,28 @@ export async function executeDeployScripts<
 			return 0;
 		});
 
-	let providedContext: ProvidedContext<Artifacts, NamedAccounts> | undefined = context;
-	const providedFromArguments = !!providedContext;
-
-	const scriptModuleByFilePath: {[filename: string]: DeployScriptModule<Artifacts, NamedAccounts, ArgumentsType>} = {};
+	const scriptModuleByFilePath: {[filename: string]: DeployScriptModule<NamedAccounts, ArgumentsType>} = {};
 	const scriptPathBags: {[tag: string]: string[]} = {};
 	const scriptFilePaths: string[] = [];
 
 	for (const filepath of filepaths) {
 		const scriptFilePath = path.resolve(filepath);
-		let scriptModule: DeployScriptModule<Artifacts, NamedAccounts, ArgumentsType>;
+		let scriptModule: DeployScriptModule<NamedAccounts, ArgumentsType>;
 		try {
 			scriptModule = await tsImport(scriptFilePath, import.meta.url);
 
+			// console.log({
+			// 	scriptFilePath,
+			// 	scriptModule,
+			// });
 			if ((scriptModule as any).default) {
-				scriptModule = (scriptModule as any).default as DeployScriptModule<Artifacts, NamedAccounts, ArgumentsType>;
+				scriptModule = (scriptModule as any).default as DeployScriptModule<NamedAccounts, ArgumentsType>;
 				if ((scriptModule as any).default) {
 					logger.warn(`double default...`);
-					scriptModule = (scriptModule as any).default as DeployScriptModule<Artifacts, NamedAccounts, ArgumentsType>;
+					scriptModule = (scriptModule as any).default as DeployScriptModule<NamedAccounts, ArgumentsType>;
 				}
 			}
 			scriptModuleByFilePath[scriptFilePath] = scriptModule;
-			if (!providedFromArguments) {
-				if (providedContext && providedContext !== scriptModule.providedContext) {
-					throw new Error(`context between 2 scripts is different, please share the same across them`);
-				}
-				providedContext = scriptModule.providedContext as ProvidedContext<Artifacts, NamedAccounts>;
-			}
 		} catch (e) {
 			logger.error(`could not import ${filepath}`);
 			throw e;
@@ -299,21 +337,17 @@ export async function executeDeployScripts<
 		}
 	}
 
-	if (!providedContext) {
-		throw new Error(`no context loaded`);
-	}
-
-	const {internal, external} = await createEnvironment(config, providedContext);
+	const {internal, external} = await createEnvironment(config);
 
 	await internal.recoverTransactionsIfAny();
 
 	const scriptsRegisteredToRun: {[filename: string]: boolean} = {};
 	const scriptsToRun: Array<{
-		func: DeployScriptModule<Artifacts, NamedAccounts, ArgumentsType>;
+		func: DeployScriptModule<NamedAccounts, ArgumentsType>;
 		filePath: string;
 	}> = [];
 	const scriptsToRunAtTheEnd: Array<{
-		func: DeployScriptModule<Artifacts, NamedAccounts, ArgumentsType>;
+		func: DeployScriptModule<NamedAccounts, ArgumentsType>;
 		filePath: string;
 	}> = [];
 	function recurseDependencies(scriptFilePath: string) {
@@ -388,16 +422,16 @@ Do you want to proceed (note that gas price can change for each tx)`,
 		}
 		let skip = false;
 		const spinner = spin(`- Executing ${filename}`);
-		if (deployScript.func.skip) {
-			const spinner = spin(`  - skip?()`);
-			try {
-				skip = await deployScript.func.skip(external, args);
-				spinner.succeed(skip ? `skipping ${filename}` : undefined);
-			} catch (e) {
-				spinner.fail();
-				throw e;
-			}
-		}
+		// if (deployScript.func.skip) {
+		// 	const spinner = spin(`  - skip?()`);
+		// 	try {
+		// 		skip = await deployScript.func.skip(external, args);
+		// 		spinner.succeed(skip ? `skipping ${filename}` : undefined);
+		// 	} catch (e) {
+		// 		spinner.fail();
+		// 		throw e;
+		// 	}
+		// }
 		if (!skip) {
 			let result;
 
