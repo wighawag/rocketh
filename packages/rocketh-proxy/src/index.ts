@@ -4,7 +4,7 @@ import '@rocketh/deploy';
 import '@rocketh/read-execute';
 import type {EIP1193Account} from 'eip-1193';
 import {extendEnvironment} from 'rocketh';
-import {Chain, encodeFunctionData} from 'viem';
+import {Chain, encodeFunctionData, zeroAddress} from 'viem';
 import {logs} from 'named-logs';
 import {DeployOptions} from '@rocketh/deploy';
 import {checkUpgradeIndex, replaceTemplateArgs} from './utils.js';
@@ -260,7 +260,21 @@ extendEnvironment((env: Environment) => {
 						'latest',
 					],
 				});
-				const currentOwner = `0x${ownerSlotData.substr(-40)}`;
+				let currentOwner = `0x${ownerSlotData.substr(-40)}`;
+
+				if (currentOwner === zeroAddress) {
+					try {
+						const owner = await env.read(existingDeployment as any, {functionName: 'owner'});
+						currentOwner = (owner as string).toLowerCase() as `0x${string}`;
+					} catch (err) {
+						throw new Error(`could not get owner of UUPS Proxy, tried ERC-1967 and ERC-173`, {cause: err});
+					}
+					// } else {
+					// 	throw new Error(
+					// 		`as per ERC-1967, proxy owner is zero address. We only support ERC-1967 proxies for now, unless you used proxyContract:"UUPS"`
+					// 	);
+					// }
+				}
 
 				// if (preUpgradeCalldata) {
 				// 	if (postUpgradeCalldata) {
@@ -279,22 +293,25 @@ extendEnvironment((env: Environment) => {
 				// 		});
 				// 	}
 				// } else
+
+				const deploymentToUseForUpgrade = options?.proxyContract === 'UUPS' ? existingDeployment : proxyDeployment;
+
 				let useUpgradeToAndCall = !!postUpgradeCalldata;
 				if (!useUpgradeToAndCall) {
-					if (!proxyDeployment.abi.find((v) => v.type === 'function' && v.name === 'upgradeTo')) {
+					if (!deploymentToUseForUpgrade.abi.find((v) => v.type === 'function' && v.name === 'upgradeTo')) {
 						useUpgradeToAndCall = true;
 					}
 				}
 
 				if (useUpgradeToAndCall) {
-					await env.execute(proxyDeployment, {
+					await env.execute(deploymentToUseForUpgrade, {
 						account: currentOwner,
 						functionName: 'upgradeToAndCall',
 						args: [implementationDeployment.address, postUpgradeCalldata || '0x'],
 						value: 0n, // TODO
 					});
 				} else {
-					await env.execute(proxyDeployment, {
+					await env.execute(deploymentToUseForUpgrade, {
 						account: currentOwner,
 						functionName: 'upgradeTo',
 						args: [implementationDeployment.address],
