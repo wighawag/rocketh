@@ -204,6 +204,7 @@ export async function readConfig<NamedAccounts extends UnresolvedUnknownNamedAcc
 				name: networkName,
 				tags: networkTags,
 				fork,
+				deterministicDeployment,
 			},
 			deployments: options.deployments,
 			saveDeployments: options.saveDeployments,
