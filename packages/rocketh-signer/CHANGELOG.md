@@ -1,5 +1,13 @@
 # @rocketh/signer
 
+## 0.11.6
+
+### Patch Changes
+
+- fixes
+- Updated dependencies
+  - rocketh@0.11.6
+
 ## 0.11.5
 
 ### Patch Changes

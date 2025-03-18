@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/router",
-	"version": "0.11.5",
+	"version": "0.11.6",
 	"description": "provide router based proxy deployment for rocketh",
 	"publishConfig": {
 		"access": "public"
@@ -34,7 +34,7 @@
 	"dependencies": {
 		"ethers": "^6.13.5",
 		"named-logs": "^0.3.2",
-		"viem": "^2.23.10"
+		"viem": "^2.23.12"
 	},
 	"scripts": {
 		"build": "tsc --project tsconfig.json",

@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/read-execute",
-	"version": "0.11.5",
+	"version": "0.11.6",
 	"description": "provide read abd execute functions for rocketh",
 	"publishConfig": {
 		"access": "public"
@@ -31,7 +31,7 @@
 	},
 	"dependencies": {
 		"named-logs": "^0.3.2",
-		"viem": "^2.23.10"
+		"viem": "^2.23.12"
 	},
 	"scripts": {
 		"build": "tsc --project tsconfig.json",

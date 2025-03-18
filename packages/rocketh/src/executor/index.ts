@@ -163,7 +163,7 @@ export async function readConfig<NamedAccounts extends UnresolvedUnknownNamedAcc
 						if (options.network === 'localhost') {
 							nodeUrl = 'http://127.0.0.1:8545';
 						} else {
-							console.error(`network "${options.network}" is not configured. Please add it to the rocketh.json file`);
+							console.error(`network "${options.network}" is not configured. Please add it to the rocketh.js/ts file`);
 							process.exit(1);
 						}
 					}
@@ -175,7 +175,7 @@ export async function readConfig<NamedAccounts extends UnresolvedUnknownNamedAcc
 					if (options.network === 'localhost') {
 						nodeUrl = 'http://127.0.0.1:8545';
 					} else {
-						console.error(`network "${options.network}" is not configured. Please add it to the rocketh.json file`);
+						console.error(`network "${options.network}" is not configured. Please add it to the rocketh.js/ts file`);
 						process.exit(1);
 					}
 				}
@@ -226,7 +226,7 @@ export async function readAndResolveConfig<
 export function resolveConfig<NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts>(
 	config: Config<NamedAccounts>
 ): ResolvedConfig<NamedAccounts> {
-	let deterministicDeployment: DeterministicDeploymentInfo = {
+	let deterministicDeployment: DeterministicDeploymentInfo = config.network.deterministicDeployment || {
 		factory: '0x4e59b44847b379578588920ca78fbf26c0b4956c',
 		deployer: '0x3fab184622dc19b6109349b94811493bf2a45362',
 		funding: '10000000000000000',
