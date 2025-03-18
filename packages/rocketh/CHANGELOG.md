@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.11.7
+
+### Patch Changes
+
+- deterministicDeployment fix
+
 ## 0.11.6
 
 ### Patch Changes

@@ -72,17 +72,14 @@ export type DeterministicDeploymentInfo = {
 	funding: string;
 	signedTx: `0x${string}`;
 };
-type Networks = {[name: string]: {rpcUrl?: string; tags?: string[]}};
+type Networks = {
+	[name: string]: {rpcUrl?: string; tags?: string[]; deterministicDeployment?: DeterministicDeploymentInfo};
+};
 export type UserConfig<NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts> = {
 	networks?: Networks;
 	deployments?: string;
 	scripts?: string;
 	accounts?: NamedAccounts;
-	deterministicDeployment?:
-		| {
-				[network: string]: DeterministicDeploymentInfo;
-		  }
-		| ((network: string) => DeterministicDeploymentInfo | undefined);
 };
 
 export async function readConfig<NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts>(
@@ -147,6 +144,7 @@ export async function readConfig<NamedAccounts extends UnresolvedUnknownNamedAcc
 		(configFile?.networks && (configFile?.networks[networkName]?.tags || configFile?.networks['default']?.tags)) ||
 		defaultTags;
 
+	const deterministicDeployment = configFile?.networks?.[networkName]?.deterministicDeployment;
 	if (!options.provider) {
 		let nodeUrl: string;
 		if (typeof fromEnv === 'string') {
@@ -181,12 +179,14 @@ export async function readConfig<NamedAccounts extends UnresolvedUnknownNamedAcc
 				}
 			}
 		}
+
 		return {
 			network: {
 				nodeUrl,
 				name: networkName,
 				tags: networkTags,
 				fork,
+				deterministicDeployment,
 			},
 			deployments: options.deployments,
 			saveDeployments: options.saveDeployments,
