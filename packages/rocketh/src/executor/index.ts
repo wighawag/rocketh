@@ -224,6 +224,7 @@ export async function readConfig<
 				tags: networkTags,
 				fork,
 				deterministicDeployment,
+				scripts: networkScripts,
 			},
 			deployments: options.deployments,
 			saveDeployments: options.saveDeployments,
