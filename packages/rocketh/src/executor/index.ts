@@ -21,14 +21,15 @@ import {tsImport} from 'tsx/esm/api';
 
 export function execute<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
+	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 	ArgumentsType = undefined,
 	Deployments extends UnknownDeployments = UnknownDeployments
 >(
-	callback: DeployScriptFunction<ResolvedNamedAccounts<NamedAccounts>, ArgumentsType, Deployments>,
+	callback: DeployScriptFunction<NamedAccounts, Data, ArgumentsType, Deployments>,
 	options: {tags?: string[]; dependencies?: string[]; id?: string}
-): DeployScriptModule<NamedAccounts, ArgumentsType, Deployments> {
-	const scriptModule: DeployScriptModule<NamedAccounts, ArgumentsType, Deployments> = (
-		env: Environment<ResolvedNamedAccounts<NamedAccounts>, Deployments>,
+): DeployScriptModule<NamedAccounts, Data, ArgumentsType, Deployments> {
+	const scriptModule: DeployScriptModule<NamedAccounts, Data, ArgumentsType, Deployments> = (
+		env: Environment<NamedAccounts, Data, Deployments>,
 		args?: ArgumentsType
 	) => callback(env, args);
 	scriptModule.tags = options.tags;
@@ -39,11 +40,12 @@ export function execute<
 }
 
 export type NamedAccountExecuteFunction<
-	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts
+	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
+	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData
 > = <ArgumentsType = undefined, Deployments extends UnknownDeployments = UnknownDeployments>(
-	callback: DeployScriptFunction<ResolvedNamedAccounts<NamedAccounts>, ArgumentsType, Deployments>,
+	callback: DeployScriptFunction<NamedAccounts, Data, ArgumentsType, Deployments>,
 	options: {tags?: string[]; dependencies?: string[]; id?: string}
-) => DeployScriptModule<NamedAccounts, ArgumentsType, Deployments>;
+) => DeployScriptModule<NamedAccounts, Data, ArgumentsType, Deployments>;
 
 export interface UntypedRequestArguments {
 	readonly method: string;
@@ -278,9 +280,10 @@ export function resolveConfig<
 }
 
 export async function loadEnvironment<
-	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts
->(options: ConfigOptions): Promise<Environment<NamedAccounts, UnknownDeployments>> {
-	const resolvedConfig = await readAndResolveConfig<NamedAccounts>(options);
+	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
+	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData
+>(options: ConfigOptions): Promise<Environment<NamedAccounts, Data, UnknownDeployments>> {
+	const resolvedConfig = await readAndResolveConfig<NamedAccounts, Data>(options);
 	// console.log(JSON.stringify(resolvedConfig, null, 2));
 	const {external, internal} = await createEnvironment(resolvedConfig);
 	return external;
@@ -288,21 +291,23 @@ export async function loadEnvironment<
 
 export async function loadAndExecuteDeployments<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
+	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 	ArgumentsType = undefined
->(options: ConfigOptions, args?: ArgumentsType): Promise<Environment<NamedAccounts, UnknownDeployments>> {
-	const resolvedConfig = await readAndResolveConfig<NamedAccounts>(options);
+>(options: ConfigOptions, args?: ArgumentsType): Promise<Environment<NamedAccounts, Data, UnknownDeployments>> {
+	const resolvedConfig = await readAndResolveConfig<NamedAccounts, Data>(options);
 	// console.log(JSON.stringify(options, null, 2));
 	// console.log(JSON.stringify(resolvedConfig, null, 2));
-	return executeDeployScripts<NamedAccounts, ArgumentsType>(resolvedConfig, args);
+	return executeDeployScripts<NamedAccounts, Data, ArgumentsType>(resolvedConfig, args);
 }
 
 export async function executeDeployScripts<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
+	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 	ArgumentsType = undefined
 >(
-	config: ResolvedConfig<NamedAccounts>,
+	config: ResolvedConfig<NamedAccounts, Data>,
 	args?: ArgumentsType
-): Promise<Environment<NamedAccounts, UnknownDeployments>> {
+): Promise<Environment<NamedAccounts, Data, UnknownDeployments>> {
 	setLogLevel(typeof config.logLevel === 'undefined' ? 0 : config.logLevel);
 
 	let filepaths;
@@ -319,13 +324,13 @@ export async function executeDeployScripts<
 			return 0;
 		});
 
-	const scriptModuleByFilePath: {[filename: string]: DeployScriptModule<NamedAccounts, ArgumentsType>} = {};
+	const scriptModuleByFilePath: {[filename: string]: DeployScriptModule<NamedAccounts, Data, ArgumentsType>} = {};
 	const scriptPathBags: {[tag: string]: string[]} = {};
 	const scriptFilePaths: string[] = [];
 
 	for (const filepath of filepaths) {
 		const scriptFilePath = path.resolve(filepath);
-		let scriptModule: DeployScriptModule<NamedAccounts, ArgumentsType>;
+		let scriptModule: DeployScriptModule<NamedAccounts, Data, ArgumentsType>;
 		try {
 			scriptModule = await tsImport(scriptFilePath, import.meta.url);
 
@@ -334,10 +339,10 @@ export async function executeDeployScripts<
 			// 	scriptModule,
 			// });
 			if ((scriptModule as any).default) {
-				scriptModule = (scriptModule as any).default as DeployScriptModule<NamedAccounts, ArgumentsType>;
+				scriptModule = (scriptModule as any).default as DeployScriptModule<NamedAccounts, Data, ArgumentsType>;
 				if ((scriptModule as any).default) {
 					logger.warn(`double default...`);
-					scriptModule = (scriptModule as any).default as DeployScriptModule<NamedAccounts, ArgumentsType>;
+					scriptModule = (scriptModule as any).default as DeployScriptModule<NamedAccounts, Data, ArgumentsType>;
 				}
 			}
 			scriptModuleByFilePath[scriptFilePath] = scriptModule;
@@ -388,11 +393,11 @@ export async function executeDeployScripts<
 
 	const scriptsRegisteredToRun: {[filename: string]: boolean} = {};
 	const scriptsToRun: Array<{
-		func: DeployScriptModule<NamedAccounts, ArgumentsType>;
+		func: DeployScriptModule<NamedAccounts, Data, ArgumentsType>;
 		filePath: string;
 	}> = [];
 	const scriptsToRunAtTheEnd: Array<{
-		func: DeployScriptModule<NamedAccounts, ArgumentsType>;
+		func: DeployScriptModule<NamedAccounts, Data, ArgumentsType>;
 		filePath: string;
 	}> = [];
 	function recurseDependencies(scriptFilePath: string) {

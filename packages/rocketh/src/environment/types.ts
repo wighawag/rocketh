@@ -4,7 +4,6 @@ import {
 	EIP1193ProviderWithoutEvents,
 	EIP1193QUANTITY,
 	EIP1193SignerProvider,
-	EIP1193TransactionEIP1193DATA,
 	EIP1193TransactionReceipt,
 	EIP1193WalletProvider,
 } from 'eip-1193';
@@ -189,6 +188,10 @@ export type ResolvedNamedAccounts<T extends UnresolvedUnknownNamedAccounts> = {
 
 export type DataType<T> = {
 	[networkOrChainId: string | number]: T;
+};
+
+export type UnknownData = {
+	[name: string]: unknown;
 };
 
 export type UnresolvedNetworkSpecificData = {
