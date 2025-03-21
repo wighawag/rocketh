@@ -4,3 +4,5 @@
 - [ ] test contract imports
 - [ ] options to auto-mine on dev network (to speed up localhost deployments).
 - [ ] named accounts auto impersonnation, so you can perform tx as if you had their private key.
+- [x] network specific deploy path
+- [ ] network specific configuration ?

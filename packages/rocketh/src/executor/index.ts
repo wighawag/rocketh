@@ -56,7 +56,7 @@ export type UntypedEIP1193Provider = {
 export type ConfigOptions = {
 	network?: string | {fork: string};
 	deployments?: string;
-	scripts?: string;
+	scripts?: string | string[];
 	tags?: string;
 	logLevel?: number;
 	provider?: EIP1193ProviderWithoutEvents | EIP1193GenericRequestProvider | UntypedEIP1193Provider;
@@ -73,12 +73,17 @@ export type DeterministicDeploymentInfo = {
 	signedTx: `0x${string}`;
 };
 type Networks = {
-	[name: string]: {rpcUrl?: string; tags?: string[]; deterministicDeployment?: DeterministicDeploymentInfo};
+	[name: string]: {
+		rpcUrl?: string;
+		tags?: string[];
+		deterministicDeployment?: DeterministicDeploymentInfo;
+		scripts?: string | string[];
+	};
 };
 export type UserConfig<NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts> = {
 	networks?: Networks;
 	deployments?: string;
-	scripts?: string;
+	scripts?: string | string[];
 	accounts?: NamedAccounts;
 };
 
@@ -234,11 +239,28 @@ export function resolveConfig<NamedAccounts extends UnresolvedUnknownNamedAccoun
 		signedTx:
 			'0xf8a58085174876e800830186a08080b853604580600e600039806000f350fe7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe03601600081602082378035828234f58015156039578182fd5b8082525050506014600cf31ba02222222222222222222222222222222222222222222222222222222222222222a02222222222222222222222222222222222222222222222222222222222222222',
 	};
+
+	let scripts = ['deploy'];
+	if (config.scripts) {
+		if (typeof config.scripts === 'string') {
+			scripts = [config.scripts];
+		} else {
+			scripts = config.scripts;
+		}
+	}
+
+	if (config.network.deploy) {
+		if (typeof config.network.deploy === 'string') {
+			scripts = [config.network.deploy];
+		} else {
+			scripts = config.network.deploy;
+		}
+	}
 	const resolvedConfig: ResolvedConfig<NamedAccounts> = {
 		...config,
 		network: {...config.network, deterministicDeployment},
 		deployments: config.deployments || 'deployments',
-		scripts: config.scripts || 'deploy',
+		scripts,
 		tags: config.tags || [],
 		networkTags: config.networkTags || [],
 		saveDeployments: config.saveDeployments,
@@ -276,7 +298,7 @@ export async function executeDeployScripts<
 	setLogLevel(typeof config.logLevel === 'undefined' ? 0 : config.logLevel);
 
 	let filepaths;
-	filepaths = traverseMultipleDirectory([config.scripts]);
+	filepaths = traverseMultipleDirectory(config.scripts);
 	filepaths = filepaths
 		.filter((v) => !path.basename(v).startsWith('_'))
 		.sort((a: string, b: string) => {

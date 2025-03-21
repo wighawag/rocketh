@@ -204,6 +204,7 @@ type NetworkConfigBase = {
 	tags: string[];
 	fork?: boolean;
 	deterministicDeployment?: DeterministicDeploymentInfo;
+	deploy?: string | string[];
 };
 type NetworkConfigForJSONRPC = NetworkConfigBase & {
 	nodeUrl: string;
@@ -218,7 +219,7 @@ export type NetworkConfig = NetworkConfigForJSONRPC | NetworkConfigForEIP1193Pro
 export type Config<AccountsType extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts> = {
 	network: NetworkConfig;
 	networkTags?: string[];
-	scripts?: string;
+	scripts?: string | string[];
 	deployments?: string;
 	saveDeployments?: boolean;
 
@@ -235,7 +236,7 @@ export type Config<AccountsType extends UnresolvedUnknownNamedAccounts = Unresol
 export type ResolvedConfig<AccountsType extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts> =
 	Config & {
 		deployments: string;
-		scripts: string;
+		scripts: string[];
 		tags: string[];
 		network: {
 			name: string;
