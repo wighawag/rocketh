@@ -218,7 +218,7 @@ type NetworkConfigBase = {
 	tags: string[];
 	fork?: boolean;
 	deterministicDeployment?: DeterministicDeploymentInfo;
-	deploy?: string | string[];
+	scripts?: string | string[];
 };
 type NetworkConfigForJSONRPC = NetworkConfigBase & {
 	nodeUrl: string;

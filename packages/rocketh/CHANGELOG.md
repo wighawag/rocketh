@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.11.12
+
+### Patch Changes
+
+- fix network specifics script folder
+
 ## 0.11.11
 
 ### Patch Changes

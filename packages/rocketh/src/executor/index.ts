@@ -156,6 +156,11 @@ export async function readConfig<
 		(configFile?.networks && (configFile?.networks[networkName]?.tags || configFile?.networks['default']?.tags)) ||
 		defaultTags;
 
+	let networkScripts: string | string[] | undefined =
+		(configFile?.networks &&
+			(configFile?.networks[networkName]?.scripts || configFile?.networks['default']?.scripts)) ||
+		undefined;
+
 	const deterministicDeployment = configFile?.networks?.[networkName]?.deterministicDeployment;
 	if (!options.provider) {
 		let nodeUrl: string;
@@ -199,6 +204,7 @@ export async function readConfig<
 				tags: networkTags,
 				fork,
 				deterministicDeployment,
+				scripts: networkScripts,
 			},
 			deployments: options.deployments,
 			saveDeployments: options.saveDeployments,
@@ -260,11 +266,11 @@ export function resolveConfig<
 		}
 	}
 
-	if (config.network.deploy) {
-		if (typeof config.network.deploy === 'string') {
-			scripts = [config.network.deploy];
+	if (config.network.scripts) {
+		if (typeof config.network.scripts === 'string') {
+			scripts = [config.network.scripts];
 		} else {
-			scripts = config.network.deploy;
+			scripts = config.network.scripts;
 		}
 	}
 	const resolvedConfig: ResolvedConfig<NamedAccounts, Data> = {
