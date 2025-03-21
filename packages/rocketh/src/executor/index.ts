@@ -6,8 +6,8 @@ import type {
 	Environment,
 	ResolvedConfig,
 	ResolvedNamedAccounts,
-	UnknownArtifacts,
 	UnknownDeployments,
+	UnresolvedNetworkSpecificData,
 	UnresolvedUnknownNamedAccounts,
 } from '../environment/types.js';
 import {createEnvironment} from '../environment/index.js';
@@ -80,17 +80,22 @@ type Networks = {
 		scripts?: string | string[];
 	};
 };
-export type UserConfig<NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts> = {
+export type UserConfig<
+	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
+	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData
+> = {
 	networks?: Networks;
 	deployments?: string;
 	scripts?: string | string[];
 	accounts?: NamedAccounts;
+	data?: Data;
 };
 
-export async function readConfig<NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts>(
-	options: ConfigOptions
-): Promise<Config<NamedAccounts>> {
-	type ConfigFile = UserConfig<NamedAccounts>;
+export async function readConfig<
+	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
+	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData
+>(options: ConfigOptions): Promise<Config<NamedAccounts, Data>> {
+	type ConfigFile = UserConfig<NamedAccounts, Data>;
 	let configFile: ConfigFile | undefined;
 
 	// TODO more sophisticated config file finding mechanism (look up parents, etc..)
@@ -224,14 +229,16 @@ export async function readConfig<NamedAccounts extends UnresolvedUnknownNamedAcc
 }
 
 export async function readAndResolveConfig<
-	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts
->(options: ConfigOptions): Promise<ResolvedConfig<NamedAccounts>> {
-	return resolveConfig<NamedAccounts>(await readConfig<NamedAccounts>(options));
+	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
+	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData
+>(options: ConfigOptions): Promise<ResolvedConfig<NamedAccounts, Data>> {
+	return resolveConfig<NamedAccounts, Data>(await readConfig<NamedAccounts, Data>(options));
 }
 
-export function resolveConfig<NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts>(
-	config: Config<NamedAccounts>
-): ResolvedConfig<NamedAccounts> {
+export function resolveConfig<
+	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
+	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData
+>(config: Config<NamedAccounts, Data>): ResolvedConfig<NamedAccounts, Data> {
 	let deterministicDeployment: DeterministicDeploymentInfo = config.network.deterministicDeployment || {
 		factory: '0x4e59b44847b379578588920ca78fbf26c0b4956c',
 		deployer: '0x3fab184622dc19b6109349b94811493bf2a45362',
@@ -256,7 +263,7 @@ export function resolveConfig<NamedAccounts extends UnresolvedUnknownNamedAccoun
 			scripts = config.network.deploy;
 		}
 	}
-	const resolvedConfig: ResolvedConfig<NamedAccounts> = {
+	const resolvedConfig: ResolvedConfig<NamedAccounts, Data> = {
 		...config,
 		network: {...config.network, deterministicDeployment},
 		deployments: config.deployments || 'deployments',
@@ -265,6 +272,7 @@ export function resolveConfig<NamedAccounts extends UnresolvedUnknownNamedAccoun
 		networkTags: config.networkTags || [],
 		saveDeployments: config.saveDeployments,
 		accounts: config.accounts || ({} as NamedAccounts),
+		data: config.data || ({} as Data),
 	};
 	return resolvedConfig;
 }

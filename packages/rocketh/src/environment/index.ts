@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 
-import {TransactionReceipt, createPublicClient, custom} from 'viem';
+import {createPublicClient, custom} from 'viem';
 
 import {
 	AccountType,
@@ -14,9 +14,11 @@ import {
 	ResolvedConfig,
 	ResolvedNamedAccounts,
 	ResolvedNamedSigners,
-	UnknownArtifacts,
 	UnknownDeployments,
 	UnresolvedUnknownNamedAccounts,
+	UnresolvedNetworkSpecificData,
+	ResolvedNetworkSpecificData,
+	DataType,
 } from './types.js';
 import {JSONRPCHTTPProvider} from 'eip-1193-jsonrpc-provider';
 import {Abi, Address} from 'abitype';
@@ -78,10 +80,11 @@ function displayTransaction(transaction: EIP1193Transaction) {
 
 export async function createEnvironment<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
+	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 	Deployments extends UnknownDeployments = UnknownDeployments
 >(
-	config: ResolvedConfig<NamedAccounts>
-): Promise<{internal: InternalEnvironment; external: Environment<NamedAccounts, Deployments>}> {
+	config: ResolvedConfig<NamedAccounts, Data>
+): Promise<{internal: InternalEnvironment; external: Environment<NamedAccounts, Data, Deployments>}> {
 	const rawProvider =
 		'provider' in config.network
 			? config.network.provider
@@ -211,8 +214,23 @@ export async function createEnvironment<
 		}
 	}
 
+	const resolvedData: ResolvedNetworkSpecificData<Data> = {} as ResolvedNetworkSpecificData<Data>;
+	async function getData<T = unknown>(name: string, dataDef: DataType<T>): Promise<T | undefined> {
+		const dataForNetwork = dataDef[networkName] || dataDef[chainId] || dataDef['default'];
+		return dataForNetwork;
+	}
+
+	if (config.data) {
+		const dataFields = Object.keys(config.data);
+		for (const dataField of dataFields) {
+			let fieldData = await getData(dataField, config.data[dataField]);
+			(resolvedData as any)[dataField] = fieldData;
+		}
+	}
+
 	const context = {
 		accounts: resolvedAccounts,
+		data: resolvedData,
 		network: {
 			name: networkName,
 			fork: config.network.fork,
@@ -260,6 +278,7 @@ export async function createEnvironment<
 		config,
 		deployments: deployments as Deployments,
 		namedAccounts: namedAccounts as ResolvedNamedAccounts<NamedAccounts>,
+		data: resolvedData,
 		namedSigners: namedSigners as ResolvedNamedSigners<ResolvedNamedAccounts<NamedAccounts>>,
 		unnamedAccounts,
 		addressSigners: addressSigners,
@@ -679,7 +698,7 @@ export async function createEnvironment<
 		return spin(message);
 	}
 
-	let env: Environment<NamedAccounts, Deployments> = {
+	let env: Environment<NamedAccounts, Data, Deployments> = {
 		...perliminaryEnvironment,
 		save,
 		savePendingDeployment,

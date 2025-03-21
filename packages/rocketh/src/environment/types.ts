@@ -175,7 +175,6 @@ export type ResolvedAccount = {
 } & Signer;
 
 export type UnknownDeployments = Record<string, Deployment<Abi>>;
-export type UnknownArtifacts = {[name: string]: Artifact};
 export type UnknownNamedAccounts = {
 	[name: string]: EIP1193Account;
 };
@@ -186,6 +185,18 @@ export type UnresolvedUnknownNamedAccounts = {
 
 export type ResolvedNamedAccounts<T extends UnresolvedUnknownNamedAccounts> = {
 	[Property in keyof T]: EIP1193Account;
+};
+
+export type DataType<T> = {
+	[networkOrChainId: string | number]: T;
+};
+
+export type UnresolvedNetworkSpecificData = {
+	[name: string]: DataType<unknown>;
+};
+
+export type ResolvedNetworkSpecificData<T extends UnresolvedNetworkSpecificData> = {
+	[Property in keyof T]: T[Property] extends DataType<infer U> ? U : never;
 };
 
 export type Signer =
@@ -216,7 +227,10 @@ type NetworkConfigForEIP1193Provider = NetworkConfigBase & {
 
 export type NetworkConfig = NetworkConfigForJSONRPC | NetworkConfigForEIP1193Provider;
 
-export type Config<AccountsType extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts> = {
+export type Config<
+	AccountsType extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
+	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData
+> = {
 	network: NetworkConfig;
 	networkTags?: string[];
 	scripts?: string | string[];
@@ -231,27 +245,33 @@ export type Config<AccountsType extends UnresolvedUnknownNamedAccounts = Unresol
 	// TODO
 	gasPricing?: {};
 	accounts?: AccountsType;
+
+	data?: Data;
 };
 
-export type ResolvedConfig<AccountsType extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts> =
-	Config & {
-		deployments: string;
-		scripts: string[];
+export type ResolvedConfig<
+	AccountsType extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
+	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData
+> = Config & {
+	deployments: string;
+	scripts: string[];
+	tags: string[];
+	network: {
+		name: string;
 		tags: string[];
-		network: {
-			name: string;
-			tags: string[];
-			fork?: boolean;
-			deterministicDeployment: DeterministicDeploymentInfo;
-		};
-		saveDeployments?: boolean;
-		askBeforeProceeding?: boolean;
-		reportGasUse?: boolean;
-		accounts: AccountsType;
+		fork?: boolean;
+		deterministicDeployment: DeterministicDeploymentInfo;
 	};
+	saveDeployments?: boolean;
+	askBeforeProceeding?: boolean;
+	reportGasUse?: boolean;
+	accounts: AccountsType;
+	data: Data;
+};
 
 export interface Environment<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
+	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 	Deployments extends UnknownDeployments = UnknownDeployments
 > {
 	config: ResolvedConfig;
@@ -263,6 +283,7 @@ export interface Environment<
 	};
 	deployments: Deployments;
 	namedAccounts: ResolvedNamedAccounts<NamedAccounts>;
+	data: ResolvedNetworkSpecificData<Data>;
 	namedSigners: ResolvedNamedSigners<ResolvedNamedAccounts<NamedAccounts>>;
 	unnamedAccounts: EIP1193Account[];
 	// unnamedSigners: {type: 'remote'; signer: EIP1193ProviderWithoutEvents}[];
