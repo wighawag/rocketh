@@ -1,5 +1,13 @@
 # rocketh
 
+## 0.11.9
+
+### Patch Changes
+
+- 6d4e756: allow to specific data per network
+- 82f6787: allow for specific deploy scripts folder per network
+- 37e6a46: fix types
+
 ## 0.11.8
 
 ### Patch Changes

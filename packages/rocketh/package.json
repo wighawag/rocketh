@@ -1,6 +1,6 @@
 {
 	"name": "rocketh",
-	"version": "0.11.8",
+	"version": "0.11.9",
 	"description": "deploy smart contract on ethereum-compatible networks",
 	"publishConfig": {
 		"access": "public"
