@@ -222,6 +222,7 @@ export async function readConfig<
 			deployments: options.deployments,
 			saveDeployments: options.saveDeployments,
 			scripts: options.scripts,
+			data: configFile?.data,
 			tags: typeof options.tags === 'undefined' ? undefined : options.tags.split(','),
 			logLevel: options.logLevel,
 			askBeforeProceeding: options.askBeforeProceeding,

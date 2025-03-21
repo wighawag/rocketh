@@ -1,5 +1,12 @@
 # @rocketh/deploy
 
+## 0.11.11
+
+### Patch Changes
+
+- Updated dependencies
+  - rocketh@0.11.11
+
 ## 0.11.10
 
 ### Patch Changes
