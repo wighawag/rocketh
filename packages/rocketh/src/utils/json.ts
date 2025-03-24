@@ -6,6 +6,13 @@ export function postfixBigIntReplacer(k: string, v: any): any {
 	return v;
 }
 
+export function bigIntToStringReplacer(k: string, v: any): any {
+	if (typeof v === 'bigint') {
+		return v.toString();
+	}
+	return v;
+}
+
 export function postfixBigIntReviver(k: string, v: any): any {
 	if (
 		typeof v === 'string' &&
@@ -18,7 +25,7 @@ export function postfixBigIntReviver(k: string, v: any): any {
 }
 
 export function JSONToString<T = unknown>(json: unknown, space?: string | number) {
-	return JSON.stringify(json, null, space);
+	return JSON.stringify(json, bigIntToStringReplacer, space);
 }
 
 export function stringToJSON<T = unknown>(str: string): T {

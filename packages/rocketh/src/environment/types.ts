@@ -104,8 +104,15 @@ export type UserDoc = {
 	readonly notice?: string;
 };
 
-export type JSONType = string | number | boolean | null | JSONType[] | {[key: string]: JSONType};
-export type LinkedData = Record<string, JSONType>;
+export type JSONTypePlusBigInt =
+	| bigint
+	| string
+	| number
+	| boolean
+	| null
+	| JSONTypePlusBigInt[]
+	| {[key: string]: JSONTypePlusBigInt};
+export type LinkedData = Record<string, JSONTypePlusBigInt>;
 
 export type StorageLayout = {
 	readonly storage: readonly Storage[];
