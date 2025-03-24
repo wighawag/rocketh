@@ -7,6 +7,7 @@ import {
 	ContractFunctionName,
 	DecodeFunctionResultReturnType,
 	ReadContractParameters,
+	TransactionRequestEIP1559,
 	WriteContractParameters,
 	decodeFunctionResult,
 	encodeFunctionData,
@@ -21,8 +22,11 @@ declare module 'rocketh' {
 		read: ReadFunction;
 		executeByName: ExecuteFunctionByName;
 		readByName: ReadFunctionByName;
+		tx: TxFunction;
 	}
 }
+
+type TransactionData = Omit<TransactionRequestEIP1559, 'from' | 'nonce'> & {account: string};
 
 export type ExecuteFunction = <
 	TAbi extends Abi,
@@ -75,6 +79,8 @@ export type ReadFunctionByName = <
 	name: string,
 	args: ReadingArgs<TAbi, TFunctionName, TArgs>
 ) => Promise<DecodeFunctionResultReturnType<TAbi, TFunctionName>>;
+
+export type TxFunction = (tx: TransactionData) => Promise<EIP1193DATA>;
 
 export type ExecutionArgs<
 	TAbi extends Abi,
@@ -143,10 +149,12 @@ extendEnvironment((env: Environment) => {
 			data: calldata,
 			gas: viemArgs.gas && (`0x${viemArgs.gas.toString(16)}` as `0x${string}`),
 			// gasPrice: viemArgs.gasPrice && `0x${viemArgs.gasPrice.toString(16)}` as `0x${string}`,
-			maxFeePerGas: viemArgs.maxFeePerGas && (`0x${viemArgs.maxFeePerGas.toString(16)}` as `0x${string}`),
-			maxPriorityFeePerGas:
-				viemArgs.maxPriorityFeePerGas && (`0x${viemArgs.maxPriorityFeePerGas.toString(16)}` as `0x${string}`),
-			// nonce: viemArgs.nonce && (`0x${viemArgs.nonce.toString(16)}` as `0x${string}`),
+			maxFeePerGas: viemArgs.maxFeePerGas ? (`0x${viemArgs.maxFeePerGas.toString(16)}` as `0x${string}`) : undefined,
+			maxPriorityFeePerGas: viemArgs.maxPriorityFeePerGas
+				? (`0x${viemArgs.maxPriorityFeePerGas.toString(16)}` as `0x${string}`)
+				: undefined,
+			accessList: viemArgs.accessList as any, // TODO
+			// nonce: viemArgs.nonce ? (`0x${viemArgs.nonce.toString(16)}` as `0x${string}`) : undefined,
 		};
 		if (viemArgs.value) {
 			txParam.value = `0x${viemArgs.value?.toString(16)}` as `0x${string}`;
@@ -278,9 +286,74 @@ extendEnvironment((env: Environment) => {
 		return read(deployment, args);
 	}
 
+	async function tx(txData: TransactionData): Promise<EIP1193DATA> {
+		const {account, ...viemArgs} = txData;
+		let address: `0x${string}`;
+		if (account.startsWith('0x')) {
+			address = account as `0x${string}`;
+		} else {
+			if (env.namedAccounts) {
+				address = env.namedAccounts[account];
+				if (!address) {
+					throw new Error(`no address for ${account}`);
+				}
+			} else {
+				throw new Error(`no accounts setup, cannot get address for ${account}`);
+			}
+		}
+
+		const signer = env.addressSigners[address];
+
+		const txParam: EIP1193TransactionData = {
+			type: '0x2',
+			to: txData.to || undefined,
+			from: address,
+			chainId: `0x${env.network.chain.id.toString(16)}` as `0x${string}`,
+			data: txData.data,
+			gas: viemArgs.gas ? (`0x${viemArgs.gas.toString(16)}` as `0x${string}`) : undefined,
+			maxFeePerGas: viemArgs.maxFeePerGas ? (`0x${viemArgs.maxFeePerGas.toString(16)}` as `0x${string}`) : undefined,
+			maxPriorityFeePerGas: viemArgs.maxPriorityFeePerGas
+				? (`0x${viemArgs.maxPriorityFeePerGas.toString(16)}` as `0x${string}`)
+				: undefined,
+			// nonce: viemArgs.nonce ? (`0x${viemArgs.nonce.toString(16)}` as `0x${string}`) : undefined,
+			accessList: viemArgs.accessList as any, // TODO check
+		};
+		if (viemArgs.value) {
+			txParam.value = `0x${viemArgs.value?.toString(16)}` as `0x${string}`;
+		}
+
+		let txHash: `0x${string}`;
+		if (signer.type === 'wallet' || signer.type === 'remote') {
+			txHash = await signer.signer.request({
+				method: 'eth_sendTransaction',
+				params: [txParam] as any, // TODO fix eip-1193 ?,,
+			});
+		} else {
+			const rawTx = await signer.signer.request({
+				method: 'eth_signTransaction',
+				params: [txParam],
+			});
+
+			txHash = await env.network.provider.request({
+				method: 'eth_sendRawTransaction',
+				params: [rawTx],
+			});
+		}
+
+		const pendingExecution: PendingExecution = {
+			type: 'execution',
+			transaction: {hash: txHash, origin: address},
+			// description, // TODO
+			// TODO we should have the nonce, except for wallet like metamask where it is not usre you get the nonce you start with
+		};
+		await env.savePendingExecution(pendingExecution);
+		return txHash;
+	}
+
 	env.execute = execute;
 	env.executeByName = executeByName;
 	env.read = read;
 	env.readByName = readByName;
+	env.tx = tx;
 	return env;
 });

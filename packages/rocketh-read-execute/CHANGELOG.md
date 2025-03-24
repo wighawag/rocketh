@@ -1,5 +1,11 @@
 # @rocketh/deploy
 
+## 0.11.16
+
+### Patch Changes
+
+- add tx function to read-execute
+
 ## 0.11.15
 
 ### Patch Changes
