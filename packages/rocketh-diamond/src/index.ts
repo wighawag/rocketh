@@ -1,5 +1,5 @@
 import {Abi} from 'abitype';
-import type {Artifact, DeploymentConstruction, Deployment, Environment, Libraries} from 'rocketh';
+import type {Artifact, DeploymentConstruction, Deployment, Environment, Libraries, LinkedData} from 'rocketh';
 import '@rocketh/deploy';
 import '@rocketh/read-execute';
 import type {EIP1193Account} from 'eip-1193';
@@ -60,7 +60,7 @@ export type FacetOptions = {
 	name?: string;
 	artifact: Artifact;
 	args?: any[];
-	linkedData?: any; // JSONable ?
+	linkedData?: LinkedData;
 	libraries?: Libraries;
 	deterministic?: boolean | `0x${string}`;
 };

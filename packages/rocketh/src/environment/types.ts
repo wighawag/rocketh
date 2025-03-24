@@ -104,6 +104,9 @@ export type UserDoc = {
 	readonly notice?: string;
 };
 
+export type JSONType = string | number | boolean | null | JSONType[] | {[key: string]: JSONType};
+export type LinkedData = Record<string, JSONType>;
+
 export type StorageLayout = {
 	readonly storage: readonly Storage[];
 	readonly types: {
@@ -130,7 +133,7 @@ export type Deployment<TAbi extends Abi> = {
 	readonly metadata: string;
 	readonly numDeployments?: number;
 	readonly libraries?: Libraries;
-	readonly linkedData?: any; // TODO
+	readonly linkedData?: LinkedData;
 	readonly deployedBytecode?: EIP1193DATA;
 	readonly linkReferences?: any; // TODO
 	readonly deployedLinkReferences?: any; // TODO
@@ -316,7 +319,7 @@ export type DeploymentConstruction<TAbi extends Abi> = Omit<
 export type PartialDeployment<TAbi extends Abi = Abi> = Artifact<TAbi> & {
 	argsData: EIP1193DATA;
 	libraries?: Libraries;
-	linkedData?: any; // TODO json type ?
+	linkedData?: LinkedData;
 };
 
 export type PendingDeployment<TAbi extends Abi = Abi> = {

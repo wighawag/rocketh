@@ -8,6 +8,7 @@ import type {
 	PendingDeployment,
 	PartialDeployment,
 	Signer,
+	LinkedData,
 } from 'rocketh';
 import {extendEnvironment} from 'rocketh';
 import {Address, Chain, encodePacked, keccak256} from 'viem';
@@ -31,7 +32,7 @@ export type DeployFunction = <TAbi extends Abi, TChain extends Chain = Chain>(
 ) => Promise<DeployResult<TAbi>>;
 
 export type DeployOptions = {
-	linkedData?: any;
+	linkedData?: LinkedData;
 	deterministic?: boolean | `0x${string}`;
 	libraries?: {[name: string]: Address};
 } & (

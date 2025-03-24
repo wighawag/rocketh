@@ -1,12 +1,12 @@
 // TODO share with db-utils
-export function bnReplacer(k: string, v: any): any {
+export function postfixBigIntReplacer(k: string, v: any): any {
 	if (typeof v === 'bigint') {
 		return v.toString() + 'n';
 	}
 	return v;
 }
 
-export function bnReviver(k: string, v: any): any {
+export function postfixBigIntReviver(k: string, v: any): any {
 	if (
 		typeof v === 'string' &&
 		(v.startsWith('-') ? !isNaN(parseInt(v.charAt(1))) : !isNaN(parseInt(v.charAt(0)))) &&
@@ -18,9 +18,9 @@ export function bnReviver(k: string, v: any): any {
 }
 
 export function JSONToString<T = unknown>(json: unknown, space?: string | number) {
-	return JSON.stringify(json, bnReplacer, space);
+	return JSON.stringify(json, null, space);
 }
 
 export function stringToJSON<T = unknown>(str: string): T {
-	return JSON.parse(str, bnReviver);
+	return JSON.parse(str);
 }

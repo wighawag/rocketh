@@ -2,14 +2,15 @@ import {Abi, Address} from 'abitype';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import {Deployment, ResolvedConfig, chainTypes, getChain, loadDeployments} from 'rocketh';
+import {Deployment, LinkedData, ResolvedConfig, chainTypes, getChain, loadDeployments} from 'rocketh';
 
 export interface ContractExport {
 	address: `0x${string}`;
 	abi: Abi;
 	argsData?: string;
 	bytecode?: `0x${string}`;
-	// linkedData?: any; TODO
+	linkedData?: LinkedData;
+	startBlock?: number;
 }
 
 type ChainBlockExplorer = {

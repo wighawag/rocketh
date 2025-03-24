@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.11.14
+
+### Patch Changes
+
+- LinkedData + remove auto-json-convertion
+
 ## 0.11.13
 
 ### Patch Changes
