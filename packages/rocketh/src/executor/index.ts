@@ -80,6 +80,20 @@ type Networks = {
 		tags?: string[];
 		deterministicDeployment?: DeterministicDeploymentInfo;
 		scripts?: string | string[];
+		publicInfo?: {
+			name: string;
+			nativeCurrency: {
+				name: string;
+				symbol: string;
+				decimals: number;
+			};
+			rpcUrls: {
+				default: {
+					http: string[];
+				};
+			};
+			chainType?: string;
+		};
 	};
 };
 export type UserConfig<
@@ -197,6 +211,9 @@ export async function readConfig<
 			}
 		}
 
+		// no default for publicInfo
+		const publicInfo = configFile?.networks ? configFile?.networks[networkName]?.publicInfo : undefined;
+
 		return {
 			network: {
 				nodeUrl,
@@ -205,6 +222,7 @@ export async function readConfig<
 				fork,
 				deterministicDeployment,
 				scripts: networkScripts,
+				publicInfo,
 			},
 			deployments: options.deployments,
 			saveDeployments: options.saveDeployments,
