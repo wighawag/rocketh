@@ -2,7 +2,7 @@ import {Abi, Address} from 'abitype';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import {Deployment, LinkedData, ResolvedConfig, chainTypes, getChain, loadDeployments} from 'rocketh';
+import {Deployment, LinkedData, ResolvedConfig, chainTypes, getChainWithConfig, loadDeployments} from 'rocketh';
 
 export interface ContractExport {
 	address: `0x${string}`;
@@ -150,7 +150,7 @@ export async function run(
 		throw new Error(`no chainId found for ${config.network.name}`);
 	}
 
-	const chain = getChain(chainId);
+	const chain = getChainWithConfig(chainId, config);
 
 	const chainInfo: ChainInfo = {
 		id: chain.id,

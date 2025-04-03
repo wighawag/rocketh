@@ -1,5 +1,13 @@
 # @rocketh/export
 
+## 0.11.16
+
+### Patch Changes
+
+- public chain info in config
+- Updated dependencies
+  - rocketh@0.11.16
+
 ## 0.11.15
 
 ### Patch Changes

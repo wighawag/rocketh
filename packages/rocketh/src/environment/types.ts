@@ -229,6 +229,20 @@ type NetworkConfigBase = {
 	fork?: boolean;
 	deterministicDeployment?: DeterministicDeploymentInfo;
 	scripts?: string | string[];
+	publicInfo?: {
+		name: string;
+		nativeCurrency: {
+			name: string;
+			symbol: string;
+			decimals: number;
+		};
+		rpcUrls: {
+			default: {
+				http: string[];
+			};
+		};
+		chainType?: string;
+	};
 };
 type NetworkConfigForJSONRPC = NetworkConfigBase & {
 	nodeUrl: string;
@@ -274,6 +288,21 @@ export type ResolvedConfig<
 		tags: string[];
 		fork?: boolean;
 		deterministicDeployment: DeterministicDeploymentInfo;
+		nodeUrl?: string;
+		publicInfo?: {
+			name: string;
+			nativeCurrency: {
+				name: string;
+				symbol: string;
+				decimals: number;
+			};
+			rpcUrls: {
+				default: {
+					http: string[];
+				};
+			};
+			chainType?: string;
+		};
 	};
 	saveDeployments?: boolean;
 	askBeforeProceeding?: boolean;

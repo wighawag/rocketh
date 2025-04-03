@@ -1,5 +1,6 @@
 import type {Chain} from 'viem/chains';
 import * as chains from 'viem/chains';
+import {ResolvedConfig} from '../types.js';
 
 export type ChainType = 'zksync' | 'op-stack' | 'celo' | 'default';
 
@@ -38,13 +39,32 @@ for (const key of Object.keys(allChains)) {
 	chainById[chainId] = chain;
 }
 
-export function getChain(id: string): Chain {
+export function getChain(id: string): Chain | undefined {
 	const chain = chainById[id];
+
+	return chain;
+}
+
+export function getChainWithConfig(id: string, config: ResolvedConfig): Chain {
+	const chain = getChain(id);
+
 	if (!chain) {
+		if (config.network.publicInfo) {
+			return {
+				id: parseInt(id),
+				...config.network.publicInfo,
+			};
+		}
+		console.error(`network ${config.network.name} has no public info`);
+		let nodeUrl: string | undefined;
+		if (!config.network.nodeUrl) {
+			console.error(`no nodeUrl found either for ${config.network.name}`);
+		} else {
+			nodeUrl = config.network.nodeUrl;
+		}
 		return {
 			id: parseInt(id),
 			name: 'unkwown',
-			// TODO
 			nativeCurrency: {
 				name: 'Unknown Currency',
 				symbol: 'UNKNOWN',
@@ -52,7 +72,7 @@ export function getChain(id: string): Chain {
 			},
 			rpcUrls: {
 				default: {
-					http: [],
+					http: nodeUrl ? [nodeUrl] : [],
 				},
 			},
 		};

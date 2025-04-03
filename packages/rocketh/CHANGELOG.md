@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.11.16
+
+### Patch Changes
+
+- public chain info in config
+
 ## 0.11.15
 
 ### Patch Changes

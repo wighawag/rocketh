@@ -36,7 +36,7 @@ import {
 } from 'eip-1193';
 import {ProgressIndicator, log, spin} from '../internal/logging.js';
 import {PendingExecution} from './types.js';
-import {getChain} from './utils/chains.js';
+import {getChainWithConfig} from './utils/chains.js';
 import {mergeArtifacts} from './utils/artifacts.js';
 import {TransactionHashTracker, TransactionHashTrackerProvider} from './providers/TransactionHashTracker.js';
 
@@ -283,7 +283,7 @@ export async function createEnvironment<
 		unnamedAccounts,
 		addressSigners: addressSigners,
 		network: {
-			chain: getChain(chainId),
+			chain: getChainWithConfig(chainId, config),
 			name: context.network.name,
 			tags: context.network.tags,
 			provider,
