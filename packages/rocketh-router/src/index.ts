@@ -26,7 +26,7 @@ export type RouterEnhancedDeploymentConstruction = Omit<
 export type DeployViaRouterFunction = <TAbi extends Abi>(
 	name: string,
 	params: RouterEnhancedDeploymentConstruction,
-	routes: Route<TAbi>[],
+	routes: Route<Abi>[],
 	extraABIs?: Abi[]
 ) => Promise<Deployment<TAbi> & {newlyDeployed: boolean}>;
 
@@ -40,7 +40,7 @@ extendEnvironment((env: Environment) => {
 	async function deployViaRouter<TAbi extends Abi>(
 		name: string,
 		params: RouterEnhancedDeploymentConstruction,
-		routes: Route<TAbi>[],
+		routes: Route<Abi>[],
 		extraABIs?: Abi[]
 	): Promise<Deployment<TAbi> & {newlyDeployed: boolean}> {
 		const implementations: `0x${string}`[] = [];

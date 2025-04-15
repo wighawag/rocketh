@@ -1,5 +1,11 @@
 # @rocketh/router
 
+## 0.11.19
+
+### Patch Changes
+
+- fix rocketh-router types
+
 ## 0.11.18
 
 ### Patch Changes
