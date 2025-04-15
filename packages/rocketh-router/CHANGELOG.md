@@ -1,5 +1,11 @@
 # @rocketh/router
 
+## 0.11.18
+
+### Patch Changes
+
+- fix deploy-router
+
 ## 0.11.17
 
 ### Patch Changes

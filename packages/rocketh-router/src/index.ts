@@ -18,7 +18,10 @@ export type Route<TAbi extends Abi = Abi> = Omit<
 	artifact: Artifact<TAbi>;
 };
 
-export type RouterEnhancedDeploymentConstruction = Omit<DeploymentConstruction<typeof Router10X60.abi>, 'artifact'>;
+export type RouterEnhancedDeploymentConstruction = Omit<
+	DeploymentConstruction<typeof Router10X60.abi>,
+	'artifact' | 'args'
+>;
 
 export type DeployViaRouterFunction = <TAbi extends Abi>(
 	name: string,
@@ -36,7 +39,7 @@ declare module 'rocketh' {
 extendEnvironment((env: Environment) => {
 	async function deployViaRouter<TAbi extends Abi>(
 		name: string,
-		params: Omit<DeploymentConstruction<typeof Router10X60.abi>, 'artifact'>,
+		params: RouterEnhancedDeploymentConstruction,
 		routes: Route<TAbi>[],
 		extraABIs?: Abi[]
 	): Promise<Deployment<TAbi> & {newlyDeployed: boolean}> {
