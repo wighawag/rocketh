@@ -14,7 +14,6 @@ export type Route<TAbi extends Abi = Abi> = Omit<
 	'bytecode' | 'account' | 'abi' | 'chain'
 > & {
 	name: string;
-	account: string | EIP1193Account;
 	artifact: Artifact<TAbi>;
 };
 

@@ -1,5 +1,11 @@
 # @rocketh/router
 
+## 0.11.20
+
+### Patch Changes
+
+- router: remove need for specify account for route
+
 ## 0.11.19
 
 ### Patch Changes
