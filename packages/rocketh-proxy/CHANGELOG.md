@@ -1,5 +1,11 @@
 # @rocketh/proxy
 
+## 0.11.22
+
+### Patch Changes
+
+- fix
+
 ## 0.11.21
 
 ### Patch Changes

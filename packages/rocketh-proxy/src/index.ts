@@ -193,6 +193,7 @@ extendEnvironment((env: Environment) => {
 			address: implementationAddress,
 			argsData: implementationArgsData,
 			transaction,
+			newlyDeployed: implementationNewlyDeployed,
 			...artifactFromImplementationDeployment
 		} = implementationDeployment;
 
