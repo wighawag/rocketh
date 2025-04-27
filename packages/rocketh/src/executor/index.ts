@@ -465,7 +465,7 @@ export async function executeDeployScripts<
 		console.log(
 			`Network: ${external.network.name} \n \t Chain: ${external.network.chain.name} \n \t Tags: ${Object.keys(
 				external.network.tags
-			).join("',")}`
+			).join(',')}`
 		);
 		const gasPriceEstimate = await getRoughGasPriceEstimate(external.network.provider);
 		const prompt = await prompts({

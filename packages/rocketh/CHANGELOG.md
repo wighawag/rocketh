@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.11.18
+
+### Patch Changes
+
+- fixes + add basescan
+
 ## 0.11.17
 
 ### Patch Changes

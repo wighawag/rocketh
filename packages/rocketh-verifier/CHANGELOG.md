@@ -1,5 +1,13 @@
 # @rocketh/verifier
 
+## 0.11.18
+
+### Patch Changes
+
+- fixes + add basescan
+- Updated dependencies
+  - rocketh@0.11.18
+
 ## 0.11.17
 
 ### Patch Changes

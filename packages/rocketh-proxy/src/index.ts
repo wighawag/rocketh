@@ -274,7 +274,7 @@ extendEnvironment((env: Environment) => {
 		// }
 
 		if (!existingDeployment) {
-			const proxy = await env.deploy<typeof proxyArtifact.abi>(
+			const {newlyDeployed, ...proxy} = await env.deploy<typeof proxyArtifact.abi>(
 				proxyName,
 				{
 					...params,
