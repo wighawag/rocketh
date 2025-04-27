@@ -34,6 +34,7 @@ const defaultEndpoints: {[chainId: string]: string} = {
 	'43113': 'https://api-testnet.snowtrace.io/api',
 	'43114': 'https://api.snowtrace.io/api',
 	'11155111': 'https://api-sepolia.etherscan.io/api',
+	'8453': 'https://api.basescan.org/api',
 };
 
 function log(...args: any[]) {
