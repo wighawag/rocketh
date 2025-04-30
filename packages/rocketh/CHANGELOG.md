@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.11.19
+
+### Patch Changes
+
+- fix publicInfo for networks
+
 ## 0.11.18
 
 ### Patch Changes

@@ -175,6 +175,8 @@ export async function readConfig<
 			(configFile?.networks[networkName]?.scripts || configFile?.networks['default']?.scripts)) ||
 		undefined;
 
+	// no default for publicInfo
+	const publicInfo = configFile?.networks ? configFile?.networks[networkName]?.publicInfo : undefined;
 	const deterministicDeployment = configFile?.networks?.[networkName]?.deterministicDeployment;
 	if (!options.provider) {
 		let nodeUrl: string;
@@ -211,9 +213,6 @@ export async function readConfig<
 			}
 		}
 
-		// no default for publicInfo
-		const publicInfo = configFile?.networks ? configFile?.networks[networkName]?.publicInfo : undefined;
-
 		return {
 			network: {
 				nodeUrl,
@@ -243,6 +242,7 @@ export async function readConfig<
 				fork,
 				deterministicDeployment,
 				scripts: networkScripts,
+				publicInfo,
 			},
 			deployments: options.deployments,
 			saveDeployments: options.saveDeployments,
