@@ -1,5 +1,11 @@
 # @rocketh/verifier
 
+## 0.11.20
+
+### Patch Changes
+
+- @rocketh/verifier: use Etherscan v2 api
+
 ## 0.11.19
 
 ### Patch Changes

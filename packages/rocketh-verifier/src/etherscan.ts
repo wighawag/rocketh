@@ -6,37 +6,7 @@ import {matchAll} from './utils/match-all.js';
 import {Environment, UnknownDeployments} from 'rocketh';
 import {EtherscanOptions} from './index.js';
 
-const defaultEndpoints: {[chainId: string]: string} = {
-	'1': 'https://api.etherscan.io/api',
-	'3': 'https://api-ropsten.etherscan.io/api',
-	'4': 'https://api-rinkeby.etherscan.io/api',
-	'5': 'https://api-goerli.etherscan.io/api',
-	'10': 'https://api-optimistic.etherscan.io/api',
-	'42': 'https://api-kovan.etherscan.io/api',
-	'97': 'https://api-testnet.bscscan.com/api',
-	'56': 'https://api.bscscan.com/api',
-	'69': 'https://api-kovan-optimistic.etherscan.io/api',
-	'70': 'https://api.hooscan.com/api',
-	'77': 'https://blockscout.com/poa/sokol/api',
-	'128': 'https://api.hecoinfo.com/api',
-	'137': 'https://api.polygonscan.com/api',
-	'250': 'https://api.ftmscan.com/api',
-	'256': 'https://api-testnet.hecoinfo.com/api',
-	'420': 'https://api-goerli-optimism.etherscan.io/api',
-	'588': 'https://stardust-explorer.metis.io/api',
-	'1088': 'https://andromeda-explorer.metis.io/api',
-	'1285': 'https://api-moonriver.moonscan.io/api',
-	'80001': 'https://api-testnet.polygonscan.com/api',
-	'4002': 'https://api-testnet.ftmscan.com/api',
-	'42161': 'https://api.arbiscan.io/api',
-	'421611': 'https://api-testnet.arbiscan.io/api',
-	'421613': 'https://api-goerli.arbiscan.io/api',
-	'43113': 'https://api-testnet.snowtrace.io/api',
-	'43114': 'https://api.snowtrace.io/api',
-	'11155111': 'https://api-sepolia.etherscan.io/api',
-	'8453': 'https://api.basescan.org/api',
-};
-
+const defaultEndpoint = `https://api.etherscan.io/v2/api`;
 function log(...args: any[]) {
 	console.log(...args);
 }
@@ -170,17 +140,14 @@ export async function submitSourcesToEtherscan(
 	const networkName = env.networkName;
 	let endpoint = config.endpoint;
 	if (!endpoint) {
-		endpoint = defaultEndpoints[env.chainId];
-		if (!endpoint) {
-			return logError(`Network with chainId: ${env.chainId} not supported. Please specify the endpoint manually.`);
-		}
+		endpoint = defaultEndpoint;
 	}
 
 	async function submit(name: string) {
 		const deployment = all[name];
 		const {address, metadata: metadataString} = deployment;
 		const abiResponse = await fetch(
-			`${endpoint}?module=contract&action=getabi&address=${address}&apikey=${etherscanApiKey}`
+			`${endpoint}?chainid=${env.chainId}&module=contract&action=getabi&address=${address}&apikey=${etherscanApiKey}`
 		);
 		const json = await abiResponse.json();
 		let contractABI;
@@ -337,7 +304,7 @@ export async function submitSourcesToEtherscan(
 				}
 			}
 		}
-		const submissionResponse = await fetch(`${endpoint}`, {
+		const submissionResponse = await fetch(`${endpoint}?chainid=${env.chainId}`, {
 			method: 'POST',
 			headers: {'content-type': 'application/x-www-form-urlencoded'},
 			body: data,
@@ -364,7 +331,7 @@ export async function submitSourcesToEtherscan(
 		async function checkStatus(): Promise<string | undefined> {
 			// TODO while loop and delay :
 			const statusResponse = await fetch(
-				`${endpoint}?apikey=${etherscanApiKey}&guid=${guid}&module=contract&action=checkverifystatus`
+				`${endpoint}?chainid=${env.chainId}&apikey=${etherscanApiKey}&guid=${guid}&module=contract&action=checkverifystatus`
 			);
 			const json = await statusResponse.json();
 
