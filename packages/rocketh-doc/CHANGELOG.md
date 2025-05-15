@@ -1,5 +1,12 @@
 # @rocketh/doc
 
+## 0.11.20
+
+### Patch Changes
+
+- Updated dependencies
+  - rocketh@0.11.20
+
 ## 0.11.19
 
 ### Patch Changes

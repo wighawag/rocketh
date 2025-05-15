@@ -129,7 +129,7 @@ export async function readConfig<
 		throw new Error('Multiple configuration files found. Please use only one of: rocketh.ts, rocketh.js');
 	}
 	if (tsVersionExists) {
-		const moduleLoaded = await tsImport(tsFilePath, import.meta.url);
+		const moduleLoaded = await tsImport(`file://${tsFilePath}`, import.meta.url);
 		configFile = moduleLoaded.config;
 		// console.log({tsVersionExists: configFile});
 		// if ((configFile as any).default) {
@@ -140,7 +140,7 @@ export async function readConfig<
 		// 	}
 		// }
 	} else if (jsVersionExists) {
-		const moduleLoaded = await tsImport(jsFilePath, import.meta.url);
+		const moduleLoaded = await tsImport(`file://${jsFilePath}`, import.meta.url);
 		configFile = moduleLoaded.config;
 	}
 
@@ -359,7 +359,7 @@ export async function executeDeployScripts<
 		const scriptFilePath = path.resolve(filepath);
 		let scriptModule: DeployScriptModule<NamedAccounts, Data, ArgumentsType>;
 		try {
-			scriptModule = await tsImport(scriptFilePath, import.meta.url);
+			scriptModule = await tsImport(`file://${scriptFilePath}`, import.meta.url);
 
 			// console.log({
 			// 	scriptFilePath,
@@ -481,7 +481,7 @@ average: ${formatEther(gasPriceEstimate.average.maxFeePerGas)} (priority: ${form
 fast: ${formatEther(gasPriceEstimate.fast.maxFeePerGas)} (priority: ${formatEther(
 				gasPriceEstimate.fast.maxPriorityFeePerGas
 			)})
- 
+
 Do you want to proceed (note that gas price can change for each tx)`,
 		});
 
