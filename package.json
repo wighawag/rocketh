@@ -21,6 +21,6 @@
     "prepublish": "pnpm build",
     "build": "pnpm -r build",
     "sync-deps": "syncpack fix-mismatches",
-    "start": "pnpm zellij-launcher --layout zellij.kdl a $npm_package_name || zellij --layout zellij.kdl -s $npm_package_name"
+    "start": "zellij-launcher a $npm_package_name || zellij -n zellij.kdl -s $npm_package_name"
   }
 }

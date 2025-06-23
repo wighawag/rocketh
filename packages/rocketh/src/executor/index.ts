@@ -107,43 +107,10 @@ export type UserConfig<
 	data?: Data;
 };
 
-export async function readConfig<
+export function transformUserConfig<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData
->(options: ConfigOptions): Promise<Config<NamedAccounts, Data>> {
-	type ConfigFile = UserConfig<NamedAccounts, Data>;
-	let configFile: ConfigFile | undefined;
-
-	// TODO more sophisticated config file finding mechanism (look up parents, etc..)
-	const tsFilePath = path.join(process.cwd(), 'rocketh.ts');
-	const jsFilePath = path.join(process.cwd(), 'rocketh.js');
-
-	const tsVersionExists = fs.existsSync(tsFilePath);
-	const jsVersionExists = fs.existsSync(jsFilePath);
-	const existingConfigs = [tsVersionExists, jsVersionExists].filter(Boolean).length;
-
-	// console.log({tsFilePath, tsVersionExists, existingConfigs});
-
-	// Throw error if multiple config files exist
-	if (existingConfigs > 1) {
-		throw new Error('Multiple configuration files found. Please use only one of: rocketh.ts, rocketh.js');
-	}
-	if (tsVersionExists) {
-		const moduleLoaded = await tsImport(`file://${tsFilePath}`, import.meta.url);
-		configFile = moduleLoaded.config;
-		// console.log({tsVersionExists: configFile});
-		// if ((configFile as any).default) {
-		// 	configFile = (configFile as any).default as ConfigFile;
-		// 	if ((configFile as any).default) {
-		// 		logger.warn(`double default...`);
-		// 		configFile = (configFile as any).default as ConfigFile;
-		// 	}
-		// }
-	} else if (jsVersionExists) {
-		const moduleLoaded = await tsImport(`file://${jsFilePath}`, import.meta.url);
-		configFile = moduleLoaded.config;
-	}
-
+>(configFile: UserConfig<NamedAccounts, Data> | undefined, options: ConfigOptions) {
 	if (configFile) {
 		if (!options.deployments && configFile.deployments) {
 			options.deployments = configFile.deployments;
@@ -255,6 +222,51 @@ export async function readConfig<
 			accounts: configFile?.accounts,
 		};
 	}
+}
+
+export async function readConfig<
+	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
+	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData
+>(options: ConfigOptions): Promise<Config<NamedAccounts, Data>> {
+	type ConfigFile = UserConfig<NamedAccounts, Data>;
+	let configFile: ConfigFile | undefined;
+
+	let tsVersion: string | undefined;
+	let jsVersion: string | undefined;
+
+	if (typeof process !== 'undefined') {
+		// TODO more sophisticated config file finding mechanism (look up parents, etc..)
+		const tsFilePath = path.join(process.cwd(), 'rocketh.ts');
+		const jsFilePath = path.join(process.cwd(), 'rocketh.js');
+
+		tsVersion = fs.existsSync(tsFilePath) ? `file://${tsFilePath}` : undefined;
+		jsVersion = fs.existsSync(jsFilePath) ? `file://${jsFilePath}` : undefined;
+	}
+	const existingConfigs = [tsVersion, jsVersion].filter(Boolean).length;
+
+	// console.log({tsFilePath, tsVersionExists, existingConfigs});
+
+	// Throw error if multiple config files exist
+	if (existingConfigs > 1) {
+		throw new Error('Multiple configuration files found. Please use only one of: rocketh.ts, rocketh.js');
+	}
+	if (tsVersion) {
+		const moduleLoaded = await tsImport(tsVersion, import.meta.url);
+		configFile = moduleLoaded.config;
+		// console.log({tsVersionExists: configFile});
+		// if ((configFile as any).default) {
+		// 	configFile = (configFile as any).default as ConfigFile;
+		// 	if ((configFile as any).default) {
+		// 		logger.warn(`double default...`);
+		// 		configFile = (configFile as any).default as ConfigFile;
+		// 	}
+		// }
+	} else if (jsVersion) {
+		const moduleLoaded = await tsImport(jsVersion, import.meta.url);
+		configFile = moduleLoaded.config;
+	}
+
+	return transformUserConfig(configFile, options);
 }
 
 export async function readAndResolveConfig<
