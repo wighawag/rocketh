@@ -1,5 +1,11 @@
 # @rocketh/verifier
 
+## 0.11.23
+
+### Patch Changes
+
+- better deps neoqs
+
 ## 0.11.22
 
 ### Patch Changes
