@@ -121,9 +121,16 @@ export type StorageLayout = {
 	} | null;
 };
 
-export type Deployment<TAbi extends Abi> = {
+export type MinimalDeployment<TAbi extends Abi = Abi> = {
 	readonly address: EIP1193Account;
 	readonly abi: Narrow<TAbi>;
+};
+
+export type Deployment<TAbi extends Abi> = MinimalDeployment<TAbi> & {
+	readonly bytecode: EIP1193DATA;
+	readonly argsData: EIP1193DATA;
+	readonly metadata: string;
+
 	readonly transaction?: {
 		readonly hash: EIP1193DATA;
 		readonly origin?: EIP1193Account;
@@ -135,9 +142,6 @@ export type Deployment<TAbi extends Abi> = {
 		blockNumber: EIP1193QUANTITY;
 		transactionIndex: EIP1193QUANTITY;
 	};
-	readonly bytecode: EIP1193DATA;
-	readonly argsData: EIP1193DATA;
-	readonly metadata: string;
 	readonly numDeployments?: number;
 	readonly libraries?: Libraries;
 	readonly linkedData?: LinkedData;

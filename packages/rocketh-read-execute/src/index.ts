@@ -1,6 +1,6 @@
 import {Abi} from 'abitype';
 import {EIP1193DATA, EIP1193TransactionData} from 'eip-1193';
-import type {Artifact, Deployment, Environment, PendingExecution} from 'rocketh';
+import type {Artifact, Deployment, Environment, MinimalDeployment, PendingExecution} from 'rocketh';
 import {extendEnvironment} from 'rocketh';
 import {
 	ContractFunctionArgs,
@@ -37,7 +37,7 @@ export type ExecuteFunction = <
 		TFunctionName
 	>
 >(
-	deployment: Deployment<TAbi>,
+	deployment: MinimalDeployment<TAbi>,
 	args: ExecutionArgs<TAbi, TFunctionName, TArgs>
 ) => Promise<EIP1193DATA>;
 
@@ -63,7 +63,7 @@ export type ReadFunction = <
 		TFunctionName
 	>
 >(
-	deployment: Deployment<TAbi>,
+	deployment: MinimalDeployment<TAbi>,
 	args: ReadingArgs<TAbi, TFunctionName, TArgs>
 ) => Promise<DecodeFunctionResultReturnType<TAbi, TFunctionName>>;
 
@@ -115,7 +115,7 @@ extendEnvironment((env: Environment) => {
 			'nonpayable' | 'payable',
 			TFunctionName
 		>
-	>(deployment: Deployment<TAbi>, args: ExecutionArgs<TAbi, TFunctionName, TArgs>) {
+	>(deployment: MinimalDeployment<TAbi>, args: ExecutionArgs<TAbi, TFunctionName, TArgs>) {
 		const {account, ...viemArgs} = args;
 		let address: `0x${string}`;
 		if (account.startsWith('0x')) {
@@ -214,7 +214,7 @@ extendEnvironment((env: Environment) => {
 			TFunctionName
 		>
 	>(
-		deployment: Deployment<TAbi>,
+		deployment: MinimalDeployment<TAbi>,
 		args: ReadingArgs<TAbi, TFunctionName, TArgs>
 	): Promise<DecodeFunctionResultReturnType<TAbi, TFunctionName>> {
 		const {account, ...viemArgs} = args;

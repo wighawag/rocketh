@@ -1,5 +1,13 @@
 # @rocketh/deploy
 
+## 0.11.22
+
+### Patch Changes
+
+- allow minimal deployment info for read/execute
+- Updated dependencies
+  - rocketh@0.11.21
+
 ## 0.11.21
 
 ### Patch Changes

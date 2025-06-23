@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.11.21
+
+### Patch Changes
+
+- allow minimal deployment info for read/execute
+
 ## 0.11.20
 
 ### Patch Changes
