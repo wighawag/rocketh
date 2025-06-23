@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import fs from 'fs';
-import qs from 'qs';
+import * as qs from 'neoqs';
 import chalk from 'chalk';
 import {matchAll} from './utils/match-all.js';
-import {Environment, UnknownDeployments} from 'rocketh';
+import {UnknownDeployments} from 'rocketh';
 import {EtherscanOptions} from './index.js';
 
 const defaultEndpoint = `https://api.etherscan.io/v2/api`;
