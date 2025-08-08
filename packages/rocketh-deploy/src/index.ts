@@ -1,19 +1,27 @@
 import {Abi} from 'abitype';
 import {EIP1193TransactionData} from 'eip-1193';
+import {logs} from 'named-logs';
 import type {
-	Artifact,
-	DeploymentConstruction,
 	Deployment,
+	DeploymentConstruction,
 	Environment,
-	PendingDeployment,
-	PartialDeployment,
-	Signer,
 	LinkedData,
+	PartialDeployment,
+	PendingDeployment,
+	Signer,
 } from 'rocketh';
 import {extendEnvironment} from 'rocketh';
-import {Address, Chain, encodePacked, keccak256} from 'viem';
-import {encodeDeployData} from 'viem';
-import {logs} from 'named-logs';
+import {
+	Address,
+	Chain,
+	encodeDeployData,
+	encodeFunctionData,
+	encodePacked,
+	getCreate2Address,
+	keccak256,
+	parseAbi,
+	zeroHash,
+} from 'viem';
 
 const logger = logs('@rocketh/deploy');
 
@@ -33,7 +41,13 @@ export type DeployFunction = <TAbi extends Abi, TChain extends Chain = Chain>(
 
 export type DeployOptions = {
 	linkedData?: LinkedData;
-	deterministic?: boolean | `0x${string}`;
+	deterministic?:
+		| boolean
+		| `0x${string}`
+		| {
+				type: 'create2' | 'create3';
+				salt?: `0x${string}`;
+		  };
 	libraries?: {[name: string]: Address};
 } & (
 	| {
@@ -128,6 +142,139 @@ function linkLibraries(
 	// TODO return libraries object with path name <filepath.sol>:<name> for names
 
 	return bytecode;
+}
+
+type FactoryParams = {
+	chainId: `0x${string}`;
+	address: `0x${string}`;
+	maxFeePerGas: `0x${string}` | undefined;
+	maxPriorityFeePerGas: `0x${string}` | undefined;
+};
+async function getCreate2Factory(env: Environment, signer: Signer, params: FactoryParams) {
+	const deploymentInfo = env.config.network.deterministicDeployment.create2;
+	if (!deploymentInfo) throw new Error('create2 deterministic deployment info not found');
+
+	const factoryAddress = deploymentInfo.factory;
+	const factoryDeployerAddress = deploymentInfo.deployer;
+	const factoryDeploymentData = deploymentInfo.signedTx;
+	const funding = BigInt(deploymentInfo.funding);
+	const code = await env.network.provider.request({
+		method: 'eth_getCode',
+		params: [factoryAddress, 'latest'],
+	});
+	if (code === '0x') {
+		const balanceHexString = await env.network.provider.request({
+			method: 'eth_getBalance',
+			params: [factoryAddress, 'latest'],
+		});
+		const balance = BigInt(balanceHexString);
+		if (balance < funding) {
+			const need = funding - balance;
+			const balanceToSend = `0x${need.toString(16)}` as `0x${string}`;
+			const txHash = await broadcastTransaction(env, signer, [
+				{
+					type: '0x2',
+					chainId: params.chainId,
+					from: params.address,
+					to: factoryDeployerAddress,
+					value: balanceToSend,
+					gas: `0x${BigInt(21000).toString(16)}`,
+					maxFeePerGas: params.maxFeePerGas,
+					maxPriorityFeePerGas: params.maxPriorityFeePerGas,
+				},
+			]);
+			await env.savePendingExecution({
+				type: 'execution', // TODO different type ?
+				transaction: {hash: txHash, origin: params.address},
+			});
+		}
+
+		const txHash = await env.network.provider.request({
+			method: 'eth_sendRawTransaction',
+			params: [factoryDeploymentData],
+		});
+		await env.savePendingExecution({
+			type: 'execution', // TODO different type ?
+			transaction: {hash: txHash, origin: params.address},
+		});
+	}
+
+	return {
+		getExpectedAddress: ({salt, bytecode}: {salt: `0x${string}`; bytecode: `0x${string}`}): `0x${string}` =>
+			getCreate2Address({
+				bytecode,
+				from: factoryAddress,
+				salt,
+			}),
+		encodeData: ({salt, bytecode}: {salt: `0x${string}`; bytecode: `0x${string}`}): `0x${string}` =>
+			(salt + (bytecode.slice(2) || '')) as `0x${string}`,
+		factoryAddress,
+	};
+}
+
+async function getCreate3Factory(env: Environment, signer: Signer, params: FactoryParams) {
+	const deploymentInfo = env.config.network.deterministicDeployment.create3;
+	if (!deploymentInfo) throw new Error('create3 deterministic deployment info not found');
+
+	const factoryAddress = deploymentInfo.factory;
+	const factoryBytecode = deploymentInfo.bytecode;
+	const proxyBytecode = deploymentInfo.proxyBytecode;
+	const code = await env.network.provider.request({
+		method: 'eth_getCode',
+		params: [factoryAddress, 'latest'],
+	});
+	if (code === '0x') {
+		const create2 = await getCreate2Factory(env, signer, params);
+		const salt = deploymentInfo.salt || zeroHash;
+		const expectedAddress = create2.getExpectedAddress({salt, bytecode: factoryBytecode});
+		if (expectedAddress.toLowerCase() !== factoryAddress.toLowerCase())
+			throw new Error(`create3 factory at ${factoryAddress} is not the expected address ${expectedAddress}`);
+
+		const txHash = await broadcastTransaction(env, signer, [
+			{
+				type: '0x2',
+				chainId: params.chainId,
+				from: params.address,
+				to: create2.factoryAddress,
+				data: create2.encodeData({salt, bytecode: factoryBytecode}),
+				maxFeePerGas: params.maxFeePerGas,
+				maxPriorityFeePerGas: params.maxPriorityFeePerGas,
+			},
+		]);
+		await env.savePendingExecution({
+			type: 'execution', // TODO different type ?
+			transaction: {hash: txHash, origin: params.address},
+		});
+	}
+
+	return {
+		getExpectedAddress: ({salt}: {salt: `0x${string}`}): `0x${string}` => {
+			const namespacedSalt = keccak256(encodePacked(['address', 'bytes32'], [params.address, salt]));
+
+			const proxyAddress = getCreate2Address({
+				from: factoryAddress,
+				salt: namespacedSalt,
+				bytecode: proxyBytecode,
+			});
+
+			// This follows the RLP encoding rules for contract addresses created by CREATE
+			// prefix ++ address ++ nonce, where:
+			// prefix = 0xd6 (0xc0 + 0x16), where 0x16 is length of: 0x94 ++ address ++ 0x01
+			// 0x94 = 0x80 + 0x14 (0x14 is the length of an address)
+			const rlpEncodedData = encodePacked(
+				['bytes1', 'bytes1', 'address', 'bytes1'],
+				['0xd6', '0x94', proxyAddress, '0x01']
+			);
+
+			return `0x${keccak256(rlpEncodedData).slice(26)}`;
+		},
+		encodeData: ({salt, bytecode}: {salt: `0x${string}`; bytecode: `0x${string}`}): `0x${string}` =>
+			encodeFunctionData({
+				abi: parseAbi(['function deployDeterministic(bytes memory,bytes32) external returns (address)']),
+				args: [bytecode, salt],
+			}),
+		factoryAddress,
+	};
 }
 
 extendEnvironment((env: Environment) => {
@@ -241,67 +388,27 @@ extendEnvironment((env: Environment) => {
 
 		let expectedAddress: `0x${string}` | undefined = undefined;
 		if (options?.deterministic) {
-			const deterministicDeploymentInfo = env.config.network.deterministicDeployment;
-
-			const deterministicFactoryAddress = deterministicDeploymentInfo.factory;
-			const deterministicFactoryDeployerAddress = deterministicDeploymentInfo.deployer;
-			const factoryDeploymentData = deterministicDeploymentInfo.signedTx;
-			const funding = BigInt(deterministicDeploymentInfo.funding);
-
-			const code = await env.network.provider.request({
-				method: 'eth_getCode',
-				params: [deterministicFactoryAddress, 'latest'],
-			});
-			if (code === '0x') {
-				const balanceHexString = await env.network.provider.request({
-					method: 'eth_getBalance',
-					params: [deterministicFactoryDeployerAddress, 'latest'],
-				});
-				const balance = BigInt(balanceHexString);
-				if (balance < funding) {
-					const need = funding - balance;
-					const balanceToSend = `0x${need.toString(16)}` as `0x${string}`;
-					const txHash = await broadcastTransaction(env, signer, [
-						{
-							type: '0x2',
-							chainId,
-							from: address,
-							to: deterministicFactoryDeployerAddress,
-							value: balanceToSend,
-							gas: `0x${BigInt(21000).toString(16)}`,
-							maxFeePerGas,
-							maxPriorityFeePerGas,
-						},
-					]);
-					await env.savePendingExecution({
-						type: 'execution', // TODO different type ?
-						transaction: {hash: txHash, origin: address},
-					});
-				}
-
-				const txHash = await env.network.provider.request({
-					method: 'eth_sendRawTransaction',
-					params: [factoryDeploymentData],
-				});
-				await env.savePendingExecution({
-					type: 'execution', // TODO different type ?
-					transaction: {hash: txHash, origin: address},
-				});
-			}
-
-			// prepending the salt
-			const salt = (
-				typeof options.deterministic === 'string'
-					? `0x${options.deterministic.slice(2).padStart(64, '0')}`
-					: '0x0000000000000000000000000000000000000000000000000000000000000000'
-			) as `0x${string}`;
+			const [deterministicType, salt] = (() => {
+				const normalizeSalt = (salt: `0x${string}` | boolean | undefined): `0x${string}` =>
+					typeof salt === 'string' ? `0x${salt.slice(2).padStart(64, '0')}` : zeroHash;
+				if (typeof options.deterministic !== 'object')
+					return ['create2', normalizeSalt(options.deterministic)] as const;
+				if (options.deterministic.type === 'create2')
+					return ['create2', normalizeSalt(options.deterministic.salt)] as const;
+				if (options.deterministic.type === 'create3')
+					return ['create3', normalizeSalt(options.deterministic.salt)] as const;
+				throw new Error(`unknown deterministic type: ${options.deterministic.type}`);
+			})();
 
 			const bytecode = params[0].data || '0x';
 
-			expectedAddress = ('0x' +
-				keccak256(`0xff${deterministicFactoryAddress.slice(2)}${salt.slice(2)}${keccak256(bytecode).slice(2)}`).slice(
-					-40
-				)) as `0x${string}`;
+			const factoryParams = {chainId, address, maxFeePerGas, maxPriorityFeePerGas};
+			const create =
+				deterministicType === 'create2'
+					? await getCreate2Factory(env, signer, factoryParams)
+					: await getCreate3Factory(env, signer, factoryParams);
+
+			expectedAddress = create.getExpectedAddress({salt, bytecode});
 
 			const codeAlreadyDeployed = await env.network.provider.request({
 				method: 'eth_getCode',
@@ -309,6 +416,8 @@ extendEnvironment((env: Environment) => {
 			});
 
 			if (codeAlreadyDeployed !== '0x') {
+				if (deterministicType === 'create3' && codeAlreadyDeployed !== bytecode)
+					throw new Error(`code already deployed at ${expectedAddress} but is not the expected bytecode`);
 				env.showMessage(`contract was already deterministically deployed at ${expectedAddress}`);
 				if (name) {
 					const deployment = await env.save(
@@ -325,8 +434,8 @@ extendEnvironment((env: Environment) => {
 				}
 			}
 
-			params[0].data = (salt + (bytecode.slice(2) || '')) as `0x${string}`;
-			params[0].to = deterministicFactoryAddress;
+			params[0].data = create.encodeData({salt, bytecode});
+			params[0].to = create.factoryAddress;
 		}
 
 		const txHash = await broadcastTransaction(env, signer, params);

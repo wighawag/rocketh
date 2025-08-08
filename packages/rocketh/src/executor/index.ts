@@ -1,23 +1,25 @@
-import {traverseMultipleDirectory} from '../utils/fs.js';
-import path from 'node:path';
+import {EIP1193GenericRequestProvider, EIP1193ProviderWithoutEvents} from 'eip-1193';
 import fs from 'node:fs';
+import path from 'node:path';
+import prompts from 'prompts';
+import {tsImport as tsImport_} from 'tsx/esm/api';
+import {formatEther} from 'viem';
+import {createEnvironment} from '../environment/index.js';
 import type {
 	Config,
 	Environment,
 	ResolvedConfig,
-	ResolvedNamedAccounts,
 	UnknownDeployments,
 	UnresolvedNetworkSpecificData,
 	UnresolvedUnknownNamedAccounts,
 } from '../environment/types.js';
-import {createEnvironment} from '../environment/index.js';
-import {DeployScriptFunction, DeployScriptModule} from './types.js';
 import {logger, setLogLevel, spin} from '../internal/logging.js';
-import {EIP1193GenericRequestProvider, EIP1193ProviderWithoutEvents} from 'eip-1193';
 import {getRoughGasPriceEstimate} from '../utils/eth.js';
-import prompts from 'prompts';
-import {formatEther} from 'viem';
-import {tsImport} from 'tsx/esm/api';
+import {traverseMultipleDirectory} from '../utils/fs.js';
+import {DeployScriptFunction, DeployScriptModule} from './types.js';
+
+// @ts-ignore
+const tsImport = (path: string, opts: any) => (typeof Bun !== 'undefined' ? import(path) : tsImport_(path, opts));
 
 export function execute<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
@@ -68,12 +70,27 @@ export type ConfigOptions = {
 	reportGasUse?: boolean;
 };
 
-export type DeterministicDeploymentInfo = {
+export type Create2DeterministicDeploymentInfo = {
 	factory: `0x${string}`;
 	deployer: `0x${string}`;
 	funding: string;
 	signedTx: `0x${string}`;
 };
+
+export type Create3DeterministicDeploymentInfo = {
+	salt?: `0x${string}`;
+	factory: `0x${string}`;
+	bytecode: `0x${string}`;
+	proxyBytecode: `0x${string}`;
+};
+
+export type DeterministicDeploymentInfo =
+	| Create2DeterministicDeploymentInfo
+	| {
+			create2?: Create2DeterministicDeploymentInfo;
+			create3?: Create3DeterministicDeploymentInfo;
+	  };
+
 type Networks = {
 	[name: string]: {
 		rpcUrl?: string;
@@ -280,12 +297,39 @@ export function resolveConfig<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData
 >(config: Config<NamedAccounts, Data>): ResolvedConfig<NamedAccounts, Data> {
-	let deterministicDeployment: DeterministicDeploymentInfo = config.network.deterministicDeployment || {
+	const create2Info = {
 		factory: '0x4e59b44847b379578588920ca78fbf26c0b4956c',
 		deployer: '0x3fab184622dc19b6109349b94811493bf2a45362',
 		funding: '10000000000000000',
 		signedTx:
 			'0xf8a58085174876e800830186a08080b853604580600e600039806000f350fe7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe03601600081602082378035828234f58015156039578182fd5b8082525050506014600cf31ba02222222222222222222222222222222222222222222222222222222222222222a02222222222222222222222222222222222222222222222222222222222222222',
+	} as const;
+	const create3Info = {
+		factory: '0x004ee012d77c5d0e67d861041d11824f51b590fb',
+		bytecode:
+			'0x6080604052348015600f57600080fd5b506103418061001f6000396000f3fe608060405234801561001057600080fd5b50600436106100365760003560e01c8063360d0fad1461003b5780639881d1951461006a575b600080fd5b61004e610049366004610202565b61007d565b6040516001600160a01b03909116815260200160405180910390f35b61004e610078366004610250565b6100ce565b6040516bffffffffffffffffffffffff19606084901b166020820152603481018290526000906054016040516020818303038152906040528051906020012091506100c782610118565b9392505050565b6040516bffffffffffffffffffffffff193360601b166020820152603481018290526000906054016040516020818303038152906040528051906020012091506100c7838361012a565b60006101248230610138565b92915050565b60006100c760008484610192565b60006040518260005260ff600b53836020527f21c35dbe1b344a2488cf3321d6ce542f8e9f305544ff09e4993a62319a497c1f6040526055600b20601452806040525061d694600052600160345350506017601e20919050565b60006f67363d3d37363d34f03d5260086018f3600052816010806000f5806101c25763301164256000526004601cfd5b8060145261d69460005260016034536017601e20915060008085516020870188855af1823b026101fa5763301164256000526004601cfd5b509392505050565b6000806040838503121561021557600080fd5b82356001600160a01b038116811461022c57600080fd5b946020939093013593505050565b634e487b7160e01b600052604160045260246000fd5b6000806040838503121561026357600080fd5b823567ffffffffffffffff81111561027a57600080fd5b8301601f8101851361028b57600080fd5b803567ffffffffffffffff8111156102a5576102a561023a565b604051601f8201601f19908116603f0116810167ffffffffffffffff811182821017156102d4576102d461023a565b6040528181528282016020018710156102ec57600080fd5b816020840160208301376000602092820183015296940135945050505056fea2646970667358221220b9514863e54adcdce37238b7188297c9dbd8c7ff9ef580abe582b59eb752686464736f6c634300081a0033',
+		proxyBytecode: '0x67363d3d37363d34f03d5260086018f3',
+	} as const;
+
+	let deterministicDeployment: {
+		create2: Create2DeterministicDeploymentInfo;
+		create3: Create3DeterministicDeploymentInfo;
+	} = {
+		create2: (() => {
+			if (!config.network.deterministicDeployment) return create2Info;
+			if (
+				!('create3' in config.network.deterministicDeployment) &&
+				!('create2' in config.network.deterministicDeployment)
+			)
+				return create2Info;
+			return config.network.deterministicDeployment.create2 || create2Info;
+		})(),
+		create3:
+			config.network.deterministicDeployment &&
+			'create3' in config.network.deterministicDeployment &&
+			config.network.deterministicDeployment.create3
+				? config.network.deterministicDeployment.create3
+				: create3Info,
 	};
 
 	let scripts = ['deploy'];
