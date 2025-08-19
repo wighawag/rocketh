@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.11.22-testing.0
+
+### Patch Changes
+
+- remove use of global, breakinmg change
+
 ## 0.11.21
 
 ### Patch Changes

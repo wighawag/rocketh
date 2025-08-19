@@ -1,5 +1,12 @@
 # @rocketh/doc
 
+## 0.11.22-testing.0
+
+### Patch Changes
+
+- Updated dependencies
+  - rocketh@0.11.22-testing.0
+
 ## 0.11.21
 
 ### Patch Changes

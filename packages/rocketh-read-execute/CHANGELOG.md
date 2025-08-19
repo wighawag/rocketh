@@ -1,5 +1,11 @@
 # @rocketh/deploy
 
+## 0.11.23-testing.0
+
+### Patch Changes
+
+- remove use of global, breakinmg change
+
 ## 0.11.22
 
 ### Patch Changes

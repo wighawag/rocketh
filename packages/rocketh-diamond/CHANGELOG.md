@@ -1,5 +1,15 @@
 # @rocketh/diamond
 
+## 0.11.25-testing.0
+
+### Patch Changes
+
+- remove use of global, breakinmg change
+- Updated dependencies
+  - @rocketh/read-execute@0.11.23-testing.0
+  - @rocketh/deploy@0.11.22-testing.0
+  - rocketh@0.11.22-testing.0
+
 ## 0.11.24
 
 ### Patch Changes

@@ -1,5 +1,12 @@
 # @rocketh/verifier
 
+## 0.11.24-testing.0
+
+### Patch Changes
+
+- Updated dependencies
+  - rocketh@0.11.22-testing.0
+
 ## 0.11.23
 
 ### Patch Changes
