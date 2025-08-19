@@ -28,9 +28,6 @@
 		"rocketh": "workspace:*",
 		"typescript": "^5.8.2"
 	},
-	"peerDependencies": {
-		"rocketh": "workspace:*"
-	},
 	"scripts": {
 		"build": "tsc --project tsconfig.json",
 		"dev": "as-soon -w src pnpm build"

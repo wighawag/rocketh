@@ -13,6 +13,7 @@ import type {Chain} from 'viem';
 import {ProgressIndicator} from '../internal/logging.js';
 import {TransactionHashTracker} from './providers/TransactionHashTracker.js';
 import {DeterministicDeploymentInfo} from '../executor/index.js';
+import {SignerProtocolFunction} from './index.js';
 
 export type {Abi, AbiError, AbiEvent, AbiConstructor, AbiFallback, AbiFunction, AbiReceive};
 export type Libraries = {readonly [libraryName: string]: EIP1193Account};
@@ -349,6 +350,7 @@ export interface Environment<
 	showProgress(message?: string): ProgressIndicator;
 
 	hasMigrationBeenDone(id: string): boolean;
+	registerProtocol(protocol: string, getSigner: SignerProtocolFunction): void;
 }
 
 export type DeploymentConstruction<TAbi extends Abi> = Omit<

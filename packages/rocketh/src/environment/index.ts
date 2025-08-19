@@ -42,25 +42,10 @@ import {TransactionHashTracker, TransactionHashTrackerProvider} from './provider
 
 type ReceiptResult = {receipt: EIP1193TransactionReceipt; latestBlockNumber: EIP1193QUANTITY};
 
-export type EnvironmentExtenstion = (env: Environment) => Environment;
-//we store this globally so this is not lost
-(globalThis as any).extensions = [];
-export function extendEnvironment(extension: EnvironmentExtenstion): void {
-	(globalThis as any).extensions.push(extension);
-}
-
 export type SignerProtocolFunction = (protocolString: string) => Promise<Signer>;
 export type SignerProtocol = {
 	getSigner: SignerProtocolFunction;
 };
-
-//we store this globally so this is not lost
-(globalThis as any).signerProtocols = {};
-export function handleSignerProtocol(protocol: string, getSigner: SignerProtocolFunction): void {
-	(globalThis as any).signerProtocols[protocol] = {
-		getSigner,
-	};
-}
 
 function wait(numSeconds: number): Promise<void> {
 	return new Promise((resolve) => {
@@ -101,6 +86,17 @@ export async function createEnvironment<
 		genesisHash = (await viemClient.getBlock({blockTag: 'earliest'})).hash;
 	} catch (err) {
 		console.error(`failed to get genesis hash`);
+	}
+
+	const signerProtocols: {[protocol: string]: SignerProtocol} = {};
+	function getSignerProtocol(protocol: string): SignerProtocol | undefined {
+		return signerProtocols[protocol] || undefined;
+	}
+
+	function registerProtocol(protocol: string, getSigner: SignerProtocolFunction): void {
+		signerProtocols[protocol] = {
+			getSigner,
+		};
 	}
 
 	let networkName: string;
@@ -157,7 +153,7 @@ export async function createEnvironment<
 		} else if (typeof accountDef === 'string') {
 			if (accountDef.startsWith('0x')) {
 				if (accountDef.length === 66) {
-					const privateKeyProtocol: SignerProtocol = (globalThis as any).signerProtocols['privateKey'];
+					const privateKeyProtocol = getSignerProtocol('privateKey');
 					if (privateKeyProtocol) {
 						const namedSigner = await privateKeyProtocol.getSigner(`privateKey:${accountDef}`);
 						const [address] = await namedSigner.signer.request({method: 'eth_accounts'});
@@ -176,9 +172,9 @@ export async function createEnvironment<
 			} else {
 				if (accountDef.indexOf(':') > 0) {
 					const [protocolID, extra] = accountDef.split(':');
-					const protocol: SignerProtocol = (globalThis as any).signerProtocols[protocolID];
+					const protocol = getSignerProtocol(protocolID);
 					if (!protocol) {
-						throw new Error(`protocol: ${protocol} is not supported`);
+						throw new Error(`protocol: ${protocolID} is not supported`);
 					}
 					const namedSigner = await protocol.getSigner(accountDef);
 					const [address] = await namedSigner.signer.request({method: 'eth_accounts'});
@@ -710,6 +706,7 @@ export async function createEnvironment<
 		showMessage,
 		showProgress,
 		hasMigrationBeenDone,
+		registerProtocol,
 	};
 	for (const extension of (globalThis as any).extensions) {
 		env = extension(env);
@@ -718,6 +715,7 @@ export async function createEnvironment<
 	return {
 		external: env,
 		internal: {
+			getSignerProtocol,
 			exportDeploymentsAsTypes,
 			recoverTransactionsIfAny,
 			recordMigration,

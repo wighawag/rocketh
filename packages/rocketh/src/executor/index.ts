@@ -9,7 +9,7 @@ import type {
 	UnresolvedNetworkSpecificData,
 	UnresolvedUnknownNamedAccounts,
 } from '../environment/types.js';
-import {createEnvironment} from '../environment/index.js';
+import {createEnvironment, SignerProtocolFunction} from '../environment/index.js';
 import {DeployScriptFunction, DeployScriptModule, EnhancedDeployScriptFunction, EnhancedEnvironment} from './types.js';
 import {withEnvironment} from '../utils/curry.js';
 import {logger, setLogLevel, spin} from '../internal/logging.js';
@@ -50,7 +50,7 @@ export function setup<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 	Deployments extends UnknownDeployments = UnknownDeployments
->(functions: Functions) {
+>(functions: Functions, signerProtocols?: Record<string, SignerProtocolFunction>) {
 	return function enhancedExecute<ArgumentsType = undefined>(
 		callback: EnhancedDeployScriptFunction<NamedAccounts, Data, ArgumentsType, Deployments, Functions>,
 		options: {tags?: string[]; dependencies?: string[]; id?: string; runAtTheEnd?: boolean}
@@ -59,6 +59,12 @@ export function setup<
 			env: Environment<NamedAccounts, Data, Deployments>,
 			args?: ArgumentsType
 		) => {
+			if (signerProtocols) {
+				for (const key of Object.keys(signerProtocols)) {
+					env.registerProtocol(key, signerProtocols[key]);
+				}
+			}
+
 			// Create the enhanced environment by combining the original environment with curried functions
 			const curriedFunctions = withEnvironment(env, functions);
 			const enhancedEnv = Object.assign(
