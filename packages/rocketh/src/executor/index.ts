@@ -46,7 +46,7 @@ import {tsImport} from 'tsx/esm/api';
  * ```
  */
 export function setup<
-	Functions extends Record<string, (env: Environment<any, any, any>, ...args: any[]) => any>,
+	Functions extends Record<string, (env: Environment<any, any, any>, ...args: any[]) => any> = {},
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 	Deployments extends UnknownDeployments = UnknownDeployments
