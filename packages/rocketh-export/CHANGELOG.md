@@ -1,5 +1,13 @@
 # @rocketh/export
 
+## 0.11.22-testing.1
+
+### Patch Changes
+
+- fixes
+- Updated dependencies
+  - rocketh@0.11.22-testing.1
+
 ## 0.11.22-testing.0
 
 ### Patch Changes
