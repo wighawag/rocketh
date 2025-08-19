@@ -5,13 +5,13 @@ import type {
 	Config,
 	Environment,
 	ResolvedConfig,
-	ResolvedNamedAccounts,
 	UnknownDeployments,
 	UnresolvedNetworkSpecificData,
 	UnresolvedUnknownNamedAccounts,
 } from '../environment/types.js';
 import {createEnvironment} from '../environment/index.js';
-import {DeployScriptFunction, DeployScriptModule} from './types.js';
+import {DeployScriptFunction, DeployScriptModule, EnhancedDeployScriptFunction, EnhancedEnvironment} from './types.js';
+import {withEnvironment} from '../utils/curry.js';
 import {logger, setLogLevel, spin} from '../internal/logging.js';
 import {EIP1193GenericRequestProvider, EIP1193ProviderWithoutEvents} from 'eip-1193';
 import {getRoughGasPriceEstimate} from '../utils/eth.js';
@@ -19,24 +19,64 @@ import prompts from 'prompts';
 import {formatEther} from 'viem';
 import {tsImport} from 'tsx/esm/api';
 
-export function execute<
+/**
+ * Setup function that creates the execute function for deploy scripts. It allow to specify a set of functions that will be available in the environment.
+ *
+ * @param functions - An object of utility functions that expect Environment as their first parameter
+ * @returns An execute function that provides an enhanced environment with curried functions
+ *
+ * @example
+ * ```typescript
+ * const functions = {
+ *   deploy: (env: Environment, contractName: string, args: any[]) => Promise<void>,
+ *   verify: (env: Environment, address: string) => Promise<boolean>
+ * };
+ *
+ * const execute = setup(functions);
+ *
+ * export default execute(async (env, args) => {
+ *   // env now includes both the original environment AND the curried functions
+ *   await env.deploy('MyContract', []); // No need to pass env
+ *   await env.verify('0x123...'); // No need to pass env
+ *
+ *   // Original environment properties are still available
+ *   console.log(env.network.name);
+ *   const deployment = env.get('MyContract');
+ * }, { tags: ['deploy'] });
+ * ```
+ */
+export function setup<
+	Functions extends Record<string, (env: Environment<any, any, any>, ...args: any[]) => any>,
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
-	ArgumentsType = undefined,
 	Deployments extends UnknownDeployments = UnknownDeployments
->(
-	callback: DeployScriptFunction<NamedAccounts, Data, ArgumentsType, Deployments>,
-	options: {tags?: string[]; dependencies?: string[]; id?: string}
-): DeployScriptModule<NamedAccounts, Data, ArgumentsType, Deployments> {
-	const scriptModule: DeployScriptModule<NamedAccounts, Data, ArgumentsType, Deployments> = (
-		env: Environment<NamedAccounts, Data, Deployments>,
-		args?: ArgumentsType
-	) => callback(env, args);
-	scriptModule.tags = options.tags;
-	scriptModule.dependencies = options.dependencies;
-	scriptModule.id = options.id;
-	// TODO runAtTheEnd ?
-	return scriptModule;
+>(functions: Functions) {
+	return function enhancedExecute<ArgumentsType = undefined>(
+		callback: EnhancedDeployScriptFunction<NamedAccounts, Data, ArgumentsType, Deployments, Functions>,
+		options: {tags?: string[]; dependencies?: string[]; id?: string; runAtTheEnd?: boolean}
+	): DeployScriptModule<NamedAccounts, Data, ArgumentsType, Deployments> {
+		const scriptModule: DeployScriptModule<NamedAccounts, Data, ArgumentsType, Deployments> = (
+			env: Environment<NamedAccounts, Data, Deployments>,
+			args?: ArgumentsType
+		) => {
+			// Create the enhanced environment by combining the original environment with curried functions
+			const curriedFunctions = withEnvironment(env, functions);
+			const enhancedEnv = Object.assign(
+				Object.create(Object.getPrototypeOf(env)),
+				env,
+				curriedFunctions
+			) as EnhancedEnvironment<NamedAccounts, Data, Deployments, Functions>;
+
+			return callback(enhancedEnv, args);
+		};
+
+		scriptModule.tags = options.tags;
+		scriptModule.dependencies = options.dependencies;
+		scriptModule.id = options.id;
+		scriptModule.runAtTheEnd = options.runAtTheEnd;
+
+		return scriptModule;
+	};
 }
 
 export type NamedAccountExecuteFunction<
