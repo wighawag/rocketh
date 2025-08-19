@@ -31,8 +31,7 @@
 	},
 	"peerDependencies": {
 		"@rocketh/deploy": "workspace:*",
-		"@rocketh/read-execute": "workspace:*",
-		"rocketh": "workspace:*"
+		"@rocketh/read-execute": "workspace:*"
 	},
 	"dependencies": {
 		"named-logs": "^0.3.2",

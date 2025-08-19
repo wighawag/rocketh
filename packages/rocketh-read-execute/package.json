@@ -26,9 +26,6 @@
 		"rocketh": "workspace:*",
 		"typescript": "^5.8.2"
 	},
-	"peerDependencies": {
-		"rocketh": "workspace:*"
-	},
 	"dependencies": {
 		"named-logs": "^0.3.2",
 		"viem": "^2.23.12"

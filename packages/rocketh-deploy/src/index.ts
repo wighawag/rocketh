@@ -1,7 +1,6 @@
 import {Abi} from 'abitype';
 import {EIP1193TransactionData} from 'eip-1193';
 import type {
-	Artifact,
 	DeploymentConstruction,
 	Deployment,
 	Environment,
@@ -10,18 +9,11 @@ import type {
 	Signer,
 	LinkedData,
 } from 'rocketh';
-import {extendEnvironment} from 'rocketh';
 import {Address, Chain, encodePacked, keccak256} from 'viem';
 import {encodeDeployData} from 'viem';
 import {logs} from 'named-logs';
 
 const logger = logs('@rocketh/deploy');
-
-declare module 'rocketh' {
-	interface Environment {
-		deploy: DeployFunction;
-	}
-}
 
 export type DeployResult<TAbi extends Abi> = Deployment<TAbi> & {newlyDeployed: boolean};
 
@@ -130,219 +122,215 @@ function linkLibraries(
 	return bytecode;
 }
 
-extendEnvironment((env: Environment) => {
-	async function deploy<TAbi extends Abi>(
-		name: string, // '' allow to not save it
-		args: DeploymentConstruction<TAbi>,
-		options?: DeployOptions
-	): Promise<DeployResult<TAbi>> {
-		const nameToDisplay = name || '<no name>';
-		const skipIfAlreadyDeployed = options && 'skipIfAlreadyDeployed' in options && options.skipIfAlreadyDeployed;
-		const allwaysOverride = options && 'allwaysOverride' in options && options.allwaysOverride;
+export async function deploy<TAbi extends Abi>(
+	env: Environment,
+	name: string, // '' allow to not save it
+	args: DeploymentConstruction<TAbi>,
+	options?: DeployOptions
+): Promise<DeployResult<TAbi>> {
+	const nameToDisplay = name || '<no name>';
+	const skipIfAlreadyDeployed = options && 'skipIfAlreadyDeployed' in options && options.skipIfAlreadyDeployed;
+	const allwaysOverride = options && 'allwaysOverride' in options && options.allwaysOverride;
 
-		if (allwaysOverride && skipIfAlreadyDeployed) {
-			throw new Error(`conflicting options: "allwaysOverride" and "skipIfAlreadyDeployed"`);
-		}
+	if (allwaysOverride && skipIfAlreadyDeployed) {
+		throw new Error(`conflicting options: "allwaysOverride" and "skipIfAlreadyDeployed"`);
+	}
 
-		const existingDeployment = name && env.getOrNull(name);
-		if (existingDeployment && skipIfAlreadyDeployed) {
-			logger.info(
-				`deployment for ${nameToDisplay} at ${existingDeployment.address}, skipIfAlreadyDeployed: true => we skip`
-			);
-			return {...(existingDeployment as Deployment<TAbi>), newlyDeployed: false};
-		}
+	const existingDeployment = name && env.getOrNull(name);
+	if (existingDeployment && skipIfAlreadyDeployed) {
+		logger.info(
+			`deployment for ${nameToDisplay} at ${existingDeployment.address}, skipIfAlreadyDeployed: true => we skip`
+		);
+		return {...(existingDeployment as Deployment<TAbi>), newlyDeployed: false};
+	}
 
-		const {account, artifact, ...viemArgs} = args;
-		let address: `0x${string}`;
-		if (account.startsWith('0x')) {
-			address = account as `0x${string}`;
+	const {account, artifact, ...viemArgs} = args;
+	let address: `0x${string}`;
+	if (account.startsWith('0x')) {
+		address = account as `0x${string}`;
+	} else {
+		if (env.namedAccounts) {
+			address = env.namedAccounts[account];
+			if (!address) {
+				throw new Error(`no address for ${account}`);
+			}
 		} else {
-			if (env.namedAccounts) {
-				address = env.namedAccounts[account];
-				if (!address) {
-					throw new Error(`no address for ${account}`);
-				}
-			} else {
-				throw new Error(`no accounts setup, cannot get address for ${account}`);
-			}
+			throw new Error(`no accounts setup, cannot get address for ${account}`);
 		}
+	}
 
-		// TODO throw specific error if artifact not found
-		const artifactToUse = artifact;
+	// TODO throw specific error if artifact not found
+	const artifactToUse = artifact;
 
-		const bytecode = linkLibraries(artifactToUse, options?.libraries);
+	const bytecode = linkLibraries(artifactToUse, options?.libraries);
 
-		const abi = artifactToUse.abi;
+	const abi = artifactToUse.abi;
 
-		const argsToUse = {
-			...viemArgs,
-			account,
-			abi,
-			bytecode,
-		};
+	const argsToUse = {
+		...viemArgs,
+		account,
+		abi,
+		bytecode,
+	};
 
-		const calldata = encodeDeployData(argsToUse as any); // TODO any
-		const argsData = `0x${calldata.replace(bytecode, '')}` as `0x${string}`;
+	const calldata = encodeDeployData(argsToUse as any); // TODO any
+	const argsData = `0x${calldata.replace(bytecode, '')}` as `0x${string}`;
 
-		if (existingDeployment) {
-			logger.info(`existing deployment for ${nameToDisplay} at ${existingDeployment.address}`);
+	if (existingDeployment) {
+		logger.info(`existing deployment for ${nameToDisplay} at ${existingDeployment.address}`);
+	}
+
+	if (existingDeployment && !allwaysOverride) {
+		const previousBytecode = existingDeployment.bytecode;
+		const previousArgsData = existingDeployment.argsData;
+		// we assume cbor encoding of hash at the end
+		// TODO option to remove it, can parse metadata but would rather avoid this here
+		const last2Bytes = previousBytecode.slice(-4);
+		const cborLength = parseInt(last2Bytes, 16);
+		const previousBytecodeWithoutCBOR = previousBytecode.slice(0, -cborLength * 2);
+		const newBytecodeWithoutCBOR = bytecode.slice(0, -cborLength * 2);
+		if (previousBytecodeWithoutCBOR === newBytecodeWithoutCBOR && previousArgsData === argsData) {
+			return {...(existingDeployment as Deployment<TAbi>), newlyDeployed: false};
+		} else {
+			// logger.info(`-------------- WITHOUT CBOR---------------------`);
+			// logger.info(previousBytecodeWithoutCBOR);
+			// logger.info(newBytecodeWithoutCBOR);
+			// logger.info(`-----------------------------------`);
+			// logger.info(`-------------- ARGS DATA ---------------------`);
+			// logger.info(previousArgsData);
+			// logger.info(argsData);
+			// logger.info(`-----------------------------------`);
 		}
+	}
 
-		if (existingDeployment && !allwaysOverride) {
-			const previousBytecode = existingDeployment.bytecode;
-			const previousArgsData = existingDeployment.argsData;
-			// we assume cbor encoding of hash at the end
-			// TODO option to remove it, can parse metadata but would rather avoid this here
-			const last2Bytes = previousBytecode.slice(-4);
-			const cborLength = parseInt(last2Bytes, 16);
-			const previousBytecodeWithoutCBOR = previousBytecode.slice(0, -cborLength * 2);
-			const newBytecodeWithoutCBOR = bytecode.slice(0, -cborLength * 2);
-			if (previousBytecodeWithoutCBOR === newBytecodeWithoutCBOR && previousArgsData === argsData) {
-				return {...(existingDeployment as Deployment<TAbi>), newlyDeployed: false};
-			} else {
-				// logger.info(`-------------- WITHOUT CBOR---------------------`);
-				// logger.info(previousBytecodeWithoutCBOR);
-				// logger.info(newBytecodeWithoutCBOR);
-				// logger.info(`-----------------------------------`);
-				// logger.info(`-------------- ARGS DATA ---------------------`);
-				// logger.info(previousArgsData);
-				// logger.info(argsData);
-				// logger.info(`-----------------------------------`);
-			}
-		}
+	const partialDeployment: PartialDeployment<TAbi> = {
+		...artifactToUse,
+		argsData,
+		linkedData: options?.linkedData,
+	};
 
-		const partialDeployment: PartialDeployment<TAbi> = {
-			...artifactToUse,
-			argsData,
-			linkedData: options?.linkedData,
-		};
+	const signer = env.addressSigners[address];
 
-		const signer = env.addressSigners[address];
+	const chainId = `0x${env.network.chain.id.toString(16)}` as `0x${string}`;
+	const maxFeePerGas = viemArgs.maxFeePerGas && (`0x${viemArgs.maxFeePerGas.toString(16)}` as `0x${string}`);
+	const maxPriorityFeePerGas =
+		viemArgs.maxPriorityFeePerGas && (`0x${viemArgs.maxPriorityFeePerGas.toString(16)}` as `0x${string}`);
 
-		const chainId = `0x${env.network.chain.id.toString(16)}` as `0x${string}`;
-		const maxFeePerGas = viemArgs.maxFeePerGas && (`0x${viemArgs.maxFeePerGas.toString(16)}` as `0x${string}`);
-		const maxPriorityFeePerGas =
-			viemArgs.maxPriorityFeePerGas && (`0x${viemArgs.maxPriorityFeePerGas.toString(16)}` as `0x${string}`);
+	const params: [EIP1193TransactionData] = [
+		{
+			type: '0x2',
+			from: address,
+			chainId,
+			data: calldata,
+			gas: viemArgs.gas && (`0x${viemArgs.gas.toString(16)}` as `0x${string}`),
+			maxFeePerGas,
+			maxPriorityFeePerGas,
+			// gasPrice: viemArgs.gasPrice && `0x${viemArgs.gasPrice.toString(16)}` as `0x${string}`,
+			// value: `0x${viemArgs.value?.toString(16)}` as `0x${string}`,
+			// nonce: viemArgs.nonce && (`0x${viemArgs.nonce.toString(16)}` as `0x${string}`),
+		},
+	];
 
-		const params: [EIP1193TransactionData] = [
-			{
-				type: '0x2',
-				from: address,
-				chainId,
-				data: calldata,
-				gas: viemArgs.gas && (`0x${viemArgs.gas.toString(16)}` as `0x${string}`),
-				maxFeePerGas,
-				maxPriorityFeePerGas,
-				// gasPrice: viemArgs.gasPrice && `0x${viemArgs.gasPrice.toString(16)}` as `0x${string}`,
-				// value: `0x${viemArgs.value?.toString(16)}` as `0x${string}`,
-				// nonce: viemArgs.nonce && (`0x${viemArgs.nonce.toString(16)}` as `0x${string}`),
-			},
-		];
+	let expectedAddress: `0x${string}` | undefined = undefined;
+	if (options?.deterministic) {
+		const deterministicDeploymentInfo = env.config.network.deterministicDeployment;
 
-		let expectedAddress: `0x${string}` | undefined = undefined;
-		if (options?.deterministic) {
-			const deterministicDeploymentInfo = env.config.network.deterministicDeployment;
+		const deterministicFactoryAddress = deterministicDeploymentInfo.factory;
+		const deterministicFactoryDeployerAddress = deterministicDeploymentInfo.deployer;
+		const factoryDeploymentData = deterministicDeploymentInfo.signedTx;
+		const funding = BigInt(deterministicDeploymentInfo.funding);
 
-			const deterministicFactoryAddress = deterministicDeploymentInfo.factory;
-			const deterministicFactoryDeployerAddress = deterministicDeploymentInfo.deployer;
-			const factoryDeploymentData = deterministicDeploymentInfo.signedTx;
-			const funding = BigInt(deterministicDeploymentInfo.funding);
-
-			const code = await env.network.provider.request({
-				method: 'eth_getCode',
-				params: [deterministicFactoryAddress, 'latest'],
+		const code = await env.network.provider.request({
+			method: 'eth_getCode',
+			params: [deterministicFactoryAddress, 'latest'],
+		});
+		if (code === '0x') {
+			const balanceHexString = await env.network.provider.request({
+				method: 'eth_getBalance',
+				params: [deterministicFactoryDeployerAddress, 'latest'],
 			});
-			if (code === '0x') {
-				const balanceHexString = await env.network.provider.request({
-					method: 'eth_getBalance',
-					params: [deterministicFactoryDeployerAddress, 'latest'],
-				});
-				const balance = BigInt(balanceHexString);
-				if (balance < funding) {
-					const need = funding - balance;
-					const balanceToSend = `0x${need.toString(16)}` as `0x${string}`;
-					const txHash = await broadcastTransaction(env, signer, [
-						{
-							type: '0x2',
-							chainId,
-							from: address,
-							to: deterministicFactoryDeployerAddress,
-							value: balanceToSend,
-							gas: `0x${BigInt(21000).toString(16)}`,
-							maxFeePerGas,
-							maxPriorityFeePerGas,
-						},
-					]);
-					await env.savePendingExecution({
-						type: 'execution', // TODO different type ?
-						transaction: {hash: txHash, origin: address},
-					});
-				}
-
-				const txHash = await env.network.provider.request({
-					method: 'eth_sendRawTransaction',
-					params: [factoryDeploymentData],
-				});
+			const balance = BigInt(balanceHexString);
+			if (balance < funding) {
+				const need = funding - balance;
+				const balanceToSend = `0x${need.toString(16)}` as `0x${string}`;
+				const txHash = await broadcastTransaction(env, signer, [
+					{
+						type: '0x2',
+						chainId,
+						from: address,
+						to: deterministicFactoryDeployerAddress,
+						value: balanceToSend,
+						gas: `0x${BigInt(21000).toString(16)}`,
+						maxFeePerGas,
+						maxPriorityFeePerGas,
+					},
+				]);
 				await env.savePendingExecution({
 					type: 'execution', // TODO different type ?
 					transaction: {hash: txHash, origin: address},
 				});
 			}
 
-			// prepending the salt
-			const salt = (
-				typeof options.deterministic === 'string'
-					? `0x${options.deterministic.slice(2).padStart(64, '0')}`
-					: '0x0000000000000000000000000000000000000000000000000000000000000000'
-			) as `0x${string}`;
-
-			const bytecode = params[0].data || '0x';
-
-			expectedAddress = ('0x' +
-				keccak256(`0xff${deterministicFactoryAddress.slice(2)}${salt.slice(2)}${keccak256(bytecode).slice(2)}`).slice(
-					-40
-				)) as `0x${string}`;
-
-			const codeAlreadyDeployed = await env.network.provider.request({
-				method: 'eth_getCode',
-				params: [expectedAddress, 'latest'],
+			const txHash = await env.network.provider.request({
+				method: 'eth_sendRawTransaction',
+				params: [factoryDeploymentData],
 			});
-
-			if (codeAlreadyDeployed !== '0x') {
-				env.showMessage(`contract was already deterministically deployed at ${expectedAddress}`);
-				if (name) {
-					const deployment = await env.save(
-						name,
-						{
-							address: expectedAddress,
-							...partialDeployment,
-						},
-						{doNotCountAsNewDeployment: true}
-					);
-					return {...(deployment as Deployment<TAbi>), newlyDeployed: false};
-				} else {
-					return {address: expectedAddress, ...partialDeployment, newlyDeployed: false};
-				}
-			}
-
-			params[0].data = (salt + (bytecode.slice(2) || '')) as `0x${string}`;
-			params[0].to = deterministicFactoryAddress;
+			await env.savePendingExecution({
+				type: 'execution', // TODO different type ?
+				transaction: {hash: txHash, origin: address},
+			});
 		}
 
-		const txHash = await broadcastTransaction(env, signer, params);
+		// prepending the salt
+		const salt = (
+			typeof options.deterministic === 'string'
+				? `0x${options.deterministic.slice(2).padStart(64, '0')}`
+				: '0x0000000000000000000000000000000000000000000000000000000000000000'
+		) as `0x${string}`;
 
-		const pendingDeployment: PendingDeployment<TAbi> = {
-			type: 'deployment',
-			expectedAddress,
-			partialDeployment,
-			transaction: {hash: txHash, origin: address},
-			name,
-			// TODO we should have the nonce, except for wallet like metamask where it is not usre you get the nonce you start with
-		};
-		const deployment = await env.savePendingDeployment(pendingDeployment);
-		return {...(deployment as Deployment<TAbi>), newlyDeployed: true};
+		const bytecode = params[0].data || '0x';
+
+		expectedAddress = ('0x' +
+			keccak256(`0xff${deterministicFactoryAddress.slice(2)}${salt.slice(2)}${keccak256(bytecode).slice(2)}`).slice(
+				-40
+			)) as `0x${string}`;
+
+		const codeAlreadyDeployed = await env.network.provider.request({
+			method: 'eth_getCode',
+			params: [expectedAddress, 'latest'],
+		});
+
+		if (codeAlreadyDeployed !== '0x') {
+			env.showMessage(`contract was already deterministically deployed at ${expectedAddress}`);
+			if (name) {
+				const deployment = await env.save(
+					name,
+					{
+						address: expectedAddress,
+						...partialDeployment,
+					},
+					{doNotCountAsNewDeployment: true}
+				);
+				return {...(deployment as Deployment<TAbi>), newlyDeployed: false};
+			} else {
+				return {address: expectedAddress, ...partialDeployment, newlyDeployed: false};
+			}
+		}
+
+		params[0].data = (salt + (bytecode.slice(2) || '')) as `0x${string}`;
+		params[0].to = deterministicFactoryAddress;
 	}
 
-	env.deploy = deploy;
-	return env;
-});
+	const txHash = await broadcastTransaction(env, signer, params);
+
+	const pendingDeployment: PendingDeployment<TAbi> = {
+		type: 'deployment',
+		expectedAddress,
+		partialDeployment,
+		transaction: {hash: txHash, origin: address},
+		name,
+		// TODO we should have the nonce, except for wallet like metamask where it is not usre you get the nonce you start with
+	};
+	const deployment = await env.savePendingDeployment(pendingDeployment);
+	return {...(deployment as Deployment<TAbi>), newlyDeployed: true};
+}

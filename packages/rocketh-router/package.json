@@ -28,8 +28,7 @@
 		"typescript": "^5.8.2"
 	},
 	"peerDependencies": {
-		"@rocketh/deploy": "workspace:*",
-		"rocketh": "workspace:*"
+		"@rocketh/deploy": "workspace:*"
 	},
 	"dependencies": {
 		"ethers": "^6.13.5",
