@@ -14,6 +14,7 @@
     "@rocketh/verifier": "0.11.23"
   },
   "changesets": [
+    "honest-spiders-argue",
     "old-mice-burn",
     "whole-fans-worry"
   ]

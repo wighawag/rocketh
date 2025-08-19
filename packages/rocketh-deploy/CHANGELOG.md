@@ -1,5 +1,11 @@
 # @rocketh/deploy
 
+## 0.11.22-testing.2
+
+### Patch Changes
+
+- use hard deps
+
 ## 0.11.22-testing.1
 
 ### Patch Changes

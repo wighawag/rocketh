@@ -1,5 +1,14 @@
 # @rocketh/diamond
 
+## 0.11.25-testing.2
+
+### Patch Changes
+
+- use hard deps
+- Updated dependencies
+  - @rocketh/read-execute@0.11.23-testing.2
+  - @rocketh/deploy@0.11.22-testing.2
+
 ## 0.11.25-testing.1
 
 ### Patch Changes

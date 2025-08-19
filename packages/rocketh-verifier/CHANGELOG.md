@@ -1,5 +1,13 @@
 # @rocketh/verifier
 
+## 0.11.24-testing.2
+
+### Patch Changes
+
+- use hard deps
+- Updated dependencies
+  - rocketh@0.11.22-testing.2
+
 ## 0.11.24-testing.1
 
 ### Patch Changes

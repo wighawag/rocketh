@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/proxy",
-	"version": "0.11.26-testing.1",
+	"version": "0.11.26-testing.2",
 	"description": "provide proxy-enabled deploy function for rocketh",
 	"publishConfig": {
 		"access": "public"
@@ -20,8 +20,6 @@
 		"solc_0_8"
 	],
 	"devDependencies": {
-		"@rocketh/deploy": "workspace:*",
-		"@rocketh/read-execute": "workspace:*",
 		"abitype": "^1.0.8",
 		"as-soon": "^0.0.11",
 		"eip-1193": "^0.6.2",
@@ -29,11 +27,9 @@
 		"rocketh": "workspace:*",
 		"typescript": "^5.8.2"
 	},
-	"peerDependencies": {
-		"@rocketh/deploy": "workspace:*",
-		"@rocketh/read-execute": "workspace:*"
-	},
 	"dependencies": {
+		"@rocketh/deploy": "workspace:*",
+		"@rocketh/read-execute": "workspace:*",
 		"named-logs": "^0.3.2",
 		"viem": "^2.23.12"
 	},
