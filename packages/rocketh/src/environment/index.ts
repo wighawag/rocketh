@@ -696,9 +696,6 @@ export async function createEnvironment<
 		showProgress,
 		hasMigrationBeenDone,
 	};
-	for (const extension of (globalThis as any).extensions) {
-		env = extension(env);
-	}
 
 	return {
 		external: env,

@@ -1,5 +1,13 @@
 # @rocketh/router
 
+## 0.11.25-testing.4
+
+### Patch Changes
+
+- fix
+- Updated dependencies
+  - @rocketh/deploy@0.11.22-testing.4
+
 ## 0.11.25-testing.3
 
 ### Patch Changes

@@ -1,5 +1,14 @@
 # @rocketh/proxy
 
+## 0.11.26-testing.4
+
+### Patch Changes
+
+- fix
+- Updated dependencies
+  - @rocketh/read-execute@0.11.23-testing.4
+  - @rocketh/deploy@0.11.22-testing.4
+
 ## 0.11.26-testing.3
 
 ### Patch Changes
