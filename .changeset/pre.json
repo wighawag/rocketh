@@ -14,6 +14,7 @@
     "@rocketh/verifier": "0.11.23"
   },
   "changesets": [
+    "all-knives-smoke",
     "cool-crabs-jam",
     "eight-goats-do",
     "full-results-serve",

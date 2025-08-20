@@ -1,5 +1,11 @@
 # @rocketh/signer
 
+## 0.11.22-testing.6
+
+### Patch Changes
+
+- allow to pass Extra date to environment
+
 ## 0.11.22-testing.5
 
 ### Patch Changes

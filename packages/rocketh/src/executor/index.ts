@@ -95,7 +95,7 @@ export type UntypedEIP1193Provider = {
 	request(requestArguments: UntypedRequestArguments): Promise<unknown>;
 };
 
-export type ConfigOptions = {
+export type ConfigOptions<Extra extends Record<string, unknown> = Record<string, unknown>> = {
 	network?: string | {fork: string};
 	deployments?: string;
 	scripts?: string | string[];
@@ -106,6 +106,7 @@ export type ConfigOptions = {
 	saveDeployments?: boolean;
 	askBeforeProceeding?: boolean;
 	reportGasUse?: boolean;
+	extra?: Extra;
 };
 
 export type DeterministicDeploymentInfo = {
@@ -150,8 +151,9 @@ export type UserConfig<
 
 export function transformUserConfig<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
-	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData
->(configFile: UserConfig<NamedAccounts, Data> | undefined, options: ConfigOptions) {
+	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
+	Extra extends Record<string, unknown> = Record<string, unknown>
+>(configFile: UserConfig<NamedAccounts, Data> | undefined, options: ConfigOptions<Extra>) {
 	if (configFile) {
 		if (!options.deployments && configFile.deployments) {
 			options.deployments = configFile.deployments;
@@ -269,8 +271,9 @@ export function transformUserConfig<
 
 export async function readConfig<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
-	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData
->(options: ConfigOptions): Promise<Config<NamedAccounts, Data>> {
+	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
+	Extra extends Record<string, unknown> = Record<string, unknown>
+>(options: ConfigOptions<Extra>): Promise<Config<NamedAccounts, Data>> {
 	type ConfigFile = UserConfig<NamedAccounts, Data>;
 	let configFile: ConfigFile | undefined;
 
@@ -314,8 +317,9 @@ export async function readConfig<
 
 export async function readAndResolveConfig<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
-	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData
->(options: ConfigOptions): Promise<ResolvedConfig<NamedAccounts, Data>> {
+	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
+	Extra extends Record<string, unknown> = Record<string, unknown>
+>(options: ConfigOptions<Extra>): Promise<ResolvedConfig<NamedAccounts, Data>> {
 	return resolveConfig<NamedAccounts, Data>(await readConfig<NamedAccounts, Data>(options));
 }
 
@@ -358,14 +362,16 @@ export function resolveConfig<
 		accounts: config.accounts || ({} as NamedAccounts),
 		data: config.data || ({} as Data),
 		signerProtocols: config.signerProtocols || {},
+		extra: config.extra || {},
 	};
 	return resolvedConfig;
 }
 
 export async function loadEnvironment<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
-	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData
->(options: ConfigOptions): Promise<Environment<NamedAccounts, Data, UnknownDeployments>> {
+	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
+	Extra extends Record<string, unknown> = Record<string, unknown>
+>(options: ConfigOptions<Extra>): Promise<Environment<NamedAccounts, Data, UnknownDeployments>> {
 	const resolvedConfig = await readAndResolveConfig<NamedAccounts, Data>(options);
 	// console.log(JSON.stringify(resolvedConfig, null, 2));
 	const {external, internal} = await createEnvironment(resolvedConfig);
@@ -375,8 +381,9 @@ export async function loadEnvironment<
 export async function loadAndExecuteDeployments<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
-	ArgumentsType = undefined
->(options: ConfigOptions, args?: ArgumentsType): Promise<Environment<NamedAccounts, Data, UnknownDeployments>> {
+	ArgumentsType = undefined,
+	Extra extends Record<string, unknown> = Record<string, unknown>
+>(options: ConfigOptions<Extra>, args?: ArgumentsType): Promise<Environment<NamedAccounts, Data, UnknownDeployments>> {
 	const resolvedConfig = await readAndResolveConfig<NamedAccounts, Data>(options);
 	// console.log(JSON.stringify(options, null, 2));
 	// console.log(JSON.stringify(resolvedConfig, null, 2));

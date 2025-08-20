@@ -1,5 +1,13 @@
 # @rocketh/router
 
+## 0.11.25-testing.5
+
+### Patch Changes
+
+- allow to pass Extra date to environment
+- Updated dependencies
+  - @rocketh/deploy@0.11.22-testing.5
+
 ## 0.11.25-testing.4
 
 ### Patch Changes

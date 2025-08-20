@@ -1,5 +1,13 @@
 # @rocketh/doc
 
+## 0.11.22-testing.5
+
+### Patch Changes
+
+- allow to pass Extra date to environment
+- Updated dependencies
+  - rocketh@0.11.22-testing.5
+
 ## 0.11.22-testing.4
 
 ### Patch Changes

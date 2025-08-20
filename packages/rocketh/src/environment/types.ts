@@ -280,6 +280,7 @@ export type Config<
 
 	data?: Data;
 	signerProtocols?: Record<string, SignerProtocolFunction>;
+	extra?: Record<string, unknown>;
 };
 
 export type ResolvedConfig<
@@ -316,6 +317,7 @@ export type ResolvedConfig<
 	accounts: AccountsType;
 	data: Data;
 	signerProtocols: Record<string, SignerProtocolFunction>;
+	extra: Record<string, unknown>;
 };
 
 export interface Environment<

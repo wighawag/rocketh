@@ -1,5 +1,11 @@
 # @rocketh/deploy
 
+## 0.11.23-testing.5
+
+### Patch Changes
+
+- allow to pass Extra date to environment
+
 ## 0.11.23-testing.4
 
 ### Patch Changes
