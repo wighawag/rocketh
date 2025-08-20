@@ -1,5 +1,11 @@
 # @rocketh/deploy
 
+## 0.11.23-testing.6
+
+### Patch Changes
+
+- fix
+
 ## 0.11.23-testing.5
 
 ### Patch Changes

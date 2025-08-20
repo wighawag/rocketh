@@ -273,6 +273,7 @@ export async function createEnvironment<
 			tags: context.network.tags,
 			provider,
 		},
+		extra: config.extra || {},
 	};
 
 	function getDeploymentFolder(): string {

@@ -323,7 +323,8 @@ export type ResolvedConfig<
 export interface Environment<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
-	Deployments extends UnknownDeployments = UnknownDeployments
+	Deployments extends UnknownDeployments = UnknownDeployments,
+	Extra extends Record<string, unknown> = Record<string, unknown>
 > {
 	config: ResolvedConfig;
 	network: {
@@ -354,6 +355,7 @@ export interface Environment<
 	showProgress(message?: string): ProgressIndicator;
 
 	hasMigrationBeenDone(id: string): boolean;
+	extra?: Extra;
 }
 
 export type DeploymentConstruction<TAbi extends Abi> = Omit<
