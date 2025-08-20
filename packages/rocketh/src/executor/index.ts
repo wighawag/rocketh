@@ -244,6 +244,7 @@ export function transformUserConfig<
 			reportGasUse: options.reportGasUse,
 			accounts: configFile?.accounts,
 			signerProtocols: configFile?.signerProtocols,
+			extra: options.extra,
 		};
 	} else {
 		return {
@@ -266,6 +267,7 @@ export function transformUserConfig<
 			reportGasUse: options.reportGasUse,
 			accounts: configFile?.accounts,
 			signerProtocols: configFile?.signerProtocols,
+			extra: options.extra,
 		};
 	}
 }

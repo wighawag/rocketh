@@ -1,5 +1,11 @@
 # @rocketh/signer
 
+## 0.11.22-testing.9
+
+### Patch Changes
+
+- fix
+
 ## 0.11.22-testing.8
 
 ### Patch Changes
