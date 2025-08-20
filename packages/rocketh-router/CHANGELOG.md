@@ -1,5 +1,13 @@
 # @rocketh/router
 
+## 0.11.25-testing.7
+
+### Patch Changes
+
+- Extra type generic
+- Updated dependencies
+  - @rocketh/deploy@0.11.22-testing.7
+
 ## 0.11.25-testing.6
 
 ### Patch Changes

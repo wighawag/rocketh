@@ -49,14 +49,15 @@ export function setup<
 	Functions extends Record<string, (env: Environment<any, any, any>, ...args: any[]) => any> = {},
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
-	Deployments extends UnknownDeployments = UnknownDeployments
+	Deployments extends UnknownDeployments = UnknownDeployments,
+	Extra extends Record<string, unknown> = Record<string, unknown>
 >(functions: Functions) {
 	return function enhancedExecute<ArgumentsType = undefined>(
 		callback: EnhancedDeployScriptFunction<NamedAccounts, Data, ArgumentsType, Deployments, Functions>,
 		options: {tags?: string[]; dependencies?: string[]; id?: string; runAtTheEnd?: boolean}
-	): DeployScriptModule<NamedAccounts, Data, ArgumentsType, Deployments> {
-		const scriptModule: DeployScriptModule<NamedAccounts, Data, ArgumentsType, Deployments> = (
-			env: Environment<NamedAccounts, Data, Deployments>,
+	): DeployScriptModule<NamedAccounts, Data, ArgumentsType, Deployments, Extra> {
+		const scriptModule: DeployScriptModule<NamedAccounts, Data, ArgumentsType, Deployments, Extra> = (
+			env: Environment<NamedAccounts, Data, Deployments, Extra>,
 			args?: ArgumentsType
 		) => {
 			// Create the enhanced environment by combining the original environment with curried functions
@@ -65,7 +66,7 @@ export function setup<
 				Object.create(Object.getPrototypeOf(env)),
 				env,
 				curriedFunctions
-			) as EnhancedEnvironment<NamedAccounts, Data, Deployments, Functions>;
+			) as EnhancedEnvironment<NamedAccounts, Data, Deployments, Functions, Extra>;
 
 			return callback(enhancedEnv, args);
 		};

@@ -1,5 +1,14 @@
 # @rocketh/diamond
 
+## 0.11.25-testing.7
+
+### Patch Changes
+
+- Extra type generic
+- Updated dependencies
+  - @rocketh/read-execute@0.11.23-testing.7
+  - @rocketh/deploy@0.11.22-testing.7
+
 ## 0.11.25-testing.6
 
 ### Patch Changes

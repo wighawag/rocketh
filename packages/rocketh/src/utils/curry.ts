@@ -44,11 +44,12 @@ export function withEnvironment<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 	Deployments extends UnknownDeployments = UnknownDeployments,
-	T extends Record<string, (env: Environment<NamedAccounts, Data, Deployments>, ...args: any[]) => any> = Record<
+	Extra extends Record<string, unknown> = Record<string, unknown>,
+	T extends Record<string, (env: Environment<NamedAccounts, Data, Deployments, Extra>, ...args: any[]) => any> = Record<
 		string,
 		(env: Environment<NamedAccounts, Data, Deployments>, ...args: any[]) => any
 	>
->(env: Environment<NamedAccounts, Data, Deployments>, functions: T): CurriedFunctions<T> {
+>(env: Environment<NamedAccounts, Data, Deployments, Extra>, functions: T): CurriedFunctions<T> {
 	const result = {} as CurriedFunctions<T>;
 
 	for (const [key, func] of Object.entries(functions)) {

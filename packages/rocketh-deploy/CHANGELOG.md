@@ -1,5 +1,11 @@
 # @rocketh/deploy
 
+## 0.11.22-testing.7
+
+### Patch Changes
+
+- Extra type generic
+
 ## 0.11.22-testing.6
 
 ### Patch Changes
