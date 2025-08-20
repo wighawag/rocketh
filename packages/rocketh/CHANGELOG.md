@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.11.22-testing.3
+
+### Patch Changes
+
+- signer protocols are specified via config
+
 ## 0.11.22-testing.2
 
 ### Patch Changes

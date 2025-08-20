@@ -88,17 +88,6 @@ export async function createEnvironment<
 		console.error(`failed to get genesis hash`);
 	}
 
-	const signerProtocols: {[protocol: string]: SignerProtocol} = {};
-	function getSignerProtocol(protocol: string): SignerProtocol | undefined {
-		return signerProtocols[protocol] || undefined;
-	}
-
-	function registerProtocol(protocol: string, getSigner: SignerProtocolFunction): void {
-		signerProtocols[protocol] = {
-			getSigner,
-		};
-	}
-
 	let networkName: string;
 	let saveDeployments: boolean;
 	let networkTags: {[tag: string]: boolean} = {};
@@ -153,9 +142,9 @@ export async function createEnvironment<
 		} else if (typeof accountDef === 'string') {
 			if (accountDef.startsWith('0x')) {
 				if (accountDef.length === 66) {
-					const privateKeyProtocol = getSignerProtocol('privateKey');
+					const privateKeyProtocol = config.signerProtocols['privateKey'];
 					if (privateKeyProtocol) {
-						const namedSigner = await privateKeyProtocol.getSigner(`privateKey:${accountDef}`);
+						const namedSigner = await privateKeyProtocol(`privateKey:${accountDef}`);
 						const [address] = await namedSigner.signer.request({method: 'eth_accounts'});
 						accountCache[name] = account = {
 							...namedSigner,
@@ -172,11 +161,11 @@ export async function createEnvironment<
 			} else {
 				if (accountDef.indexOf(':') > 0) {
 					const [protocolID, extra] = accountDef.split(':');
-					const protocol = getSignerProtocol(protocolID);
+					const protocol = config.signerProtocols[protocolID];
 					if (!protocol) {
 						throw new Error(`protocol: ${protocolID} is not supported`);
 					}
-					const namedSigner = await protocol.getSigner(accountDef);
+					const namedSigner = await protocol(accountDef);
 					const [address] = await namedSigner.signer.request({method: 'eth_accounts'});
 					accountCache[name] = account = {
 						...namedSigner,
@@ -706,7 +695,6 @@ export async function createEnvironment<
 		showMessage,
 		showProgress,
 		hasMigrationBeenDone,
-		registerProtocol,
 	};
 	for (const extension of (globalThis as any).extensions) {
 		env = extension(env);
@@ -715,7 +703,6 @@ export async function createEnvironment<
 	return {
 		external: env,
 		internal: {
-			getSignerProtocol,
 			exportDeploymentsAsTypes,
 			recoverTransactionsIfAny,
 			recordMigration,

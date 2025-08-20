@@ -1,5 +1,11 @@
 # @rocketh/deploy
 
+## 0.11.23-testing.3
+
+### Patch Changes
+
+- signer protocols are specified via config
+
 ## 0.11.23-testing.2
 
 ### Patch Changes

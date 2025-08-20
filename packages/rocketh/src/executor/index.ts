@@ -50,7 +50,7 @@ export function setup<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 	Deployments extends UnknownDeployments = UnknownDeployments
->(functions: Functions, signerProtocols?: Record<string, SignerProtocolFunction>) {
+>(functions: Functions) {
 	return function enhancedExecute<ArgumentsType = undefined>(
 		callback: EnhancedDeployScriptFunction<NamedAccounts, Data, ArgumentsType, Deployments, Functions>,
 		options: {tags?: string[]; dependencies?: string[]; id?: string; runAtTheEnd?: boolean}
@@ -59,12 +59,6 @@ export function setup<
 			env: Environment<NamedAccounts, Data, Deployments>,
 			args?: ArgumentsType
 		) => {
-			if (signerProtocols) {
-				for (const key of Object.keys(signerProtocols)) {
-					env.registerProtocol(key, signerProtocols[key]);
-				}
-			}
-
 			// Create the enhanced environment by combining the original environment with curried functions
 			const curriedFunctions = withEnvironment(env, functions);
 			const enhancedEnv = Object.assign(
@@ -151,6 +145,7 @@ export type UserConfig<
 	scripts?: string | string[];
 	accounts?: NamedAccounts;
 	data?: Data;
+	signerProtocols?: Record<string, SignerProtocolFunction>;
 };
 
 export function transformUserConfig<
@@ -245,6 +240,7 @@ export function transformUserConfig<
 			askBeforeProceeding: options.askBeforeProceeding,
 			reportGasUse: options.reportGasUse,
 			accounts: configFile?.accounts,
+			signerProtocols: configFile?.signerProtocols,
 		};
 	} else {
 		return {
@@ -266,6 +262,7 @@ export function transformUserConfig<
 			askBeforeProceeding: options.askBeforeProceeding,
 			reportGasUse: options.reportGasUse,
 			accounts: configFile?.accounts,
+			signerProtocols: configFile?.signerProtocols,
 		};
 	}
 }
@@ -360,6 +357,7 @@ export function resolveConfig<
 		saveDeployments: config.saveDeployments,
 		accounts: config.accounts || ({} as NamedAccounts),
 		data: config.data || ({} as Data),
+		signerProtocols: config.signerProtocols || {},
 	};
 	return resolvedConfig;
 }

@@ -1,5 +1,14 @@
 # @rocketh/diamond
 
+## 0.11.25-testing.3
+
+### Patch Changes
+
+- signer protocols are specified via config
+- Updated dependencies
+  - @rocketh/read-execute@0.11.23-testing.3
+  - @rocketh/deploy@0.11.22-testing.3
+
 ## 0.11.25-testing.2
 
 ### Patch Changes

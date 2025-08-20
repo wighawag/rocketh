@@ -279,6 +279,7 @@ export type Config<
 	accounts?: AccountsType;
 
 	data?: Data;
+	signerProtocols?: Record<string, SignerProtocolFunction>;
 };
 
 export type ResolvedConfig<
@@ -314,6 +315,7 @@ export type ResolvedConfig<
 	reportGasUse?: boolean;
 	accounts: AccountsType;
 	data: Data;
+	signerProtocols: Record<string, SignerProtocolFunction>;
 };
 
 export interface Environment<
@@ -350,7 +352,6 @@ export interface Environment<
 	showProgress(message?: string): ProgressIndicator;
 
 	hasMigrationBeenDone(id: string): boolean;
-	registerProtocol(protocol: string, getSigner: SignerProtocolFunction): void;
 }
 
 export type DeploymentConstruction<TAbi extends Abi> = Omit<
