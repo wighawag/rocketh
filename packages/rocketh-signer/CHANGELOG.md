@@ -1,5 +1,20 @@
 # @rocketh/signer
 
+## 0.11.22
+
+### Patch Changes
+
+- 5bf9962: allow to pass Extra date to environment
+- a76870d: signer protocols are specified via config
+- 06a88d7: fix signer
+- de97d9c: fix
+- 77c2ffd: fix
+- c841f17: use hard deps
+- 966bab6: fixes
+- c03812e: Extra type generic
+- 1148e1c: fix
+- 4d37f14: remove use of global, breakinmg change
+
 ## 0.11.22-testing.9
 
 ### Patch Changes

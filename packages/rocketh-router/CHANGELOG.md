@@ -1,5 +1,29 @@
 # @rocketh/router
 
+## 0.11.25
+
+### Patch Changes
+
+- 5bf9962: allow to pass Extra date to environment
+- a76870d: signer protocols are specified via config
+- de97d9c: fix
+- 77c2ffd: fix
+- c841f17: use hard deps
+- 966bab6: fixes
+- c03812e: Extra type generic
+- 1148e1c: fix
+- 4d37f14: remove use of global, breakinmg change
+- Updated dependencies [5bf9962]
+- Updated dependencies [a76870d]
+- Updated dependencies [de97d9c]
+- Updated dependencies [77c2ffd]
+- Updated dependencies [c841f17]
+- Updated dependencies [966bab6]
+- Updated dependencies [c03812e]
+- Updated dependencies [1148e1c]
+- Updated dependencies [4d37f14]
+  - @rocketh/deploy@0.11.22
+
 ## 0.11.25-testing.8
 
 ### Patch Changes
