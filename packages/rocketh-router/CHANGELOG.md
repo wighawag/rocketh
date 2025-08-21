@@ -1,5 +1,16 @@
 # @rocketh/router
 
+## 0.12.0
+
+### Minor Changes
+
+- switch to setup function
+
+### Patch Changes
+
+- Updated dependencies
+  - @rocketh/deploy@0.12.0
+
 ## 0.11.25
 
 ### Patch Changes

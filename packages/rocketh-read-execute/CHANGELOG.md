@@ -1,5 +1,11 @@
 # @rocketh/deploy
 
+## 0.12.0
+
+### Minor Changes
+
+- switch to setup function
+
 ## 0.11.23
 
 ### Patch Changes

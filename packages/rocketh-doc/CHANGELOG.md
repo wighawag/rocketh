@@ -1,5 +1,16 @@
 # @rocketh/doc
 
+## 1.0.0
+
+### Minor Changes
+
+- switch to setup function
+
+### Patch Changes
+
+- Updated dependencies
+  - rocketh@0.12.0
+
 ## 0.11.22
 
 ### Patch Changes
