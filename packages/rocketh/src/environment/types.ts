@@ -1,3 +1,4 @@
+import type {Abi, AbiConstructor, AbiError, AbiEvent, AbiFallback, AbiFunction, AbiReceive, Narrow} from 'abitype';
 import {
 	EIP1193Account,
 	EIP1193DATA,
@@ -7,15 +8,17 @@ import {
 	EIP1193TransactionReceipt,
 	EIP1193WalletProvider,
 } from 'eip-1193';
-import {Abi, Narrow, AbiError, AbiEvent, AbiConstructor, AbiFallback, AbiFunction, AbiReceive} from 'abitype';
-import type {Address, DeployContractParameters} from 'viem';
-import type {Chain} from 'viem';
+import type {Address, Chain, DeployContractParameters} from 'viem';
+import {
+	DeterministicDeploymentInfo,
+	type Create2DeterministicDeploymentInfo,
+	type Create3DeterministicDeploymentInfo,
+} from '../executor/index.js';
 import {ProgressIndicator} from '../internal/logging.js';
 import {TransactionHashTracker} from './providers/TransactionHashTracker.js';
-import {DeterministicDeploymentInfo} from '../executor/index.js';
 import {SignerProtocolFunction} from './index.js';
 
-export type {Abi, AbiError, AbiEvent, AbiConstructor, AbiFallback, AbiFunction, AbiReceive};
+export type {Abi, AbiConstructor, AbiError, AbiEvent, AbiFallback, AbiFunction, AbiReceive};
 export type Libraries = {readonly [libraryName: string]: EIP1193Account};
 
 export type GasEstimate = 'infinite' | `${number}`;
@@ -294,7 +297,10 @@ export type ResolvedConfig<
 		name: string;
 		tags: string[];
 		fork?: boolean;
-		deterministicDeployment: DeterministicDeploymentInfo;
+		deterministicDeployment: {
+			create2: Create2DeterministicDeploymentInfo;
+			create3: Create3DeterministicDeploymentInfo;
+		};
 		nodeUrl?: string;
 		publicInfo?: {
 			name: string;

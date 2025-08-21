@@ -1,5 +1,11 @@
 # @rocketh/deploy
 
+## 0.12.1
+
+### Patch Changes
+
+- Merge branch 'feat/create3-support'
+
 ## 0.12.0
 
 ### Minor Changes
