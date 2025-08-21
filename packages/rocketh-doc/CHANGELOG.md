@@ -1,5 +1,11 @@
 # @rocketh/doc
 
+## 0.12.0
+
+### Minor Changes
+
+- fix version
+
 ## 1.0.0
 
 ### Minor Changes

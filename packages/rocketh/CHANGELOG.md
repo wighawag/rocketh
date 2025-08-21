@@ -205,38 +205,6 @@
 
 - release as v0.11.1
 
-## 1.0.0-next.5
-
-### Patch Changes
-
-- 9a9b3c4: fix compatibility with hardhat-deploy v1 .chainId file
-
-## 1.0.0-next.4
-
-### Patch Changes
-
-- add @rocketh/read-execute
-
-## 1.0.0-next.3
-
-### Patch Changes
-
-- fix dist path
-
-## 1.0.0-next.2
-
-### Patch Changes
-
-- update deps
-
-## 1.0.0-next.1
-
-### Patch Changes
-
-- fixes
-
-## 1.0.0-next.0
-
 ### Major Changes
 
 - first alpha release
