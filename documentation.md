@@ -28,7 +28,7 @@ Key features of hardhat-deploy include:
 
 ### Relationship Between rocketh and hardhat-deploy
 
-hardhat-deploy v2 is a complete rewrite that uses rocketh under the hood. While rocketh provides the core deployment functionality, hardhat-deploy integrates this with the Hardhat environment, making it accessible through Hardhat tasks and configuration.
+hardhat-deploy v2 is a complete rewrite that uses rocketh under the hood. While rocketh provides the core deployment functionality, hardhat-deploy integrates it with the Hardhat environment, making it accessible through Hardhat tasks and configuration.
 
 rocketh is designed to be modular, with core functionality provided by separate packages like `@rocketh/deploy`, `@rocketh/proxy`, and `@rocketh/diamond`. hardhat-deploy wires these modules together and adds Hardhat-specific functionality.
 
@@ -46,7 +46,7 @@ rocketh follows a modular architecture with several key components:
 6. **Verifier Package (`@rocketh/verifier`)**: Provides contract verification capabilities for Etherscan, Sourcify, etc.
 7. **Doc Package (`@rocketh/doc`)**: Generates documentation for deployed contracts.
 
-Each package extends the core environment with additional functionality, allowing you to use only what you need.
+Each package extends the core with additional functionality, allowing you to use only what you need.
 
 ### hardhat-deploy Architecture
 
@@ -105,18 +105,24 @@ export const config = {
 // ------------------------------------------------------------------------------------------------
 // We regroup all what is needed for the deploy scripts
 // so that they just need to import this file
-import '@rocketh/deploy'; // provides the deploy function
-import '@rocketh/read-execute'; // provides read, execute functions
+
+// we add here the extension we need, so that they are available in the deploy scripts
+// extensions are simply function that accept as their first argument the Environment
+// by passing them to the setup function (see below) you get to access them trhough the environment object with type-safety
+import * as deployFunctions from '@rocketh/deploy'; // this one provide a deploy function
+import * as readExecuteFunctions from '@rocketh/read-execute'; // this one provide read,execute functions
+const functions = {...deployFunctions, ...readExecuteFunctions};
 // ------------------------------------------------------------------------------------------------
 // we re-export the artifacts, so they are easily available from the alias
 import artifacts from './generated/artifacts.js';
 export {artifacts};
 // ------------------------------------------------------------------------------------------------
-// while not necessary, we also converted the execution function type to know about the named accounts
-// this way you get type safe accounts
-import {execute as _execute, loadAndExecuteDeployments, type NamedAccountExecuteFunction} from 'rocketh';
-const execute = _execute as NamedAccountExecuteFunction<typeof config.accounts>;
-export {execute, loadAndExecuteDeployments};
+// we then create the deployScript function taht we use in our deploy script, you can call it whatever you want
+import {setup, loadAndExecuteDeployments} from 'rocketh';
+// the setup function can take functions, accounts and data and will ensure you have type-safety 
+const deployScript = setup<typeof functions, typeof config.accounts, typeof config.data>(functions);
+// we also export loadAndExecuteDeployments for tests
+export {loadAndExecuteDeployments, deployScript};
 ```
 
 2. **Update your `tsconfig.json` to add the `@rocketh` alias**:
@@ -199,9 +205,9 @@ The environment object is passed to each deploy function and contains:
 The `deploy` function from `@rocketh/deploy` is used to deploy contracts:
 
 ```typescript
-import {execute, artifacts} from '@rocketh';
+import {deployScript, artifacts} from '@rocketh';
 
-export default execute(
+export default deployScript(
 	async ({deploy, namedAccounts}) => {
 		const {deployer} = namedAccounts;
 
@@ -220,9 +226,9 @@ export default execute(
 The `deployViaProxy` function from `@rocketh/proxy` allows you to deploy upgradeable contracts:
 
 ```typescript
-import {execute, artifacts} from '@rocketh';
+import {deployScript, artifacts} from '@rocketh';
 
-export default execute(
+export default deployScript(
 	async ({deployViaProxy, namedAccounts}) => {
 		const {deployer, admin} = namedAccounts;
 
@@ -252,9 +258,9 @@ export default execute(
 The `diamond` function from `@rocketh/diamond` allows you to deploy contracts using the Diamond pattern:
 
 ```typescript
-import {execute, artifacts} from '@rocketh';
+import {deployScript, artifacts} from '@rocketh';
 
-export default execute(
+export default deployScript(
 	async ({diamond, namedAccounts}) => {
 		const {deployer, admin} = namedAccounts;
 
@@ -291,9 +297,9 @@ export default execute(
 rocketh supports linking libraries at deployment time:
 
 ```typescript
-import {execute, artifacts} from '@rocketh';
+import {deployScript, artifacts} from '@rocketh';
 
-export default execute(
+export default deployScript(
 	async ({deploy, namedAccounts}) => {
 		const {deployer} = namedAccounts;
 
@@ -327,9 +333,9 @@ export default execute(
 rocketh supports deterministic deployments using CREATE2:
 
 ```typescript
-import {execute, artifacts} from '@rocketh';
+import {deployScript, artifacts} from '@rocketh';
 
-export default execute(
+export default deployScript(
 	async ({deploy, namedAccounts}) => {
 		const {deployer} = namedAccounts;
 
@@ -404,9 +410,9 @@ npx rocketh-doc
 ### Basic Deployment
 
 ```typescript
-import {execute, artifacts} from '@rocketh';
+import {deployScript, artifacts} from '@rocketh';
 
-export default execute(
+export default deployScript(
 	async ({deploy, namedAccounts}) => {
 		const {deployer} = namedAccounts;
 
@@ -423,9 +429,9 @@ export default execute(
 ### Proxy Deployment
 
 ```typescript
-import {execute, artifacts} from '@rocketh';
+import {deployScript, artifacts} from '@rocketh';
 
-export default execute(
+export default deployScript(
 	async ({deployViaProxy, namedAccounts}) => {
 		const {deployer, admin} = namedAccounts;
 
@@ -448,9 +454,9 @@ export default execute(
 ### Diamond Deployment
 
 ```typescript
-import {execute, artifacts} from '@rocketh';
+import {deployScript, artifacts} from '@rocketh';
 
-export default execute(
+export default deployScript(
 	async ({diamond, namedAccounts}) => {
 		const {deployer, admin} = namedAccounts;
 
@@ -485,9 +491,9 @@ export default execute(
 ### Deployment with Dependencies
 
 ```typescript
-import {execute, artifacts} from '@rocketh';
+import {deployScript, artifacts} from '@rocketh';
 
-export default execute(
+export default deployScript(
 	async ({deploy, namedAccounts}) => {
 		const {deployer} = namedAccounts;
 
@@ -501,9 +507,9 @@ export default execute(
 );
 
 // In another file
-import {execute, artifacts} from '@rocketh';
+import {deployScript, artifacts} from '@rocketh';
 
-export default execute(
+export default deployScript(
 	async ({deploy, get, namedAccounts}) => {
 		const {deployer} = namedAccounts;
 		const token = await get('Token');
@@ -542,9 +548,9 @@ In v2:
 
 ```typescript
 // deploy/00_deploy_my_contract.ts
-import {execute, artifacts} from '@rocketh';
+import {deployScript, artifacts} from '@rocketh';
 
-export default execute(
+export default deployScript(
 	async ({deploy, namedAccounts}) => {
 		const {deployer} = namedAccounts;
 

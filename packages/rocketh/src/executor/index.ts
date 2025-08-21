@@ -32,9 +32,9 @@ import {tsImport} from 'tsx/esm/api';
  *   verify: (env: Environment, address: string) => Promise<boolean>
  * };
  *
- * const execute = setup(functions);
+ * const deployScript = setup(functions);
  *
- * export default execute(async (env, args) => {
+ * export default deployScript(async (env, args) => {
  *   // env now includes both the original environment AND the curried functions
  *   await env.deploy('MyContract', []); // No need to pass env
  *   await env.verify('0x123...'); // No need to pass env

@@ -33,10 +33,10 @@ const utilityFunctions = {
 };
 
 // Create the enhanced execute function using setup
-const execute = setup(utilityFunctions);
+const deployScript = setup(utilityFunctions);
 
 // Test the enhanced execute function
-const testScript = execute(
+const testScript = deployScript(
 	async (env, args) => {
 		// Type test: env should have both original Environment properties AND curried functions
 
@@ -105,10 +105,10 @@ export const exampleUsage = () => {
 	};
 
 	// Create the enhanced execute function
-	const execute = setup(myFunctions);
+	const deployScript = setup(myFunctions);
 
 	// Export your deployment script
-	return execute(
+	return deployScript(
 		async (env, args) => {
 			// Now you can use the functions without passing env each time
 			const tokenAddress = await env.deployERC20('MyToken', 'MTK');
