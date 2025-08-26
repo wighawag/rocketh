@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.13.0
+
+### Minor Changes
+
+- use env function for extended functions
+
 ## 0.12.1
 
 ### Patch Changes

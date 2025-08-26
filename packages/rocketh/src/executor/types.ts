@@ -35,17 +35,16 @@ export type ScriptCallback<
 > = (env: Environment<NamedAccounts, Data, Deployments, Extra>) => Promise<void>;
 
 /**
- * Utility type to remove the first parameter from a function type
+ * Utility type to extract the return function from a higher-order function
+ * For functions of type (firstParam: T) => (...args: any[]) => V
  */
-type RemoveFirstParameter<T> = T extends (first: any, ...rest: infer R) => infer Return
-	? (...args: R) => Return
-	: never;
+export type ExtractReturnFunction<T> = T extends (first: any) => infer Return ? Return : never;
 
 /**
- * Utility type to transform an object of functions by removing their first parameter
+ * Utility type to transform an object of higher-order functions by extracting their return function types
  */
-type CurriedFunctions<T> = {
-	[K in keyof T]: RemoveFirstParameter<T[K]>;
+export type CurriedFunctions<T> = {
+	[K in keyof T]: ExtractReturnFunction<T[K]>;
 };
 
 /**

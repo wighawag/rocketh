@@ -6,21 +6,29 @@ const mockEnv = {} as Environment;
 
 // Example functions that take environment as first parameter
 const exampleFunctions = {
-	deploy: (env: Environment, contractName: string, args: any[]): Promise<void> => {
-		return Promise.resolve();
-	},
+	deploy:
+		(env: Environment) =>
+		async (contractName: string, args: any[]): Promise<void> => {
+			return Promise.resolve();
+		},
 
-	verify: (env: Environment, address: string): Promise<boolean> => {
-		return Promise.resolve(true);
-	},
+	verify:
+		(env: Environment) =>
+		async (address: string): Promise<boolean> => {
+			return Promise.resolve(true);
+		},
 
-	getBalance: (env: Environment, address: string): Promise<bigint> => {
-		return Promise.resolve(BigInt(0));
-	},
+	getBalance:
+		(env: Environment) =>
+		async (address: string): Promise<bigint> => {
+			return Promise.resolve(BigInt(0));
+		},
 
-	syncFunction: (env: Environment, value: number): number => {
-		return value * 2;
-	},
+	syncFunction:
+		(env: Environment) =>
+		(value: number): number => {
+			return value * 2;
+		},
 };
 
 // Test the currying function

@@ -31,8 +31,8 @@ const tsImport = (path: string, opts: any) => (typeof Bun !== 'undefined' ? impo
  * @example
  * ```typescript
  * const functions = {
- *   deploy: (env: Environment, contractName: string, args: any[]) => Promise<void>,
- *   verify: (env: Environment, address: string) => Promise<boolean>
+ *   deploy: (env: Environment) => ((contractName: string, args: any[]) => Promise<void>),
+ *   verify: (env: Environment) => ((address: string) => Promise<boolean>)
  * };
  *
  * const deployScript = setup(functions);
@@ -49,7 +49,7 @@ const tsImport = (path: string, opts: any) => (typeof Bun !== 'undefined' ? impo
  * ```
  */
 export function setup<
-	Functions extends Record<string, (env: Environment<any, any, any>, ...args: any[]) => any> = {},
+	Functions extends Record<string, (env: Environment<any, any, any>) => (...args: any[]) => any> = {},
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 	Deployments extends UnknownDeployments = UnknownDeployments,

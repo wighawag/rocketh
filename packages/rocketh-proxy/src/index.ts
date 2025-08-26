@@ -46,368 +46,378 @@ export type ProxyDeployOptions = Omit<DeployOptions, 'skipIfAlreadyDeployed' | '
 	//   };
 };
 
-export type ImplementationDeployer<TAbi extends Abi, TChain extends Chain> = (
+export type ImplementationDeployer<TAbi extends Abi> = (
 	name: string,
 	args: Omit<DeploymentConstruction<TAbi>, 'artifact'>
 ) => Promise<Deployment<TAbi>>;
 
 // TODO omit nonce ? // TODO omit chain ? same for rocketh-deploy
-export type ProxyEnhancedDeploymentConstruction<TAbi extends Abi, TChain extends Chain = Chain> = Omit<
-	DeploymentConstruction<TAbi>,
-	'artifact'
-> & {
-	artifact: Artifact<TAbi> | ImplementationDeployer<TAbi, TChain>;
+export type ProxyEnhancedDeploymentConstruction<TAbi extends Abi> = Omit<DeploymentConstruction<TAbi>, 'artifact'> & {
+	artifact: Artifact<TAbi> | ImplementationDeployer<TAbi>;
 };
 
-export type ProxyEnhancedDeploymentConstructionWithoutFunction<TAbi extends Abi, TChain extends Chain = Chain> = Omit<
+export type ProxyEnhancedDeploymentConstructionWithoutFunction<TAbi extends Abi> = Omit<
 	DeploymentConstruction<TAbi>,
 	'artifact'
 > & {
 	artifact: Artifact<TAbi>;
 };
 
-export type DeployViaProxyFunction = <TAbi extends Abi, TChain extends Chain = Chain>(
+export type DeployViaProxyFunction = <TAbi extends Abi>(
 	name: string,
-	params: ProxyEnhancedDeploymentConstruction<TAbi, TChain>,
+	params: ProxyEnhancedDeploymentConstruction<TAbi>,
 	options?: ProxyDeployOptions
 ) => Promise<Deployment<TAbi>>;
 
-export async function deployViaProxy<TAbi extends Abi, TChain extends Chain = Chain>(
-	env: Environment,
+export function deployViaProxy(
+	env: Environment
+): <TAbi extends Abi>(
 	name: string,
-	params: ProxyEnhancedDeploymentConstruction<TAbi, TChain>,
+	params: ProxyEnhancedDeploymentConstruction<TAbi>,
 	options?: ProxyDeployOptions
-): Promise<Deployment<TAbi>> {
-	const proxyName = `${name}_Proxy`;
-	const implementationName = `${name}_Implementation`;
+) => Promise<Deployment<TAbi>> {
+	const _deploy = deploy(env);
+	const _read = read(env);
+	const _execute = execute(env);
+	return async <TAbi extends Abi>(
+		name: string,
+		params: ProxyEnhancedDeploymentConstruction<TAbi>,
+		options?: ProxyDeployOptions
+	) => {
+		const proxyName = `${name}_Proxy`;
+		const implementationName = `${name}_Implementation`;
 
-	let existingDeployment = env.getOrNull<TAbi>(name);
+		let existingDeployment = env.getOrNull<TAbi>(name);
 
-	if (options?.proxyDisabled) {
-		if (existingDeployment) {
-			throw new Error(`cannot deploy ${name} with proxyDisabled, already deployed`);
-		} else {
-			if (typeof params.artifact === 'function') {
-				return params.artifact(name, params);
+		if (options?.proxyDisabled) {
+			if (existingDeployment) {
+				throw new Error(`cannot deploy ${name} with proxyDisabled, already deployed`);
 			} else {
-				// TODO any ?
-				return deploy<TAbi>(env, name, params as any, options);
+				if (typeof params.artifact === 'function') {
+					return params.artifact(name, params);
+				} else {
+					// TODO any ?
+					return _deploy<TAbi>(name, params as any, options);
+				}
 			}
 		}
-	}
-	const deployResult = checkUpgradeIndex(existingDeployment, options?.upgradeIndex);
-	if (deployResult) {
-		return deployResult;
-	}
+		const deployResult = checkUpgradeIndex(existingDeployment, options?.upgradeIndex);
+		if (deployResult) {
+			return deployResult;
+		}
 
-	const {account, artifact, args, ...viemArgs} = params;
-	let address: `0x${string}`;
+		const {account, artifact, args, ...viemArgs} = params;
+		let address: `0x${string}`;
 
-	if (!account) {
-		throw new Error(`no account specified`);
-	}
-	if (account.startsWith('0x')) {
-		address = account as `0x${string}`;
-	} else {
-		if (env.namedAccounts) {
-			address = env.namedAccounts[account];
-			if (!address) {
-				throw new Error(`no address for ${account}`);
-			}
+		if (!account) {
+			throw new Error(`no account specified`);
+		}
+		if (account.startsWith('0x')) {
+			address = account as `0x${string}`;
 		} else {
-			throw new Error(`no accounts setup, cannot get address for ${account}`);
+			if (env.namedAccounts) {
+				address = env.namedAccounts[account];
+				if (!address) {
+					throw new Error(`no address for ${account}`);
+				}
+			} else {
+				throw new Error(`no accounts setup, cannot get address for ${account}`);
+			}
 		}
-	}
 
-	let viaAdminContract: {artifactName: 'DefaultProxyAdmin'; proxyAdminName: string} | undefined;
+		let viaAdminContract: {artifactName: 'DefaultProxyAdmin'; proxyAdminName: string} | undefined;
 
-	let proxyArgsTemplate = ['{implementation}', '{admin}', '{data}'];
-	let proxyArtifact: Artifact = ERC173Proxy;
-	if (options?.proxyContract) {
-		const proxyContractDefinition =
-			typeof options.proxyContract === 'string' ? options.proxyContract : options.proxyContract.type;
+		let proxyArgsTemplate = ['{implementation}', '{admin}', '{data}'];
+		let proxyArtifact: Artifact = ERC173Proxy;
+		if (options?.proxyContract) {
+			const proxyContractDefinition =
+				typeof options.proxyContract === 'string' ? options.proxyContract : options.proxyContract.type;
 
-		switch (proxyContractDefinition) {
-			case 'ERC173Proxy':
-				proxyArtifact = ERC173Proxy;
-				proxyArgsTemplate = ['{implementation}', '{admin}', '{data}'];
-				break;
-			case 'ERC173ProxyWithReceive':
-				proxyArtifact = ERC173ProxyWithReceive;
-				proxyArgsTemplate = ['{implementation}', '{admin}', '{data}'];
-				break;
-			case 'UUPS':
-				proxyArtifact = ERC1967Proxy;
-				proxyArgsTemplate = ['{implementation}', '{data}'];
-				break;
-			case 'SharedAdminOpenZeppelinTransparentProxy':
-				proxyArtifact = TransparentUpgradeableProxy;
-				proxyArgsTemplate = ['{implementation}', '{admin}', '{data}'];
-				viaAdminContract = {
-					artifactName: 'DefaultProxyAdmin',
-					proxyAdminName:
-						(typeof options.proxyContract === 'object' && options.proxyContract.proxyAdminName) || 'DefaultProxyAdmin',
-				};
-				break;
-			case 'SharedAdminOptimizedTransparentProxy':
-				proxyArtifact = OptimizedTransparentUpgradeableProxy;
-				proxyArgsTemplate = ['{implementation}', '{admin}', '{data}'];
-				viaAdminContract = {
-					artifactName: 'DefaultProxyAdmin',
-					proxyAdminName:
-						(typeof options.proxyContract === 'object' && options.proxyContract.proxyAdminName) || 'DefaultProxyAdmin',
-				};
-				break;
-			default:
-				throw new Error(`unknown proxy contract ${options.proxyContract}`);
+			switch (proxyContractDefinition) {
+				case 'ERC173Proxy':
+					proxyArtifact = ERC173Proxy;
+					proxyArgsTemplate = ['{implementation}', '{admin}', '{data}'];
+					break;
+				case 'ERC173ProxyWithReceive':
+					proxyArtifact = ERC173ProxyWithReceive;
+					proxyArgsTemplate = ['{implementation}', '{admin}', '{data}'];
+					break;
+				case 'UUPS':
+					proxyArtifact = ERC1967Proxy;
+					proxyArgsTemplate = ['{implementation}', '{data}'];
+					break;
+				case 'SharedAdminOpenZeppelinTransparentProxy':
+					proxyArtifact = TransparentUpgradeableProxy;
+					proxyArgsTemplate = ['{implementation}', '{admin}', '{data}'];
+					viaAdminContract = {
+						artifactName: 'DefaultProxyAdmin',
+						proxyAdminName:
+							(typeof options.proxyContract === 'object' && options.proxyContract.proxyAdminName) ||
+							'DefaultProxyAdmin',
+					};
+					break;
+				case 'SharedAdminOptimizedTransparentProxy':
+					proxyArtifact = OptimizedTransparentUpgradeableProxy;
+					proxyArgsTemplate = ['{implementation}', '{admin}', '{data}'];
+					viaAdminContract = {
+						artifactName: 'DefaultProxyAdmin',
+						proxyAdminName:
+							(typeof options.proxyContract === 'object' && options.proxyContract.proxyAdminName) ||
+							'DefaultProxyAdmin',
+					};
+					break;
+				default:
+					throw new Error(`unknown proxy contract ${options.proxyContract}`);
+			}
 		}
-	}
 
-	const implementationDeployment =
-		typeof params.artifact === 'function'
-			? await params.artifact(implementationName, {...params})
-			: await deploy(
-					env,
-					implementationName,
+		const implementationDeployment =
+			typeof params.artifact === 'function'
+				? await params.artifact(implementationName, {...params})
+				: await _deploy(
+						implementationName,
+						{
+							...viemArgs,
+							args,
+							artifact,
+							account: address,
+						} as DeploymentConstruction<TAbi>,
+						{alwaysOverride: true, deterministic: true, libraries: options?.libraries}
+				  );
+
+		logger.info(`implementation at ${implementationDeployment.address}`, `${implementationName}`);
+
+		const {
+			address: implementationAddress,
+			argsData: implementationArgsData,
+			transaction,
+			newlyDeployed: implementationNewlyDeployed,
+			...artifactFromImplementationDeployment
+		} = implementationDeployment;
+
+		// TODO throw specific error if artifact not found
+		const artifactToUse = artifactFromImplementationDeployment;
+
+		logger.info(`existingDeployment at ${existingDeployment?.address}`);
+
+		const expectedOwner = options?.owner || address;
+		let proxyAdmin = expectedOwner;
+
+		let proxyAdminContract:
+			| {
+					deployment: Deployment<typeof DefaultProxyAdmin.abi>;
+					owner: `0x${string}`;
+			  }
+			| undefined;
+		if (viaAdminContract?.artifactName === 'DefaultProxyAdmin') {
+			const proxyAdminOwner = expectedOwner;
+			const proxyAdminName = viaAdminContract.proxyAdminName;
+			let proxyAdminDeployed: Deployment<typeof DefaultProxyAdmin.abi> | null = env.getOrNull(proxyAdminName);
+
+			if (!proxyAdminDeployed) {
+				const proxyAdminDeployment = await _deploy(
+					proxyAdminName,
 					{
-						...viemArgs,
-						args,
-						artifact,
-						account: address,
-					} as DeploymentConstruction<TAbi>,
-					{alwaysOverride: true, deterministic: true, libraries: options?.libraries}
-			  );
+						...params,
+						artifact: DefaultProxyAdmin,
+						args: [proxyAdminOwner],
+					},
+					{
+						deterministic: options?.deterministic,
+					}
+				);
+				proxyAdminDeployed = proxyAdminDeployment;
+			}
 
-	logger.info(`implementation at ${implementationDeployment.address}`, `${implementationName}`);
+			const currentProxyAdminOwner = await _read(proxyAdminDeployed, {functionName: 'owner'});
 
-	const {
-		address: implementationAddress,
-		argsData: implementationArgsData,
-		transaction,
-		newlyDeployed: implementationNewlyDeployed,
-		...artifactFromImplementationDeployment
-	} = implementationDeployment;
+			if (currentProxyAdminOwner.toLowerCase() !== expectedOwner.toLowerCase()) {
+				throw new Error(`To change owner/admin, you need to call transferOwnership on ${proxyAdminName}`);
+			}
+			if (currentProxyAdminOwner === zeroAddress) {
+				throw new Error(`The Proxy Admin (${proxyAdminName}) belongs to no-one. The Proxy cannot be upgraded anymore`);
+			}
+			proxyAdmin = proxyAdminDeployed.address;
 
-	// TODO throw specific error if artifact not found
-	const artifactToUse = artifactFromImplementationDeployment;
+			proxyAdminContract = {
+				deployment: proxyAdminDeployed,
+				owner: currentProxyAdminOwner.toLowerCase() as `0x${string}`,
+			};
+		}
 
-	logger.info(`existingDeployment at ${existingDeployment?.address}`);
+		let postUpgradeCalldata: `0x${string}` | undefined;
+		if (options?.execute) {
+			const method: AbiFunction | undefined = artifactToUse.abi.find(
+				(v) => v.type === 'function' && v.name === options.execute
+			) as AbiFunction;
+			if (method) {
+				postUpgradeCalldata = encodeFunctionData({
+					...viemArgs,
+					args: args as unknown[],
+					account: address,
+					abi: [method],
+					functionName: method.name,
+				});
+			} else {
+				throw new Error(`Method ${options.execute} not found in artifact ${artifactToUse.abi}`);
+			}
+		}
+		// let preUpgradeCalldata: `0x${string}` | undefined;
+		// if (options?.preExecute) {
+		// 	const method: AbiFunction | undefined = artifactToUse.abi.find(
+		// 		(v) => v.type === 'function' && v.name === options.preExecute
+		// 	) as AbiFunction;
+		// 	if (method) {
+		// 		preUpgradeCalldata = encodeFunctionData({...viemArgs, account, abi: [method], functionName: method.name});
+		// 	}
+		// }
 
-	const expectedOwner = options?.owner || address;
-	let proxyAdmin = expectedOwner;
-
-	let proxyAdminContract:
-		| {
-				deployment: Deployment<typeof DefaultProxyAdmin.abi>;
-				owner: `0x${string}`;
-		  }
-		| undefined;
-	if (viaAdminContract?.artifactName === 'DefaultProxyAdmin') {
-		const proxyAdminOwner = expectedOwner;
-		const proxyAdminName = viaAdminContract.proxyAdminName;
-		let proxyAdminDeployed: Deployment<typeof DefaultProxyAdmin.abi> | null = env.getOrNull(proxyAdminName);
-
-		if (!proxyAdminDeployed) {
-			const proxyAdminDeployment = await deploy(
-				env,
-				proxyAdminName,
+		if (!existingDeployment) {
+			const {newlyDeployed, ...proxy} = await _deploy<typeof proxyArtifact.abi>(
+				proxyName,
 				{
 					...params,
-					artifact: DefaultProxyAdmin,
-					args: [proxyAdminOwner],
+					artifact: proxyArtifact,
+					args: replaceTemplateArgs(proxyArgsTemplate, {
+						implementationAddress: implementationDeployment.address,
+						proxyAdmin: proxyAdmin,
+						data: postUpgradeCalldata ? postUpgradeCalldata : '0x',
+					}),
 				},
 				{
+					skipIfAlreadyDeployed: true,
 					deterministic: options?.deterministic,
 				}
 			);
-			proxyAdminDeployed = proxyAdminDeployment;
-		}
 
-		const currentProxyAdminOwner = await read(env, proxyAdminDeployed, {functionName: 'owner'});
+			logger.info(`proxy deployed at ${proxy.address}`);
 
-		if (currentProxyAdminOwner.toLowerCase() !== expectedOwner.toLowerCase()) {
-			throw new Error(`To change owner/admin, you need to call transferOwnership on ${proxyAdminName}`);
-		}
-		if (currentProxyAdminOwner === zeroAddress) {
-			throw new Error(`The Proxy Admin (${proxyAdminName}) belongs to no-one. The Proxy cannot be upgraded anymore`);
-		}
-		proxyAdmin = proxyAdminDeployed.address;
-
-		proxyAdminContract = {
-			deployment: proxyAdminDeployed,
-			owner: currentProxyAdminOwner.toLowerCase() as `0x${string}`,
-		};
-	}
-
-	let postUpgradeCalldata: `0x${string}` | undefined;
-	if (options?.execute) {
-		const method: AbiFunction | undefined = artifactToUse.abi.find(
-			(v) => v.type === 'function' && v.name === options.execute
-		) as AbiFunction;
-		if (method) {
-			postUpgradeCalldata = encodeFunctionData({
-				...viemArgs,
-				args: args as unknown[],
-				account: address,
-				abi: [method],
-				functionName: method.name,
+			existingDeployment = await env.save<TAbi>(name, {
+				...proxy,
+				...artifactToUse,
+				linkedData: options?.linkedData,
 			});
+
+			logger.info(`saving as ${name}`);
 		} else {
-			throw new Error(`Method ${options.execute} not found in artifact ${artifactToUse.abi}`);
-		}
-	}
-	// let preUpgradeCalldata: `0x${string}` | undefined;
-	// if (options?.preExecute) {
-	// 	const method: AbiFunction | undefined = artifactToUse.abi.find(
-	// 		(v) => v.type === 'function' && v.name === options.preExecute
-	// 	) as AbiFunction;
-	// 	if (method) {
-	// 		preUpgradeCalldata = encodeFunctionData({...viemArgs, account, abi: [method], functionName: method.name});
-	// 	}
-	// }
-
-	if (!existingDeployment) {
-		const {newlyDeployed, ...proxy} = await deploy<typeof proxyArtifact.abi>(
-			env,
-			proxyName,
-			{
-				...params,
-				artifact: proxyArtifact,
-				args: replaceTemplateArgs(proxyArgsTemplate, {
-					implementationAddress: implementationDeployment.address,
-					proxyAdmin: proxyAdmin,
-					data: postUpgradeCalldata ? postUpgradeCalldata : '0x',
-				}),
-			},
-			{
-				skipIfAlreadyDeployed: true,
-				deterministic: options?.deterministic,
+			const proxyDeployment = env.getOrNull<typeof proxyArtifact.abi>(proxyName);
+			if (!proxyDeployment) {
+				throw new Error(`deployment for "${name}" exits but there is no proxy`);
 			}
-		);
 
-		logger.info(`proxy deployed at ${proxy.address}`);
-
-		existingDeployment = await env.save<TAbi>(name, {
-			...proxy,
-			...artifactToUse,
-			linkedData: options?.linkedData,
-		});
-
-		logger.info(`saving as ${name}`);
-	} else {
-		const proxyDeployment = env.getOrNull<typeof proxyArtifact.abi>(proxyName);
-		if (!proxyDeployment) {
-			throw new Error(`deployment for "${name}" exits but there is no proxy`);
-		}
-
-		const implementationSlotData = await env.network.provider.request({
-			method: 'eth_getStorageAt',
-			params: [proxyDeployment.address, '0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc', 'latest'],
-		});
-		const currentImplementationAddress = `0x${implementationSlotData.substr(-40)}`;
-
-		if (currentImplementationAddress.toLowerCase() !== implementationDeployment.address.toLowerCase()) {
-			logger.info(
-				`different implementation old: ${currentImplementationAddress} new: ${implementationDeployment.address}, upgrade...`
-			);
-
-			// let currentOwner: `0x${string}` | undefined;
-			// try {
-			// 	currentOwner = await env.read(proxyDeployment, {functionName: 'owner'});
-			// 	console.log({currentOwner});
-			// } catch {
-			// 	currentOwner = undefined;
-			// }
-			// if (!currentOwner) {
-			const ownerSlotData = await env.network.provider.request({
+			const implementationSlotData = await env.network.provider.request({
 				method: 'eth_getStorageAt',
 				params: [
 					proxyDeployment.address,
-					'0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103',
+					'0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc',
 					'latest',
 				],
 			});
-			let currentOwner = `0x${ownerSlotData.substr(-40)}`;
+			const currentImplementationAddress = `0x${implementationSlotData.substr(-40)}`;
 
-			if (currentOwner === zeroAddress) {
-				try {
-					const owner = await read(env, existingDeployment as any, {functionName: 'owner'});
-					currentOwner = (owner as string).toLowerCase() as `0x${string}`;
-				} catch (err) {
-					throw new Error(`could not get owner of UUPS Proxy, tried ERC-1967 and ERC-173`, {cause: err});
-				}
-				// } else {
-				// 	throw new Error(
-				// 		`as per ERC-1967, proxy owner is zero address. We only support ERC-1967 proxies for now, unless you used proxyContract:"UUPS"`
-				// 	);
+			if (currentImplementationAddress.toLowerCase() !== implementationDeployment.address.toLowerCase()) {
+				logger.info(
+					`different implementation old: ${currentImplementationAddress} new: ${implementationDeployment.address}, upgrade...`
+				);
+
+				// let currentOwner: `0x${string}` | undefined;
+				// try {
+				// 	currentOwner = await env.read(proxyDeployment, {functionName: 'owner'});
+				// 	console.log({currentOwner});
+				// } catch {
+				// 	currentOwner = undefined;
 				// }
-			}
+				// if (!currentOwner) {
+				const ownerSlotData = await env.network.provider.request({
+					method: 'eth_getStorageAt',
+					params: [
+						proxyDeployment.address,
+						'0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103',
+						'latest',
+					],
+				});
+				let currentOwner = `0x${ownerSlotData.substr(-40)}`;
 
-			// if (preUpgradeCalldata) {
-			// 	if (postUpgradeCalldata) {
-			// 		await env.execute(proxyDeployment, {
-			// 			account: address,
-			// 			functionName: 'callAndUpgradeToAndCall',
-			// 			args: [implementation.address, preUpgradeCalldata, postUpgradeCalldata],
-			// 			value: 0n, // TODO
-			// 		});
-			// 	} else {
-			// 		await env.execute(proxyDeployment, {
-			// 			account: address,
-			// 			functionName: 'callAndUpgradeToAndCall',
-			// 			args: [implementation.address, preUpgradeCalldata, '0x'],
-			// 			value: 0n, // TODO
-			// 		});
-			// 	}
-			// } else
-
-			const deploymentToUseForUpgrade = options?.proxyContract === 'UUPS' ? existingDeployment : proxyDeployment;
-
-			let useUpgradeToAndCall = !!postUpgradeCalldata;
-			if (!useUpgradeToAndCall) {
-				if (!deploymentToUseForUpgrade.abi.find((v) => v.type === 'function' && v.name === 'upgradeTo')) {
-					useUpgradeToAndCall = true;
+				if (currentOwner === zeroAddress) {
+					try {
+						const owner = await _read(existingDeployment as any, {functionName: 'owner'});
+						currentOwner = (owner as string).toLowerCase() as `0x${string}`;
+					} catch (err) {
+						throw new Error(`could not get owner of UUPS Proxy, tried ERC-1967 and ERC-173`, {cause: err});
+					}
+					// } else {
+					// 	throw new Error(
+					// 		`as per ERC-1967, proxy owner is zero address. We only support ERC-1967 proxies for now, unless you used proxyContract:"UUPS"`
+					// 	);
+					// }
 				}
-			}
 
-			if (proxyAdminContract) {
-				if (useUpgradeToAndCall) {
-					await execute(env, proxyAdminContract.deployment, {
-						account: proxyAdminContract.owner,
-						functionName: 'upgradeAndCall',
-						args: [proxyDeployment.address, implementationDeployment.address, postUpgradeCalldata || '0x'],
-						value: 0n, // TODO
-					});
+				// if (preUpgradeCalldata) {
+				// 	if (postUpgradeCalldata) {
+				// 		await env.execute(proxyDeployment, {
+				// 			account: address,
+				// 			functionName: 'callAndUpgradeToAndCall',
+				// 			args: [implementation.address, preUpgradeCalldata, postUpgradeCalldata],
+				// 			value: 0n, // TODO
+				// 		});
+				// 	} else {
+				// 		await env.execute(proxyDeployment, {
+				// 			account: address,
+				// 			functionName: 'callAndUpgradeToAndCall',
+				// 			args: [implementation.address, preUpgradeCalldata, '0x'],
+				// 			value: 0n, // TODO
+				// 		});
+				// 	}
+				// } else
+
+				const deploymentToUseForUpgrade = options?.proxyContract === 'UUPS' ? existingDeployment : proxyDeployment;
+
+				let useUpgradeToAndCall = !!postUpgradeCalldata;
+				if (!useUpgradeToAndCall) {
+					if (!deploymentToUseForUpgrade.abi.find((v) => v.type === 'function' && v.name === 'upgradeTo')) {
+						useUpgradeToAndCall = true;
+					}
+				}
+
+				if (proxyAdminContract) {
+					if (useUpgradeToAndCall) {
+						await _execute(proxyAdminContract.deployment, {
+							account: proxyAdminContract.owner,
+							functionName: 'upgradeAndCall',
+							args: [proxyDeployment.address, implementationDeployment.address, postUpgradeCalldata || '0x'],
+							value: 0n, // TODO
+						});
+					} else {
+						await _execute(proxyAdminContract.deployment, {
+							account: proxyAdminContract.owner,
+							functionName: 'upgrade',
+							args: [proxyDeployment.address, implementationDeployment.address],
+						});
+					}
 				} else {
-					await execute(env, proxyAdminContract.deployment, {
-						account: proxyAdminContract.owner,
-						functionName: 'upgrade',
-						args: [proxyDeployment.address, implementationDeployment.address],
-					});
-				}
-			} else {
-				if (useUpgradeToAndCall) {
-					await execute(env, deploymentToUseForUpgrade, {
-						account: currentOwner,
-						functionName: 'upgradeToAndCall',
-						args: [implementationDeployment.address, postUpgradeCalldata || '0x'],
-						value: 0n, // TODO
-					});
-				} else {
-					await execute(env, deploymentToUseForUpgrade, {
-						account: currentOwner,
-						functionName: 'upgradeTo',
-						args: [implementationDeployment.address],
-					});
+					if (useUpgradeToAndCall) {
+						await _execute(deploymentToUseForUpgrade, {
+							account: currentOwner,
+							functionName: 'upgradeToAndCall',
+							args: [implementationDeployment.address, postUpgradeCalldata || '0x'],
+							value: 0n, // TODO
+						});
+					} else {
+						await _execute(deploymentToUseForUpgrade, {
+							account: currentOwner,
+							functionName: 'upgradeTo',
+							args: [implementationDeployment.address],
+						});
+					}
 				}
 			}
+			existingDeployment = await env.save(name, {
+				...proxyDeployment,
+				...artifactToUse,
+				linkedData: options?.linkedData,
+			});
+			logger.info(`saving as ${name}`);
 		}
-		existingDeployment = await env.save(name, {
-			...proxyDeployment,
-			...artifactToUse,
-			linkedData: options?.linkedData,
-		});
-		logger.info(`saving as ${name}`);
-	}
-	return existingDeployment;
+		return existingDeployment;
+	};
 }

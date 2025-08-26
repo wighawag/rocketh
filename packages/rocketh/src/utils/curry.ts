@@ -4,20 +4,7 @@ import type {
 	UnresolvedNetworkSpecificData,
 	UnresolvedUnknownNamedAccounts,
 } from '../environment/types.js';
-
-/**
- * Utility type to remove the first parameter from a function type
- */
-type RemoveFirstParameter<T> = T extends (first: any, ...rest: infer R) => infer Return
-	? (...args: R) => Return
-	: never;
-
-/**
- * Utility type to transform an object of functions by removing their first parameter
- */
-type CurriedFunctions<T> = {
-	[K in keyof T]: RemoveFirstParameter<T[K]>;
-};
+import {CurriedFunctions} from '../executor/types.js';
 
 /**
  * Creates a curried version of functions that automatically inject an environment as the first parameter.
@@ -45,16 +32,16 @@ export function withEnvironment<
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 	Deployments extends UnknownDeployments = UnknownDeployments,
 	Extra extends Record<string, unknown> = Record<string, unknown>,
-	T extends Record<string, (env: Environment<NamedAccounts, Data, Deployments, Extra>, ...args: any[]) => any> = Record<
+	T extends Record<
 		string,
-		(env: Environment<NamedAccounts, Data, Deployments>, ...args: any[]) => any
-	>
+		(env: Environment<NamedAccounts, Data, Deployments, Extra>) => (...args: any[]) => any
+	> = Record<string, (env: Environment<NamedAccounts, Data, Deployments>) => (...args: any[]) => any>
 >(env: Environment<NamedAccounts, Data, Deployments, Extra>, functions: T): CurriedFunctions<T> {
 	const result = {} as CurriedFunctions<T>;
 
 	for (const [key, func] of Object.entries(functions)) {
 		// Create a new function that automatically passes the environment as the first argument
-		(result as any)[key] = (...args: any[]) => func(env, ...args);
+		(result as any)[key] = (...args: any[]) => func(env)(...args);
 	}
 
 	return result;

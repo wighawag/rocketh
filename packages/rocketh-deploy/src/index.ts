@@ -270,176 +270,178 @@ async function getCreate3Factory(env: Environment, signer: Signer, params: Facto
 	};
 }
 
-export async function deploy<TAbi extends Abi>(
-	env: Environment,
+export function deploy(env: Environment): <TAbi extends Abi>(
 	name: string, // '' allow to not save it
 	args: DeploymentConstruction<TAbi>,
 	options?: DeployOptions
-): Promise<DeployResult<TAbi>> {
-	const nameToDisplay = name || '<no name>';
-	const skipIfAlreadyDeployed = options && 'skipIfAlreadyDeployed' in options && options.skipIfAlreadyDeployed;
-	const allwaysOverride = options && 'allwaysOverride' in options && options.allwaysOverride;
+) => Promise<DeployResult<TAbi>> {
+	return async <TAbi extends Abi>(name: string, args: DeploymentConstruction<TAbi>, options?: DeployOptions) => {
+		const nameToDisplay = name || '<no name>';
+		const skipIfAlreadyDeployed = options && 'skipIfAlreadyDeployed' in options && options.skipIfAlreadyDeployed;
+		const allwaysOverride = options && 'allwaysOverride' in options && options.allwaysOverride;
 
-	if (allwaysOverride && skipIfAlreadyDeployed) {
-		throw new Error(`conflicting options: "allwaysOverride" and "skipIfAlreadyDeployed"`);
-	}
-
-	const existingDeployment = name && env.getOrNull(name);
-	if (existingDeployment && skipIfAlreadyDeployed) {
-		logger.info(
-			`deployment for ${nameToDisplay} at ${existingDeployment.address}, skipIfAlreadyDeployed: true => we skip`
-		);
-		return {...(existingDeployment as Deployment<TAbi>), newlyDeployed: false};
-	}
-
-	const {account, artifact, ...viemArgs} = args;
-	let address: `0x${string}`;
-	if (account.startsWith('0x')) {
-		address = account as `0x${string}`;
-	} else {
-		if (env.namedAccounts) {
-			address = env.namedAccounts[account];
-			if (!address) {
-				throw new Error(`no address for ${account}`);
-			}
-		} else {
-			throw new Error(`no accounts setup, cannot get address for ${account}`);
+		if (allwaysOverride && skipIfAlreadyDeployed) {
+			throw new Error(`conflicting options: "allwaysOverride" and "skipIfAlreadyDeployed"`);
 		}
-	}
 
-	// TODO throw specific error if artifact not found
-	const artifactToUse = artifact;
-
-	const bytecode = linkLibraries(artifactToUse, options?.libraries);
-
-	const abi = artifactToUse.abi;
-
-	const argsToUse = {
-		...viemArgs,
-		account,
-		abi,
-		bytecode,
-	};
-
-	const calldata = encodeDeployData(argsToUse as any); // TODO any
-	const argsData = `0x${calldata.replace(bytecode, '')}` as `0x${string}`;
-
-	if (existingDeployment) {
-		logger.info(`existing deployment for ${nameToDisplay} at ${existingDeployment.address}`);
-	}
-
-	if (existingDeployment && !allwaysOverride) {
-		const previousBytecode = existingDeployment.bytecode;
-		const previousArgsData = existingDeployment.argsData;
-		// we assume cbor encoding of hash at the end
-		// TODO option to remove it, can parse metadata but would rather avoid this here
-		const last2Bytes = previousBytecode.slice(-4);
-		const cborLength = parseInt(last2Bytes, 16);
-		const previousBytecodeWithoutCBOR = previousBytecode.slice(0, -cborLength * 2);
-		const newBytecodeWithoutCBOR = bytecode.slice(0, -cborLength * 2);
-		if (previousBytecodeWithoutCBOR === newBytecodeWithoutCBOR && previousArgsData === argsData) {
+		const existingDeployment = name && env.getOrNull(name);
+		if (existingDeployment && skipIfAlreadyDeployed) {
+			logger.info(
+				`deployment for ${nameToDisplay} at ${existingDeployment.address}, skipIfAlreadyDeployed: true => we skip`
+			);
 			return {...(existingDeployment as Deployment<TAbi>), newlyDeployed: false};
-		} else {
-			// logger.info(`-------------- WITHOUT CBOR---------------------`);
-			// logger.info(previousBytecodeWithoutCBOR);
-			// logger.info(newBytecodeWithoutCBOR);
-			// logger.info(`-----------------------------------`);
-			// logger.info(`-------------- ARGS DATA ---------------------`);
-			// logger.info(previousArgsData);
-			// logger.info(argsData);
-			// logger.info(`-----------------------------------`);
 		}
-	}
 
-	const partialDeployment: PartialDeployment<TAbi> = {
-		...artifactToUse,
-		argsData,
-		linkedData: options?.linkedData,
-	};
-
-	const signer = env.addressSigners[address];
-
-	const chainId = `0x${env.network.chain.id.toString(16)}` as `0x${string}`;
-	const maxFeePerGas = viemArgs.maxFeePerGas && (`0x${viemArgs.maxFeePerGas.toString(16)}` as `0x${string}`);
-	const maxPriorityFeePerGas =
-		viemArgs.maxPriorityFeePerGas && (`0x${viemArgs.maxPriorityFeePerGas.toString(16)}` as `0x${string}`);
-
-	const params: [EIP1193TransactionData] = [
-		{
-			type: '0x2',
-			from: address,
-			chainId,
-			data: calldata,
-			gas: viemArgs.gas && (`0x${viemArgs.gas.toString(16)}` as `0x${string}`),
-			maxFeePerGas,
-			maxPriorityFeePerGas,
-			// gasPrice: viemArgs.gasPrice && `0x${viemArgs.gasPrice.toString(16)}` as `0x${string}`,
-			// value: `0x${viemArgs.value?.toString(16)}` as `0x${string}`,
-			// nonce: viemArgs.nonce && (`0x${viemArgs.nonce.toString(16)}` as `0x${string}`),
-		},
-	];
-
-	let expectedAddress: `0x${string}` | undefined = undefined;
-	if (options?.deterministic) {
-		const [deterministicType, salt] = (() => {
-			const normalizeSalt = (salt: `0x${string}` | boolean | undefined): `0x${string}` =>
-				typeof salt === 'string' ? `0x${salt.slice(2).padStart(64, '0')}` : zeroHash;
-			if (typeof options.deterministic !== 'object') return ['create2', normalizeSalt(options.deterministic)] as const;
-			if (options.deterministic.type === 'create2')
-				return ['create2', normalizeSalt(options.deterministic.salt)] as const;
-			if (options.deterministic.type === 'create3')
-				return ['create3', normalizeSalt(options.deterministic.salt)] as const;
-			throw new Error(`unknown deterministic type: ${options.deterministic.type}`);
-		})();
-
-		const bytecode = params[0].data || '0x';
-
-		const factoryParams = {chainId, address, maxFeePerGas, maxPriorityFeePerGas};
-		const create =
-			deterministicType === 'create2'
-				? await getCreate2Factory(env, signer, factoryParams)
-				: await getCreate3Factory(env, signer, factoryParams);
-
-		expectedAddress = create.getExpectedAddress({salt, bytecode});
-
-		const codeAlreadyDeployed = await env.network.provider.request({
-			method: 'eth_getCode',
-			params: [expectedAddress, 'latest'],
-		});
-
-		if (codeAlreadyDeployed !== '0x') {
-			if (deterministicType === 'create3' && codeAlreadyDeployed !== bytecode)
-				throw new Error(`code already deployed at ${expectedAddress} but is not the expected bytecode`);
-			env.showMessage(`contract was already deterministically deployed at ${expectedAddress}`);
-			if (name) {
-				const deployment = await env.save(
-					name,
-					{
-						address: expectedAddress,
-						...partialDeployment,
-					},
-					{doNotCountAsNewDeployment: true}
-				);
-				return {...(deployment as Deployment<TAbi>), newlyDeployed: false};
+		const {account, artifact, ...viemArgs} = args;
+		let address: `0x${string}`;
+		if (account.startsWith('0x')) {
+			address = account as `0x${string}`;
+		} else {
+			if (env.namedAccounts) {
+				address = env.namedAccounts[account];
+				if (!address) {
+					throw new Error(`no address for ${account}`);
+				}
 			} else {
-				return {address: expectedAddress, ...partialDeployment, newlyDeployed: false};
+				throw new Error(`no accounts setup, cannot get address for ${account}`);
 			}
 		}
 
-		params[0].data = create.encodeData({salt, bytecode});
-		params[0].to = create.factoryAddress;
-	}
+		// TODO throw specific error if artifact not found
+		const artifactToUse = artifact;
 
-	const txHash = await broadcastTransaction(env, signer, params);
+		const bytecode = linkLibraries(artifactToUse, options?.libraries);
 
-	const pendingDeployment: PendingDeployment<TAbi> = {
-		type: 'deployment',
-		expectedAddress,
-		partialDeployment,
-		transaction: {hash: txHash, origin: address},
-		name,
-		// TODO we should have the nonce, except for wallet like metamask where it is not usre you get the nonce you start with
+		const abi = artifactToUse.abi;
+
+		const argsToUse = {
+			...viemArgs,
+			account,
+			abi,
+			bytecode,
+		};
+
+		const calldata = encodeDeployData(argsToUse as any); // TODO any
+		const argsData = `0x${calldata.replace(bytecode, '')}` as `0x${string}`;
+
+		if (existingDeployment) {
+			logger.info(`existing deployment for ${nameToDisplay} at ${existingDeployment.address}`);
+		}
+
+		if (existingDeployment && !allwaysOverride) {
+			const previousBytecode = existingDeployment.bytecode;
+			const previousArgsData = existingDeployment.argsData;
+			// we assume cbor encoding of hash at the end
+			// TODO option to remove it, can parse metadata but would rather avoid this here
+			const last2Bytes = previousBytecode.slice(-4);
+			const cborLength = parseInt(last2Bytes, 16);
+			const previousBytecodeWithoutCBOR = previousBytecode.slice(0, -cborLength * 2);
+			const newBytecodeWithoutCBOR = bytecode.slice(0, -cborLength * 2);
+			if (previousBytecodeWithoutCBOR === newBytecodeWithoutCBOR && previousArgsData === argsData) {
+				return {...(existingDeployment as Deployment<TAbi>), newlyDeployed: false};
+			} else {
+				// logger.info(`-------------- WITHOUT CBOR---------------------`);
+				// logger.info(previousBytecodeWithoutCBOR);
+				// logger.info(newBytecodeWithoutCBOR);
+				// logger.info(`-----------------------------------`);
+				// logger.info(`-------------- ARGS DATA ---------------------`);
+				// logger.info(previousArgsData);
+				// logger.info(argsData);
+				// logger.info(`-----------------------------------`);
+			}
+		}
+
+		const partialDeployment: PartialDeployment<TAbi> = {
+			...artifactToUse,
+			argsData,
+			linkedData: options?.linkedData,
+		};
+
+		const signer = env.addressSigners[address];
+
+		const chainId = `0x${env.network.chain.id.toString(16)}` as `0x${string}`;
+		const maxFeePerGas = viemArgs.maxFeePerGas && (`0x${viemArgs.maxFeePerGas.toString(16)}` as `0x${string}`);
+		const maxPriorityFeePerGas =
+			viemArgs.maxPriorityFeePerGas && (`0x${viemArgs.maxPriorityFeePerGas.toString(16)}` as `0x${string}`);
+
+		const params: [EIP1193TransactionData] = [
+			{
+				type: '0x2',
+				from: address,
+				chainId,
+				data: calldata,
+				gas: viemArgs.gas && (`0x${viemArgs.gas.toString(16)}` as `0x${string}`),
+				maxFeePerGas,
+				maxPriorityFeePerGas,
+				// gasPrice: viemArgs.gasPrice && `0x${viemArgs.gasPrice.toString(16)}` as `0x${string}`,
+				// value: `0x${viemArgs.value?.toString(16)}` as `0x${string}`,
+				// nonce: viemArgs.nonce && (`0x${viemArgs.nonce.toString(16)}` as `0x${string}`),
+			},
+		];
+
+		let expectedAddress: `0x${string}` | undefined = undefined;
+		if (options?.deterministic) {
+			const [deterministicType, salt] = (() => {
+				const normalizeSalt = (salt: `0x${string}` | boolean | undefined): `0x${string}` =>
+					typeof salt === 'string' ? `0x${salt.slice(2).padStart(64, '0')}` : zeroHash;
+				if (typeof options.deterministic !== 'object')
+					return ['create2', normalizeSalt(options.deterministic)] as const;
+				if (options.deterministic.type === 'create2')
+					return ['create2', normalizeSalt(options.deterministic.salt)] as const;
+				if (options.deterministic.type === 'create3')
+					return ['create3', normalizeSalt(options.deterministic.salt)] as const;
+				throw new Error(`unknown deterministic type: ${options.deterministic.type}`);
+			})();
+
+			const bytecode = params[0].data || '0x';
+
+			const factoryParams = {chainId, address, maxFeePerGas, maxPriorityFeePerGas};
+			const create =
+				deterministicType === 'create2'
+					? await getCreate2Factory(env, signer, factoryParams)
+					: await getCreate3Factory(env, signer, factoryParams);
+
+			expectedAddress = create.getExpectedAddress({salt, bytecode});
+
+			const codeAlreadyDeployed = await env.network.provider.request({
+				method: 'eth_getCode',
+				params: [expectedAddress, 'latest'],
+			});
+
+			if (codeAlreadyDeployed !== '0x') {
+				if (deterministicType === 'create3' && codeAlreadyDeployed !== bytecode)
+					throw new Error(`code already deployed at ${expectedAddress} but is not the expected bytecode`);
+				env.showMessage(`contract was already deterministically deployed at ${expectedAddress}`);
+				if (name) {
+					const deployment = await env.save(
+						name,
+						{
+							address: expectedAddress,
+							...partialDeployment,
+						},
+						{doNotCountAsNewDeployment: true}
+					);
+					return {...(deployment as Deployment<TAbi>), newlyDeployed: false};
+				} else {
+					return {address: expectedAddress, ...partialDeployment, newlyDeployed: false};
+				}
+			}
+
+			params[0].data = create.encodeData({salt, bytecode});
+			params[0].to = create.factoryAddress;
+		}
+
+		const txHash = await broadcastTransaction(env, signer, params);
+
+		const pendingDeployment: PendingDeployment<TAbi> = {
+			type: 'deployment',
+			expectedAddress,
+			partialDeployment,
+			transaction: {hash: txHash, origin: address},
+			name,
+			// TODO we should have the nonce, except for wallet like metamask where it is not usre you get the nonce you start with
+		};
+		const deployment = await env.savePendingDeployment(pendingDeployment);
+		return {...(deployment as Deployment<TAbi>), newlyDeployed: true};
 	};
-	const deployment = await env.savePendingDeployment(pendingDeployment);
-	return {...(deployment as Deployment<TAbi>), newlyDeployed: true};
 }

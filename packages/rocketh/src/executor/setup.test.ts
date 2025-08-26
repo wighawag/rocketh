@@ -6,30 +6,40 @@ const mockEnv = {} as Environment;
 
 // Example utility functions that take Environment as first parameter
 const utilityFunctions = {
-	deployContract: async (env: Environment, contractName: string, args: any[] = []): Promise<string> => {
-		console.log(`Deploying ${contractName} with args:`, args);
-		return '0x1234567890123456789012345678901234567890';
-	},
+	deployContract:
+		(env: Environment) =>
+		async (contractName: string, args: any[] = []): Promise<string> => {
+			console.log(`Deploying ${contractName} with args:`, args);
+			return '0x1234567890123456789012345678901234567890';
+		},
 
-	verifyContract: async (env: Environment, address: string): Promise<boolean> => {
-		console.log(`Verifying contract at ${address}`);
-		return true;
-	},
+	verifyContract:
+		(env: Environment) =>
+		async (address: string): Promise<boolean> => {
+			console.log(`Verifying contract at ${address}`);
+			return true;
+		},
 
-	getBalance: async (env: Environment, address: string): Promise<bigint> => {
-		console.log(`Getting balance for ${address}`);
-		return BigInt('1000000000000000000'); // 1 ETH
-	},
+	getBalance:
+		(env: Environment) =>
+		async (address: string): Promise<bigint> => {
+			console.log(`Getting balance for ${address}`);
+			return BigInt('1000000000000000000'); // 1 ETH
+		},
 
-	calculateGas: (env: Environment, operation: string): number => {
-		console.log(`Calculating gas for ${operation}`);
-		return 21000;
-	},
+	calculateGas:
+		(env: Environment) =>
+		(operation: string): number => {
+			console.log(`Calculating gas for ${operation}`);
+			return 21000;
+		},
 
-	isDeployed: (env: Environment, contractName: string): boolean => {
-		console.log(`Checking if ${contractName} is deployed`);
-		return false;
-	},
+	isDeployed:
+		(env: Environment) =>
+		(contractName: string): boolean => {
+			console.log(`Checking if ${contractName} is deployed`);
+			return false;
+		},
 };
 
 // Create the enhanced execute function using setup
@@ -89,19 +99,25 @@ async function testTypes() {
 export const exampleUsage = () => {
 	// Define your utility functions
 	const myFunctions = {
-		deployERC20: async (env: Environment, name: string, symbol: string): Promise<string> => {
-			// Implementation would use env.save, env.network.provider, etc.
-			return '0x...';
-		},
+		deployERC20:
+			(env: Environment) =>
+			async (name: string, symbol: string): Promise<string> => {
+				// Implementation would use env.save, env.network.provider, etc.
+				return '0x...';
+			},
 
-		setupPermissions: async (env: Environment, contractAddress: string, admin: string): Promise<void> => {
-			// Implementation would interact with contracts
-		},
+		setupPermissions:
+			(env: Environment) =>
+			async (contractAddress: string, admin: string): Promise<void> => {
+				// Implementation would interact with contracts
+			},
 
-		verifyOnEtherscan: async (env: Environment, address: string, constructorArgs: any[]): Promise<boolean> => {
-			// Implementation would call verification service
-			return true;
-		},
+		verifyOnEtherscan:
+			(env: Environment) =>
+			async (address: string, constructorArgs: any[]): Promise<boolean> => {
+				// Implementation would call verification service
+				return true;
+			},
 	};
 
 	// Create the enhanced execute function

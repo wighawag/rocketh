@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/read-execute",
-	"version": "0.12.0",
+	"version": "0.13.0",
 	"description": "provide read abd execute functions for rocketh",
 	"publishConfig": {
 		"access": "public"

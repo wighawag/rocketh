@@ -1,5 +1,17 @@
 # @rocketh/diamond
 
+## 0.13.0
+
+### Minor Changes
+
+- use env function for extended functions
+
+### Patch Changes
+
+- Updated dependencies
+  - @rocketh/read-execute@0.13.0
+  - @rocketh/deploy@0.13.0
+
 ## 0.12.1
 
 ### Patch Changes
