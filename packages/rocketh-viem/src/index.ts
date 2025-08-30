@@ -9,15 +9,36 @@ import {
 	getContract as getViemContract,
 	Address,
 	GetContractReturnType,
+	Transport,
+	Chain,
+	Account,
+	Client,
+	CustomTransport,
 } from 'viem';
 
 const logger = logs('@rocketh/viem');
+
+type KeyedClient<
+	transport extends Transport = Transport,
+	chain extends Chain | undefined = Chain | undefined,
+	account extends Account | undefined = Account | undefined
+> =
+	| {
+			public?: Client<transport, chain> | undefined;
+			wallet: Client<transport, chain, account>;
+	  }
+	| {
+			public: Client<transport, chain>;
+			wallet?: Client<transport, chain, account> | undefined;
+	  };
+
+export type ViemContract<TAbi extends Abi> = GetContractReturnType<TAbi, KeyedClient<CustomTransport>, Address>;
 
 export type ViemHandle = {
 	walletClient: WalletClient;
 	publicClient: PublicClient;
 	// TODO any ?
-	getContract<TAbi extends Abi>(name: string): GetContractReturnType<TAbi, any, Address>;
+	getContract<TAbi extends Abi>(name: string): ViemContract<TAbi>;
 };
 
 export function viem(env: Environment): ViemHandle {
@@ -40,7 +61,7 @@ export function viem(env: Environment): ViemHandle {
 				address: deployment.address,
 				abi: deployment.abi,
 				client: {public: publicClient, wallet: walletClient},
-			}) as GetContractReturnType<TAbi, any, Address>;
+			}) as ViemContract<TAbi>;
 		},
 	};
 }
