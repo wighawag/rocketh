@@ -1,3 +1,11 @@
 ![Rocketh Symbol](/public/logo.svg)
 
-The deployer system for ethereum smart contract
+--
+
+<h1 align="center">
+  <a href="">
+   🚀 Rocketh 🚀
+  </a>
+</h1>
+
+The deployer system for ethereum smart contracts
