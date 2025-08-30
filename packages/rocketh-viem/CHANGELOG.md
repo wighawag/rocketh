@@ -1,5 +1,11 @@
 # @rocketh/viem
 
+## 0.13.5
+
+### Patch Changes
+
+- split getWritableContract and getContract
+
 ## 0.13.4
 
 ### Patch Changes

@@ -27,12 +27,18 @@ type KeyedClient<
 	wallet: Client<transport, Chain, Account>;
 };
 
-export type ViemContract<TAbi extends Abi> = GetContractReturnType<TAbi, KeyedClient<CustomTransport>, Address>;
+type ReadonlyKeyedClient<transport extends Transport = Transport> = {
+	public: Client<transport, Chain>;
+};
+
+export type ViemWritableContract<TAbi extends Abi> = GetContractReturnType<TAbi, KeyedClient<CustomTransport>, Address>;
+export type ViemContract<TAbi extends Abi> = GetContractReturnType<TAbi, ReadonlyKeyedClient<CustomTransport>, Address>;
 
 export type ViemHandle = {
 	walletClient: WalletClient;
 	publicClient: PublicClient;
 	getContract<TAbi extends Abi>(name: string | Deployment<TAbi>): ViemContract<TAbi>;
+	getWritableContract<TAbi extends Abi>(name: string | Deployment<TAbi>): ViemWritableContract<TAbi>;
 };
 
 export function viem(env: Environment): ViemHandle {
@@ -49,12 +55,20 @@ export function viem(env: Environment): ViemHandle {
 	return {
 		walletClient,
 		publicClient,
-		getContract<TAbi extends Abi>(name: string | Deployment<TAbi>) {
+		getWritableContract<TAbi extends Abi>(name: string | Deployment<TAbi>) {
 			const deployment = typeof name === 'string' ? env.get<TAbi>(name) : name;
 			return getViemContract({
 				address: deployment.address,
 				abi: deployment.abi,
 				client: {public: publicClient, wallet: walletClient},
+			}) as ViemWritableContract<TAbi>;
+		},
+		getContract<TAbi extends Abi>(name: string | Deployment<TAbi>) {
+			const deployment = typeof name === 'string' ? env.get<TAbi>(name) : name;
+			return getViemContract({
+				address: deployment.address,
+				abi: deployment.abi,
+				client: {public: publicClient},
 			}) as ViemContract<TAbi>;
 		},
 	};
