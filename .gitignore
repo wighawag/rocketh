@@ -2,6 +2,9 @@ node_modules
 cache
 artifacts
 .vscode/*
+.settings
+!.vscode/extensions.json
+!.vscode/settings-example.json
 !*.default
 generated
 deployments/localhost
