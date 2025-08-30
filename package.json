@@ -3,6 +3,10 @@
   "private": true,
   "version": "0.5.0",
   "homepage": "https://github.com/wighawag/rocketh",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wighawag/rocketh.git"
+  },
   "devDependencies": {
     "@changesets/cli": "^2.28.1",
     "set-defaults": "^0.0.5",
