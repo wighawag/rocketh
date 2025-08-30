@@ -40,6 +40,8 @@ const utilityFunctions = {
 			console.log(`Checking if ${contractName} is deployed`);
 			return false;
 		},
+
+	test: (env: Environment) => true,
 };
 
 // Create the enhanced execute function using setup

@@ -49,27 +49,27 @@ const tsImport = (path: string, opts: any) => (typeof Bun !== 'undefined' ? impo
  * ```
  */
 export function setup<
-	Functions extends Record<string, (env: Environment<any, any, any>) => (...args: any[]) => any> = {},
+	Extensions extends Record<string, (env: Environment<any, any, any>) => any> = {},
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 	Deployments extends UnknownDeployments = UnknownDeployments,
 	Extra extends Record<string, unknown> = Record<string, unknown>
->(functions: Functions) {
+>(extensions: Extensions) {
 	return function enhancedExecute<ArgumentsType = undefined>(
-		callback: EnhancedDeployScriptFunction<NamedAccounts, Data, ArgumentsType, Deployments, Functions>,
+		callback: EnhancedDeployScriptFunction<NamedAccounts, Data, ArgumentsType, Deployments, Extensions>,
 		options: {tags?: string[]; dependencies?: string[]; id?: string; runAtTheEnd?: boolean}
 	): DeployScriptModule<NamedAccounts, Data, ArgumentsType, Deployments, Extra> {
 		const scriptModule: DeployScriptModule<NamedAccounts, Data, ArgumentsType, Deployments, Extra> = (
 			env: Environment<NamedAccounts, Data, Deployments, Extra>,
 			args?: ArgumentsType
 		) => {
-			// Create the enhanced environment by combining the original environment with curried functions
-			const curriedFunctions = withEnvironment(env, functions);
+			// Create the enhanced environment by combining the original environment with extensions
+			const curriedFunctions = withEnvironment(env, extensions);
 			const enhancedEnv = Object.assign(
 				Object.create(Object.getPrototypeOf(env)),
 				env,
 				curriedFunctions
-			) as EnhancedEnvironment<NamedAccounts, Data, Deployments, Functions, Extra>;
+			) as EnhancedEnvironment<NamedAccounts, Data, Deployments, Extensions, Extra>;
 
 			return callback(enhancedEnv, args);
 		};
