@@ -1,7 +1,5 @@
 import fs from 'node:fs';
 
-import {createPublicClient, custom} from 'viem';
-
 import {
 	AccountType,
 	Artifact,
@@ -28,6 +26,8 @@ import {JSONToString, stringToJSON} from '../utils/json.js';
 import {loadDeployments} from './deployments.js';
 import {
 	EIP1193Account,
+	EIP1193Block,
+	EIP1193BlockWithTransactions,
 	EIP1193DATA,
 	EIP1193ProviderWithoutEvents,
 	EIP1193QUANTITY,
@@ -40,7 +40,7 @@ import {getChainWithConfig} from './utils/chains.js';
 import {mergeArtifacts} from './utils/artifacts.js';
 import {TransactionHashTracker, TransactionHashTrackerProvider} from './providers/TransactionHashTracker.js';
 
-type ReceiptResult = {receipt: EIP1193TransactionReceipt; latestBlockNumber: EIP1193QUANTITY};
+export type ReceiptResult = {receipt: EIP1193TransactionReceipt; latestBlockNumber: EIP1193QUANTITY};
 
 export type SignerProtocolFunction = (protocolString: string) => Promise<Signer>;
 export type SignerProtocol = {
@@ -77,15 +77,24 @@ export async function createEnvironment<
 
 	const provider: TransactionHashTracker = new TransactionHashTrackerProvider(rawProvider);
 
-	const transport = custom(provider);
-	const viemClient = createPublicClient({transport});
-
-	const chainId = (await viemClient.getChainId()).toString();
+	const chainIdHex = await provider.request({method: 'eth_chainId'});
+	const chainId = '' + Number(chainIdHex);
 	let genesisHash: `0x${string}` | undefined;
 	try {
-		genesisHash = (await viemClient.getBlock({blockTag: 'earliest'})).hash;
+		let genesisBlock: EIP1193Block | EIP1193BlockWithTransactions | null;
+		try {
+			genesisBlock = await provider.request({method: 'eth_getBlockByNumber', params: ['earliest', false]});
+		} catch {
+			genesisBlock = await provider.request({method: 'eth_getBlockByNumber', params: ['0x0', false]});
+		}
+
+		if (!genesisBlock) {
+			console.error(`failed to get genesis block, returned null`);
+		}
+
+		genesisHash = genesisBlock?.hash;
 	} catch (err) {
-		console.error(`failed to get genesis hash`);
+		console.error(`failed to get genesis block`);
 	}
 
 	let networkName: string;
@@ -455,14 +464,24 @@ export async function createEnvironment<
 		// const {hash, confirmations, pollingInterval, timeout} = {confirmations: 1, pollingInterval: 1, ...params};
 		const {hash, pollingInterval} = {pollingInterval: 1, ...params};
 
-		let latestBlockNumber = await provider.request({
-			method: 'eth_blockNumber',
-		});
+		let latestBlockNumber: EIP1193QUANTITY;
+		try {
+			latestBlockNumber = await provider.request({
+				method: 'eth_blockNumber',
+			});
+		} catch (err) {
+			await wait(pollingInterval);
+			return waitForTransactionReceipt(params);
+		}
 
-		let receipt = await provider.request({
-			method: 'eth_getTransactionReceipt',
-			params: [hash],
-		});
+		let receipt: EIP1193TransactionReceipt | null = null;
+		try {
+			receipt = await provider.request({
+				method: 'eth_getTransactionReceipt',
+				params: [hash],
+			});
+		} catch (err) {}
+
 		if (!receipt || !receipt.blockHash) {
 			await wait(pollingInterval);
 			return waitForTransactionReceipt(params);

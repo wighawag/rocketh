@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.13.3
+
+### Patch Changes
+
+- fix waitForTransactionReceipt + handle missing earliest
+
 ## 0.13.2
 
 ### Patch Changes
