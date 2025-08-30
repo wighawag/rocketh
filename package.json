@@ -30,5 +30,14 @@
     "build": "pnpm -r build",
     "sync-deps": "syncpack fix-mismatches",
     "start": "zellij-launcher a $npm_package_name || zellij -n zellij.kdl -s $npm_package_name"
-  }
+  },
+  "keywords": [
+    "pnpm",
+    "hardhat",
+    "hardhat-deploy",
+    "vite",
+    "vitepress",
+    "ethereum",
+    "evm"
+  ]
 }
