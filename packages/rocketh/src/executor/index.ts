@@ -14,7 +14,7 @@ import type {
 } from '../environment/types.js';
 import {createEnvironment, SignerProtocolFunction} from '../environment/index.js';
 import {DeployScriptFunction, DeployScriptModule, EnhancedDeployScriptFunction, EnhancedEnvironment} from './types.js';
-import {withEnvironment} from '../utils/curry.js';
+import {withEnvironment} from '../utils/extensions.js';
 import {logger, setLogLevel, spin} from '../internal/logging.js';
 import {getRoughGasPriceEstimate} from '../utils/eth.js';
 import {traverseMultipleDirectory} from '../utils/fs.js';

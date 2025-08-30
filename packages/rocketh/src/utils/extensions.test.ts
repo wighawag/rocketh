@@ -1,11 +1,11 @@
 import type {Environment} from '../environment/types.js';
-import {withEnvironment} from './curry.js';
+import {withEnvironment} from './extensions.js';
 
 // Mock environment for testing
 const mockEnv = {} as Environment;
 
 // Example functions that take environment as first parameter
-const exampleFunctions = {
+const exampleExtensions = {
 	deploy:
 		(env: Environment) =>
 		async (contractName: string, args: any[]): Promise<void> => {
@@ -29,22 +29,25 @@ const exampleFunctions = {
 		(value: number): number => {
 			return value * 2;
 		},
+
+	provider: (env: Environment) => env.network.provider,
 };
 
 // Test the currying function
-const curriedFunctions = withEnvironment(mockEnv, exampleFunctions);
+const enhancedEnv = withEnvironment(mockEnv, exampleExtensions);
 
 // Type tests - these should compile without errors
 async function testTypes() {
 	// These calls should work without passing env
-	await curriedFunctions.deploy('MyContract', []);
-	const isVerified = await curriedFunctions.verify('0x123...');
-	const balance = await curriedFunctions.getBalance('0x456...');
-	const doubled = curriedFunctions.syncFunction(42);
+	await enhancedEnv.deploy('MyContract', []);
+	const isVerified = await enhancedEnv.verify('0x123...');
+	const balance = await enhancedEnv.getBalance('0x456...');
+	const doubled = enhancedEnv.syncFunction(42);
+	const provider = enhancedEnv.provider;
 
 	console.log('Type tests passed!');
-	console.log({isVerified, balance, doubled});
+	console.log({isVerified, balance, doubled, provider});
 }
 
 // Export for potential use in actual tests
-export {testTypes, curriedFunctions, exampleFunctions};
+export {testTypes, enhancedEnv, exampleExtensions};

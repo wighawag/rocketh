@@ -120,7 +120,7 @@ importers:
     dependencies:
       '@rocketh/deploy':
         specifier: workspace:*
-        version: link:../rocketh-deploy
+        version: link:../rocketh-viem
       '@rocketh/read-execute':
         specifier: workspace:*
         version: link:../rocketh-read-execute
@@ -225,7 +225,7 @@ importers:
     dependencies:
       '@rocketh/deploy':
         specifier: workspace:*
-        version: link:../rocketh-deploy
+        version: link:../rocketh-viem
       '@rocketh/read-execute':
         specifier: workspace:*
         version: link:../rocketh-read-execute
@@ -287,7 +287,7 @@ importers:
     dependencies:
       '@rocketh/deploy':
         specifier: workspace:*
-        version: link:../rocketh-deploy
+        version: link:../rocketh-viem
       ethers:
         specifier: ^6.13.5
         version: 6.13.5
@@ -378,6 +378,34 @@ importers:
       typescript:
         specifier: ^5.8.2
         version: 5.8.2
+
+  packages/rocketh-viem:
+    dependencies:
+      named-logs:
+        specifier: ^0.3.2
+        version: 0.3.2
+    devDependencies:
+      abitype:
+        specifier: ^1.0.8
+        version: 1.0.8(typescript@5.8.2)(zod@3.24.2)
+      as-soon:
+        specifier: ^0.0.11
+        version: 0.0.11
+      eip-1193:
+        specifier: ^0.6.2
+        version: 0.6.2
+      rimraf:
+        specifier: ^6.0.1
+        version: 6.0.1
+      rocketh:
+        specifier: workspace:*
+        version: link:../rocketh
+      typescript:
+        specifier: ^5.8.2
+        version: 5.8.2
+      viem:
+        specifier: ^2.23.12
+        version: 2.23.12(typescript@5.8.2)(zod@3.24.2)
 
 packages:
 

@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.13.1
+
+### Patch Changes
+
+- rename and allow for variable getters in env
+
 ## 0.13.0
 
 ### Minor Changes

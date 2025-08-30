@@ -35,13 +35,14 @@ export type ScriptCallback<
 > = (env: Environment<NamedAccounts, Data, Deployments, Extra>) => Promise<void>;
 
 /**
- * Utility type to extract the return function from a higher-order function
- * For functions of type (firstParam: T) => (...args: any[]) => V
+ * Utility type to extract the return value from a higher-order function
+ * For functions of type (firstParam: T) => (...args: any[]) => V or (firstParam: T) => V
  */
 export type ExtractReturnFunction<T> = T extends (first: any) => infer Return ? Return : never;
 
 /**
- * Utility type to transform an object of higher-order functions by extracting their return function types
+ * Utility type to transform an object of higher-order functions by extracting their return types
+ * This handles both regular functions and getter functions
  */
 export type CurriedFunctions<T> = {
 	[K in keyof T]: ExtractReturnFunction<T[K]>;

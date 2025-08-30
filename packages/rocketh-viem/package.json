@@ -1,7 +1,7 @@
 {
-	"name": "@rocketh/export",
+	"name": "@rocketh/viem",
 	"version": "0.13.1",
-	"description": "export deployments",
+	"description": "provide viem functionality for rocketh",
 	"publishConfig": {
 		"access": "public"
 	},
@@ -15,29 +15,23 @@
 			"default": "./dist/index.js"
 		}
 	},
-	"bin": {
-		"rocketh-export": "dist/cli.js"
-	},
 	"files": [
 		"dist"
 	],
 	"devDependencies": {
-		"@types/node": "^22.13.10",
 		"abitype": "^1.0.8",
 		"as-soon": "^0.0.11",
 		"eip-1193": "^0.6.2",
 		"rimraf": "^6.0.1",
 		"rocketh": "workspace:*",
-		"typescript": "^5.8.2"
-	},
-	"peerDependencies": {
-		"rocketh": "workspace:*"
+		"typescript": "^5.8.2",
+		"viem": "^2.23.12"
 	},
 	"dependencies": {
-		"@types/fs-extra": "^11.0.4",
-		"chalk": "5.4.1",
-		"commander": "^13.1.0",
-		"fs-extra": "^11.3.0"
+		"named-logs": "^0.3.2"
+	},
+	"peerDependencies": {
+		"viem": "^2.23.12"
 	},
 	"scripts": {
 		"build": "tsc --project tsconfig.json",

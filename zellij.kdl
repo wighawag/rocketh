@@ -9,17 +9,14 @@ layout {
 			}
 		}
 		pane split_direction="vertical" {
-			pane name="rocketh-export" command="bash" {
-				args "-c" "pnpm run --filter @rocketh/export dev; cd packages/rocketh-export; ${SHELL-bash}"
-			}
 			pane name="rocketh-read-execute" command="bash" {
 				args "-c" "pnpm run --filter @rocketh/read-execute dev; cd packages/rocketh-read-execute; ${SHELL-bash}"
 			}
 			pane name="rocketh-deploy" command="bash" {
 				args "-c" "pnpm run --filter @rocketh/deploy dev; cd packages/rocketh-deploy; ${SHELL-bash}"
 			}
-			pane name="rocketh-diamond" command="bash" {
-				args "-c" "pnpm run --filter @rocketh/diamond dev; cd packages/rocketh-diamond; ${SHELL-bash}"
+			pane name="rocketh-viem" command="bash" {
+				args "-c" "pnpm run --filter @rocketh/viem dev; cd packages/rocketh-viem; ${SHELL-bash}"
 			}
 		}
 		pane split_direction="vertical" {
@@ -29,6 +26,12 @@ layout {
 			pane name="rocketh-router" command="bash" {
 				args "-c" "pnpm run --filter @rocketh/router dev; cd packages/rocketh-router; ${SHELL-bash}"
 			}
+			pane name="rocketh-diamond" command="bash" {
+				args "-c" "pnpm run --filter @rocketh/diamond dev; cd packages/rocketh-diamond; ${SHELL-bash}"
+			}
+		}
+
+		pane split_direction="vertical" {
 			pane name="rocketh-signer" command="bash" {
 				args "-c" "pnpm run --filter @rocketh/signer dev; cd packages/rocketh-signer; ${SHELL-bash}"
 			}
@@ -37,6 +40,9 @@ layout {
 			}
 			pane name="rocketh-doc" command="bash" {
 				args "-c" "pnpm run --filter @rocketh/doc dev; cd packages/rocketh-doc; ${SHELL-bash}"
+			}
+			pane name="rocketh-export" command="bash" {
+				args "-c" "pnpm run --filter @rocketh/export dev; cd packages/rocketh-export; ${SHELL-bash}"
 			}
 		}
 	}
