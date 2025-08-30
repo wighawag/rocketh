@@ -1,5 +1,5 @@
 import {logs} from 'named-logs';
-import type {Abi, Environment} from 'rocketh';
+import type {Abi, Deployment, Environment} from 'rocketh';
 import {
 	createPublicClient,
 	createWalletClient,
@@ -32,8 +32,7 @@ export type ViemContract<TAbi extends Abi> = GetContractReturnType<TAbi, KeyedCl
 export type ViemHandle = {
 	walletClient: WalletClient;
 	publicClient: PublicClient;
-	// TODO any ?
-	getContract<TAbi extends Abi>(name: string): ViemContract<TAbi>;
+	getContract<TAbi extends Abi>(name: string | Deployment<TAbi>): ViemContract<TAbi>;
 };
 
 export function viem(env: Environment): ViemHandle {
@@ -50,8 +49,8 @@ export function viem(env: Environment): ViemHandle {
 	return {
 		walletClient,
 		publicClient,
-		getContract<TAbi extends Abi>(name: string) {
-			const deployment = env.get<TAbi>(name);
+		getContract<TAbi extends Abi>(name: string | Deployment<TAbi>) {
+			const deployment = typeof name === 'string' ? env.get<TAbi>(name) : name;
 			return getViemContract({
 				address: deployment.address,
 				abi: deployment.abi,
