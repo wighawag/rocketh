@@ -1,14 +1,4 @@
 linkWorkspacePackages: true
 packages:
-  - 'website'
   - 'packages/*'
-
-# catalogs:
-#   build:
-#     '@nx/devkit': 21.4.1
-#     '@nx/js': 21.4.1
-#     '@nx/node': 21.4.1
-#     '@nx/vite': 21.4.1
-#     '@nx/web': 21.4.1
-#     '@nx/workspace': 21.4.1
-#     nx: 21.4.1
+  - 'website'

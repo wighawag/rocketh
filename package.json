@@ -12,12 +12,6 @@
   },
   "devDependencies": {
     "@changesets/cli": "^2.28.1",
-    "@nx/devkit": "^21.4.1",
-    "@nx/js": "^21.4.1",
-    "@nx/node": "^21.4.1",
-    "@nx/vite": "^21.4.1",
-    "@nx/workspace": "^21.4.1",
-    "nx": "^21.4.1",
     "set-defaults": "^0.0.5",
     "syncpack": "^13.0.3",
     "vitepress": "^1.6.3",
@@ -28,8 +22,7 @@
   },
   "packageManager": "pnpm@9.3.0",
   "scripts": {
-    "ri": "git clean -fdX; pnpm i",
-    "graph": "nx graph --groupByFolder",
+    "reset": "git clean -fdX; pnpm i",
     "prepare": "set-defaults .vscode",
     "docs:dev": "vitepress dev",
     "docs:build": "pnpm prepare && vitepress build",
@@ -38,14 +31,5 @@
     "build": "pnpm -r build",
     "sync-deps": "syncpack fix-mismatches",
     "start": "zellij-launcher a $npm_package_name || zellij -n zellij.kdl -s $npm_package_name"
-  },
-  "keywords": [
-    "pnpm",
-    "hardhat",
-    "hardhat-deploy",
-    "vite",
-    "vitepress",
-    "ethereum",
-    "evm"
-  ]
+  }
 }
