@@ -49,11 +49,11 @@ const tsImport = (path: string, opts: any) => (typeof Bun !== 'undefined' ? impo
  * ```
  */
 export function setup<
-	Extensions extends Record<string, (env: Environment<any, any, any>) => any> = {},
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 	Deployments extends UnknownDeployments = UnknownDeployments,
-	Extra extends Record<string, unknown> = Record<string, unknown>
+	Extra extends Record<string, unknown> = Record<string, unknown>,
+	Extensions extends Record<string, (env: Environment<any, any, any>) => any> = {}
 >(extensions: Extensions) {
 	function enhancedExecute<ArgumentsType = undefined>(
 		callback: EnhancedDeployScriptFunction<NamedAccounts, Data, ArgumentsType, Deployments, Extensions>,
