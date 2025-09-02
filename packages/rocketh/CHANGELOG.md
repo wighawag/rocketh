@@ -1,11 +1,5 @@
 # rocketh
 
-## 0.14.3
-
-### Patch Changes
-
-- allow to not specify generic type for extension by adding it last
-
 ## 0.14.2
 
 ### Patch Changes
