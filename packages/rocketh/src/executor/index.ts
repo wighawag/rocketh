@@ -445,15 +445,18 @@ export async function loadAndExecuteDeployments<
 	// console.log(JSON.stringify(options, null, 2));
 	// console.log(JSON.stringify(resolvedConfig, null, 2));
 	const env = await executeDeployScripts<NamedAccounts, Data, ArgumentsType>(resolvedConfig, args);
-	// Create the enhanced environment by combining the original environment with extensions
-	const curriedFunctions = withEnvironment(env, options.extensions || {});
 	// Use the original env object as the base
 	const enhancedEnv = env as EnhancedEnvironment<NamedAccounts, Data, UnknownDeployments, Extensions, Extra>;
 
-	// Only add properties from curriedFunctions that don't already exist in env
-	for (const key in curriedFunctions) {
+	// Only create curried functions for extensions not already present in env
+	const extensions = options.extensions || {};
+	for (const key in extensions) {
 		if (!Object.prototype.hasOwnProperty.call(env, key)) {
-			(enhancedEnv as any)[key] = (curriedFunctions as any)[key];
+			// Create curried function only for this specific extension
+			const singleExtension: Record<string, unknown> = {};
+			singleExtension[key] = (extensions as any)[key];
+			const curriedFunction = withEnvironment(env, singleExtension as any);
+			(enhancedEnv as any)[key] = (curriedFunction as any)[key];
 		}
 	}
 	return enhancedEnv;
