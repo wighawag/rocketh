@@ -99,7 +99,11 @@ export type UntypedEIP1193Provider = {
 	request(requestArguments: UntypedRequestArguments): Promise<unknown>;
 };
 
-export type ConfigOptions<Extra extends Record<string, unknown> = Record<string, unknown>> = {
+export type ConfigOptions<
+	Extra extends Record<string, unknown> = Record<string, unknown>,
+	Extensions extends Record<string, (env: Environment<any, any, any>) => any> = {}
+> = {
+	extensions?: Extensions;
 	network?: string | {fork: string};
 	deployments?: string;
 	scripts?: string | string[];
@@ -431,12 +435,28 @@ export async function loadAndExecuteDeployments<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 	ArgumentsType = undefined,
-	Extra extends Record<string, unknown> = Record<string, unknown>
->(options: ConfigOptions<Extra>, args?: ArgumentsType): Promise<Environment<NamedAccounts, Data, UnknownDeployments>> {
+	Extra extends Record<string, unknown> = Record<string, unknown>,
+	Extensions extends Record<string, (env: Environment<any, any, any>) => any> = {}
+>(
+	options: ConfigOptions<Extra, Extensions>,
+	args?: ArgumentsType
+): Promise<EnhancedEnvironment<NamedAccounts, Data, UnknownDeployments, Extensions>> {
 	const resolvedConfig = await readAndResolveConfig<NamedAccounts, Data>(options);
 	// console.log(JSON.stringify(options, null, 2));
 	// console.log(JSON.stringify(resolvedConfig, null, 2));
-	return executeDeployScripts<NamedAccounts, Data, ArgumentsType>(resolvedConfig, args);
+	const env = await executeDeployScripts<NamedAccounts, Data, ArgumentsType>(resolvedConfig, args);
+	// Create the enhanced environment by combining the original environment with extensions
+	const curriedFunctions = withEnvironment(env, options.extensions || {});
+	// Use the original env object as the base
+	const enhancedEnv = env as EnhancedEnvironment<NamedAccounts, Data, UnknownDeployments, Extensions, Extra>;
+
+	// Only add properties from curriedFunctions that don't already exist in env
+	for (const key in curriedFunctions) {
+		if (!Object.prototype.hasOwnProperty.call(env, key)) {
+			(enhancedEnv as any)[key] = (curriedFunctions as any)[key];
+		}
+	}
+	return enhancedEnv;
 }
 
 export async function executeDeployScripts<

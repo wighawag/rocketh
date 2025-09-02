@@ -56,12 +56,12 @@ export type EnhancedEnvironment<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 	Deployments extends UnknownDeployments = UnknownDeployments,
-	Functions extends Record<
+	Extensions extends Record<
 		string,
 		(env: Environment<NamedAccounts, Data, Deployments>, ...args: any[]) => any
 	> = Record<string, (env: Environment<NamedAccounts, Data, Deployments>, ...args: any[]) => any>,
 	Extra extends Record<string, unknown> = Record<string, unknown>
-> = Environment<NamedAccounts, Data, Deployments, Extra> & CurriedFunctions<Functions>;
+> = Environment<NamedAccounts, Data, Deployments, Extra> & CurriedFunctions<Extensions>;
 
 /**
  * Type for a deploy script function that receives an enhanced environment
