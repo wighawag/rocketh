@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.14.2
+
+### Patch Changes
+
+- also setup for loadEnvironment (used by hardhat-deploy)
+
 ## 0.14.1
 
 ### Patch Changes

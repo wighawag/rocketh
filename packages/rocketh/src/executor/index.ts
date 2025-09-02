@@ -82,39 +82,51 @@ export function setup<
 		return scriptModule;
 	}
 
-	async function loadAndExecuteDeploymentsWithExtensions<
-		NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
-		Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
-		ArgumentsType = undefined,
-		Extra extends Record<string, unknown> = Record<string, unknown>
-	>(
+	async function loadAndExecuteDeploymentsWithExtensions<ArgumentsType = undefined>(
 		options: ConfigOptions<Extra>,
 		args?: ArgumentsType
 	): Promise<EnhancedEnvironment<NamedAccounts, Data, UnknownDeployments, Extensions>> {
-		const resolvedConfig = await readAndResolveConfig<NamedAccounts, Data>(options);
-		// console.log(JSON.stringify(options, null, 2));
-		// console.log(JSON.stringify(resolvedConfig, null, 2));
-		const env = await executeDeployScripts<NamedAccounts, Data, ArgumentsType>(resolvedConfig, args);
-		// Use the original env object as the base
-		const enhancedEnv = env as EnhancedEnvironment<NamedAccounts, Data, UnknownDeployments, Extensions, Extra>;
+		const env = await loadAndExecuteDeployments<NamedAccounts, Data, ArgumentsType, Extra>(options, args);
+		return enhanceEnvIfNeeded(env, extensions);
+	}
 
-		// Only create curried functions for extensions not already present in env
-		for (const key in extensions) {
-			if (!Object.prototype.hasOwnProperty.call(env, key)) {
-				// Create curried function only for this specific extension
-				const singleExtension: Record<string, unknown> = {};
-				singleExtension[key] = (extensions as any)[key];
-				const curriedFunction = withEnvironment(env, singleExtension as any);
-				(enhancedEnv as any)[key] = (curriedFunction as any)[key];
-			}
-		}
-		return enhancedEnv;
+	async function loadEnvironmentWithExtensions(
+		options: ConfigOptions<Extra>
+	): Promise<EnhancedEnvironment<NamedAccounts, Data, UnknownDeployments, Extensions>> {
+		const env = await loadEnvironment<NamedAccounts, Data, Extra>(options);
+		return enhanceEnvIfNeeded(env, extensions);
 	}
 
 	return {
 		deployScript: enhancedExecute,
 		loadAndExecuteDeployments: loadAndExecuteDeploymentsWithExtensions,
+		loadEnvironment: loadEnvironmentWithExtensions,
 	};
+}
+
+export function enhanceEnvIfNeeded<
+	Extensions extends Record<string, (env: Environment<any, any, any>) => any> = {},
+	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
+	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
+	Extra extends Record<string, unknown> = Record<string, unknown>
+>(
+	env: Environment,
+	extensions: Extensions
+): EnhancedEnvironment<NamedAccounts, Data, UnknownDeployments, Extensions, Extra> {
+	// Use the original env object as the base
+	const enhancedEnv = env as EnhancedEnvironment<NamedAccounts, Data, UnknownDeployments, Extensions, Extra>;
+
+	// Only create curried functions for extensions not already present in env
+	for (const key in extensions) {
+		if (!Object.prototype.hasOwnProperty.call(env, key)) {
+			// Create curried function only for this specific extension
+			const singleExtension: Record<string, unknown> = {};
+			singleExtension[key] = (extensions as any)[key];
+			const curriedFunction = withEnvironment(env, singleExtension as any);
+			(enhancedEnv as any)[key] = (curriedFunction as any)[key];
+		}
+	}
+	return enhancedEnv;
 }
 
 export type NamedAccountExecuteFunction<
