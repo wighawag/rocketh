@@ -35,7 +35,7 @@ const tsImport = (path: string, opts: any) => (typeof Bun !== 'undefined' ? impo
  *   verify: (env: Environment) => ((address: string) => Promise<boolean>)
  * };
  *
- * const deployScript = setup(functions);
+ * const {deployScript} = setup(functions);
  *
  * export default deployScript(async (env, args) => {
  *   // env now includes both the original environment AND the curried functions
@@ -55,7 +55,7 @@ export function setup<
 	Deployments extends UnknownDeployments = UnknownDeployments,
 	Extra extends Record<string, unknown> = Record<string, unknown>
 >(extensions: Extensions) {
-	return function enhancedExecute<ArgumentsType = undefined>(
+	function enhancedExecute<ArgumentsType = undefined>(
 		callback: EnhancedDeployScriptFunction<NamedAccounts, Data, ArgumentsType, Deployments, Extensions>,
 		options: {tags?: string[]; dependencies?: string[]; id?: string; runAtTheEnd?: boolean}
 	): DeployScriptModule<NamedAccounts, Data, ArgumentsType, Deployments, Extra> {
@@ -80,6 +80,41 @@ export function setup<
 		scriptModule.runAtTheEnd = options.runAtTheEnd;
 
 		return scriptModule;
+	}
+
+	async function loadAndExecuteDeploymentsWithExtensions<
+		NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
+		Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
+		ArgumentsType = undefined,
+		Extra extends Record<string, unknown> = Record<string, unknown>,
+		Extensions extends Record<string, (env: Environment<any, any, any>) => any> = {}
+	>(
+		options: ConfigOptions<Extra>,
+		args?: ArgumentsType
+	): Promise<EnhancedEnvironment<NamedAccounts, Data, UnknownDeployments, Extensions>> {
+		const resolvedConfig = await readAndResolveConfig<NamedAccounts, Data>(options);
+		// console.log(JSON.stringify(options, null, 2));
+		// console.log(JSON.stringify(resolvedConfig, null, 2));
+		const env = await executeDeployScripts<NamedAccounts, Data, ArgumentsType>(resolvedConfig, args);
+		// Use the original env object as the base
+		const enhancedEnv = env as EnhancedEnvironment<NamedAccounts, Data, UnknownDeployments, Extensions, Extra>;
+
+		// Only create curried functions for extensions not already present in env
+		for (const key in extensions) {
+			if (!Object.prototype.hasOwnProperty.call(env, key)) {
+				// Create curried function only for this specific extension
+				const singleExtension: Record<string, unknown> = {};
+				singleExtension[key] = (extensions as any)[key];
+				const curriedFunction = withEnvironment(env, singleExtension as any);
+				(enhancedEnv as any)[key] = (curriedFunction as any)[key];
+			}
+		}
+		return enhancedEnv;
+	}
+
+	return {
+		deployScript: enhancedExecute,
+		loadAndExecuteDeployments: loadAndExecuteDeploymentsWithExtensions,
 	};
 }
 
@@ -99,11 +134,7 @@ export type UntypedEIP1193Provider = {
 	request(requestArguments: UntypedRequestArguments): Promise<unknown>;
 };
 
-export type ConfigOptions<
-	Extra extends Record<string, unknown> = Record<string, unknown>,
-	Extensions extends Record<string, (env: Environment<any, any, any>) => any> = {}
-> = {
-	extensions?: Extensions;
+export type ConfigOptions<Extra extends Record<string, unknown> = Record<string, unknown>> = {
 	network?: string | {fork: string};
 	deployments?: string;
 	scripts?: string | string[];
@@ -435,31 +466,12 @@ export async function loadAndExecuteDeployments<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 	ArgumentsType = undefined,
-	Extra extends Record<string, unknown> = Record<string, unknown>,
-	Extensions extends Record<string, (env: Environment<any, any, any>) => any> = {}
->(
-	options: ConfigOptions<Extra, Extensions>,
-	args?: ArgumentsType
-): Promise<EnhancedEnvironment<NamedAccounts, Data, UnknownDeployments, Extensions>> {
+	Extra extends Record<string, unknown> = Record<string, unknown>
+>(options: ConfigOptions<Extra>, args?: ArgumentsType): Promise<Environment<NamedAccounts, Data, UnknownDeployments>> {
 	const resolvedConfig = await readAndResolveConfig<NamedAccounts, Data>(options);
 	// console.log(JSON.stringify(options, null, 2));
 	// console.log(JSON.stringify(resolvedConfig, null, 2));
-	const env = await executeDeployScripts<NamedAccounts, Data, ArgumentsType>(resolvedConfig, args);
-	// Use the original env object as the base
-	const enhancedEnv = env as EnhancedEnvironment<NamedAccounts, Data, UnknownDeployments, Extensions, Extra>;
-
-	// Only create curried functions for extensions not already present in env
-	const extensions = options.extensions || {};
-	for (const key in extensions) {
-		if (!Object.prototype.hasOwnProperty.call(env, key)) {
-			// Create curried function only for this specific extension
-			const singleExtension: Record<string, unknown> = {};
-			singleExtension[key] = (extensions as any)[key];
-			const curriedFunction = withEnvironment(env, singleExtension as any);
-			(enhancedEnv as any)[key] = (curriedFunction as any)[key];
-		}
-	}
-	return enhancedEnv;
+	return executeDeployScripts<NamedAccounts, Data, ArgumentsType>(resolvedConfig, args);
 }
 
 export async function executeDeployScripts<

@@ -1,5 +1,11 @@
 # @rocketh/signer
 
+## 0.14.0
+
+### Minor Changes
+
+- setup for both deployScript and loadAndExecuteDeployments
+
 ## 0.12.0
 
 ### Minor Changes

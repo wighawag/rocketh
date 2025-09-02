@@ -1,5 +1,16 @@
 # @rocketh/verifier
 
+## 0.14.0
+
+### Minor Changes
+
+- setup for both deployScript and loadAndExecuteDeployments
+
+### Patch Changes
+
+- Updated dependencies
+  - rocketh@0.14.0
+
 ## 0.13.4
 
 ### Patch Changes
@@ -47,11 +58,6 @@
 ### Minor Changes
 
 - fix version
-
-## 1.0.0
-
-### Minor Changes
-
 - switch to setup function
 
 ### Patch Changes

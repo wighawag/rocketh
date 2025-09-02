@@ -45,7 +45,7 @@ const utilityFunctions = {
 };
 
 // Create the enhanced execute function using setup
-const deployScript = setup(utilityFunctions);
+const {deployScript} = setup(utilityFunctions);
 
 // Test the enhanced execute function
 const testScript = deployScript(
@@ -123,7 +123,7 @@ export const exampleUsage = () => {
 	};
 
 	// Create the enhanced execute function
-	const deployScript = setup(myFunctions);
+	const {deployScript} = setup(myFunctions);
 
 	// Export your deployment script
 	return deployScript(

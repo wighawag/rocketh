@@ -1,5 +1,11 @@
 # @rocketh/deploy
 
+## 0.14.0
+
+### Minor Changes
+
+- setup for both deployScript and loadAndExecuteDeployments
+
 ## 0.13.0
 
 ### Minor Changes
