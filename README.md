@@ -10,6 +10,6 @@
 
 </div>
 
-<h1>What is it ?</h1
+<h1>What is it ?</h1>
 
 A deployer system for ethereum smart contracts.
