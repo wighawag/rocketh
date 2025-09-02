@@ -1,5 +1,12 @@
 # @rocketh/doc
 
+## 0.13.4
+
+### Patch Changes
+
+- Updated dependencies
+  - rocketh@0.13.4
+
 ## 0.13.3
 
 ### Patch Changes

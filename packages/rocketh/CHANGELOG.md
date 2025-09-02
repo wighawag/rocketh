@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.13.4
+
+### Patch Changes
+
+- extension for loadAndExecuteDeployments
+
 ## 0.13.3
 
 ### Patch Changes
