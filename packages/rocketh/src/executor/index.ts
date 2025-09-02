@@ -86,8 +86,7 @@ export function setup<
 		NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 		Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 		ArgumentsType = undefined,
-		Extra extends Record<string, unknown> = Record<string, unknown>,
-		Extensions extends Record<string, (env: Environment<any, any, any>) => any> = {}
+		Extra extends Record<string, unknown> = Record<string, unknown>
 	>(
 		options: ConfigOptions<Extra>,
 		args?: ArgumentsType
