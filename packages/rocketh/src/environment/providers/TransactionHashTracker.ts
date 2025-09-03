@@ -9,14 +9,7 @@ export class TransactionHashTrackerProvider extends BaseProvider implements EIP1
 	}
 
 	protected async _request<T = unknown, V extends EIP1193GenericRequest = EIP1193GenericRequest>(args: V): Promise<T> {
-		let response;
-		try {
-			response = await this.provider.request(args as any);
-		} catch (err) {
-			console.error(`failed to execute ${args.method}`, args);
-			throw err;
-		}
-
+		const response = await this.provider.request(args as any);
 		if (args.method === 'eth_sendRawTransaction' || args.method === 'eth_sendTransaction') {
 			this.transactionHashes.push(response as `0x${string}`);
 		}

@@ -40,8 +40,6 @@ import {getChainWithConfig} from './utils/chains.js';
 import {mergeArtifacts} from './utils/artifacts.js';
 import {TransactionHashTracker, TransactionHashTrackerProvider} from './providers/TransactionHashTracker.js';
 
-export type ReceiptResult = {receipt: EIP1193TransactionReceipt; latestBlockNumber: EIP1193QUANTITY};
-
 export type SignerProtocolFunction = (protocolString: string) => Promise<Signer>;
 export type SignerProtocol = {
 	getSigner: SignerProtocolFunction;
@@ -394,7 +392,7 @@ export async function createEnvironment<
 		return deployment;
 	}
 
-	async function recoverTransactionsIfAny<TAbi extends Abi = Abi>(): Promise<void> {
+	async function recoverTransactionsIfAny(): Promise<void> {
 		if (!context.network.saveDeployments) {
 			return;
 		}
@@ -458,21 +456,9 @@ export async function createEnvironment<
 	async function waitForTransactionReceipt(params: {
 		hash: EIP1193DATA;
 		// confirmations?: number; // TODO
-		pollingInterval?: number;
 		// timeout?: number; // TODO
-	}): Promise<ReceiptResult> {
-		// const {hash, confirmations, pollingInterval, timeout} = {confirmations: 1, pollingInterval: 1, ...params};
-		const {hash, pollingInterval} = {pollingInterval: 1, ...params};
-
-		let latestBlockNumber: EIP1193QUANTITY;
-		try {
-			latestBlockNumber = await provider.request({
-				method: 'eth_blockNumber',
-			});
-		} catch (err) {
-			await wait(pollingInterval);
-			return waitForTransactionReceipt(params);
-		}
+	}): Promise<EIP1193TransactionReceipt> {
+		const {hash, pollingInterval} = {pollingInterval: config.network.pollingInterval, ...params};
 
 		let receipt: EIP1193TransactionReceipt | null = null;
 		try {
@@ -486,7 +472,7 @@ export async function createEnvironment<
 			await wait(pollingInterval);
 			return waitForTransactionReceipt(params);
 		}
-		return {receipt, latestBlockNumber};
+		return receipt;
 	}
 
 	async function deleteTransaction<TAbi extends Abi = Abi>(hash: string) {
@@ -517,7 +503,7 @@ export async function createEnvironment<
 	async function waitForTransaction(
 		hash: `0x${string}`,
 		info?: {message?: string; transaction?: EIP1193Transaction | null}
-	): Promise<ReceiptResult> {
+	): Promise<EIP1193TransactionReceipt> {
 		const spinner = spin(
 			info?.message
 				? info.message
@@ -525,21 +511,21 @@ export async function createEnvironment<
 						info?.transaction ? `\n      ${displayTransaction(info?.transaction)}` : ''
 				  }`
 		);
-		let receiptResult: {receipt: EIP1193TransactionReceipt; latestBlockNumber: EIP1193QUANTITY};
+		let receipt: EIP1193TransactionReceipt;
 		try {
-			receiptResult = await waitForTransactionReceipt({
+			receipt = await waitForTransactionReceipt({
 				hash,
 			});
 		} catch (e) {
 			spinner.fail();
 			throw e;
 		}
-		if (!receiptResult) {
+		if (!receipt) {
 			throw new Error(`receipt for ${hash} not found`);
 		} else {
 			spinner.succeed();
 		}
-		return receiptResult;
+		return receipt;
 	}
 
 	async function waitForDeploymentTransactionAndSave<TAbi extends Abi = Abi>(
@@ -550,7 +536,7 @@ export async function createEnvironment<
 		const message = `  - Deploying ${nameToDisplay} with tx:\n      ${pendingDeployment.transaction.hash}${
 			transaction ? `\n      ${displayTransaction(transaction)}` : ''
 		}`;
-		const {receipt, latestBlockNumber} = await waitForTransaction(pendingDeployment.transaction.hash, {
+		const receipt = await waitForTransaction(pendingDeployment.transaction.hash, {
 			message,
 			transaction,
 		});
@@ -610,17 +596,12 @@ export async function createEnvironment<
 			}
 		}
 
-		const latestBlockNumberAsNumber = parseInt(latestBlockNumber.slice(2), 16);
-		const receiptBlockNumber = parseInt(receipt.blockNumber.slice(2), 16);
-		const confirmations = Math.max(0, latestBlockNumberAsNumber - receiptBlockNumber);
-
 		const deployment = {
 			address: contractAddress,
 			abi,
 			...artifactObjectWithoutABI,
 			transaction: pendingDeployment.transaction,
 			receipt: {
-				confirmations,
 				blockHash: receipt.blockHash,
 				blockNumber: receipt.blockNumber,
 				transactionIndex: receipt.transactionIndex,
@@ -657,7 +638,8 @@ export async function createEnvironment<
 			pendingExecution.transaction.origin = transaction.from;
 		}
 
-		const {receipt} = await waitForTransaction(pendingExecution.transaction.hash, {transaction});
+		const receipt = await waitForTransaction(pendingExecution.transaction.hash, {transaction});
+
 		await deleteTransaction(pendingExecution.transaction.hash);
 		return receipt;
 	}

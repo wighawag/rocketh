@@ -141,7 +141,6 @@ export type Deployment<TAbi extends Abi> = MinimalDeployment<TAbi> & {
 		readonly nonce?: EIP1193DATA;
 	};
 	readonly receipt?: {
-		confirmations: number;
 		blockHash: EIP1193DATA;
 		blockNumber: EIP1193QUANTITY;
 		transactionIndex: EIP1193QUANTITY;
@@ -251,6 +250,7 @@ type NetworkConfigBase = {
 		};
 		chainType?: string;
 	};
+	pollingInterval?: number;
 };
 type NetworkConfigForJSONRPC = NetworkConfigBase & {
 	nodeUrl: string;
@@ -284,6 +284,7 @@ export type Config<
 	data?: Data;
 	signerProtocols?: Record<string, SignerProtocolFunction>;
 	extra?: Record<string, unknown>;
+	defaultPollingInterval?: number;
 };
 
 export type ResolvedConfig<
@@ -294,6 +295,7 @@ export type ResolvedConfig<
 	scripts: string[];
 	tags: string[];
 	network: {
+		pollingInterval: number;
 		name: string;
 		tags: string[];
 		fork?: boolean;
@@ -324,6 +326,7 @@ export type ResolvedConfig<
 	data: Data;
 	signerProtocols: Record<string, SignerProtocolFunction>;
 	extra: Record<string, unknown>;
+	defaultPollingInterval: number;
 };
 
 export interface Environment<

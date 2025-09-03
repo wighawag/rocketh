@@ -200,6 +200,7 @@ type Networks = {
 			};
 			chainType?: string;
 		};
+		pollingInterval?: number;
 	};
 };
 export type UserConfig<
@@ -212,13 +213,14 @@ export type UserConfig<
 	accounts?: NamedAccounts;
 	data?: Data;
 	signerProtocols?: Record<string, SignerProtocolFunction>;
+	defaultPollingInterval?: number;
 };
 
 export function transformUserConfig<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 	Extra extends Record<string, unknown> = Record<string, unknown>
->(configFile: UserConfig<NamedAccounts, Data> | undefined, options: ConfigOptions<Extra>) {
+>(configFile: UserConfig<NamedAccounts, Data> | undefined, options: ConfigOptions<Extra>): Config<NamedAccounts, Data> {
 	if (configFile) {
 		if (!options.deployments && configFile.deployments) {
 			options.deployments = configFile.deployments;
@@ -252,6 +254,8 @@ export function transformUserConfig<
 
 	// no default for publicInfo
 	const publicInfo = configFile?.networks ? configFile?.networks[networkName]?.publicInfo : undefined;
+	const defaultPollingInterval = configFile?.defaultPollingInterval;
+	const pollingInterval = configFile?.networks?.[networkName]?.pollingInterval;
 	const deterministicDeployment = configFile?.networks?.[networkName]?.deterministicDeployment;
 	if (!options.provider) {
 		let nodeUrl: string;
@@ -297,6 +301,7 @@ export function transformUserConfig<
 				deterministicDeployment,
 				scripts: networkScripts,
 				publicInfo,
+				pollingInterval,
 			},
 			deployments: options.deployments,
 			saveDeployments: options.saveDeployments,
@@ -309,6 +314,7 @@ export function transformUserConfig<
 			accounts: configFile?.accounts,
 			signerProtocols: configFile?.signerProtocols,
 			extra: options.extra,
+			defaultPollingInterval,
 		};
 	} else {
 		return {
@@ -320,6 +326,7 @@ export function transformUserConfig<
 				deterministicDeployment,
 				scripts: networkScripts,
 				publicInfo,
+				pollingInterval,
 			},
 			deployments: options.deployments,
 			saveDeployments: options.saveDeployments,
@@ -332,6 +339,7 @@ export function transformUserConfig<
 			accounts: configFile?.accounts,
 			signerProtocols: configFile?.signerProtocols,
 			extra: options.extra,
+			defaultPollingInterval,
 		};
 	}
 }
@@ -409,6 +417,9 @@ export function resolveConfig<
 		proxyBytecode: '0x67363d3d37363d34f03d5260086018f3',
 	} as const;
 
+	const defaultPollingInterval = config.defaultPollingInterval || 1;
+	const networkPollingInterval = config.network.pollingInterval || defaultPollingInterval;
+
 	let deterministicDeployment: {
 		create2: Create2DeterministicDeploymentInfo;
 		create3: Create3DeterministicDeploymentInfo;
@@ -448,7 +459,7 @@ export function resolveConfig<
 	}
 	const resolvedConfig: ResolvedConfig<NamedAccounts, Data> = {
 		...config,
-		network: {...config.network, deterministicDeployment},
+		network: {...config.network, deterministicDeployment, pollingInterval: networkPollingInterval},
 		deployments: config.deployments || 'deployments',
 		scripts,
 		tags: config.tags || [],
@@ -458,6 +469,7 @@ export function resolveConfig<
 		data: config.data || ({} as Data),
 		signerProtocols: config.signerProtocols || {},
 		extra: config.extra || {},
+		defaultPollingInterval,
 	};
 	return resolvedConfig;
 }

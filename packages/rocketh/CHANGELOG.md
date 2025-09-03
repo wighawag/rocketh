@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.14.5
+
+### Patch Changes
+
+- allow to configure polling interval + remove confirmation field from deployment data
+
 ## 0.14.4
 
 ### Patch Changes
