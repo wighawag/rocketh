@@ -25,7 +25,12 @@ export type PredefinedProxyContract =
 export type ProxyDeployOptions = Omit<DeployOptions, 'skipIfAlreadyDeployed' | 'alwaysOverride'> & {
 	proxyDisabled?: boolean;
 	owner?: EIP1193Account;
-	execute?: string;
+	execute?:
+		| string
+		| {
+				methodName: string;
+				args: unknown[]; // TODO types
+		  };
 	upgradeIndex?: number;
 	proxyContract?:
 		| PredefinedProxyContract
@@ -247,19 +252,21 @@ export function deployViaProxy(
 
 		let postUpgradeCalldata: `0x${string}` | undefined;
 		if (options?.execute) {
+			const methodName = typeof options.execute === 'string' ? options.execute : options.execute.methodName;
+			const argsToExecute = typeof options.execute === 'string' ? (args as unknown[]) : options.execute.args;
 			const method: AbiFunction | undefined = artifactToUse.abi.find(
-				(v) => v.type === 'function' && v.name === options.execute
+				(v) => v.type === 'function' && v.name === methodName
 			) as AbiFunction;
 			if (method) {
 				postUpgradeCalldata = encodeFunctionData({
 					...viemArgs,
-					args: args as unknown[],
+					args: argsToExecute,
 					account: address,
 					abi: [method],
 					functionName: method.name,
 				});
 			} else {
-				throw new Error(`Method ${options.execute} not found in artifact ${artifactToUse.abi}`);
+				throw new Error(`Method ${methodName} not found in artifact ${artifactToUse.abi}`);
 			}
 		}
 		// let preUpgradeCalldata: `0x${string}` | undefined;
