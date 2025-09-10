@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.14.6
+
+### Patch Changes
+
+- network name default considered memory
+
 ## 0.14.5
 
 ### Patch Changes

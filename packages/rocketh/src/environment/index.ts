@@ -111,7 +111,7 @@ export async function createEnvironment<
 		} else {
 			networkName = 'memory';
 		}
-		if (networkName === 'memory' || networkName === 'hardhat') {
+		if (networkName === 'memory' || networkName === 'hardhat' || networkName === 'default') {
 			networkTags['memory'] = true;
 			saveDeployments = false;
 		} else {
