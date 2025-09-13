@@ -294,6 +294,9 @@ importers:
       named-logs:
         specifier: ^0.3.2
         version: 0.3.2
+      solidity-proxy:
+        specifier: ^0.4.2
+        version: 0.4.2
       viem:
         specifier: ^2.23.12
         version: 2.23.12(typescript@5.8.2)(zod@3.24.2)
@@ -2750,6 +2753,9 @@ packages:
   slash@5.1.0:
     resolution: {integrity: sha512-ZA6oR3T/pEyuqwMgAKT0/hAv8oAXckzbkmR0UkUosQ+Mc4RxGoJkRmwHgHufaenlyAgE1Mxgpdcrf75y6XcnDg==}
     engines: {node: '>=14.16'}
+
+  solidity-proxy@0.4.2:
+    resolution: {integrity: sha512-HIU0Vaym6/d1tcJJeT+XCSgp5seqNg/2cIvltDJYu8V1ShRG9+56/YAR44aU/Rba0pjNljw3IusRDxy5amAM2A==}
 
   source-map-js@1.2.1:
     resolution: {integrity: sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==}
@@ -5518,6 +5524,8 @@ snapshots:
   slash@3.0.0: {}
 
   slash@5.1.0: {}
+
+  solidity-proxy@0.4.2: {}
 
   source-map-js@1.2.1: {}
 

@@ -1,5 +1,11 @@
 # @rocketh/router
 
+## 0.14.2
+
+### Patch Changes
+
+- use latest soldiity-proxy for router
+
 ## 0.14.1
 
 ### Patch Changes

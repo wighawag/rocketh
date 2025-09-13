@@ -4,7 +4,7 @@ import '@rocketh/deploy';
 import {mergeArtifacts} from 'rocketh';
 import {DeployContractParameters} from 'viem';
 import {logs} from 'named-logs';
-import Router10X60 from './solidity-proxy-artifacts/Router10x60.js';
+import {Router10X60} from 'solidity-proxy/artifacts/index.js';
 import {deploy, DeployResult} from '@rocketh/deploy';
 
 const logger = logs('@rocketh/router');

@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/router",
-	"version": "0.14.1",
+	"version": "0.14.2",
 	"description": "provide router based proxy deployment for rocketh",
 	"publishConfig": {
 		"access": "public"
@@ -30,6 +30,7 @@
 		"@rocketh/deploy": "workspace:*",
 		"ethers": "^6.13.5",
 		"named-logs": "^0.3.2",
+		"solidity-proxy": "^0.4.2",
 		"viem": "^2.23.12"
 	},
 	"scripts": {
