@@ -26,22 +26,38 @@ export type DeployViaRouterFunction = <TAbi extends Abi>(
 	name: string,
 	params: RouterEnhancedDeploymentConstruction,
 	routes: Route<Abi>[],
-	extraABIs?: Abi[]
+	options?: {
+		extraABIs?: Abi[];
+		routerContract: {
+			type: 'custom';
+			artifact: Artifact<typeof Router10X60.abi>;
+		};
+	}
 ) => Promise<Deployment<TAbi> & {newlyDeployed: boolean}>;
 
-export function deployViaRouter(
-	env: Environment
-): <TAbi extends Abi>(
+export function deployViaRouter(env: Environment): <TAbi extends Abi>(
 	name: string,
 	params: RouterEnhancedDeploymentConstruction,
 	routes: Route<Abi>[],
-	extraABIs?: Abi[]
+	options?: {
+		extraABIs?: Abi[];
+		routerContract: {
+			type: 'custom';
+			artifact: Artifact<typeof Router10X60.abi>;
+		};
+	}
 ) => Promise<DeployResult<TAbi>> {
 	return async <TAbi extends Abi>(
 		name: string,
 		params: RouterEnhancedDeploymentConstruction,
 		routes: Route<Abi>[],
-		extraABIs?: Abi[]
+		options?: {
+			extraABIs?: Abi[];
+			routerContract: {
+				type: 'custom';
+				artifact: Artifact<typeof Router10X60.abi>;
+			};
+		}
 	) => {
 		const _deploy = deploy(env);
 		const implementations: `0x${string}`[] = [];
@@ -55,9 +71,9 @@ export function deployViaRouter(
 		for (const route of routes) {
 			namedAbis.push(route);
 		}
-		if (extraABIs) {
-			for (let i = 0; i < extraABIs.length; i++) {
-				const extra = extraABIs[i];
+		if (options?.extraABIs) {
+			for (let i = 0; i < options.extraABIs.length; i++) {
+				const extra = options.extraABIs[i];
 				namedAbis.push({name: `extra${i}`, artifact: {abi: extra}});
 			}
 		}
@@ -92,9 +108,9 @@ export function deployViaRouter(
 
 		logger.info(`routes`, routeParams);
 
-		const router = await _deploy<typeof Router10X60.abi>(`${name}_Router`, {
+		const router = await _deploy(`${name}_Router`, {
 			...params,
-			artifact: Router10X60,
+			artifact: options?.routerContract?.artifact || Router10X60,
 			args: [routeParams],
 		});
 

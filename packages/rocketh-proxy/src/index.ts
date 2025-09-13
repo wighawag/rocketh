@@ -37,18 +37,27 @@ export type ProxyDeployOptions = Omit<DeployOptions, 'skipIfAlreadyDeployed' | '
 		| ({type: PredefinedProxyContract} & {
 				type: 'SharedAdminOpenZeppelinTransparentProxy' | 'SharedAdminOptimizedTransparentProxy';
 				proxyAdminName?: string;
-		  });
-	// | {
-	// 		type: 'custom';
-	// 		artifact: Artifact;
-	// 		args?: any[]; // default to ["{implementation}", "{admin}", "{data}"]
-	// viaAdminContract?:
-	// 	| string
-	// 	| {
-	// 			name: string;
-	// 			artifact?: string | ArtifactData;
-	// 	  }
-	//   };
+				// TODO allow custom proxyAdmin artifact?
+		  })
+		| {
+				type: 'custom';
+				artifact: Artifact;
+				args?: ('{implementation}' | '{admin}' | '{data}')[]; // default to  ['{implementation}', '{admin}', '{data}']
+				// TODO allow viaAdminContract for custom proxy artifacts
+				// We could just use boolean | {proxyAdminName: string}
+				// viaAdminContract?:
+				// 	| string
+				// 	| {
+				// 			name: string;
+				// 			artifact?: string | ArtifactData;
+				// 	  };
+				// viaAdminContract = {
+				// 			artifactName: 'DefaultProxyAdmin',
+				// 			proxyAdminName:
+				// 				(typeof options.proxyContract === 'object' && options.proxyContract.proxyAdminName) ||
+				// 				'DefaultProxyAdmin',
+				// 		};
+		  };
 };
 
 export type ImplementationDeployer<TAbi extends Abi> = (
@@ -135,44 +144,49 @@ export function deployViaProxy(
 		let proxyArgsTemplate = ['{implementation}', '{admin}', '{data}'];
 		let proxyArtifact: Artifact = ERC173Proxy;
 		if (options?.proxyContract) {
-			const proxyContractDefinition =
-				typeof options.proxyContract === 'string' ? options.proxyContract : options.proxyContract.type;
+			if (typeof options.proxyContract !== 'string' && options.proxyContract.type === 'custom') {
+				proxyArtifact = options.proxyContract.artifact;
+				proxyArgsTemplate = options.proxyContract.args || ['{implementation}', '{admin}', '{data}'];
+			} else {
+				const proxyContractDefinition =
+					typeof options.proxyContract === 'string' ? options.proxyContract : options.proxyContract.type;
 
-			switch (proxyContractDefinition) {
-				case 'ERC173Proxy':
-					proxyArtifact = ERC173Proxy;
-					proxyArgsTemplate = ['{implementation}', '{admin}', '{data}'];
-					break;
-				case 'ERC173ProxyWithReceive':
-					proxyArtifact = ERC173ProxyWithReceive;
-					proxyArgsTemplate = ['{implementation}', '{admin}', '{data}'];
-					break;
-				case 'UUPS':
-					proxyArtifact = ERC1967Proxy;
-					proxyArgsTemplate = ['{implementation}', '{data}'];
-					break;
-				case 'SharedAdminOpenZeppelinTransparentProxy':
-					proxyArtifact = TransparentUpgradeableProxy;
-					proxyArgsTemplate = ['{implementation}', '{admin}', '{data}'];
-					viaAdminContract = {
-						artifactName: 'DefaultProxyAdmin',
-						proxyAdminName:
-							(typeof options.proxyContract === 'object' && options.proxyContract.proxyAdminName) ||
-							'DefaultProxyAdmin',
-					};
-					break;
-				case 'SharedAdminOptimizedTransparentProxy':
-					proxyArtifact = OptimizedTransparentUpgradeableProxy;
-					proxyArgsTemplate = ['{implementation}', '{admin}', '{data}'];
-					viaAdminContract = {
-						artifactName: 'DefaultProxyAdmin',
-						proxyAdminName:
-							(typeof options.proxyContract === 'object' && options.proxyContract.proxyAdminName) ||
-							'DefaultProxyAdmin',
-					};
-					break;
-				default:
-					throw new Error(`unknown proxy contract ${options.proxyContract}`);
+				switch (proxyContractDefinition) {
+					case 'ERC173Proxy':
+						proxyArtifact = ERC173Proxy;
+						proxyArgsTemplate = ['{implementation}', '{admin}', '{data}'];
+						break;
+					case 'ERC173ProxyWithReceive':
+						proxyArtifact = ERC173ProxyWithReceive;
+						proxyArgsTemplate = ['{implementation}', '{admin}', '{data}'];
+						break;
+					case 'UUPS':
+						proxyArtifact = ERC1967Proxy;
+						proxyArgsTemplate = ['{implementation}', '{data}'];
+						break;
+					case 'SharedAdminOpenZeppelinTransparentProxy':
+						proxyArtifact = TransparentUpgradeableProxy;
+						proxyArgsTemplate = ['{implementation}', '{admin}', '{data}'];
+						viaAdminContract = {
+							artifactName: 'DefaultProxyAdmin',
+							proxyAdminName:
+								(typeof options.proxyContract === 'object' && options.proxyContract.proxyAdminName) ||
+								'DefaultProxyAdmin',
+						};
+						break;
+					case 'SharedAdminOptimizedTransparentProxy':
+						proxyArtifact = OptimizedTransparentUpgradeableProxy;
+						proxyArgsTemplate = ['{implementation}', '{admin}', '{data}'];
+						viaAdminContract = {
+							artifactName: 'DefaultProxyAdmin',
+							proxyAdminName:
+								(typeof options.proxyContract === 'object' && options.proxyContract.proxyAdminName) ||
+								'DefaultProxyAdmin',
+						};
+						break;
+					default:
+						throw new Error(`unknown proxy contract ${options.proxyContract}`);
+				}
 			}
 		}
 

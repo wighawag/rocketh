@@ -1,5 +1,11 @@
 # @rocketh/proxy
 
+## 0.14.2
+
+### Patch Changes
+
+- allow to specify custom proxy and router
+
 ## 0.14.1
 
 ### Patch Changes
