@@ -1,5 +1,14 @@
 # @rocketh/diamond
 
+## 0.14.2
+
+### Patch Changes
+
+- latest deps + fix eth_feeHistory
+- Updated dependencies
+  - @rocketh/read-execute@0.14.2
+  - @rocketh/deploy@0.14.1
+
 ## 0.14.1
 
 ### Patch Changes

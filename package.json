@@ -11,10 +11,10 @@
     "url": "https://github.com/wighawag/rocketh/issues"
   },
   "devDependencies": {
-    "@changesets/cli": "^2.28.1",
+    "@changesets/cli": "^2.29.7",
     "set-defaults": "^0.0.5",
-    "syncpack": "^13.0.3",
-    "vitepress": "^1.6.3",
+    "syncpack": "^13.0.4",
+    "vitepress": "^1.6.4",
     "zellij-launcher": "^0.0.1"
   },
   "volta": {

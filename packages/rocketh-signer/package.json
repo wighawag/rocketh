@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/signer",
-	"version": "0.14.0",
+	"version": "0.14.1",
 	"description": "add signer to rocketh",
 	"publishConfig": {
 		"access": "public"
@@ -23,10 +23,10 @@
 	},
 	"devDependencies": {
 		"as-soon": "^0.0.11",
-		"eip-1193": "^0.6.2",
+		"eip-1193": "^0.6.4",
 		"rimraf": "^6.0.1",
 		"rocketh": "workspace:*",
-		"typescript": "^5.8.2"
+		"typescript": "^5.9.2"
 	},
 	"scripts": {
 		"build": "tsc --project tsconfig.json",

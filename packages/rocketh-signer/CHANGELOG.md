@@ -1,5 +1,11 @@
 # @rocketh/signer
 
+## 0.14.1
+
+### Patch Changes
+
+- latest deps + fix eth_feeHistory
+
 ## 0.14.0
 
 ### Minor Changes

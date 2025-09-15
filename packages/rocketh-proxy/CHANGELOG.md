@@ -1,5 +1,14 @@
 # @rocketh/proxy
 
+## 0.14.5
+
+### Patch Changes
+
+- latest deps + fix eth_feeHistory
+- Updated dependencies
+  - @rocketh/read-execute@0.14.2
+  - @rocketh/deploy@0.14.1
+
 ## 0.14.4
 
 ### Patch Changes

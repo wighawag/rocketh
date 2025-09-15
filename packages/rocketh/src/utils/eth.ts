@@ -36,7 +36,7 @@ export async function getGasPriceEstimate(
 
 	const rawFeeHistory = await provider.request({
 		method: 'eth_feeHistory',
-		params: [`0x${historicalBlocks.toString(16)}`, optionsResolved.newestBlock, optionsResolved.rewardPercentiles],
+		params: [historicalBlocks, optionsResolved.newestBlock, optionsResolved.rewardPercentiles],
 	});
 
 	let blockNum = Number(rawFeeHistory.oldestBlock);

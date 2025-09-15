@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.14.7
+
+### Patch Changes
+
+- latest deps + fix eth_feeHistory
+
 ## 0.14.6
 
 ### Patch Changes
