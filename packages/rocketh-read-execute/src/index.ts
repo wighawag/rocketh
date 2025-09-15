@@ -1,5 +1,5 @@
 import {Abi} from 'abitype';
-import {EIP1193DATA, EIP1193TransactionData} from 'eip-1193';
+import {EIP1193DATA, EIP1193TransactionData, EIP1193TransactionReceipt} from 'eip-1193';
 import type {Artifact, Environment, MinimalDeployment, PendingExecution} from 'rocketh';
 import {
 	ContractFunctionArgs,
@@ -108,7 +108,7 @@ export function execute(
 >(
 	deployment: MinimalDeployment<TAbi>,
 	args: ExecutionArgs<TAbi, TFunctionName, TArgs>
-) => Promise<`0x${string}`> {
+) => Promise<EIP1193TransactionReceipt> {
 	return async <
 		TAbi extends Abi,
 		TFunctionName extends ContractFunctionName<TAbi, 'nonpayable' | 'payable'>,
@@ -189,8 +189,8 @@ export function execute(
 			// description, // TODO
 			// TODO we should have the nonce, except for wallet like metamask where it is not usre you get the nonce you start with
 		};
-		await env.savePendingExecution(pendingExecution);
-		return txHash;
+		const receipt = await env.savePendingExecution(pendingExecution);
+		return receipt;
 	};
 }
 
@@ -207,7 +207,7 @@ export function executeByName(
 >(
 	name: string,
 	args: ExecutionArgs<TAbi, TFunctionName, TArgs>
-) => Promise<`0x${string}`> {
+) => Promise<EIP1193TransactionReceipt> {
 	return async <
 		TAbi extends Abi,
 		TFunctionName extends ContractFunctionName<TAbi, 'nonpayable' | 'payable'>,

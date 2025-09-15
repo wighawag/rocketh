@@ -1,5 +1,11 @@
 # @rocketh/deploy
 
+## 0.14.1
+
+### Patch Changes
+
+- return receipt rather than txHash for execute function
+
 ## 0.14.0
 
 ### Minor Changes
