@@ -197,7 +197,7 @@ export async function run(
 
 	if (js.length > 0) {
 		const newContent = `export default /** @type {const} **/ (${JSON.stringify(exportData, null, 2)});`;
-		const dtsContent = `export = ${JSON.stringify(exportData, null, 2)} as const;`;
+		const dtsContent = `declare const _default:  ${JSON.stringify(exportData, null, 2)};\nexport default _default;`;
 		for (const jsFile of js) {
 			const folderPath = path.dirname(jsFile);
 			fs.mkdirSync(folderPath, {recursive: true});
