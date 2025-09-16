@@ -1,4 +1,4 @@
-import {EIP1193BlockTag, EIP1193ProviderWithoutEvents} from 'eip-1193';
+import {EIP1193BlockTag, EIP1193ProviderWithoutEvents, EIP1193QUANTITY} from 'eip-1193';
 
 function avg(arr: bigint[]) {
 	const sum = arr.reduce((a: bigint, v: bigint) => a + v);
@@ -32,11 +32,20 @@ export async function getGasPriceEstimate(
 	};
 	const optionsResolved = options ? {...defaultOptions, ...options} : defaultOptions;
 
-	const historicalBlocks = optionsResolved.blockCount;
+	let historicalBlocks: `0x${string}` | number = `0x${optionsResolved.blockCount.toString(16)}`;
+
+	// for now megaeth do not support 0x prefixed string for block count
+	// so we get the chain id
+	const chainId = await provider.request({
+		method: 'eth_chainId',
+	});
+	if (Number(chainId) == 6342) {
+		historicalBlocks = optionsResolved.blockCount;
+	}
 
 	const rawFeeHistory = await provider.request({
 		method: 'eth_feeHistory',
-		params: [historicalBlocks, optionsResolved.newestBlock, optionsResolved.rewardPercentiles],
+		params: [historicalBlocks as EIP1193QUANTITY, optionsResolved.newestBlock, optionsResolved.rewardPercentiles],
 	});
 
 	let blockNum = Number(rawFeeHistory.oldestBlock);

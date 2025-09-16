@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/export",
-	"version": "0.14.8",
+	"version": "0.14.9",
 	"description": "export deployments",
 	"publishConfig": {
 		"access": "public"
@@ -25,7 +25,7 @@
 		"@types/node": "^24.4.0",
 		"abitype": "^1.1.0",
 		"as-soon": "^0.0.11",
-		"eip-1193": "^0.6.4",
+		"eip-1193": "^0.6.5",
 		"rimraf": "^6.0.1",
 		"rocketh": "workspace:*",
 		"typescript": "^5.9.2"

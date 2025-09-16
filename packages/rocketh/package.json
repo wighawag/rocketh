@@ -1,6 +1,6 @@
 {
 	"name": "rocketh",
-	"version": "0.14.7",
+	"version": "0.14.8",
 	"description": "deploy smart contract on ethereum-compatible networks",
 	"publishConfig": {
 		"access": "public"
@@ -22,7 +22,7 @@
 		"@types/node": "^24.4.0",
 		"abitype": "^1.1.0",
 		"as-soon": "^0.0.11",
-		"eip-1193": "^0.6.4",
+		"eip-1193": "^0.6.5",
 		"ipfs-gateway-emulator": "4.2.1-ipfs.2",
 		"rimraf": "^6.0.1",
 		"typedoc": "^0.28.13",

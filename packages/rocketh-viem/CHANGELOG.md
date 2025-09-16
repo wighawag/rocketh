@@ -1,5 +1,11 @@
 # @rocketh/viem
 
+## 0.14.2
+
+### Patch Changes
+
+- fix
+
 ## 0.14.1
 
 ### Patch Changes
