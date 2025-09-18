@@ -251,6 +251,7 @@ type NetworkConfigBase = {
 		chainType?: string;
 	};
 	pollingInterval?: number;
+	properties?: Record<string, JSONTypePlusBigInt>;
 };
 type NetworkConfigForJSONRPC = NetworkConfigBase & {
 	nodeUrl: string;
@@ -318,6 +319,7 @@ export type ResolvedConfig<
 			};
 			chainType?: string;
 		};
+		properties?: Record<string, JSONTypePlusBigInt>;
 	};
 	saveDeployments?: boolean;
 	askBeforeProceeding?: boolean;

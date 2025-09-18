@@ -2,7 +2,15 @@ import {Abi, Address} from 'abitype';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import {Deployment, LinkedData, ResolvedConfig, chainTypes, getChainWithConfig, loadDeployments} from 'rocketh';
+import {
+	Deployment,
+	JSONTypePlusBigInt,
+	LinkedData,
+	ResolvedConfig,
+	chainTypes,
+	getChainWithConfig,
+	loadDeployments,
+} from 'rocketh';
 
 export interface ContractExport {
 	address: `0x${string}`;
@@ -85,6 +93,10 @@ export type ChainInfo = {
 
 	chainType: 'zksync' | 'op-stack' | 'celo' | 'default';
 
+	genesisHash?: string;
+
+	properties?: Record<string, JSONTypePlusBigInt>;
+
 	// this will bring in the following when reconstructed from the data above
 
 	// /** Custom chain data. */
@@ -102,9 +114,7 @@ export type ChainInfo = {
 };
 
 export type ExportedDeployments = {
-	chainId: string;
-	genesisHash?: string;
-	chainInfo: ChainInfo;
+	chain: ChainInfo;
 	name: string;
 	contracts: {[name: string]: ContractExport};
 };
@@ -162,12 +172,12 @@ export async function run(
 		contracts: chain.contracts,
 		sourceId: chain.sourceId,
 		testnet: chain.testnet,
+		genesisHash,
+		properties: config.network.properties,
 	};
 
 	const exportData: ExportedDeployments = {
-		chainId,
-		genesisHash,
-		chainInfo,
+		chain: chainInfo,
 		contracts: objectMap<Deployment<Abi>, ContractExport>(deployments, (d) => ({
 			abi: d.abi,
 			address: d.address,
@@ -216,16 +226,7 @@ export async function run(
 	}
 
 	if (tsmodule.length > 0) {
-		let newContent = `export const chain = ${JSON.stringify(
-			{
-				chainId: exportData.chainId,
-				genesisHash: exportData.genesisHash,
-				chainInfo: exportData.chainInfo,
-				name: exportData.name,
-			},
-			null,
-			2
-		)} as const;\n`;
+		let newContent = `export const chain = ${JSON.stringify(chainInfo, null, 2)} as const;\n`;
 
 		for (const contractName of Object.keys(exportData.contracts)) {
 			newContent += `export const ${contractName} = ${JSON.stringify(
@@ -244,16 +245,7 @@ export async function run(
 
 	if (jsmodule.length > 0) {
 		// TODO test
-		let newContent = `export const chain = /** @type {const} **/ (${JSON.stringify(
-			{
-				chainId: exportData.chainId,
-				genesisHash: exportData.genesisHash,
-				chainInfo: exportData.chainInfo,
-				name: exportData.name,
-			},
-			null,
-			2
-		)});\n`;
+		let newContent = `export const chain = /** @type {const} **/ (${JSON.stringify(chainInfo, null, 2)});\n`;
 
 		for (const contractName of Object.keys(exportData.contracts)) {
 			newContent += `export const ${contractName} = /** @type {const} **/ (${JSON.stringify(

@@ -1,5 +1,13 @@
 # @rocketh/export
 
+## 0.14.10
+
+### Patch Changes
+
+- consolidate the export format + add ability to augment chain data with custom properties
+- Updated dependencies
+  - rocketh@0.14.9
+
 ## 0.14.9
 
 ### Patch Changes

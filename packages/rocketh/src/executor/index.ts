@@ -7,6 +7,7 @@ import {formatEther} from 'viem';
 import type {
 	Config,
 	Environment,
+	JSONTypePlusBigInt,
 	ResolvedConfig,
 	UnknownDeployments,
 	UnresolvedNetworkSpecificData,
@@ -201,6 +202,7 @@ type Networks = {
 			chainType?: string;
 		};
 		pollingInterval?: number;
+		properties?: Record<string, JSONTypePlusBigInt>;
 	};
 };
 export type UserConfig<
@@ -257,6 +259,7 @@ export function transformUserConfig<
 	const defaultPollingInterval = configFile?.defaultPollingInterval;
 	const pollingInterval = configFile?.networks?.[networkName]?.pollingInterval;
 	const deterministicDeployment = configFile?.networks?.[networkName]?.deterministicDeployment;
+	const properties = configFile?.networks ? configFile?.networks[networkName]?.properties : undefined;
 	if (!options.provider) {
 		let nodeUrl: string;
 		if (typeof fromEnv === 'string') {
@@ -302,6 +305,7 @@ export function transformUserConfig<
 				scripts: networkScripts,
 				publicInfo,
 				pollingInterval,
+				properties,
 			},
 			deployments: options.deployments,
 			saveDeployments: options.saveDeployments,
@@ -327,6 +331,7 @@ export function transformUserConfig<
 				scripts: networkScripts,
 				publicInfo,
 				pollingInterval,
+				properties,
 			},
 			deployments: options.deployments,
 			saveDeployments: options.saveDeployments,
