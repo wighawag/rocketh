@@ -17,7 +17,7 @@ program
 	.version(pkg.version)
 
 	.option('-d, --deployments <value>', 'folder where deployments are saved')
-	.requiredOption('-n, --network <value>', 'network context to use');
+	.requiredOption('--target <value>', 'target context to use');
 
 program
 	.command('etherscan')

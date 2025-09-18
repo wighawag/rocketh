@@ -25,7 +25,7 @@ program
 		'list of filepath where the javascript export  with individual exportwill be written, separated by commas'
 	)
 	.option('-b, --bytecode', 'if set, the bytecode will also be part of the output')
-	.requiredOption('-n, --network <value>', 'network context to use')
+	.requiredOption('--target <value>', 'target context to use')
 	.parse(process.argv);
 
 const options = program.opts();

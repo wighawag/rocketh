@@ -1,5 +1,13 @@
 # @rocketh/doc
 
+## 0.15.0-testing.2
+
+### Patch Changes
+
+- fix cli
+- Updated dependencies
+  - rocketh@0.15.0-testing.2
+
 ## 0.15.0-testing.1
 
 ### Minor Changes
