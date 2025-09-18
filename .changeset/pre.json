@@ -15,6 +15,7 @@
     "@rocketh/viem": "0.14.2"
   },
   "changesets": [
+    "beige-sides-wait",
     "cute-rocks-occur",
     "evil-kings-dance",
     "quick-pianos-cross",
