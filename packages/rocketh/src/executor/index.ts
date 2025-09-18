@@ -9,16 +9,25 @@ import type {
 	Environment,
 	JSONTypePlusBigInt,
 	ResolvedConfig,
+	TargetConfig,
 	UnknownDeployments,
 	UnresolvedNetworkSpecificData,
 	UnresolvedUnknownNamedAccounts,
 } from '../environment/types.js';
 import {createEnvironment, SignerProtocolFunction} from '../environment/index.js';
-import {DeployScriptFunction, DeployScriptModule, EnhancedDeployScriptFunction, EnhancedEnvironment} from './types.js';
+import {
+	ChainInfo,
+	DeployScriptFunction,
+	DeployScriptModule,
+	EnhancedDeployScriptFunction,
+	EnhancedEnvironment,
+} from './types.js';
 import {withEnvironment} from '../utils/extensions.js';
 import {logger, setLogLevel, spin} from '../internal/logging.js';
 import {getRoughGasPriceEstimate} from '../utils/eth.js';
 import {traverseMultipleDirectory} from '../utils/fs.js';
+import {getChain, getChainByName} from '../environment/utils/chains.js';
+import {JSONRPCHTTPProvider} from 'eip-1193-jsonrpc-provider';
 
 // @ts-ignore
 const tsImport = (path: string, opts: any) => (typeof Bun !== 'undefined' ? import(path) : tsImport_(path, opts));
@@ -147,7 +156,7 @@ export type UntypedEIP1193Provider = {
 };
 
 export type ConfigOptions<Extra extends Record<string, unknown> = Record<string, unknown>> = {
-	network?: string | {fork: string};
+	target?: string | {fork: string};
 	deployments?: string;
 	scripts?: string | string[];
 	tags?: string;
@@ -181,35 +190,30 @@ export type DeterministicDeploymentInfo =
 			create3?: Create3DeterministicDeploymentInfo;
 	  };
 
-type Networks = {
-	[name: string]: {
-		rpcUrl?: string;
-		tags?: string[];
-		deterministicDeployment?: DeterministicDeploymentInfo;
-		scripts?: string | string[];
-		publicInfo?: {
-			name: string;
-			nativeCurrency: {
-				name: string;
-				symbol: string;
-				decimals: number;
-			};
-			rpcUrls: {
-				default: {
-					http: string[];
-				};
-			};
-			chainType?: string;
-		};
-		pollingInterval?: number;
-		properties?: Record<string, JSONTypePlusBigInt>;
-	};
+export type ChainUserConfig = {
+	rpcUrl?: string;
+	tags?: string[];
+	deterministicDeployment?: DeterministicDeploymentInfo;
+	info?: ChainInfo;
+	pollingInterval?: number;
+	properties?: Record<string, JSONTypePlusBigInt>;
+};
+
+export type DeploymentTargetConfig = {
+	chainId: number;
+	scripts?: string | string[];
+	overrides: Omit<ChainUserConfig, 'info'>;
+};
+
+export type Chains = {
+	[idOrName: number | string]: ChainUserConfig;
 };
 export type UserConfig<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData
 > = {
-	networks?: Networks;
+	targets: {[name: string]: DeploymentTargetConfig};
+	chains?: Chains;
 	deployments?: string;
 	scripts?: string | string[];
 	accounts?: NamedAccounts;
@@ -218,11 +222,14 @@ export type UserConfig<
 	defaultPollingInterval?: number;
 };
 
-export function transformUserConfig<
+export async function transformUserConfig<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 	Extra extends Record<string, unknown> = Record<string, unknown>
->(configFile: UserConfig<NamedAccounts, Data> | undefined, options: ConfigOptions<Extra>): Config<NamedAccounts, Data> {
+>(
+	configFile: UserConfig<NamedAccounts, Data> | undefined,
+	options: ConfigOptions<Extra>
+): Promise<Config<NamedAccounts, Data>> {
 	if (configFile) {
 		if (!options.deployments && configFile.deployments) {
 			options.deployments = configFile.deployments;
@@ -232,121 +239,145 @@ export function transformUserConfig<
 		}
 	}
 
-	const fromEnv = process.env['ETH_NODE_URI_' + options.network];
-	const fork = typeof options.network !== 'string';
-	let networkName = 'memory';
-	if (options.network) {
-		if (typeof options.network === 'string') {
-			networkName = options.network;
-		} else if ('fork' in options.network) {
-			networkName = options.network.fork;
+	const fork = typeof options.target !== 'string';
+	let targetName = 'memory';
+	if (options.target) {
+		if (typeof options.target === 'string') {
+			targetName = options.target;
+		} else if ('fork' in options.target) {
+			targetName = options.target.fork;
 		}
 	}
 
-	let defaultTags: string[] = [];
+	let chainInfo: ChainInfo;
 
-	let networkTags: string[] =
-		(configFile?.networks && (configFile?.networks[networkName]?.tags || configFile?.networks['default']?.tags)) ||
-		defaultTags;
+	let chainId: number;
 
-	let networkScripts: string | string[] | undefined =
-		(configFile?.networks &&
-			(configFile?.networks[networkName]?.scripts || configFile?.networks['default']?.scripts)) ||
-		undefined;
+	if (configFile?.targets[targetName]) {
+		chainId = configFile.targets[targetName].chainId;
+	} else {
+		const chainFound = getChainByName(targetName);
+		if (chainFound) {
+			chainInfo = chainFound;
+			chainId = chainInfo.id;
+		} else {
+			if (options.provider) {
+				const chainIdAsHex = await (options.provider as EIP1193ProviderWithoutEvents).request({method: 'eth_chainId'});
+				chainId = Number(chainIdAsHex);
+			} else {
+				throw new Error(`target ${targetName} is unknown`);
+			}
+		}
+	}
+
+	const chainFound = getChain(chainId);
+	if (chainFound) {
+		chainInfo = chainFound;
+	} else {
+		throw new Error(`target ${targetName} has no chain associated with it`);
+	}
+
+	const chainConfigFromChainId = configFile?.chains?.[chainId];
+	const chainConfigFromChainName = configFile?.chains?.[targetName];
+	if (chainConfigFromChainId && chainConfigFromChainName) {
+		throw new Error(
+			`conflicting config for chain, choose to configure via its chainId (${chainId}) or via its name ${targetName} but not both`
+		);
+	}
+	const chainConfig = chainConfigFromChainId || chainConfigFromChainName;
+
+	const targetConfig = configFile?.targets?.[targetName];
+	const actualChainConfig = targetConfig?.overrides
+		? {
+				...chainConfig,
+				...targetConfig.overrides,
+				properties: {
+					...chainConfig?.properties,
+					...targetConfig.overrides.properties,
+				},
+		  }
+		: chainConfig;
+
+	const defaultTags: string[] = [];
+	if (chainInfo.testnet) {
+		defaultTags.push('testnet');
+	}
+
+	let targetTags: string[] = actualChainConfig?.tags || defaultTags;
+
+	let networkScripts: string | string[] | undefined = targetConfig?.scripts;
 
 	// no default for publicInfo
-	const publicInfo = configFile?.networks ? configFile?.networks[networkName]?.publicInfo : undefined;
 	const defaultPollingInterval = configFile?.defaultPollingInterval;
-	const pollingInterval = configFile?.networks?.[networkName]?.pollingInterval;
-	const deterministicDeployment = configFile?.networks?.[networkName]?.deterministicDeployment;
-	const properties = configFile?.networks ? configFile?.networks[networkName]?.properties : undefined;
+	const pollingInterval = actualChainConfig?.pollingInterval;
+	const deterministicDeployment = actualChainConfig?.deterministicDeployment;
+	const properties = actualChainConfig?.properties;
+
+	let resolvedTargetConfig: TargetConfig;
+
 	if (!options.provider) {
+		let rpcURL = actualChainConfig?.rpcUrl;
+		if (!rpcURL) {
+			rpcURL = chainInfo.rpcUrls.default.http[0];
+		}
+
+		const fromEnv = process.env['ETH_NODE_URI_' + targetName];
 		let nodeUrl: string;
-		if (typeof fromEnv === 'string') {
+		if (typeof fromEnv === 'string' && fromEnv) {
 			nodeUrl = fromEnv;
 		} else {
-			if (configFile) {
-				const network = configFile.networks && configFile.networks[networkName];
-				if (network && network.rpcUrl) {
-					nodeUrl = network.rpcUrl;
-				} else {
-					if (options?.ignoreMissingRPC) {
-						nodeUrl = '';
-					} else {
-						if (options.network === 'localhost') {
-							nodeUrl = 'http://127.0.0.1:8545';
-						} else {
-							console.error(`network "${options.network}" is not configured. Please add it to the rocketh.js/ts file`);
-							process.exit(1);
-						}
-					}
-				}
+			if (rpcURL) {
+				nodeUrl = rpcURL;
+			} else if (options?.ignoreMissingRPC) {
+				nodeUrl = '';
+			} else if (options.target === 'localhost') {
+				nodeUrl = 'http://127.0.0.1:8545';
 			} else {
-				if (options?.ignoreMissingRPC) {
-					nodeUrl = '';
-				} else {
-					if (options.network === 'localhost') {
-						nodeUrl = 'http://127.0.0.1:8545';
-					} else {
-						console.error(`network "${options.network}" is not configured. Please add it to the rocketh.js/ts file`);
-						process.exit(1);
-					}
-				}
+				console.error(`network "${options.target}" is not configured. Please add it to the rocketh.js/ts file`);
+				process.exit(1);
 			}
 		}
 
-		return {
-			network: {
-				nodeUrl,
-				name: networkName,
-				tags: networkTags,
-				fork,
-				deterministicDeployment,
-				scripts: networkScripts,
-				publicInfo,
-				pollingInterval,
-				properties,
-			},
-			deployments: options.deployments,
-			saveDeployments: options.saveDeployments,
-			scripts: options.scripts,
-			data: configFile?.data,
-			tags: typeof options.tags === 'undefined' ? undefined : options.tags.split(','),
-			logLevel: options.logLevel,
-			askBeforeProceeding: options.askBeforeProceeding,
-			reportGasUse: options.reportGasUse,
-			accounts: configFile?.accounts,
-			signerProtocols: configFile?.signerProtocols,
-			extra: options.extra,
-			defaultPollingInterval,
+		resolvedTargetConfig = {
+			nodeUrl,
+			name: targetName,
+			tags: targetTags,
+			fork,
+			deterministicDeployment,
+			scripts: networkScripts,
+			chainInfo,
+			pollingInterval,
+			properties,
 		};
 	} else {
-		return {
-			network: {
-				provider: options.provider as EIP1193ProviderWithoutEvents,
-				name: networkName,
-				tags: networkTags,
-				fork,
-				deterministicDeployment,
-				scripts: networkScripts,
-				publicInfo,
-				pollingInterval,
-				properties,
-			},
-			deployments: options.deployments,
-			saveDeployments: options.saveDeployments,
-			scripts: options.scripts,
-			data: configFile?.data,
-			tags: typeof options.tags === 'undefined' ? undefined : options.tags.split(','),
-			logLevel: options.logLevel,
-			askBeforeProceeding: options.askBeforeProceeding,
-			reportGasUse: options.reportGasUse,
-			accounts: configFile?.accounts,
-			signerProtocols: configFile?.signerProtocols,
-			extra: options.extra,
-			defaultPollingInterval,
+		resolvedTargetConfig = {
+			provider: options.provider as EIP1193ProviderWithoutEvents,
+			name: targetName,
+			tags: targetTags,
+			fork,
+			deterministicDeployment,
+			scripts: networkScripts,
+			chainInfo,
+			pollingInterval,
+			properties,
 		};
 	}
+
+	return {
+		target: resolvedTargetConfig,
+		deployments: options.deployments,
+		saveDeployments: options.saveDeployments,
+		scripts: options.scripts,
+		data: configFile?.data,
+		tags: typeof options.tags === 'undefined' ? undefined : options.tags.split(','),
+		logLevel: options.logLevel,
+		askBeforeProceeding: options.askBeforeProceeding,
+		reportGasUse: options.reportGasUse,
+		accounts: configFile?.accounts,
+		signerProtocols: configFile?.signerProtocols,
+		extra: options.extra,
+		defaultPollingInterval,
+	};
 }
 
 export async function readConfig<
@@ -423,26 +454,26 @@ export function resolveConfig<
 	} as const;
 
 	const defaultPollingInterval = config.defaultPollingInterval || 1;
-	const networkPollingInterval = config.network.pollingInterval || defaultPollingInterval;
+	const networkPollingInterval = config.target.pollingInterval || defaultPollingInterval;
 
 	let deterministicDeployment: {
 		create2: Create2DeterministicDeploymentInfo;
 		create3: Create3DeterministicDeploymentInfo;
 	} = {
 		create2: (() => {
-			if (!config.network.deterministicDeployment) return create2Info;
+			if (!config.target.deterministicDeployment) return create2Info;
 			if (
-				!('create3' in config.network.deterministicDeployment) &&
-				!('create2' in config.network.deterministicDeployment)
+				!('create3' in config.target.deterministicDeployment) &&
+				!('create2' in config.target.deterministicDeployment)
 			)
 				return create2Info;
-			return config.network.deterministicDeployment.create2 || create2Info;
+			return config.target.deterministicDeployment.create2 || create2Info;
 		})(),
 		create3:
-			config.network.deterministicDeployment &&
-			'create3' in config.network.deterministicDeployment &&
-			config.network.deterministicDeployment.create3
-				? config.network.deterministicDeployment.create3
+			config.target.deterministicDeployment &&
+			'create3' in config.target.deterministicDeployment &&
+			config.target.deterministicDeployment.create3
+				? config.target.deterministicDeployment.create3
 				: create3Info,
 	};
 
@@ -455,20 +486,20 @@ export function resolveConfig<
 		}
 	}
 
-	if (config.network.scripts) {
-		if (typeof config.network.scripts === 'string') {
-			scripts = [config.network.scripts];
+	if (config.target.scripts) {
+		if (typeof config.target.scripts === 'string') {
+			scripts = [config.target.scripts];
 		} else {
-			scripts = config.network.scripts;
+			scripts = config.target.scripts;
 		}
 	}
 	const resolvedConfig: ResolvedConfig<NamedAccounts, Data> = {
 		...config,
-		network: {...config.network, deterministicDeployment, pollingInterval: networkPollingInterval},
+		target: {...config.target, deterministicDeployment, pollingInterval: networkPollingInterval},
 		deployments: config.deployments || 'deployments',
 		scripts,
 		tags: config.tags || [],
-		networkTags: config.networkTags || [],
+		targetTags: config.targetTags || [],
 		saveDeployments: config.saveDeployments,
 		accounts: config.accounts || ({} as NamedAccounts),
 		data: config.data || ({} as Data),

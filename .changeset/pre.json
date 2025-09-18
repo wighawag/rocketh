@@ -1,0 +1,20 @@
+{
+  "mode": "pre",
+  "tag": "testing",
+  "initialVersions": {
+    "rocketh": "0.14.9",
+    "@rocketh/deploy": "0.14.2",
+    "@rocketh/diamond": "0.14.3",
+    "@rocketh/doc": "0.14.9",
+    "@rocketh/export": "0.14.10",
+    "@rocketh/proxy": "0.14.6",
+    "@rocketh/read-execute": "0.14.3",
+    "@rocketh/router": "0.14.4",
+    "@rocketh/signer": "0.14.2",
+    "@rocketh/verifier": "0.14.9",
+    "@rocketh/viem": "0.14.2"
+  },
+  "changesets": [
+    "soft-dingos-follow"
+  ]
+}

@@ -69,9 +69,9 @@ export async function createEnvironment<
 	config: ResolvedConfig<NamedAccounts, Data>
 ): Promise<{internal: InternalEnvironment; external: Environment<NamedAccounts, Data, Deployments>}> {
 	const rawProvider =
-		'provider' in config.network
-			? config.network.provider
-			: (new JSONRPCHTTPProvider(config.network.nodeUrl) as EIP1193ProviderWithoutEvents);
+		'provider' in config.target
+			? config.target.provider
+			: (new JSONRPCHTTPProvider(config.target.nodeUrl) as EIP1193ProviderWithoutEvents);
 
 	const provider: TransactionHashTracker = new TransactionHashTrackerProvider(rawProvider);
 
@@ -98,16 +98,16 @@ export async function createEnvironment<
 	let networkName: string;
 	let saveDeployments: boolean;
 	let networkTags: {[tag: string]: boolean} = {};
-	for (const networkTag of config.network.tags) {
+	for (const networkTag of config.target.tags) {
 		networkTags[networkTag] = true;
 	}
 
 	if ('nodeUrl' in config) {
-		networkName = config.network.name;
+		networkName = config.target.name;
 		saveDeployments = true;
 	} else {
-		if (config.network.name) {
-			networkName = config.network.name;
+		if (config.target.name) {
+			networkName = config.target.name;
 		} else {
 			networkName = 'memory';
 		}
@@ -225,7 +225,7 @@ export async function createEnvironment<
 		data: resolvedData,
 		network: {
 			name: networkName,
-			fork: config.network.fork,
+			fork: config.target.fork,
 			saveDeployments,
 			tags: networkTags,
 		},
@@ -458,7 +458,7 @@ export async function createEnvironment<
 		// confirmations?: number; // TODO
 		// timeout?: number; // TODO
 	}): Promise<EIP1193TransactionReceipt> {
-		const {hash, pollingInterval} = {pollingInterval: config.network.pollingInterval, ...params};
+		const {hash, pollingInterval} = {pollingInterval: config.target.pollingInterval, ...params};
 
 		let receipt: EIP1193TransactionReceipt | null = null;
 		try {

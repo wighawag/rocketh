@@ -1,6 +1,6 @@
 {
 	"name": "rocketh",
-	"version": "0.14.9",
+	"version": "0.15.0-testing.0",
 	"description": "deploy smart contract on ethereum-compatible networks",
 	"publishConfig": {
 		"access": "public"
@@ -31,6 +31,7 @@
 	"dependencies": {
 		"@types/figlet": "^1.7.0",
 		"@types/prompts": "^2.4.9",
+		"change-case": "^5.4.4",
 		"commander": "^13.1.0",
 		"eip-1193-jsonrpc-provider": "^0.4.3",
 		"ethers": "^6.15.0",

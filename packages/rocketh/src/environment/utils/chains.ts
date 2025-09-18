@@ -1,6 +1,8 @@
 import type {Chain} from 'viem/chains';
 import * as chains from 'viem/chains';
 import {ResolvedConfig} from '../types.js';
+import {kebabCase} from 'change-case';
+import {ChainInfo} from '../../executor/types.js';
 
 export type ChainType = 'zksync' | 'op-stack' | 'celo' | 'default';
 
@@ -27,10 +29,10 @@ const chainTypesByNames: {[chainExportName: string]: ChainType} = {
 
 export const chainTypes: {[chainId: string]: ChainType} = {};
 
-export const chainById: {[chainId: string]: Chain} = {};
-const allChains = (chains as any).default || chains;
+export const chainById: {[chainId: string]: ChainInfo} = {};
+export const allChains = (chains as any).default || chains;
 for (const key of Object.keys(allChains)) {
-	const chain = (allChains as any)[key] as Chain;
+	const chain = (allChains as any)[key] as ChainInfo;
 	const chainId = chain.id.toString();
 	const specificChainType = chainTypesByNames[key];
 	if (specificChainType) {
@@ -39,28 +41,37 @@ for (const key of Object.keys(allChains)) {
 	chainById[chainId] = chain;
 }
 
-export function getChain(id: string): Chain | undefined {
-	const chain = chainById[id];
+export const chainByCanonicalName: {[canonicalName: string]: ChainInfo} = {};
+for (const key of Object.keys(allChains)) {
+	const chain = (allChains as any)[key] as ChainInfo;
+	const canonicalName = kebabCase(chain.name);
+	chainByCanonicalName[canonicalName] = chain;
+}
+
+export function getChain(id: string | number): ChainInfo | undefined {
+	const chain = chainById['' + id];
 
 	return chain;
 }
 
-export function getChainWithConfig(id: string, config: ResolvedConfig): Chain {
+export function getChainByName(name: string): ChainInfo | undefined {
+	const chain = chainByCanonicalName[name];
+	return chain;
+}
+
+export function getChainWithConfig(id: string, config: ResolvedConfig): ChainInfo {
 	const chain = getChain(id);
 
 	if (!chain) {
-		if (config.network.publicInfo) {
-			return {
-				id: parseInt(id),
-				...config.network.publicInfo,
-			};
+		if (config.target.chain) {
+			return config.target.chain;
 		}
-		console.error(`network ${config.network.name} has no public info`);
+		console.error(`network ${config.target.name} has no public info`);
 		let nodeUrl: string | undefined;
-		if (!config.network.nodeUrl) {
-			console.error(`no nodeUrl found either for ${config.network.name}`);
+		if (!config.target.nodeUrl) {
+			console.error(`no nodeUrl found either for ${config.target.name}`);
 		} else {
-			nodeUrl = config.network.nodeUrl;
+			nodeUrl = config.target.nodeUrl;
 		}
 		return {
 			id: parseInt(id),
@@ -75,6 +86,7 @@ export function getChainWithConfig(id: string, config: ResolvedConfig): Chain {
 					http: nodeUrl ? [nodeUrl] : [],
 				},
 			},
+			chainType: 'default',
 		};
 	}
 	return chain;

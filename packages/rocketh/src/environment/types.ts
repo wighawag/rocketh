@@ -17,6 +17,7 @@ import {
 import {ProgressIndicator} from '../internal/logging.js';
 import {TransactionHashTracker} from './providers/TransactionHashTracker.js';
 import {SignerProtocolFunction} from './index.js';
+import {ChainInfo} from '../executor/types.js';
 
 export type {Abi, AbiConstructor, AbiError, AbiEvent, AbiFallback, AbiFunction, AbiReceive};
 export type Libraries = {readonly [libraryName: string]: EIP1193Account};
@@ -230,45 +231,32 @@ export type ResolvedNamedSigners<T extends UnknownNamedAccounts> = {
 
 export type UnknownDeploymentsAcrossNetworks = Record<string, UnknownDeployments>;
 
-type NetworkConfigBase = {
+type TargetConfigBase = {
 	name: string;
 	tags: string[];
 	fork?: boolean;
 	deterministicDeployment?: DeterministicDeploymentInfo;
 	scripts?: string | string[];
-	publicInfo?: {
-		name: string;
-		nativeCurrency: {
-			name: string;
-			symbol: string;
-			decimals: number;
-		};
-		rpcUrls: {
-			default: {
-				http: string[];
-			};
-		};
-		chainType?: string;
-	};
+	chainInfo?: ChainInfo;
 	pollingInterval?: number;
 	properties?: Record<string, JSONTypePlusBigInt>;
 };
-type NetworkConfigForJSONRPC = NetworkConfigBase & {
+type TargetConfigForJSONRPC = TargetConfigBase & {
 	nodeUrl: string;
 };
 
-type NetworkConfigForEIP1193Provider = NetworkConfigBase & {
+type TargetConfigForEIP1193Provider = TargetConfigBase & {
 	provider: EIP1193ProviderWithoutEvents;
 };
 
-export type NetworkConfig = NetworkConfigForJSONRPC | NetworkConfigForEIP1193Provider;
+export type TargetConfig = TargetConfigForJSONRPC | TargetConfigForEIP1193Provider;
 
 export type Config<
 	AccountsType extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData
 > = {
-	network: NetworkConfig;
-	networkTags?: string[];
+	target: TargetConfig;
+	targetTags?: string[];
 	scripts?: string | string[];
 	deployments?: string;
 	saveDeployments?: boolean;
@@ -295,7 +283,7 @@ export type ResolvedConfig<
 	deployments: string;
 	scripts: string[];
 	tags: string[];
-	network: {
+	target: {
 		pollingInterval: number;
 		name: string;
 		tags: string[];
@@ -305,20 +293,7 @@ export type ResolvedConfig<
 			create3: Create3DeterministicDeploymentInfo;
 		};
 		nodeUrl?: string;
-		publicInfo?: {
-			name: string;
-			nativeCurrency: {
-				name: string;
-				symbol: string;
-				decimals: number;
-			};
-			rpcUrls: {
-				default: {
-					http: string[];
-				};
-			};
-			chainType?: string;
-		};
+		chain?: ChainInfo;
 		properties?: Record<string, JSONTypePlusBigInt>;
 	};
 	saveDeployments?: boolean;

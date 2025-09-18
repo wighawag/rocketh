@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.15.0-testing.0
+
+### Minor Changes
+
+- revamp the settings to be allowed to configure per chain as well as per target
+
 ## 0.14.9
 
 ### Patch Changes

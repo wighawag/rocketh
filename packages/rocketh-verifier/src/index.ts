@@ -30,15 +30,15 @@ export type VerificationOptions = {
 };
 
 export async function run(config: ResolvedConfig, options: VerificationOptions) {
-	const {deployments, chainId} = loadDeployments(config.deployments, config.network.name, false);
+	const {deployments, chainId} = loadDeployments(config.deployments, config.target.name, false);
 
 	if (Object.keys(deployments).length === 0) {
-		console.log(`the network ${config.network.name} has zero deployments`);
+		console.log(`the target ${config.target.name} has zero deployments`);
 		process.exit();
 	}
 
 	if (!chainId) {
-		console.error(`the network ${config.network.name} has no chainId recorded`);
+		console.error(`the target ${config.target.name} has no chainId recorded`);
 		process.exit(1);
 	}
 
@@ -47,7 +47,7 @@ export async function run(config: ResolvedConfig, options: VerificationOptions) 
 			{
 				chainId,
 				deployments,
-				networkName: config.network.name,
+				networkName: config.target.name, // TODO ? should this not be the actual network name
 				deploymentNames: options.deploymentNames,
 				minInterval: options.minInterval,
 				logErrorOnFailure: options.logErrorOnFailure,
@@ -59,7 +59,7 @@ export async function run(config: ResolvedConfig, options: VerificationOptions) 
 			{
 				chainId,
 				deployments,
-				networkName: config.network.name,
+				networkName: config.target.name, // TODO ? should this not be the actual network name
 				deploymentNames: options.deploymentNames,
 				minInterval: options.minInterval,
 				logErrorOnFailure: options.logErrorOnFailure,
@@ -71,7 +71,7 @@ export async function run(config: ResolvedConfig, options: VerificationOptions) 
 			{
 				chainId,
 				deployments,
-				networkName: config.network.name,
+				networkName: config.target.name, // TODO ? should this not be the actual network name
 				deploymentNames: options.deploymentNames,
 				minInterval: options.minInterval,
 				logErrorOnFailure: options.logErrorOnFailure,

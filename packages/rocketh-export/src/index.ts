@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import {
+	ChainInfo,
 	Deployment,
 	JSONTypePlusBigInt,
 	LinkedData,
@@ -20,98 +21,6 @@ export interface ContractExport {
 	linkedData?: LinkedData;
 	startBlock?: number;
 }
-
-type ChainBlockExplorer = {
-	name: string;
-	url: string;
-	apiUrl?: string | undefined;
-};
-type ChainContract = {
-	address: Address;
-	blockCreated?: number | undefined;
-};
-
-type ChainNativeCurrency = {
-	name: string;
-	/** 2-6 characters long */
-	symbol: string;
-	decimals: number;
-};
-
-type ChainRpcUrls = {
-	http: readonly string[];
-	webSocket?: readonly string[] | undefined;
-};
-
-/**
- * @description Combines members of an intersection into a readable type.
- *
- * @see {@link https://twitter.com/mattpocockuk/status/1622730173446557697?s=20&t=NdpAcmEFXY01xkqU3KO0Mg}
- * @example
- * Prettify<{ a: string } & { b: string } & { c: number, d: bigint }>
- * => { a: string, b: string, c: number, d: bigint }
- */
-type Prettify<T> = {
-	[K in keyof T]: T[K];
-} & {};
-
-export type ChainInfo = {
-	/** ID in number form */
-	id: number;
-	/** Human-readable name */
-	name: string;
-	/** Collection of block explorers */
-	blockExplorers?:
-		| {
-				[key: string]: ChainBlockExplorer;
-				default: ChainBlockExplorer;
-		  }
-		| undefined;
-	/** Collection of contracts */
-	contracts?:
-		| Prettify<
-				{
-					[key: string]: ChainContract | {[sourceId: number]: ChainContract | undefined} | undefined;
-				} & {
-					ensRegistry?: ChainContract | undefined;
-					ensUniversalResolver?: ChainContract | undefined;
-					multicall3?: ChainContract | undefined;
-				}
-		  >
-		| undefined;
-	/** Currency used by chain */
-	nativeCurrency: ChainNativeCurrency;
-	/** Collection of RPC endpoints */
-	rpcUrls: {
-		[key: string]: ChainRpcUrls;
-		default: ChainRpcUrls;
-	};
-	/** Source Chain ID (ie. the L1 chain) */
-	sourceId?: number | undefined;
-	/** Flag for test networks */
-	testnet?: boolean | undefined;
-
-	chainType: 'zksync' | 'op-stack' | 'celo' | 'default';
-
-	genesisHash?: string;
-
-	properties?: Record<string, JSONTypePlusBigInt>;
-
-	// this will bring in the following when reconstructed from the data above
-
-	// /** Custom chain data. */
-	// custom?: any;
-
-	// /**
-	//  * Modifies how chain data structures (ie. Blocks, Transactions, etc)
-	//  * are formatted & typed.
-	//  */
-	// formatters?: any | undefined;
-	// /** Modifies how data (ie. Transactions) is serialized. */
-	// serializers?: any | undefined;
-	// /** Modifies how fees are derived. */
-	// fees?: any | undefined;
-};
 
 export type ExportedDeployments = {
 	chain: ChainInfo;
@@ -149,7 +58,7 @@ export async function run(
 		return;
 	}
 
-	const {deployments, chainId, genesisHash} = loadDeployments(config.deployments, config.network.name);
+	const {deployments, chainId, genesisHash} = loadDeployments(config.deployments, config.target.name);
 
 	if (!deployments || Object.keys(deployments).length === 0) {
 		console.log(`no deployments to export`);
@@ -157,7 +66,7 @@ export async function run(
 	}
 
 	if (!chainId) {
-		throw new Error(`no chainId found for ${config.network.name}`);
+		throw new Error(`no chainId found for ${config.target.name}`);
 	}
 
 	const chain = getChainWithConfig(chainId, config);
@@ -173,7 +82,7 @@ export async function run(
 		sourceId: chain.sourceId,
 		testnet: chain.testnet,
 		genesisHash,
-		properties: config.network.properties,
+		properties: config.target.properties,
 	};
 
 	const exportData: ExportedDeployments = {
@@ -186,7 +95,7 @@ export async function run(
 			argsData: options.includeBytecode ? d.argsData : undefined,
 			startBlock: d.receipt?.blockNumber ? parseInt(d.receipt.blockNumber.slice(2), 16) : undefined,
 		})),
-		name: config.network.name,
+		name: config.target.name,
 	};
 
 	const js = typeof options.tojs === 'string' ? [options.tojs] : options.tojs || [];
