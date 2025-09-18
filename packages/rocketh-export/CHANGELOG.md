@@ -1,5 +1,12 @@
 # @rocketh/export
 
+## 0.15.0-testing.3
+
+### Patch Changes
+
+- Updated dependencies
+  - rocketh@0.15.0-testing.3
+
 ## 0.15.0-testing.2
 
 ### Patch Changes

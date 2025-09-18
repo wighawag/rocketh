@@ -212,7 +212,7 @@ export type UserConfig<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData
 > = {
-	targets: {[name: string]: DeploymentTargetConfig};
+	targets?: {[name: string]: DeploymentTargetConfig};
 	chains?: Chains;
 	deployments?: string;
 	scripts?: string | string[];
@@ -242,11 +242,11 @@ export async function transformUserConfig<
 	const targetProvided = options.target || (options as any).network; // fallback on network
 	const fork = typeof targetProvided !== 'string';
 	let targetName = 'memory';
-	if (options.target) {
-		if (typeof options.target === 'string') {
-			targetName = options.target;
-		} else if ('fork' in options.target) {
-			targetName = options.target.fork;
+	if (targetProvided) {
+		if (typeof targetProvided === 'string') {
+			targetName = targetProvided;
+		} else if ('fork' in targetProvided) {
+			targetName = targetProvided.fork;
 		}
 	}
 
@@ -331,10 +331,10 @@ export async function transformUserConfig<
 				nodeUrl = rpcURL;
 			} else if (options?.ignoreMissingRPC) {
 				nodeUrl = '';
-			} else if (options.target === 'localhost') {
+			} else if (targetProvided === 'localhost') {
 				nodeUrl = 'http://127.0.0.1:8545';
 			} else {
-				console.error(`network "${options.target}" is not configured. Please add it to the rocketh.js/ts file`);
+				console.error(`network "${targetProvided}" is not configured. Please add it to the rocketh.js/ts file`);
 				process.exit(1);
 			}
 		}
