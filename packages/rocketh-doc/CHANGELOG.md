@@ -1,5 +1,12 @@
 # @rocketh/doc
 
+## 0.15.0-testing.6
+
+### Patch Changes
+
+- Updated dependencies
+  - rocketh@0.15.0-testing.6
+
 ## 0.15.0-testing.5
 
 ### Patch Changes
