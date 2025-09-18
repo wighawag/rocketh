@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.15.0-testing.1
+
+### Patch Changes
+
+- fixes + support old hardhat-deploy
+
 ## 0.15.0-testing.0
 
 ### Minor Changes

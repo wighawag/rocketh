@@ -239,7 +239,8 @@ export async function transformUserConfig<
 		}
 	}
 
-	const fork = typeof options.target !== 'string';
+	const targetProvided = options.target || (options as any).network; // fallback on network
+	const fork = typeof targetProvided !== 'string';
 	let targetName = 'memory';
 	if (options.target) {
 		if (typeof options.target === 'string') {
@@ -253,7 +254,7 @@ export async function transformUserConfig<
 
 	let chainId: number;
 
-	if (configFile?.targets[targetName]) {
+	if (configFile?.targets?.[targetName]) {
 		chainId = configFile.targets[targetName].chainId;
 	} else {
 		const chainFound = getChainByName(targetName);
@@ -268,13 +269,6 @@ export async function transformUserConfig<
 				throw new Error(`target ${targetName} is unknown`);
 			}
 		}
-	}
-
-	const chainFound = getChain(chainId);
-	if (chainFound) {
-		chainInfo = chainFound;
-	} else {
-		throw new Error(`target ${targetName} has no chain associated with it`);
 	}
 
 	const chainConfigFromChainId = configFile?.chains?.[chainId];
@@ -299,6 +293,13 @@ export async function transformUserConfig<
 		: chainConfig;
 
 	const defaultTags: string[] = [];
+
+	const chainFound = actualChainConfig?.info || getChain(chainId);
+	if (chainFound) {
+		chainInfo = chainFound;
+	} else {
+		throw new Error(`chain with id ${chainId} has no chainInfo associated with it`);
+	}
 	if (chainInfo.testnet) {
 		defaultTags.push('testnet');
 	}

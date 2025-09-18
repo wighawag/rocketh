@@ -1,9 +1,11 @@
 # @rocketh/doc
 
-## 1.0.0-testing.0
+## 0.15.0-testing.1
 
 ### Minor Changes
 
+- Updated dependencies
+  - rocketh@0.15.0-testing.1
 - revamp the settings to be allowed to configure per chain as well as per target
 
 ### Patch Changes

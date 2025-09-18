@@ -15,6 +15,7 @@
     "@rocketh/viem": "0.14.2"
   },
   "changesets": [
+    "cute-rocks-occur",
     "soft-dingos-follow"
   ]
 }
