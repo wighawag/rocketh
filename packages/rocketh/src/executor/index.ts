@@ -9,6 +9,7 @@ import type {
 	Environment,
 	JSONTypePlusBigInt,
 	ResolvedConfig,
+	ResolvedTargetConfig,
 	TargetConfig,
 	UnknownDeployments,
 	UnresolvedNetworkSpecificData,
@@ -304,6 +305,10 @@ export async function transformUserConfig<
 		defaultTags.push('testnet');
 	}
 
+	if (actualChainConfig?.properties) {
+		chainInfo = {...chainInfo, properties: actualChainConfig.properties};
+	}
+
 	let targetTags: string[] = actualChainConfig?.tags || defaultTags;
 
 	let networkScripts: string | string[] | undefined = targetConfig?.scripts;
@@ -348,7 +353,6 @@ export async function transformUserConfig<
 			scripts: networkScripts,
 			chainInfo,
 			pollingInterval,
-			properties,
 		};
 	} else {
 		resolvedTargetConfig = {
@@ -360,7 +364,6 @@ export async function transformUserConfig<
 			scripts: networkScripts,
 			chainInfo,
 			pollingInterval,
-			properties,
 		};
 	}
 
@@ -494,9 +497,34 @@ export function resolveConfig<
 			scripts = config.target.scripts;
 		}
 	}
+
+	let resolvedTarget: ResolvedTargetConfig;
+
+	if ('provider' in config.target) {
+		resolvedTarget = {
+			provider: config.target.provider,
+			name: config.target.name,
+			tags: config.target.tags,
+			fork: config.target.fork,
+			deterministicDeployment,
+			chainInfo: config.target.chainInfo,
+			pollingInterval: networkPollingInterval,
+		};
+	} else {
+		resolvedTarget = {
+			nodeUrl: config.target.nodeUrl,
+			name: config.target.name,
+			tags: config.target.tags,
+			fork: config.target.fork,
+			deterministicDeployment,
+			chainInfo: config.target.chainInfo,
+			pollingInterval: networkPollingInterval,
+		};
+	}
+
 	const resolvedConfig: ResolvedConfig<NamedAccounts, Data> = {
 		...config,
-		target: {...config.target, deterministicDeployment, pollingInterval: networkPollingInterval},
+		target: resolvedTarget,
 		deployments: config.deployments || 'deployments',
 		scripts,
 		tags: config.tags || [],

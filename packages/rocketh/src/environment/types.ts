@@ -237,9 +237,8 @@ type TargetConfigBase = {
 	fork?: boolean;
 	deterministicDeployment?: DeterministicDeploymentInfo;
 	scripts?: string | string[];
-	chainInfo?: ChainInfo;
+	chainInfo: ChainInfo;
 	pollingInterval?: number;
-	properties?: Record<string, JSONTypePlusBigInt>;
 };
 type TargetConfigForJSONRPC = TargetConfigBase & {
 	nodeUrl: string;
@@ -250,6 +249,24 @@ type TargetConfigForEIP1193Provider = TargetConfigBase & {
 };
 
 export type TargetConfig = TargetConfigForJSONRPC | TargetConfigForEIP1193Provider;
+
+type ResolvedTargetConfigBase = {
+	name: string;
+	tags: string[];
+	fork?: boolean;
+	deterministicDeployment: DeterministicDeploymentInfo;
+	chainInfo: ChainInfo;
+	pollingInterval: number;
+};
+type ResolvedTargetConfigForJSONRPC = ResolvedTargetConfigBase & {
+	nodeUrl: string;
+};
+
+type ResolvedTargetConfigForEIP1193Provider = ResolvedTargetConfigBase & {
+	provider: EIP1193ProviderWithoutEvents;
+};
+
+export type ResolvedTargetConfig = ResolvedTargetConfigForJSONRPC | ResolvedTargetConfigForEIP1193Provider;
 
 export type Config<
 	AccountsType extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
@@ -279,23 +296,11 @@ export type Config<
 export type ResolvedConfig<
 	AccountsType extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData
-> = Config & {
+> = Omit<Config, 'target'> & {
 	deployments: string;
 	scripts: string[];
 	tags: string[];
-	target: {
-		pollingInterval: number;
-		name: string;
-		tags: string[];
-		fork?: boolean;
-		deterministicDeployment: {
-			create2: Create2DeterministicDeploymentInfo;
-			create3: Create3DeterministicDeploymentInfo;
-		};
-		nodeUrl?: string;
-		chain?: ChainInfo;
-		properties?: Record<string, JSONTypePlusBigInt>;
-	};
+	target: ResolvedTargetConfig;
 	saveDeployments?: boolean;
 	askBeforeProceeding?: boolean;
 	reportGasUse?: boolean;

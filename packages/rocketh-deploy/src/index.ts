@@ -144,7 +144,12 @@ type FactoryParams = {
 	maxPriorityFeePerGas: `0x${string}` | undefined;
 };
 async function getCreate2Factory(env: Environment, signer: Signer, params: FactoryParams) {
-	const deploymentInfo = env.config.target.deterministicDeployment.create2;
+	const deploymentInfo =
+		'create2' in env.config.target.deterministicDeployment
+			? env.config.target.deterministicDeployment.create2
+			: 'factory' in env.config.target.deterministicDeployment
+			? env.config.target.deterministicDeployment
+			: undefined;
 	if (!deploymentInfo) throw new Error('create2 deterministic deployment info not found');
 
 	const factoryAddress = deploymentInfo.factory;
@@ -206,7 +211,10 @@ async function getCreate2Factory(env: Environment, signer: Signer, params: Facto
 }
 
 async function getCreate3Factory(env: Environment, signer: Signer, params: FactoryParams) {
-	const deploymentInfo = env.config.target.deterministicDeployment.create3;
+	const deploymentInfo =
+		'create3' in env.config.target.deterministicDeployment
+			? env.config.target.deterministicDeployment.create3
+			: undefined;
 	if (!deploymentInfo) throw new Error('create3 deterministic deployment info not found');
 
 	const factoryAddress = deploymentInfo.factory;

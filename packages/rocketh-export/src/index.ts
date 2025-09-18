@@ -69,21 +69,8 @@ export async function run(
 		throw new Error(`no chainId found for ${config.target.name}`);
 	}
 
-	const chain = getChainWithConfig(chainId, config);
-
-	const chainInfo: ChainInfo = {
-		id: chain.id,
-		name: chain.name,
-		nativeCurrency: chain.nativeCurrency,
-		rpcUrls: chain.rpcUrls,
-		blockExplorers: chain.blockExplorers,
-		chainType: chainTypes[chainId] || 'default',
-		contracts: chain.contracts,
-		sourceId: chain.sourceId,
-		testnet: chain.testnet,
-		genesisHash,
-		properties: config.target.properties,
-	};
+	const chainInfoFromConfig = getChainWithConfig(chainId, config);
+	const chainInfo = {...chainInfoFromConfig, genesisHash};
 
 	const exportData: ExportedDeployments = {
 		chain: chainInfo,

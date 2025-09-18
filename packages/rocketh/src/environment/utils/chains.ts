@@ -60,34 +60,34 @@ export function getChainByName(name: string): ChainInfo | undefined {
 }
 
 export function getChainWithConfig(id: string, config: ResolvedConfig): ChainInfo {
-	const chain = getChain(id);
-
-	if (!chain) {
-		if (config.target.chain) {
-			return config.target.chain;
-		}
-		console.error(`network ${config.target.name} has no public info`);
-		let nodeUrl: string | undefined;
-		if (!config.target.nodeUrl) {
-			console.error(`no nodeUrl found either for ${config.target.name}`);
-		} else {
-			nodeUrl = config.target.nodeUrl;
-		}
-		return {
-			id: parseInt(id),
-			name: 'unkwown',
-			nativeCurrency: {
-				name: 'Unknown Currency',
-				symbol: 'UNKNOWN',
-				decimals: 18,
-			},
-			rpcUrls: {
-				default: {
-					http: nodeUrl ? [nodeUrl] : [],
-				},
-			},
-			chainType: 'default',
-		};
+	if (config.target.chainInfo) {
+		return config.target.chainInfo;
 	}
-	return chain;
+
+	const chain = getChain(id);
+	if (chain) {
+		return chain;
+	}
+	console.error(`network ${config.target.name} has no public info`);
+	let nodeUrl: string | undefined;
+	if (!('nodeUrl' in config.target)) {
+		console.error(`no nodeUrl found either for ${config.target.name}`);
+	} else {
+		nodeUrl = config.target.nodeUrl;
+	}
+	return {
+		id: parseInt(id),
+		name: 'unkwown',
+		nativeCurrency: {
+			name: 'Unknown Currency',
+			symbol: 'UNKNOWN',
+			decimals: 18,
+		},
+		rpcUrls: {
+			default: {
+				http: nodeUrl ? [nodeUrl] : [],
+			},
+		},
+		chainType: 'default',
+	};
 }
