@@ -4,6 +4,7 @@ export {
 	executeDeployScriptsDirectly,
 	readAndResolveConfig,
 	enhanceEnvIfNeeded,
+	loadEnvironment,
 } from './executor/index.js';
 
 export {getChainConfig} from './environment/utils/chains.js';
