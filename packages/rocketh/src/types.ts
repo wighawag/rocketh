@@ -243,7 +243,7 @@ export type ChainConfig = {
 export type DeploymentEnvironmentConfig = {
 	readonly chain?: string | number;
 	readonly scripts?: string | readonly string[];
-	readonly overrides: Omit<ChainUserConfig, 'info'>;
+	readonly overrides?: Omit<ChainUserConfig, 'info'>;
 };
 
 export type Chains = {
