@@ -158,7 +158,7 @@ export type ChainInfo = {
 	/** Flag for test networks */
 	testnet?: boolean | undefined;
 
-	chainType: 'zksync' | 'op-stack' | 'celo' | 'default';
+	chainType?: 'zksync' | 'op-stack' | 'celo' | 'default';
 
 	genesisHash?: string;
 
@@ -223,31 +223,31 @@ export type DeterministicDeploymentInfo =
 	  };
 
 export type ChainUserConfig = {
-	rpcUrl?: string;
-	tags?: string[];
-	deterministicDeployment?: DeterministicDeploymentInfo;
-	info?: ChainInfo;
-	pollingInterval?: number;
-	properties?: Record<string, JSONTypePlusBigInt>;
+	readonly rpcUrl?: string;
+	readonly tags?: readonly string[];
+	readonly deterministicDeployment?: DeterministicDeploymentInfo;
+	readonly info?: ChainInfo;
+	readonly pollingInterval?: number;
+	readonly properties?: Record<string, JSONTypePlusBigInt>;
 };
 
 export type ChainConfig = {
-	rpcUrl: string;
-	tags: string[];
-	deterministicDeployment: DeterministicDeploymentInfo;
-	info: ChainInfo;
-	pollingInterval: number;
-	properties: Record<string, JSONTypePlusBigInt>;
+	readonly rpcUrl: string;
+	readonly tags: readonly string[];
+	readonly deterministicDeployment: DeterministicDeploymentInfo;
+	readonly info: ChainInfo;
+	readonly pollingInterval: number;
+	readonly properties: Record<string, JSONTypePlusBigInt>;
 };
 
 export type DeploymentEnvironmentConfig = {
-	chainId: number;
-	scripts?: string | string[];
-	overrides: Omit<ChainUserConfig, 'info'>;
+	readonly chain?: string | number;
+	readonly scripts?: string | readonly string[];
+	readonly overrides: Omit<ChainUserConfig, 'info'>;
 };
 
 export type Chains = {
-	[idOrName: number | string]: ChainUserConfig;
+	readonly [idOrName: number | string]: ChainUserConfig;
 };
 
 export type SignerProtocolFunction = (protocolString: string) => Promise<Signer>;
@@ -259,23 +259,23 @@ export type UserConfig<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData
 > = {
-	environments?: {[name: string]: DeploymentEnvironmentConfig};
-	chains?: Chains;
-	deployments?: string;
-	scripts?: string | string[];
-	accounts?: NamedAccounts;
-	data?: Data;
-	signerProtocols?: Record<string, SignerProtocolFunction>;
-	defaultPollingInterval?: number;
+	readonly environments?: {readonly [name: string]: DeploymentEnvironmentConfig};
+	readonly chains?: Chains;
+	readonly deployments?: string;
+	readonly scripts?: string | readonly string[];
+	readonly accounts?: NamedAccounts;
+	readonly data?: Data;
+	readonly signerProtocols?: Record<string, SignerProtocolFunction>;
+	readonly defaultPollingInterval?: number;
 };
 
 export type ResolvedUserConfig<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData
 > = UserConfig & {
-	deployments: string;
-	scripts: string[];
-	defaultPollingInterval: number;
+	readonly deployments: string;
+	readonly scripts: readonly string[];
+	readonly defaultPollingInterval: number;
 };
 
 export type ExecutionParams<Extra extends Record<string, unknown> = Record<string, unknown>> = {
@@ -528,7 +528,9 @@ export interface Environment<
 	Deployments extends UnknownDeployments = UnknownDeployments,
 	Extra extends Record<string, unknown> = Record<string, unknown>
 > {
-	readonly name: string;
+	readonly environmentName: string;
+	readonly config: ResolvedUserConfig<NamedAccounts, Data>;
+	readonly executionParameters: ResolvedExecutionParams<Extra>;
 	readonly tags: {readonly [tag: string]: boolean};
 	readonly network: {
 		readonly chain: Chain;

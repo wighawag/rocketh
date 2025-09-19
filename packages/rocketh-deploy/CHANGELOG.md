@@ -1,5 +1,11 @@
 # @rocketh/deploy
 
+## 0.15.0-testing.5
+
+### Patch Changes
+
+- fixes
+
 ## 0.15.0-testing.4
 
 ### Patch Changes

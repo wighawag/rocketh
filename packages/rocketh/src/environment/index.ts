@@ -172,7 +172,16 @@ export async function createEnvironment<
 	if (userConfig.accounts) {
 		const accountNames = Object.keys(userConfig.accounts);
 		for (const accountName of accountNames) {
-			let account = await getAccount(accountName, userConfig.accounts, userConfig.accounts[accountName]);
+			const account = await getAccount(accountName, userConfig.accounts, userConfig.accounts[accountName]);
+			if (!account) {
+				throw new Error(
+					`cannot get account for ${accountName} = ${JSON.stringify(
+						userConfig.accounts[accountName],
+						null,
+						2
+					)}\n You might need to connect to a account-aware provider.`
+				);
+			}
 			(resolvedAccounts as any)[accountName] = account;
 		}
 	}
@@ -194,11 +203,9 @@ export async function createEnvironment<
 	const context = {
 		accounts: resolvedAccounts,
 		data: resolvedData,
-		network: {
-			fork: resolvedExecutionParams.environment.fork,
-			saveDeployments,
-			tags: networkTags,
-		},
+		fork: resolvedExecutionParams.environment.fork,
+		saveDeployments,
+		tags: networkTags,
 	};
 
 	// console.log(`context`, JSON.stringify(context.network, null, 2));
@@ -207,7 +214,7 @@ export async function createEnvironment<
 		deploymentsFolder,
 		environmentName,
 		false,
-		context.network.fork
+		context.fork
 			? undefined
 			: {
 					chainId,
@@ -237,8 +244,10 @@ export async function createEnvironment<
 	}
 
 	const perliminaryEnvironment = {
-		name: environmentName,
-		tags: context.network.tags,
+		config: userConfig,
+		executionParameters: resolvedExecutionParams,
+		environmentName,
+		tags: context.tags,
 		deployments: deployments as Deployments,
 		namedAccounts: namedAccounts as ResolvedNamedAccounts<NamedAccounts>,
 		data: resolvedData,
@@ -247,9 +256,12 @@ export async function createEnvironment<
 		addressSigners: addressSigners,
 		network: {
 			chain: resolvedExecutionParams.chain,
-			fork: context.network.fork,
+			fork: context.fork,
 			provider,
 			deterministicDeployment: resolvedExecutionParams.environment.deterministicDeployment,
+
+			// for backward compatibility
+			tags: context.tags,
 		},
 		extra: resolvedExecutionParams.extra || {},
 	};
@@ -308,7 +320,7 @@ export async function createEnvironment<
 
 	function recordMigration(id: string): void {
 		migrations[id] = Math.floor(Date.now() / 1000);
-		if (context.network.saveDeployments) {
+		if (context.saveDeployments) {
 			const folderPath = ensureDeploymentFolder();
 			fs.writeFileSync(`${folderPath}/.migrations.json`, JSON.stringify(migrations));
 		}
@@ -356,7 +368,7 @@ export async function createEnvironment<
 		} else {
 			deployments[name] = {...deployment, numDeployments: 1};
 		}
-		if (context.network.saveDeployments) {
+		if (context.saveDeployments) {
 			const folderPath = ensureDeploymentFolder();
 			fs.writeFileSync(`${folderPath}/${name}.json`, JSONToString(deployment, 2));
 		}
@@ -364,7 +376,7 @@ export async function createEnvironment<
 	}
 
 	async function recoverTransactionsIfAny(): Promise<void> {
-		if (!context.network.saveDeployments) {
+		if (!context.saveDeployments) {
 			return;
 		}
 		const folderPath = getDeploymentFolder();
@@ -409,7 +421,7 @@ export async function createEnvironment<
 	}
 
 	async function savePendingTransaction(pendingTransaction: PendingTransaction) {
-		if (context.network.saveDeployments) {
+		if (context.saveDeployments) {
 			const folderPath = ensureDeploymentFolder();
 			const filepath = path.join(folderPath, '.pending_transactions.json');
 			let existingPendinTransactions: PendingTransaction[];
@@ -447,7 +459,7 @@ export async function createEnvironment<
 	}
 
 	async function deleteTransaction<TAbi extends Abi = Abi>(hash: string) {
-		if (context.network.saveDeployments) {
+		if (context.saveDeployments) {
 			const folderPath = ensureDeploymentFolder();
 			const filepath = path.join(folderPath, '.pending_transactions.json');
 			let existingPendinTransactions: PendingTransaction[];

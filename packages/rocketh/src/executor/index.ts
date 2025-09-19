@@ -226,8 +226,20 @@ export async function getChainIdForEnvironment(
 	environmentName: string,
 	provider?: EIP1193ProviderWithoutEvents
 ) {
-	if (config?.environments?.[environmentName]?.chainId) {
-		return config.environments[environmentName].chainId;
+	if (config?.environments?.[environmentName]?.chain) {
+		const chainAsNumber =
+			typeof config.environments[environmentName].chain === 'number'
+				? config.environments[environmentName].chain
+				: parseInt(config.environments[environmentName].chain);
+		if (!isNaN(chainAsNumber)) {
+			return chainAsNumber;
+		}
+		const chainFound = getChainByName(config.environments[environmentName].chain as string);
+		if (chainFound) {
+			return chainFound.id;
+		} else {
+			throw new Error(`environment ${environmentName} chain id cannot be found, specify it in the rocketh config`);
+		}
 	} else {
 		const chainFound = getChainByName(environmentName);
 		if (chainFound) {
@@ -292,7 +304,7 @@ export function resolveExecutionParams<Extra extends Record<string, unknown> = R
 		if (typeof config.scripts === 'string') {
 			scripts = [config.scripts];
 		} else {
-			scripts = config.scripts;
+			scripts = [...config.scripts];
 		}
 	}
 
@@ -300,7 +312,7 @@ export function resolveExecutionParams<Extra extends Record<string, unknown> = R
 		if (typeof environmentConfig.scripts === 'string') {
 			scripts = [environmentConfig.scripts];
 		} else {
-			scripts = environmentConfig.scripts;
+			scripts = [...environmentConfig.scripts];
 		}
 	}
 
@@ -388,7 +400,7 @@ export async function executeDeployScriptsDirectly<
 	args?: ArgumentsType
 ): Promise<Environment<NamedAccounts, Data, UnknownDeployments>> {
 	executionParams = executionParams || {};
-	const resolveduserConfig = resolveConfig<NamedAccounts, Data>(userConfig);
+	const resolveduserConfig = resolveConfig<NamedAccounts, Data>(userConfig, executionParams.config);
 	const {name: environmentName, fork} = getEnvironmentName(executionParams);
 	const chainId = await getChainIdForEnvironment(resolveduserConfig, environmentName, executionParams.provider);
 	const resolvedExecutionParams = resolveExecutionParams(resolveduserConfig, executionParams, chainId);
@@ -535,7 +547,7 @@ export async function executeDeployScripts<
 
 	if (resolvedExecutionParams.askBeforeProceeding) {
 		console.log(
-			`Network: ${external.name} \n \t Chain: ${external.network.chain.name} \n \t Tags: ${Object.keys(
+			`Network: ${external.environmentName} \n \t Chain: ${external.network.chain.name} \n \t Tags: ${Object.keys(
 				external.tags
 			).join(',')}`
 		);

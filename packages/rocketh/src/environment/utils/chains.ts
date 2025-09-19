@@ -45,12 +45,12 @@ for (const key of Object.keys(allChains)) {
 	if (specificChainType) {
 		chainTypes[chainId] = specificChainType;
 	}
-	chainById[chainId] = chain;
+	chainById[chainId] = {...chain, chainType: specificChainType};
 }
 
 export const chainByCanonicalName: {[canonicalName: string]: ChainInfo} = {};
-for (const key of Object.keys(allChains)) {
-	const chain = (allChains as any)[key] as ChainInfo;
+for (const key of Object.keys(chainById)) {
+	const chain = (chainById as any)[key] as ChainInfo;
 	const canonicalName = kebabCase(chain.name);
 	chainByCanonicalName[canonicalName] = chain;
 }
