@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.15.0-testing.12
+
+### Patch Changes
+
+- canonical chain names export
+
 ## 0.15.0-testing.11
 
 ### Patch Changes

@@ -35,7 +35,7 @@ const chainTypesByNames: {[chainExportName: string]: ChainType} = {
 export const chainTypes: {[chainId: string]: ChainType} = {};
 
 export const chainById: {[chainId: string]: ChainInfo} = {};
-export const allChains = {...((chains as any).default || chains)};
+export const allChains: {[chainExportName: string]: ChainInfo} = {...((chains as any).default || chains)};
 allChains['localhost'] = allChains['hardhat'];
 
 for (const key of Object.keys(allChains)) {

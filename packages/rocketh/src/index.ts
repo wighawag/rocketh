@@ -7,7 +7,7 @@ export {
 	loadEnvironment,
 } from './executor/index.js';
 
-export {getChainConfig, allChains} from './environment/utils/chains.js';
+export {getChainConfig, chainByCanonicalName} from './environment/utils/chains.js';
 export * from './types.js';
 export {loadDeployments} from './environment/deployments.js';
 export {mergeArtifacts} from './environment/utils/artifacts.js';
