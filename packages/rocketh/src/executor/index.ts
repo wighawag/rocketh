@@ -264,7 +264,8 @@ export function resolveExecutionParams<Extra extends Record<string, unknown> = R
 ): ResolvedExecutionParams<Extra> {
 	const {name: targetName, fork} = getTargetName(executionParameters);
 
-	let chainConfig: ChainConfig = getChainConfig(chainId, config);
+	// TODO fork chainId resolution option to keep the network being used
+	let chainConfig: ChainConfig = getChainConfig(fork ? 31337 : chainId, config);
 
 	let chainInfo = chainConfig.info;
 	const targetConfig = config?.targets?.[targetName];
