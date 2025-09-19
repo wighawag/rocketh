@@ -547,7 +547,7 @@ export async function executeDeployScripts<
 
 	if (resolvedExecutionParams.askBeforeProceeding) {
 		console.log(
-			`Network: ${external.environmentName} \n \t Chain: ${external.network.chain.name} \n \t Tags: ${Object.keys(
+			`Network: ${external.name} \n \t Chain: ${external.network.chain.name} \n \t Tags: ${Object.keys(
 				external.tags
 			).join(',')}`
 		);
