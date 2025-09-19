@@ -2,7 +2,15 @@ import {Abi, Address} from 'abitype';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import {ChainInfo, Deployment, LinkedData, ResolvedUserConfig, getChainConfig, loadDeployments} from 'rocketh';
+import {
+	ChainInfo,
+	Deployment,
+	LinkedData,
+	ResolvedUserConfig,
+	bigIntToStringReplacer,
+	getChainConfig,
+	loadDeployments,
+} from 'rocketh';
 
 export interface ContractExport {
 	address: `0x${string}`;
@@ -85,7 +93,7 @@ export async function run(
 	const jsmodule = typeof options.tojsm === 'string' ? [options.tojsm] : options.tojsm || [];
 
 	if (ts.length > 0) {
-		const newContent = `export default ${JSON.stringify(exportData, null, 2)} as const;`;
+		const newContent = `export default ${JSON.stringify(exportData, bigIntToStringReplacer, 2)} as const;`;
 		for (const tsFile of ts) {
 			const folderPath = path.dirname(tsFile);
 			fs.mkdirSync(folderPath, {recursive: true});
@@ -94,8 +102,16 @@ export async function run(
 	}
 
 	if (js.length > 0) {
-		const newContent = `export default /** @type {const} **/ (${JSON.stringify(exportData, null, 2)});`;
-		const dtsContent = `declare const _default:  ${JSON.stringify(exportData, null, 2)};\nexport default _default;`;
+		const newContent = `export default /** @type {const} **/ (${JSON.stringify(
+			exportData,
+			bigIntToStringReplacer,
+			2
+		)});`;
+		const dtsContent = `declare const _default:  ${JSON.stringify(
+			exportData,
+			bigIntToStringReplacer,
+			2
+		)};\nexport default _default;`;
 		for (const jsFile of js) {
 			const folderPath = path.dirname(jsFile);
 			fs.mkdirSync(folderPath, {recursive: true});
@@ -105,7 +121,7 @@ export async function run(
 	}
 
 	if (json.length > 0) {
-		const newContent = JSON.stringify(exportData, null, 2);
+		const newContent = JSON.stringify(exportData, bigIntToStringReplacer, 2);
 		for (const jsonFile of json) {
 			const folderPath = path.dirname(jsonFile);
 			fs.mkdirSync(folderPath, {recursive: true});
@@ -114,12 +130,12 @@ export async function run(
 	}
 
 	if (tsmodule.length > 0) {
-		let newContent = `export const chain = ${JSON.stringify(chainInfo, null, 2)} as const;\n`;
+		let newContent = `export const chain = ${JSON.stringify(chainInfo, bigIntToStringReplacer, 2)} as const;\n`;
 
 		for (const contractName of Object.keys(exportData.contracts)) {
 			newContent += `export const ${contractName} = ${JSON.stringify(
 				(exportData.contracts as any)[contractName],
-				null,
+				bigIntToStringReplacer,
 				2
 			)} as const;`;
 		}
@@ -133,12 +149,16 @@ export async function run(
 
 	if (jsmodule.length > 0) {
 		// TODO test
-		let newContent = `export const chain = /** @type {const} **/ (${JSON.stringify(chainInfo, null, 2)});\n`;
+		let newContent = `export const chain = /** @type {const} **/ (${JSON.stringify(
+			chainInfo,
+			bigIntToStringReplacer,
+			2
+		)});\n`;
 
 		for (const contractName of Object.keys(exportData.contracts)) {
 			newContent += `export const ${contractName} = /** @type {const} **/ (${JSON.stringify(
 				(exportData.contracts as any)[contractName],
-				null,
+				bigIntToStringReplacer,
 				2
 			)});`;
 		}

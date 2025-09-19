@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/router",
-	"version": "0.15.0-testing.3",
+	"version": "0.15.0-testing.4",
 	"description": "provide router based proxy deployment for rocketh",
 	"publishConfig": {
 		"access": "public"
@@ -23,13 +23,16 @@
 		"as-soon": "^0.0.11",
 		"eip-1193": "^0.6.5",
 		"rimraf": "^6.0.1",
+		"rocketh": "workspace:*",
 		"typescript": "^5.9.2"
+	},
+	"peerDependencies": {
+		"rocketh": "workspace:*"
 	},
 	"dependencies": {
 		"@rocketh/deploy": "workspace:*",
 		"ethers": "^6.15.0",
 		"named-logs": "^0.3.2",
-		"rocketh": "workspace:*",
 		"solidity-proxy": "^0.4.2",
 		"viem": "^2.37.6"
 	},

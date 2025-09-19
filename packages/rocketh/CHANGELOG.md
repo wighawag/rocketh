@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.15.0-testing.10
+
+### Patch Changes
+
+- fix export
+
 ## 0.15.0-testing.9
 
 ### Patch Changes
