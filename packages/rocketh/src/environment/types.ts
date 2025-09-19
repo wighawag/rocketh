@@ -9,14 +9,9 @@ import {
 	EIP1193WalletProvider,
 } from 'eip-1193';
 import type {Address, Chain, DeployContractParameters} from 'viem';
-import {
-	DeterministicDeploymentInfo,
-	type Create2DeterministicDeploymentInfo,
-	type Create3DeterministicDeploymentInfo,
-} from '../executor/index.js';
+import {ConfigOverrides, DeterministicDeploymentInfo} from '../executor/index.js';
 import {ProgressIndicator} from '../internal/logging.js';
 import {TransactionHashTracker} from './providers/TransactionHashTracker.js';
-import {SignerProtocolFunction} from './index.js';
 import {ChainInfo} from '../executor/types.js';
 
 export type {Abi, AbiConstructor, AbiError, AbiEvent, AbiFallback, AbiFunction, AbiReceive};
@@ -231,84 +226,36 @@ export type ResolvedNamedSigners<T extends UnknownNamedAccounts> = {
 
 export type UnknownDeploymentsAcrossNetworks = Record<string, UnknownDeployments>;
 
-type TargetConfigBase = {
-	name: string;
-	tags: string[];
-	fork?: boolean;
-	deterministicDeployment?: DeterministicDeploymentInfo;
-	scripts?: string | string[];
-	chainInfo: ChainInfo;
-	pollingInterval?: number;
-};
-type TargetConfigForJSONRPC = TargetConfigBase & {
-	nodeUrl: string;
-};
-
-type TargetConfigForEIP1193Provider = TargetConfigBase & {
-	provider: EIP1193ProviderWithoutEvents;
-};
-
-export type TargetConfig = TargetConfigForJSONRPC | TargetConfigForEIP1193Provider;
-
-type ResolvedTargetConfigBase = {
-	name: string;
-	tags: string[];
-	fork?: boolean;
-	deterministicDeployment: DeterministicDeploymentInfo;
-	chainInfo: ChainInfo;
-	pollingInterval: number;
-};
-type ResolvedTargetConfigForJSONRPC = ResolvedTargetConfigBase & {
-	nodeUrl: string;
-};
-
-type ResolvedTargetConfigForEIP1193Provider = ResolvedTargetConfigBase & {
-	provider: EIP1193ProviderWithoutEvents;
-};
-
-export type ResolvedTargetConfig = ResolvedTargetConfigForJSONRPC | ResolvedTargetConfigForEIP1193Provider;
-
-export type Config<
-	AccountsType extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
-	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData
-> = {
-	target: TargetConfig;
-	targetTags?: string[];
-	scripts?: string | string[];
-	deployments?: string;
-	saveDeployments?: boolean;
-
+export type ExecutionParams<Extra extends Record<string, unknown> = Record<string, unknown>> = {
+	target?: string | {fork: string};
 	tags?: string[];
-	askBeforeProceeding?: boolean;
-	reportGasUse?: boolean;
-
-	logLevel?: number;
-	// TODO
-	gasPricing?: {};
-	accounts?: AccountsType;
-
-	data?: Data;
-	signerProtocols?: Record<string, SignerProtocolFunction>;
-	extra?: Record<string, unknown>;
-	defaultPollingInterval?: number;
-};
-
-export type ResolvedConfig<
-	AccountsType extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
-	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData
-> = Omit<Config, 'target'> & {
-	deployments: string;
-	scripts: string[];
-	tags: string[];
-	target: ResolvedTargetConfig;
 	saveDeployments?: boolean;
 	askBeforeProceeding?: boolean;
 	reportGasUse?: boolean;
-	accounts: AccountsType;
-	data: Data;
-	signerProtocols: Record<string, SignerProtocolFunction>;
-	extra: Record<string, unknown>;
-	defaultPollingInterval: number;
+	defaultPollingInterval?: number;
+	extra?: Extra;
+	logLevel?: number;
+	provider?: EIP1193ProviderWithoutEvents;
+	config: ConfigOverrides;
+};
+
+export type ResolvedExecutionParams<Extra extends Record<string, unknown> = Record<string, unknown>> = {
+	readonly target: {
+		readonly name: string;
+		readonly tags: readonly string[];
+		readonly fork?: boolean;
+		readonly deterministicDeployment: DeterministicDeploymentInfo;
+	};
+	readonly chain: ChainInfo;
+	readonly tags: readonly string[];
+	readonly saveDeployments: boolean;
+	readonly askBeforeProceeding: boolean;
+	readonly reportGasUse: boolean;
+	readonly pollingInterval: number;
+	readonly extra?: Extra;
+	readonly logLevel: number;
+	readonly provider: EIP1193ProviderWithoutEvents;
+	readonly scripts: readonly string[];
 };
 
 export interface Environment<
@@ -317,20 +264,21 @@ export interface Environment<
 	Deployments extends UnknownDeployments = UnknownDeployments,
 	Extra extends Record<string, unknown> = Record<string, unknown>
 > {
-	config: ResolvedConfig;
-	network: {
-		chain: Chain;
-		name: string;
-		tags: {[tag: string]: boolean};
-		provider: TransactionHashTracker;
+	readonly name: string;
+	readonly tags: {readonly [tag: string]: boolean};
+	readonly network: {
+		readonly chain: Chain;
+		readonly provider: TransactionHashTracker;
+		readonly fork?: boolean;
+		readonly deterministicDeployment: DeterministicDeploymentInfo;
 	};
-	deployments: Deployments;
-	namedAccounts: ResolvedNamedAccounts<NamedAccounts>;
-	data: ResolvedNetworkSpecificData<Data>;
-	namedSigners: ResolvedNamedSigners<ResolvedNamedAccounts<NamedAccounts>>;
-	unnamedAccounts: EIP1193Account[];
+	readonly deployments: Deployments;
+	readonly namedAccounts: ResolvedNamedAccounts<NamedAccounts>;
+	readonly data: ResolvedNetworkSpecificData<Data>;
+	readonly namedSigners: ResolvedNamedSigners<ResolvedNamedAccounts<NamedAccounts>>;
+	readonly unnamedAccounts: EIP1193Account[];
 	// unnamedSigners: {type: 'remote'; signer: EIP1193ProviderWithoutEvents}[];
-	addressSigners: {[name: `0x${string}`]: Signer};
+	readonly addressSigners: {[name: `0x${string}`]: Signer};
 	save<TAbi extends Abi = Abi>(
 		name: string,
 		deployment: Deployment<TAbi>,
@@ -346,7 +294,7 @@ export interface Environment<
 	showProgress(message?: string): ProgressIndicator;
 
 	hasMigrationBeenDone(id: string): boolean;
-	extra?: Extra;
+	readonly extra?: Extra;
 }
 
 export type DeploymentConstruction<TAbi extends Abi> = Omit<

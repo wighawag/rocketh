@@ -145,10 +145,10 @@ type FactoryParams = {
 };
 async function getCreate2Factory(env: Environment, signer: Signer, params: FactoryParams) {
 	const deploymentInfo =
-		'create2' in env.config.target.deterministicDeployment
-			? env.config.target.deterministicDeployment.create2
-			: 'factory' in env.config.target.deterministicDeployment
-			? env.config.target.deterministicDeployment
+		'create2' in env.network.deterministicDeployment
+			? env.network.deterministicDeployment.create2
+			: 'factory' in env.network.deterministicDeployment
+			? env.network.deterministicDeployment
 			: undefined;
 	if (!deploymentInfo) throw new Error('create2 deterministic deployment info not found');
 
@@ -212,9 +212,7 @@ async function getCreate2Factory(env: Environment, signer: Signer, params: Facto
 
 async function getCreate3Factory(env: Environment, signer: Signer, params: FactoryParams) {
 	const deploymentInfo =
-		'create3' in env.config.target.deterministicDeployment
-			? env.config.target.deterministicDeployment.create3
-			: undefined;
+		'create3' in env.network.deterministicDeployment ? env.network.deterministicDeployment.create3 : undefined;
 	if (!deploymentInfo) throw new Error('create3 deterministic deployment info not found');
 
 	const factoryAddress = deploymentInfo.factory;

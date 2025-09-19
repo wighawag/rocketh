@@ -9,7 +9,6 @@ import {
 	PendingDeployment,
 	PendingTransaction,
 	ResolvedAccount,
-	ResolvedConfig,
 	ResolvedNamedAccounts,
 	ResolvedNamedSigners,
 	UnknownDeployments,
@@ -17,8 +16,8 @@ import {
 	UnresolvedNetworkSpecificData,
 	ResolvedNetworkSpecificData,
 	DataType,
+	ResolvedExecutionParams,
 } from './types.js';
-import {JSONRPCHTTPProvider} from 'eip-1193-jsonrpc-provider';
 import {Abi, Address} from 'abitype';
 import {InternalEnvironment} from '../internal/types.js';
 import path from 'node:path';
@@ -29,16 +28,14 @@ import {
 	EIP1193Block,
 	EIP1193BlockWithTransactions,
 	EIP1193DATA,
-	EIP1193ProviderWithoutEvents,
-	EIP1193QUANTITY,
 	EIP1193Transaction,
 	EIP1193TransactionReceipt,
 } from 'eip-1193';
 import {ProgressIndicator, log, spin} from '../internal/logging.js';
 import {PendingExecution} from './types.js';
-import {getChainWithConfig} from './utils/chains.js';
 import {mergeArtifacts} from './utils/artifacts.js';
 import {TransactionHashTracker, TransactionHashTrackerProvider} from './providers/TransactionHashTracker.js';
+import {ResolvedUserConfig} from '../executor/index.js';
 
 export type SignerProtocolFunction = (protocolString: string) => Promise<Signer>;
 export type SignerProtocol = {
@@ -66,12 +63,10 @@ export async function createEnvironment<
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 	Deployments extends UnknownDeployments = UnknownDeployments
 >(
-	config: ResolvedConfig<NamedAccounts, Data>
+	userConfig: ResolvedUserConfig<NamedAccounts, Data>,
+	resolvedExecutionParams: ResolvedExecutionParams
 ): Promise<{internal: InternalEnvironment; external: Environment<NamedAccounts, Data, Deployments>}> {
-	const rawProvider =
-		'provider' in config.target
-			? config.target.provider
-			: (new JSONRPCHTTPProvider(config.target.nodeUrl) as EIP1193ProviderWithoutEvents);
+	const rawProvider = resolvedExecutionParams.provider;
 
 	const provider: TransactionHashTracker = new TransactionHashTrackerProvider(rawProvider);
 
@@ -95,32 +90,12 @@ export async function createEnvironment<
 		console.error(`failed to get genesis block`);
 	}
 
-	let networkName: string;
-	let saveDeployments: boolean;
+	const deploymentsFolder = userConfig.deployments || 'deployments';
+	const targetName = resolvedExecutionParams.target.name;
+	const saveDeployments = resolvedExecutionParams.saveDeployments;
 	let networkTags: {[tag: string]: boolean} = {};
-	for (const networkTag of config.target.tags) {
+	for (const networkTag of resolvedExecutionParams.target.tags) {
 		networkTags[networkTag] = true;
-	}
-
-	if ('nodeUrl' in config) {
-		networkName = config.target.name;
-		saveDeployments = true;
-	} else {
-		if (config.target.name) {
-			networkName = config.target.name;
-		} else {
-			networkName = 'memory';
-		}
-		if (networkName === 'memory' || networkName === 'hardhat' || networkName === 'default') {
-			networkTags['memory'] = true;
-			saveDeployments = false;
-		} else {
-			saveDeployments = true;
-		}
-	}
-
-	if (config.saveDeployments !== undefined) {
-		saveDeployments = config.saveDeployments;
 	}
 
 	const resolvedAccounts: {[name: string]: ResolvedAccount} = {};
@@ -149,7 +124,7 @@ export async function createEnvironment<
 		} else if (typeof accountDef === 'string') {
 			if (accountDef.startsWith('0x')) {
 				if (accountDef.length === 66) {
-					const privateKeyProtocol = config.signerProtocols['privateKey'];
+					const privateKeyProtocol = userConfig.signerProtocols?.['privateKey'];
 					if (privateKeyProtocol) {
 						const namedSigner = await privateKeyProtocol(`privateKey:${accountDef}`);
 						const [address] = await namedSigner.signer.request({method: 'eth_accounts'});
@@ -168,7 +143,7 @@ export async function createEnvironment<
 			} else {
 				if (accountDef.indexOf(':') > 0) {
 					const [protocolID, extra] = accountDef.split(':');
-					const protocol = config.signerProtocols[protocolID];
+					const protocol = userConfig.signerProtocols?.[protocolID];
 					if (!protocol) {
 						throw new Error(`protocol: ${protocolID} is not supported`);
 					}
@@ -186,7 +161,8 @@ export async function createEnvironment<
 				}
 			}
 		} else {
-			const accountForNetwork = accountDef[networkName] || accountDef[chainId] || accountDef['default'];
+			// TODO allow for canonical chain name ?
+			const accountForNetwork = accountDef[targetName] || accountDef[chainId] || accountDef['default'];
 			if (typeof accountForNetwork !== undefined) {
 				const accountFetched = await getAccount(name, accounts, accountForNetwork);
 				if (accountFetched) {
@@ -198,24 +174,24 @@ export async function createEnvironment<
 		return account;
 	}
 
-	if (config.accounts) {
-		const accountNames = Object.keys(config.accounts);
+	if (userConfig.accounts) {
+		const accountNames = Object.keys(userConfig.accounts);
 		for (const accountName of accountNames) {
-			let account = await getAccount(accountName, config.accounts, config.accounts[accountName]);
+			let account = await getAccount(accountName, userConfig.accounts, userConfig.accounts[accountName]);
 			(resolvedAccounts as any)[accountName] = account;
 		}
 	}
 
 	const resolvedData: ResolvedNetworkSpecificData<Data> = {} as ResolvedNetworkSpecificData<Data>;
 	async function getData<T = unknown>(name: string, dataDef: DataType<T>): Promise<T | undefined> {
-		const dataForNetwork = dataDef[networkName] || dataDef[chainId] || dataDef['default'];
+		const dataForNetwork = dataDef[targetName] || dataDef[chainId] || dataDef['default'];
 		return dataForNetwork;
 	}
 
-	if (config.data) {
-		const dataFields = Object.keys(config.data);
+	if (userConfig.data) {
+		const dataFields = Object.keys(userConfig.data);
 		for (const dataField of dataFields) {
-			let fieldData = await getData(dataField, config.data[dataField]);
+			let fieldData = await getData(dataField, userConfig.data[dataField]);
 			(resolvedData as any)[dataField] = fieldData;
 		}
 	}
@@ -224,8 +200,7 @@ export async function createEnvironment<
 		accounts: resolvedAccounts,
 		data: resolvedData,
 		network: {
-			name: networkName,
-			fork: config.target.fork,
+			fork: resolvedExecutionParams.target.fork,
 			saveDeployments,
 			tags: networkTags,
 		},
@@ -234,8 +209,8 @@ export async function createEnvironment<
 	// console.log(`context`, JSON.stringify(context.network, null, 2));
 
 	const {deployments, migrations} = loadDeployments(
-		config.deployments,
-		context.network.name,
+		deploymentsFolder,
+		targetName,
 		false,
 		context.network.fork
 			? undefined
@@ -267,7 +242,8 @@ export async function createEnvironment<
 	}
 
 	const perliminaryEnvironment = {
-		config,
+		name: targetName,
+		tags: context.network.tags,
 		deployments: deployments as Deployments,
 		namedAccounts: namedAccounts as ResolvedNamedAccounts<NamedAccounts>,
 		data: resolvedData,
@@ -275,16 +251,16 @@ export async function createEnvironment<
 		unnamedAccounts,
 		addressSigners: addressSigners,
 		network: {
-			chain: getChainWithConfig(chainId, config),
-			name: context.network.name,
-			tags: context.network.tags,
+			chain: resolvedExecutionParams.chain,
+			fork: context.network.fork,
 			provider,
+			deterministicDeployment: resolvedExecutionParams.target.deterministicDeployment,
 		},
-		extra: config.extra || {},
+		extra: resolvedExecutionParams.extra || {},
 	};
 
 	function getDeploymentFolder(): string {
-		const folderPath = path.join(config.deployments, context.network.name);
+		const folderPath = path.join(deploymentsFolder, targetName);
 		return folderPath;
 	}
 
@@ -458,7 +434,7 @@ export async function createEnvironment<
 		// confirmations?: number; // TODO
 		// timeout?: number; // TODO
 	}): Promise<EIP1193TransactionReceipt> {
-		const {hash, pollingInterval} = {pollingInterval: config.target.pollingInterval, ...params};
+		const {hash, pollingInterval} = {pollingInterval: resolvedExecutionParams.pollingInterval, ...params};
 
 		let receipt: EIP1193TransactionReceipt | null = null;
 		try {

@@ -2,16 +2,7 @@ import {Abi, Address} from 'abitype';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import {
-	ChainInfo,
-	Deployment,
-	JSONTypePlusBigInt,
-	LinkedData,
-	ResolvedConfig,
-	chainTypes,
-	getChainWithConfig,
-	loadDeployments,
-} from 'rocketh';
+import {ChainInfo, Deployment, LinkedData, ResolvedUserConfig, getChainConfig, loadDeployments} from 'rocketh';
 
 export interface ContractExport {
 	address: `0x${string}`;
@@ -43,7 +34,8 @@ function objectMap<V, N, O extends Trandformed<{}, V> = Trandformed<{}, V>>(
 }
 
 export async function run(
-	config: ResolvedConfig,
+	config: ResolvedUserConfig,
+	targetName: string,
 	options: {
 		tojs?: string[];
 		tots?: string[];
@@ -58,7 +50,7 @@ export async function run(
 		return;
 	}
 
-	const {deployments, chainId, genesisHash} = loadDeployments(config.deployments, config.target.name);
+	const {deployments, chainId, genesisHash} = loadDeployments(config.deployments, targetName);
 
 	if (!deployments || Object.keys(deployments).length === 0) {
 		console.log(`no deployments to export`);
@@ -66,11 +58,11 @@ export async function run(
 	}
 
 	if (!chainId) {
-		throw new Error(`no chainId found for ${config.target.name}`);
+		throw new Error(`no chainId found for ${targetName}`);
 	}
 
-	const chainInfoFromConfig = getChainWithConfig(chainId, config);
-	const chainInfo = {...chainInfoFromConfig, genesisHash};
+	const chainInfoFromConfig = getChainConfig(parseInt(chainId), config);
+	const chainInfo = {...chainInfoFromConfig.info, genesisHash};
 
 	const exportData: ExportedDeployments = {
 		chain: chainInfo,
@@ -82,7 +74,7 @@ export async function run(
 			argsData: options.includeBytecode ? d.argsData : undefined,
 			startBlock: d.receipt?.blockNumber ? parseInt(d.receipt.blockNumber.slice(2), 16) : undefined,
 		})),
-		name: config.target.name,
+		name: targetName,
 	};
 
 	const js = typeof options.tojs === 'string' ? [options.tojs] : options.tojs || [];

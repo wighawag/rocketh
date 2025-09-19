@@ -1,4 +1,4 @@
-import {ResolvedConfig, loadDeployments} from 'rocketh';
+import {ResolvedUserConfig, loadDeployments} from 'rocketh';
 import {submitSourcesToEtherscan} from './etherscan.js';
 import {submitSourcesToSourcify} from './sourcify.js';
 import {submitSourcesToBlockscout} from './blockscout.js';
@@ -29,16 +29,16 @@ export type VerificationOptions = {
 	logErrorOnFailure?: boolean;
 };
 
-export async function run(config: ResolvedConfig, options: VerificationOptions) {
-	const {deployments, chainId} = loadDeployments(config.deployments, config.target.name, false);
+export async function run(config: ResolvedUserConfig, targetName: string, options: VerificationOptions) {
+	const {deployments, chainId} = loadDeployments(config.deployments, targetName, false);
 
 	if (Object.keys(deployments).length === 0) {
-		console.log(`the target ${config.target.name} has zero deployments`);
+		console.log(`the target ${targetName} has zero deployments`);
 		process.exit();
 	}
 
 	if (!chainId) {
-		console.error(`the target ${config.target.name} has no chainId recorded`);
+		console.error(`the target ${targetName} has no chainId recorded`);
 		process.exit(1);
 	}
 
@@ -47,7 +47,7 @@ export async function run(config: ResolvedConfig, options: VerificationOptions) 
 			{
 				chainId,
 				deployments,
-				networkName: config.target.name, // TODO ? should this not be the actual network name
+				networkName: targetName, // TODO ? should this not be the actual network name
 				deploymentNames: options.deploymentNames,
 				minInterval: options.minInterval,
 				logErrorOnFailure: options.logErrorOnFailure,
@@ -59,7 +59,7 @@ export async function run(config: ResolvedConfig, options: VerificationOptions) 
 			{
 				chainId,
 				deployments,
-				networkName: config.target.name, // TODO ? should this not be the actual network name
+				networkName: targetName, // TODO ? should this not be the actual network name
 				deploymentNames: options.deploymentNames,
 				minInterval: options.minInterval,
 				logErrorOnFailure: options.logErrorOnFailure,
@@ -71,7 +71,7 @@ export async function run(config: ResolvedConfig, options: VerificationOptions) 
 			{
 				chainId,
 				deployments,
-				networkName: config.target.name, // TODO ? should this not be the actual network name
+				networkName: targetName, // TODO ? should this not be the actual network name
 				deploymentNames: options.deploymentNames,
 				minInterval: options.minInterval,
 				logErrorOnFailure: options.logErrorOnFailure,

@@ -1,5 +1,11 @@
 # @rocketh/signer
 
+## 0.15.0-testing.0
+
+### Patch Changes
+
+- revamp of types and resolution
+
 ## 0.14.2
 
 ### Patch Changes

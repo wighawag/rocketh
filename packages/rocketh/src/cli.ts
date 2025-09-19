@@ -1,6 +1,6 @@
 #! /usr/bin/env node
 import {loadEnv} from 'ldenv';
-import {ConfigOptions, loadAndExecuteDeployments} from './index.js';
+import {ExecutionParams, loadAndExecuteDeployments} from './index.js';
 import {Command} from 'commander';
 import pkg from '../package.json' with {type: 'json'};
 
@@ -26,7 +26,7 @@ const options = program.opts();
 
 
 loadAndExecuteDeployments({
-	...(options as ConfigOptions),
+	...(options as ExecutionParams),
 	logLevel: 1,
 	askBeforeProceeding: options.skipPrompts ? false : true,
 	reportGasUse: options.skipGasReport ? false : true,

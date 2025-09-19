@@ -1,5 +1,11 @@
 # @rocketh/deploy
 
+## 0.15.0-testing.2
+
+### Patch Changes
+
+- revamp of types and resolution
+
 ## 0.15.0-testing.1
 
 ### Patch Changes

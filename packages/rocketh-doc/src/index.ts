@@ -1,8 +1,6 @@
 import fs from 'fs-extra';
 import type {
 	Deployment,
-	ResolvedConfig,
-	NoticeUserDoc,
 	Artifact,
 	Abi,
 	UnknownDeployments,
@@ -10,6 +8,8 @@ import type {
 	AbiFunction,
 	AbiError,
 	AbiEvent,
+	UserConfig,
+	ResolvedUserConfig,
 } from 'rocketh';
 import {loadDeployments} from 'rocketh';
 import Handlebars from 'handlebars';
@@ -37,10 +37,10 @@ function filter(options: RunOptions, name: string): boolean {
 	return true;
 }
 
-export async function run(config: ResolvedConfig, options: RunOptions) {
-	const {deployments, chainId} = loadDeployments(config.deployments, config.target.name);
+export async function run(config: ResolvedUserConfig, targetName: string, options: RunOptions) {
+	const {deployments, chainId} = loadDeployments(config.deployments, targetName);
 	if (!chainId) {
-		throw new Error(`no chainId found for ${config.target.name}`);
+		throw new Error(`no chainId found for ${targetName}`);
 	}
 	generate({deployments}, options);
 }

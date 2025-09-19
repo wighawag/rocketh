@@ -5,12 +5,10 @@ import prompts from 'prompts';
 import {tsImport as tsImport_} from 'tsx/esm/api';
 import {formatEther} from 'viem';
 import type {
-	Config,
 	Environment,
+	ExecutionParams,
 	JSONTypePlusBigInt,
-	ResolvedConfig,
-	ResolvedTargetConfig,
-	TargetConfig,
+	ResolvedExecutionParams,
 	UnknownDeployments,
 	UnresolvedNetworkSpecificData,
 	UnresolvedUnknownNamedAccounts,
@@ -27,7 +25,7 @@ import {withEnvironment} from '../utils/extensions.js';
 import {logger, setLogLevel, spin} from '../internal/logging.js';
 import {getRoughGasPriceEstimate} from '../utils/eth.js';
 import {traverseMultipleDirectory} from '../utils/fs.js';
-import {getChain, getChainByName} from '../environment/utils/chains.js';
+import {getChainByName, getChainConfig} from '../environment/utils/chains.js';
 import {JSONRPCHTTPProvider} from 'eip-1193-jsonrpc-provider';
 
 // @ts-ignore
@@ -93,18 +91,21 @@ export function setup<
 		return scriptModule;
 	}
 
-	async function loadAndExecuteDeploymentsWithExtensions<ArgumentsType = undefined>(
-		options: ConfigOptions<Extra>,
+	async function loadAndExecuteDeploymentsWithExtensions<
+		Extra extends Record<string, unknown> = Record<string, unknown>,
+		ArgumentsType = undefined
+	>(
+		executionParams: ExecutionParams<Extra>,
 		args?: ArgumentsType
 	): Promise<EnhancedEnvironment<NamedAccounts, Data, UnknownDeployments, Extensions>> {
-		const env = await loadAndExecuteDeployments<NamedAccounts, Data, ArgumentsType, Extra>(options, args);
+		const env = await loadAndExecuteDeployments<NamedAccounts, Data, ArgumentsType, Extra>(executionParams, args);
 		return enhanceEnvIfNeeded(env, extensions);
 	}
 
 	async function loadEnvironmentWithExtensions(
-		options: ConfigOptions<Extra>
+		executionParams: ExecutionParams<Extra>
 	): Promise<EnhancedEnvironment<NamedAccounts, Data, UnknownDeployments, Extensions>> {
-		const env = await loadEnvironment<NamedAccounts, Data, Extra>(options);
+		const env = await loadEnvironment<NamedAccounts, Data, Extra>(executionParams);
 		return enhanceEnvIfNeeded(env, extensions);
 	}
 
@@ -156,18 +157,9 @@ export type UntypedEIP1193Provider = {
 	request(requestArguments: UntypedRequestArguments): Promise<unknown>;
 };
 
-export type ConfigOptions<Extra extends Record<string, unknown> = Record<string, unknown>> = {
-	target?: string | {fork: string};
+export type ConfigOverrides = {
 	deployments?: string;
 	scripts?: string | string[];
-	tags?: string;
-	logLevel?: number;
-	provider?: EIP1193ProviderWithoutEvents | EIP1193GenericRequestProvider | UntypedEIP1193Provider;
-	ignoreMissingRPC?: boolean;
-	saveDeployments?: boolean;
-	askBeforeProceeding?: boolean;
-	reportGasUse?: boolean;
-	extra?: Extra;
 };
 
 export type Create2DeterministicDeploymentInfo = {
@@ -200,6 +192,15 @@ export type ChainUserConfig = {
 	properties?: Record<string, JSONTypePlusBigInt>;
 };
 
+export type ChainConfig = {
+	rpcUrl: string;
+	tags: string[];
+	deterministicDeployment: DeterministicDeploymentInfo;
+	info: ChainInfo;
+	pollingInterval: number;
+	properties: Record<string, JSONTypePlusBigInt>;
+};
+
 export type DeploymentTargetConfig = {
 	chainId: number;
 	scripts?: string | string[];
@@ -223,171 +224,19 @@ export type UserConfig<
 	defaultPollingInterval?: number;
 };
 
-export async function transformUserConfig<
+export type ResolvedUserConfig<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
-	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
-	Extra extends Record<string, unknown> = Record<string, unknown>
->(
-	configFile: UserConfig<NamedAccounts, Data> | undefined,
-	options: ConfigOptions<Extra>
-): Promise<Config<NamedAccounts, Data>> {
-	if (configFile) {
-		if (!options.deployments && configFile.deployments) {
-			options.deployments = configFile.deployments;
-		}
-		if (!options.scripts && configFile.scripts) {
-			options.scripts = configFile.scripts;
-		}
-	}
-
-	const targetProvided = options.target || (options as any).network; // fallback on network
-	const fork = typeof targetProvided !== 'string';
-	let targetName = 'memory';
-	if (targetProvided) {
-		if (typeof targetProvided === 'string') {
-			targetName = targetProvided;
-		} else if ('fork' in targetProvided) {
-			targetName = targetProvided.fork;
-		}
-	}
-
-	let chainInfo: ChainInfo;
-
-	let chainId: number;
-
-	if (configFile?.targets?.[targetName]) {
-		chainId = configFile.targets[targetName].chainId;
-	} else {
-		const chainFound = getChainByName(targetName);
-		if (chainFound) {
-			chainInfo = chainFound;
-			chainId = chainInfo.id;
-		} else {
-			if (options.provider) {
-				const chainIdAsHex = await (options.provider as EIP1193ProviderWithoutEvents).request({method: 'eth_chainId'});
-				chainId = Number(chainIdAsHex);
-			} else {
-				throw new Error(`target ${targetName} is unknown`);
-			}
-		}
-	}
-
-	const chainConfigFromChainId = configFile?.chains?.[chainId];
-	const chainConfigFromChainName = configFile?.chains?.[targetName];
-	if (chainConfigFromChainId && chainConfigFromChainName) {
-		throw new Error(
-			`conflicting config for chain, choose to configure via its chainId (${chainId}) or via its name ${targetName} but not both`
-		);
-	}
-	const chainConfig = chainConfigFromChainId || chainConfigFromChainName;
-
-	const targetConfig = configFile?.targets?.[targetName];
-	const actualChainConfig = targetConfig?.overrides
-		? {
-				...chainConfig,
-				...targetConfig.overrides,
-				properties: {
-					...chainConfig?.properties,
-					...targetConfig.overrides.properties,
-				},
-		  }
-		: chainConfig;
-
-	const defaultTags: string[] = [];
-
-	const chainFound = actualChainConfig?.info || getChain(chainId);
-	if (chainFound) {
-		chainInfo = chainFound;
-	} else {
-		throw new Error(`chain with id ${chainId} has no chainInfo associated with it`);
-	}
-	if (chainInfo.testnet) {
-		defaultTags.push('testnet');
-	}
-
-	if (actualChainConfig?.properties) {
-		chainInfo = {...chainInfo, properties: actualChainConfig.properties};
-	}
-
-	let targetTags: string[] = actualChainConfig?.tags || defaultTags;
-
-	let networkScripts: string | string[] | undefined = targetConfig?.scripts;
-
-	// no default for publicInfo
-	const defaultPollingInterval = configFile?.defaultPollingInterval;
-	const pollingInterval = actualChainConfig?.pollingInterval;
-	const deterministicDeployment = actualChainConfig?.deterministicDeployment;
-
-	let resolvedTargetConfig: TargetConfig;
-
-	if (!options.provider) {
-		let rpcURL = actualChainConfig?.rpcUrl;
-		if (!rpcURL) {
-			rpcURL = chainInfo.rpcUrls.default.http[0];
-		}
-
-		const fromEnv = process.env['ETH_NODE_URI_' + targetName];
-		let nodeUrl: string;
-		if (typeof fromEnv === 'string' && fromEnv) {
-			nodeUrl = fromEnv;
-		} else {
-			if (rpcURL) {
-				nodeUrl = rpcURL;
-			} else if (options?.ignoreMissingRPC) {
-				nodeUrl = '';
-			} else if (targetProvided === 'localhost') {
-				nodeUrl = 'http://127.0.0.1:8545';
-			} else {
-				console.error(`network "${targetProvided}" is not configured. Please add it to the rocketh.js/ts file`);
-				process.exit(1);
-			}
-		}
-
-		resolvedTargetConfig = {
-			nodeUrl,
-			name: targetName,
-			tags: targetTags,
-			fork,
-			deterministicDeployment,
-			scripts: networkScripts,
-			chainInfo,
-			pollingInterval,
-		};
-	} else {
-		resolvedTargetConfig = {
-			provider: options.provider as EIP1193ProviderWithoutEvents,
-			name: targetName,
-			tags: targetTags,
-			fork,
-			deterministicDeployment,
-			scripts: networkScripts,
-			chainInfo,
-			pollingInterval,
-		};
-	}
-
-	return {
-		target: resolvedTargetConfig,
-		deployments: options.deployments,
-		saveDeployments: options.saveDeployments,
-		scripts: options.scripts,
-		data: configFile?.data,
-		tags: typeof options.tags === 'undefined' ? undefined : options.tags.split(','),
-		logLevel: options.logLevel,
-		askBeforeProceeding: options.askBeforeProceeding,
-		reportGasUse: options.reportGasUse,
-		accounts: configFile?.accounts,
-		signerProtocols: configFile?.signerProtocols,
-		extra: options.extra,
-		defaultPollingInterval,
-	};
-}
+	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData
+> = UserConfig & {
+	deployments: string;
+	scripts: string[];
+	defaultPollingInterval: number;
+};
 
 export async function readConfig<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
-	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
-	Extra extends Record<string, unknown> = Record<string, unknown>
->(options: ConfigOptions<Extra>): Promise<Config<NamedAccounts, Data>> {
+	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData
+>(overrides: ConfigOverrides): Promise<ResolvedUserConfig<NamedAccounts, Data>> {
 	type ConfigFile = UserConfig<NamedAccounts, Data>;
 	let configFile: ConfigFile | undefined;
 
@@ -426,59 +275,90 @@ export async function readConfig<
 		configFile = moduleLoaded.config;
 	}
 
-	return transformUserConfig(configFile, options);
-}
-
-export async function readAndResolveConfig<
-	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
-	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
-	Extra extends Record<string, unknown> = Record<string, unknown>
->(options: ConfigOptions<Extra>): Promise<ResolvedConfig<NamedAccounts, Data>> {
-	return resolveConfig<NamedAccounts, Data>(await readConfig<NamedAccounts, Data>(options));
-}
-
-export function resolveConfig<
-	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
-	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData
->(config: Config<NamedAccounts, Data>): ResolvedConfig<NamedAccounts, Data> {
-	const create2Info = {
-		factory: '0x4e59b44847b379578588920ca78fbf26c0b4956c',
-		deployer: '0x3fab184622dc19b6109349b94811493bf2a45362',
-		funding: '10000000000000000',
-		signedTx:
-			'0xf8a58085174876e800830186a08080b853604580600e600039806000f350fe7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe03601600081602082378035828234f58015156039578182fd5b8082525050506014600cf31ba02222222222222222222222222222222222222222222222222222222222222222a02222222222222222222222222222222222222222222222222222222222222222',
-	} as const;
-	const create3Info = {
-		factory: '0x000000000004d4f168daE7DB3C610F408eE22F57',
-		salt: '0x5361109ca02853ca8e22046b7125306d9ec4ae4cdecc393c567b6be861df3db6',
-		bytecode:
-			'0x6080604052348015600f57600080fd5b506103ca8061001f6000396000f3fe6080604052600436106100295760003560e01c8063360d0fad1461002e5780639881d19514610077575b600080fd5b34801561003a57600080fd5b5061004e610049366004610228565b61008a565b60405173ffffffffffffffffffffffffffffffffffffffff909116815260200160405180910390f35b61004e61008536600461029c565b6100ee565b6040517fffffffffffffffffffffffffffffffffffffffff000000000000000000000000606084901b166020820152603481018290526000906054016040516020818303038152906040528051906020012091506100e78261014c565b9392505050565b6040517fffffffffffffffffffffffffffffffffffffffff0000000000000000000000003360601b166020820152603481018290526000906054016040516020818303038152906040528051906020012091506100e734848461015e565b600061015882306101ce565b92915050565b60006f67363d3d37363d34f03d5260086018f3600052816010806000f58061018e5763301164256000526004601cfd5b8060145261d69460005260016034536017601e20915060008085516020870188855af1823b026101c65763301164256000526004601cfd5b509392505050565b60006040518260005260ff600b53836020527f21c35dbe1b344a2488cf3321d6ce542f8e9f305544ff09e4993a62319a497c1f6040526055600b20601452806040525061d694600052600160345350506017601e20919050565b6000806040838503121561023b57600080fd5b823573ffffffffffffffffffffffffffffffffffffffff8116811461025f57600080fd5b946020939093013593505050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052604160045260246000fd5b600080604083850312156102af57600080fd5b823567ffffffffffffffff8111156102c657600080fd5b8301601f810185136102d757600080fd5b803567ffffffffffffffff8111156102f1576102f161026d565b6040517fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe0603f7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe0601f8501160116810181811067ffffffffffffffff8211171561035d5761035d61026d565b60405281815282820160200187101561037557600080fd5b816020840160208301376000602092820183015296940135945050505056fea264697066735822122059dcc5dc6453397d13ff28021e28472a80a45bbd97f3135f69bd2650773aeb0164736f6c634300081a0033',
-		proxyBytecode: '0x67363d3d37363d34f03d5260086018f3',
-	} as const;
-
-	const defaultPollingInterval = config.defaultPollingInterval || 1;
-	const networkPollingInterval = config.target.pollingInterval || defaultPollingInterval;
-
-	let deterministicDeployment: {
-		create2: Create2DeterministicDeploymentInfo;
-		create3: Create3DeterministicDeploymentInfo;
-	} = {
-		create2: (() => {
-			if (!config.target.deterministicDeployment) return create2Info;
-			if (
-				!('create3' in config.target.deterministicDeployment) &&
-				!('create2' in config.target.deterministicDeployment)
-			)
-				return create2Info;
-			return config.target.deterministicDeployment.create2 || create2Info;
-		})(),
-		create3:
-			config.target.deterministicDeployment &&
-			'create3' in config.target.deterministicDeployment &&
-			config.target.deterministicDeployment.create3
-				? config.target.deterministicDeployment.create3
-				: create3Info,
+	const config = {
+		deployments: 'deployments',
+		defaultPollingInterval: 1,
+		...configFile,
+		scripts: configFile?.scripts
+			? typeof configFile.scripts === 'string'
+				? [configFile.scripts]
+				: configFile.scripts
+			: ['deploy'],
 	};
+
+	for (const key of Object.keys(overrides)) {
+		if ((overrides as any)[key] !== undefined) {
+			(config as any)[key] = (overrides as any)[key];
+		}
+	}
+
+	return config;
+}
+
+export async function getChainIdForTarget(
+	config: ResolvedUserConfig,
+	targetName: string,
+	provider?: EIP1193ProviderWithoutEvents
+) {
+	if (config?.targets?.[targetName]?.chainId) {
+		return config.targets[targetName].chainId;
+	} else {
+		const chainFound = getChainByName(targetName);
+		if (chainFound) {
+			return chainFound.id;
+		} else {
+			if (provider) {
+				const chainIdAsHex = await provider.request({method: 'eth_chainId'});
+				return Number(chainIdAsHex);
+			} else {
+				throw new Error(`target ${targetName} chain id cannot be found, specify it in the rocketh config`);
+			}
+		}
+	}
+}
+
+function getTargetName(targetProvided?: string | {fork: string}) {
+	let targetName = 'memory';
+	if (targetProvided) {
+		if (typeof targetProvided === 'string') {
+			targetName = targetProvided;
+		} else if ('fork' in targetProvided) {
+			targetName = targetProvided.fork;
+		}
+	}
+	return targetName;
+}
+
+export function resolveExecutionParams<Extra extends Record<string, unknown> = Record<string, unknown>>(
+	config: ResolvedUserConfig,
+	executionParameters: ExecutionParams<Extra>,
+	chainId: number
+): ResolvedExecutionParams<Extra> {
+	const targetProvided = executionParameters.target || (executionParameters as any).network; // fallback on network
+	const fork = typeof targetProvided !== 'string';
+	let targetName = getTargetName(targetProvided);
+
+	let chainConfig: ChainConfig = getChainConfig(chainId, config);
+
+	let chainInfo = chainConfig.info;
+	const targetConfig = config?.targets?.[targetName];
+	const actualChainConfig = targetConfig?.overrides
+		? {
+				...chainConfig,
+				...targetConfig.overrides,
+				properties: {
+					...chainConfig?.properties,
+					...targetConfig.overrides.properties,
+				},
+		  }
+		: chainConfig;
+
+	if (actualChainConfig?.properties) {
+		chainInfo = {...chainInfo, properties: actualChainConfig.properties};
+	}
+
+	// let targetTags: string[] = actualChainConfig.tags.concat(targetConfig?.tags); // TODO
+	const targetTags = actualChainConfig.tags;
 
 	let scripts = ['deploy'];
 	if (config.scripts) {
@@ -489,63 +369,69 @@ export function resolveConfig<
 		}
 	}
 
-	if (config.target.scripts) {
-		if (typeof config.target.scripts === 'string') {
-			scripts = [config.target.scripts];
+	if (targetConfig?.scripts) {
+		if (typeof targetConfig.scripts === 'string') {
+			scripts = [targetConfig.scripts];
 		} else {
-			scripts = config.target.scripts;
+			scripts = targetConfig.scripts;
 		}
 	}
 
-	let resolvedTarget: ResolvedTargetConfig;
+	const provider =
+		executionParameters.provider || (new JSONRPCHTTPProvider(actualChainConfig.rpcUrl) as EIP1193ProviderWithoutEvents);
 
-	if ('provider' in config.target) {
-		resolvedTarget = {
-			provider: config.target.provider,
-			name: config.target.name,
-			tags: config.target.tags,
-			fork: config.target.fork,
-			deterministicDeployment,
-			chainInfo: config.target.chainInfo,
-			pollingInterval: networkPollingInterval,
-		};
-	} else {
-		resolvedTarget = {
-			nodeUrl: config.target.nodeUrl,
-			name: config.target.name,
-			tags: config.target.tags,
-			fork: config.target.fork,
-			deterministicDeployment,
-			chainInfo: config.target.chainInfo,
-			pollingInterval: networkPollingInterval,
-		};
+	let saveDeployments = executionParameters.saveDeployments;
+
+	if (saveDeployments === undefined) {
+		if (!executionParameters.provider) {
+			saveDeployments = true;
+		} else {
+			if (targetName === 'memory' || targetName === 'hardhat' || targetName === 'default') {
+				// networkTags['memory'] = true;
+				saveDeployments = false;
+			} else {
+				saveDeployments = true;
+			}
+		}
 	}
 
-	const resolvedConfig: ResolvedConfig<NamedAccounts, Data> = {
-		...config,
-		target: resolvedTarget,
-		deployments: config.deployments || 'deployments',
+	return {
+		askBeforeProceeding: executionParameters.askBeforeProceeding || false,
+		chain: chainInfo,
+		logLevel: executionParameters.logLevel || 0, // TODO
+		pollingInterval: actualChainConfig.pollingInterval,
+		reportGasUse: executionParameters.reportGasUse || false,
+		saveDeployments,
+		tags: executionParameters.tags || [],
+		target: {
+			name: targetName,
+			tags: targetTags,
+			fork,
+			deterministicDeployment: actualChainConfig.deterministicDeployment,
+		},
+		extra: executionParameters.extra,
+		provider,
 		scripts,
-		tags: config.tags || [],
-		targetTags: config.targetTags || [],
-		saveDeployments: config.saveDeployments,
-		accounts: config.accounts || ({} as NamedAccounts),
-		data: config.data || ({} as Data),
-		signerProtocols: config.signerProtocols || {},
-		extra: config.extra || {},
-		defaultPollingInterval,
 	};
-	return resolvedConfig;
 }
 
 export async function loadEnvironment<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 	Extra extends Record<string, unknown> = Record<string, unknown>
->(options: ConfigOptions<Extra>): Promise<Environment<NamedAccounts, Data, UnknownDeployments>> {
-	const resolvedConfig = await readAndResolveConfig<NamedAccounts, Data>(options);
+>(executionParams: ExecutionParams<Extra>): Promise<Environment<NamedAccounts, Data, UnknownDeployments>> {
+	const userConfig = await readConfig<NamedAccounts, Data>(executionParams.config);
+	const chainId = await getChainIdForTarget(
+		userConfig,
+		getTargetName(executionParams.target),
+		executionParams.provider
+	);
+	const resolvedExecutionParams = resolveExecutionParams(userConfig, executionParams, chainId);
 	// console.log(JSON.stringify(resolvedConfig, null, 2));
-	const {external, internal} = await createEnvironment(resolvedConfig);
+	const {external, internal} = await createEnvironment<NamedAccounts, Data, UnknownDeployments>(
+		userConfig,
+		resolvedExecutionParams
+	);
 	return external;
 }
 
@@ -554,11 +440,20 @@ export async function loadAndExecuteDeployments<
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 	ArgumentsType = undefined,
 	Extra extends Record<string, unknown> = Record<string, unknown>
->(options: ConfigOptions<Extra>, args?: ArgumentsType): Promise<Environment<NamedAccounts, Data, UnknownDeployments>> {
-	const resolvedConfig = await readAndResolveConfig<NamedAccounts, Data>(options);
+>(
+	executionParams: ExecutionParams<Extra>,
+	args?: ArgumentsType
+): Promise<Environment<NamedAccounts, Data, UnknownDeployments>> {
+	const userConfig = await readConfig<NamedAccounts, Data>(executionParams.config);
+	const chainId = await getChainIdForTarget(
+		userConfig,
+		getTargetName(executionParams.target),
+		executionParams.provider
+	);
+	const resolvedExecutionParams = resolveExecutionParams(userConfig, executionParams, chainId);
 	// console.log(JSON.stringify(options, null, 2));
 	// console.log(JSON.stringify(resolvedConfig, null, 2));
-	return executeDeployScripts<NamedAccounts, Data, ArgumentsType>(resolvedConfig, args);
+	return executeDeployScripts<NamedAccounts, Data, ArgumentsType>(userConfig, resolvedExecutionParams, args);
 }
 
 export async function executeDeployScripts<
@@ -566,13 +461,14 @@ export async function executeDeployScripts<
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 	ArgumentsType = undefined
 >(
-	config: ResolvedConfig<NamedAccounts, Data>,
+	userConfig: ResolvedUserConfig<NamedAccounts, Data>,
+	resolvedExecutionParams: ResolvedExecutionParams,
 	args?: ArgumentsType
 ): Promise<Environment<NamedAccounts, Data, UnknownDeployments>> {
-	setLogLevel(typeof config.logLevel === 'undefined' ? 0 : config.logLevel);
+	setLogLevel(typeof resolvedExecutionParams.logLevel === 'undefined' ? 0 : resolvedExecutionParams.logLevel);
 
 	let filepaths;
-	filepaths = traverseMultipleDirectory(config.scripts);
+	filepaths = traverseMultipleDirectory(resolvedExecutionParams.scripts);
 	filepaths = filepaths
 		.filter((v) => !path.basename(v).startsWith('_'))
 		.sort((a: string, b: string) => {
@@ -627,10 +523,10 @@ export async function executeDeployScripts<
 			}
 		}
 
-		if (config.tags !== undefined && config.tags.length > 0) {
+		if (resolvedExecutionParams.tags !== undefined && resolvedExecutionParams.tags.length > 0) {
 			let found = false;
 			if (scriptTags !== undefined) {
-				for (const tagToFind of config.tags) {
+				for (const tagToFind of resolvedExecutionParams.tags) {
 					for (const tag of scriptTags) {
 						if (tag === tagToFind) {
 							scriptFilePaths.push(scriptFilePath);
@@ -648,7 +544,10 @@ export async function executeDeployScripts<
 		}
 	}
 
-	const {internal, external} = await createEnvironment(config);
+	const {internal, external} = await createEnvironment<NamedAccounts, Data, UnknownDeployments>(
+		userConfig,
+		resolvedExecutionParams
+	);
 
 	await internal.recoverTransactionsIfAny();
 
@@ -695,10 +594,10 @@ export async function executeDeployScripts<
 		recurseDependencies(scriptFilePath);
 	}
 
-	if (config.askBeforeProceeding) {
+	if (resolvedExecutionParams.askBeforeProceeding) {
 		console.log(
-			`Network: ${external.network.name} \n \t Chain: ${external.network.chain.name} \n \t Tags: ${Object.keys(
-				external.network.tags
+			`Network: ${external.name} \n \t Chain: ${external.network.chain.name} \n \t Tags: ${Object.keys(
+				external.tags
 			).join(',')}`
 		);
 		const gasPriceEstimate = await getRoughGasPriceEstimate(external.network.provider);
@@ -764,7 +663,7 @@ Do you want to proceed (note that gas price can change for each tx)`,
 		}
 	}
 
-	if (config.reportGasUse) {
+	if (resolvedExecutionParams.reportGasUse) {
 		const provider = external.network.provider;
 		const transactionHashes = provider.transactionHashes;
 

@@ -1,5 +1,13 @@
 # @rocketh/verifier
 
+## 0.15.0-testing.7
+
+### Patch Changes
+
+- revamp of types and resolution
+- Updated dependencies
+  - rocketh@0.15.0-testing.7
+
 ## 0.15.0-testing.6
 
 ### Patch Changes

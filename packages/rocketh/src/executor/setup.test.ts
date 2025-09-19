@@ -134,7 +134,7 @@ export const exampleUsage = () => {
 			await env.verifyOnEtherscan(tokenAddress, ['MyToken', 'MTK']);
 
 			// Original environment is still fully accessible
-			console.log(`Deployed on network: ${env.network.name}`);
+			console.log(`Deployed on target: ${env.name}`);
 			const deployment = env.get('MyToken');
 
 			return true;

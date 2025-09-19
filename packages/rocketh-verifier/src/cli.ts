@@ -1,11 +1,10 @@
 #! /usr/bin/env node
 import {loadEnv} from 'ldenv';
-import {readAndResolveConfig} from 'rocketh';
 import {run} from './index.js';
 import {Command, Option} from 'commander';
 import pkg from '../package.json' with {type: 'json'};
-import {ConfigOptions} from 'rocketh';
 import {exportMetadata} from './metadata.js';
+import { ConfigOverrides, readConfig } from 'rocketh';
 loadEnv();
 
 const commandName = `rocketh-verify`;
@@ -26,9 +25,9 @@ program
 	.option('--license <value>', 'source code license')
 	.option('--force-license', 'force the use of the license provided')
 	.action(async (options: {endpoint?: string; forceLicense: boolean; license: string}) => {
-		const programOptions = program.opts() as ConfigOptions;
-		const resolvedConfig = await readAndResolveConfig({...programOptions, ignoreMissingRPC: true});
-		run(resolvedConfig, {
+		const {target, ...programOptions} = program.opts();;
+		const resolvedConfig = await readConfig({...programOptions});
+		run(resolvedConfig, target, {
 			verifier: {
 				type: 'etherscan',
 				apiKey: process.env['ETHERSCAN_API_KEY'],
@@ -44,9 +43,9 @@ program
 	.description('submit contract for verification to sourcify')
 	.option('--endpoint <value>', 'endpoint to connect to')
 	.action(async (options: {endpoint?: string}) => {
-		const programOptions = program.opts() as ConfigOptions;
-		const resolvedConfig = await readAndResolveConfig({...programOptions, ignoreMissingRPC: true});
-		run(resolvedConfig, {verifier: {type: 'sourcify', endpoint: options.endpoint}});
+		const {target, ...programOptions} = program.opts();;
+		const resolvedConfig = await readConfig({...programOptions});
+		run(resolvedConfig, target,  {verifier: {type: 'sourcify', endpoint: options.endpoint}});
 	});
 
 program
@@ -55,9 +54,9 @@ program
 	.option('--endpoint <value>', 'endpoint to connect to')
 	// .option('--api <value>', 'api version (default to v2)')
 	.action(async (options: {endpoint?: string}) => {
-		const programOptions = program.opts() as ConfigOptions;
-		const resolvedConfig = await readAndResolveConfig({...programOptions, ignoreMissingRPC: true});
-		run(resolvedConfig, {verifier: {type: 'blockscout', endpoint: options.endpoint}});
+		const {target, ...programOptions} = program.opts();;
+		const resolvedConfig = await readConfig({...programOptions});
+		run(resolvedConfig, target, {verifier: {type: 'blockscout', endpoint: options.endpoint}});
 	});
 
 program
@@ -65,9 +64,9 @@ program
 	.description('export metadata')
 	.option('--out <value>', 'folder to write metadata into')
 	.action(async (options: {out?: string}) => {
-		const programOptions = program.opts() as ConfigOptions;
-		const resolvedConfig = await readAndResolveConfig({...programOptions, ignoreMissingRPC: true});
-		exportMetadata(resolvedConfig, {out: options.out || '_metadata'});
+		const {target, ...programOptions} = program.opts();;
+		const resolvedConfig = await readConfig({...programOptions});
+		exportMetadata(resolvedConfig, target, {out: options.out || '_metadata'});
 	});
 
 program.parse(process.argv);

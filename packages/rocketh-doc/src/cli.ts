@@ -1,10 +1,9 @@
 #! /usr/bin/env node
-import {readAndResolveConfig} from 'rocketh';
 import {run} from './index.js';
 import {Command} from 'commander';
 import pkg from '../package.json' with {type: 'json'};
-import {ConfigOptions} from 'rocketh';
 import {RunOptions} from './index.js';
+import { ConfigOverrides, readConfig } from 'rocketh';
 
 const commandName = "rocketh-doc";
 
@@ -20,7 +19,7 @@ program
 	.requiredOption('--target <value>', 'target context to use')
 	.parse(process.argv);
 
-const options = program.opts();
+const {target, ...options} = program.opts();
 options.exceptSuffix = options.exceptSuffix?.split(',') || [];
-const resolvedConfig = await readAndResolveConfig({...(options as ConfigOptions), ignoreMissingRPC: true});
-run(resolvedConfig, options as RunOptions);
+const resolvedConfig = await readConfig({...(options as ConfigOverrides)});
+run(resolvedConfig, target, options as RunOptions,);

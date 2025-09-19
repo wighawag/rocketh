@@ -24,7 +24,7 @@ export function lookupFile(dir: string, formats: string[], options?: LookupFileO
 	}
 }
 
-export function traverseMultipleDirectory(dirs: string[]): string[] {
+export function traverseMultipleDirectory(dirs: readonly string[]): string[] {
 	const filepaths = [];
 	for (const dir of dirs) {
 		let filesStats = traverse(dir);
