@@ -1,7 +1,12 @@
-export * from './executor/index.js';
-export * from './executor/types.js';
-export * from './environment/types.js';
+export {
+	setup,
+	loadAndExecuteDeployments,
+	executeDeployScriptsDirectly,
+	readAndResolveConfig,
+} from './executor/index.js';
+
+export {getChainConfig} from './environment/utils/chains.js';
+export * from './types.js';
 export {loadDeployments} from './environment/deployments.js';
-export * from './environment/utils/artifacts.js';
-export * from './environment/utils/chains.js';
-export * from './utils/eth.js';
+export {mergeArtifacts} from './environment/utils/artifacts.js';
+export {getGasPriceEstimate, getRoughGasPriceEstimate} from './utils/eth.js';

@@ -1,5 +1,5 @@
 #! /usr/bin/env node
-import {ConfigOverrides, readConfig} from 'rocketh';
+import {ConfigOverrides, readAndResolveConfig} from 'rocketh';
 import {run} from './index.js';
 import {Command} from 'commander';
 import pkg from '../package.json' with {type: 'json'};
@@ -28,7 +28,7 @@ program
 	.parse(process.argv);
 
 const {target, ...options} = program.opts();
-const resolvedConfig = await readConfig({...(options as ConfigOverrides)});
+const resolvedConfig = await readAndResolveConfig({...(options as ConfigOverrides)});
 run(resolvedConfig, target, {
 	tots: options.ts ? options.ts.split(',') : undefined,
 	tojson: options.json ? options.json.split(',') : undefined,

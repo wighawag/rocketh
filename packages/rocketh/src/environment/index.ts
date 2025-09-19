@@ -17,7 +17,9 @@ import {
 	ResolvedNetworkSpecificData,
 	DataType,
 	ResolvedExecutionParams,
-} from './types.js';
+	ResolvedUserConfig,
+	PendingExecution,
+} from '../types.js';
 import {Abi, Address} from 'abitype';
 import {InternalEnvironment} from '../internal/types.js';
 import path from 'node:path';
@@ -32,15 +34,8 @@ import {
 	EIP1193TransactionReceipt,
 } from 'eip-1193';
 import {ProgressIndicator, log, spin} from '../internal/logging.js';
-import {PendingExecution} from './types.js';
 import {mergeArtifacts} from './utils/artifacts.js';
 import {TransactionHashTracker, TransactionHashTrackerProvider} from './providers/TransactionHashTracker.js';
-import {ResolvedUserConfig} from '../executor/index.js';
-
-export type SignerProtocolFunction = (protocolString: string) => Promise<Signer>;
-export type SignerProtocol = {
-	getSigner: SignerProtocolFunction;
-};
 
 function wait(numSeconds: number): Promise<void> {
 	return new Promise((resolve) => {

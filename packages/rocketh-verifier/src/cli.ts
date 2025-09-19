@@ -4,7 +4,7 @@ import {run} from './index.js';
 import {Command, Option} from 'commander';
 import pkg from '../package.json' with {type: 'json'};
 import {exportMetadata} from './metadata.js';
-import { ConfigOverrides, readConfig } from 'rocketh';
+import { readAndResolveConfig } from 'rocketh';
 loadEnv();
 
 const commandName = `rocketh-verify`;
@@ -26,7 +26,7 @@ program
 	.option('--force-license', 'force the use of the license provided')
 	.action(async (options: {endpoint?: string; forceLicense: boolean; license: string}) => {
 		const {target, ...programOptions} = program.opts();;
-		const resolvedConfig = await readConfig({...programOptions});
+		const resolvedConfig = await readAndResolveConfig({...programOptions});
 		run(resolvedConfig, target, {
 			verifier: {
 				type: 'etherscan',
@@ -44,7 +44,7 @@ program
 	.option('--endpoint <value>', 'endpoint to connect to')
 	.action(async (options: {endpoint?: string}) => {
 		const {target, ...programOptions} = program.opts();;
-		const resolvedConfig = await readConfig({...programOptions});
+		const resolvedConfig = await readAndResolveConfig({...programOptions});
 		run(resolvedConfig, target,  {verifier: {type: 'sourcify', endpoint: options.endpoint}});
 	});
 
@@ -55,7 +55,7 @@ program
 	// .option('--api <value>', 'api version (default to v2)')
 	.action(async (options: {endpoint?: string}) => {
 		const {target, ...programOptions} = program.opts();;
-		const resolvedConfig = await readConfig({...programOptions});
+		const resolvedConfig = await readAndResolveConfig({...programOptions});
 		run(resolvedConfig, target, {verifier: {type: 'blockscout', endpoint: options.endpoint}});
 	});
 
@@ -65,7 +65,7 @@ program
 	.option('--out <value>', 'folder to write metadata into')
 	.action(async (options: {out?: string}) => {
 		const {target, ...programOptions} = program.opts();;
-		const resolvedConfig = await readConfig({...programOptions});
+		const resolvedConfig = await readAndResolveConfig({...programOptions});
 		exportMetadata(resolvedConfig, target, {out: options.out || '_metadata'});
 	});
 

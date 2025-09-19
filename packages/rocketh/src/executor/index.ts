@@ -7,26 +7,25 @@ import {formatEther} from 'viem';
 import type {
 	Environment,
 	ExecutionParams,
-	JSONTypePlusBigInt,
 	ResolvedExecutionParams,
 	UnknownDeployments,
 	UnresolvedNetworkSpecificData,
 	UnresolvedUnknownNamedAccounts,
-} from '../environment/types.js';
-import {createEnvironment, SignerProtocolFunction} from '../environment/index.js';
-import {
-	ChainInfo,
-	DeployScriptFunction,
 	DeployScriptModule,
 	EnhancedDeployScriptFunction,
 	EnhancedEnvironment,
-} from './types.js';
+	ResolvedUserConfig,
+	ConfigOverrides,
+	UserConfig,
+	ChainConfig,
+} from '../types.js';
 import {withEnvironment} from '../utils/extensions.js';
 import {logger, setLogLevel, spin} from '../internal/logging.js';
 import {getRoughGasPriceEstimate} from '../utils/eth.js';
 import {traverseMultipleDirectory} from '../utils/fs.js';
 import {getChainByName, getChainConfig} from '../environment/utils/chains.js';
 import {JSONRPCHTTPProvider} from 'eip-1193-jsonrpc-provider';
+import {createEnvironment} from '../environment/index.js';
 
 // @ts-ignore
 const tsImport = (path: string, opts: any) => (typeof Bun !== 'undefined' ? import(path) : tsImport_(path, opts));
@@ -141,102 +140,10 @@ export function enhanceEnvIfNeeded<
 	return enhancedEnv;
 }
 
-export type NamedAccountExecuteFunction<
-	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
-	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData
-> = <ArgumentsType = undefined, Deployments extends UnknownDeployments = UnknownDeployments>(
-	callback: DeployScriptFunction<NamedAccounts, Data, ArgumentsType, Deployments>,
-	options: {tags?: string[]; dependencies?: string[]; id?: string}
-) => DeployScriptModule<NamedAccounts, Data, ArgumentsType, Deployments>;
-
-export interface UntypedRequestArguments {
-	readonly method: string;
-	readonly params?: readonly unknown[] | object;
-}
-export type UntypedEIP1193Provider = {
-	request(requestArguments: UntypedRequestArguments): Promise<unknown>;
-};
-
-export type ConfigOverrides = {
-	deployments?: string;
-	scripts?: string | string[];
-};
-
-export type Create2DeterministicDeploymentInfo = {
-	factory: `0x${string}`;
-	deployer: `0x${string}`;
-	funding: string;
-	signedTx: `0x${string}`;
-};
-
-export type Create3DeterministicDeploymentInfo = {
-	salt?: `0x${string}`;
-	factory: `0x${string}`;
-	bytecode: `0x${string}`;
-	proxyBytecode: `0x${string}`;
-};
-
-export type DeterministicDeploymentInfo =
-	| Create2DeterministicDeploymentInfo
-	| {
-			create2?: Create2DeterministicDeploymentInfo;
-			create3?: Create3DeterministicDeploymentInfo;
-	  };
-
-export type ChainUserConfig = {
-	rpcUrl?: string;
-	tags?: string[];
-	deterministicDeployment?: DeterministicDeploymentInfo;
-	info?: ChainInfo;
-	pollingInterval?: number;
-	properties?: Record<string, JSONTypePlusBigInt>;
-};
-
-export type ChainConfig = {
-	rpcUrl: string;
-	tags: string[];
-	deterministicDeployment: DeterministicDeploymentInfo;
-	info: ChainInfo;
-	pollingInterval: number;
-	properties: Record<string, JSONTypePlusBigInt>;
-};
-
-export type DeploymentTargetConfig = {
-	chainId: number;
-	scripts?: string | string[];
-	overrides: Omit<ChainUserConfig, 'info'>;
-};
-
-export type Chains = {
-	[idOrName: number | string]: ChainUserConfig;
-};
-export type UserConfig<
-	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
-	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData
-> = {
-	targets?: {[name: string]: DeploymentTargetConfig};
-	chains?: Chains;
-	deployments?: string;
-	scripts?: string | string[];
-	accounts?: NamedAccounts;
-	data?: Data;
-	signerProtocols?: Record<string, SignerProtocolFunction>;
-	defaultPollingInterval?: number;
-};
-
-export type ResolvedUserConfig<
-	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
-	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData
-> = UserConfig & {
-	deployments: string;
-	scripts: string[];
-	defaultPollingInterval: number;
-};
-
 export async function readConfig<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData
->(overrides: ConfigOverrides): Promise<ResolvedUserConfig<NamedAccounts, Data>> {
+>(): Promise<UserConfig> {
 	type ConfigFile = UserConfig<NamedAccounts, Data>;
 	let configFile: ConfigFile | undefined;
 
@@ -275,6 +182,13 @@ export async function readConfig<
 		configFile = moduleLoaded.config;
 	}
 
+	return configFile || {};
+}
+
+export function resolveConfig<
+	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
+	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData
+>(configFile: UserConfig, overrides?: ConfigOverrides): ResolvedUserConfig<NamedAccounts, Data> {
 	const config = {
 		deployments: 'deployments',
 		defaultPollingInterval: 1,
@@ -286,13 +200,23 @@ export async function readConfig<
 			: ['deploy'],
 	};
 
-	for (const key of Object.keys(overrides)) {
-		if ((overrides as any)[key] !== undefined) {
-			(config as any)[key] = (overrides as any)[key];
+	if (overrides) {
+		for (const key of Object.keys(overrides)) {
+			if ((overrides as any)[key] !== undefined) {
+				(config as any)[key] = (overrides as any)[key];
+			}
 		}
 	}
 
 	return config;
+}
+
+export async function readAndResolveConfig<
+	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
+	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData
+>(overrides?: ConfigOverrides): Promise<ResolvedUserConfig<NamedAccounts, Data>> {
+	const configFile = await readConfig();
+	return resolveConfig(configFile, overrides);
 }
 
 export async function getChainIdForTarget(
@@ -420,7 +344,7 @@ export async function loadEnvironment<
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 	Extra extends Record<string, unknown> = Record<string, unknown>
 >(executionParams: ExecutionParams<Extra>): Promise<Environment<NamedAccounts, Data, UnknownDeployments>> {
-	const userConfig = await readConfig<NamedAccounts, Data>(executionParams.config);
+	const userConfig = await readAndResolveConfig<NamedAccounts, Data>(executionParams.config);
 	const chainId = await getChainIdForTarget(
 		userConfig,
 		getTargetName(executionParams.target),
@@ -444,7 +368,7 @@ export async function loadAndExecuteDeployments<
 	executionParams: ExecutionParams<Extra>,
 	args?: ArgumentsType
 ): Promise<Environment<NamedAccounts, Data, UnknownDeployments>> {
-	const userConfig = await readConfig<NamedAccounts, Data>(executionParams.config);
+	const userConfig = await readAndResolveConfig<NamedAccounts, Data>(executionParams.config);
 	const chainId = await getChainIdForTarget(
 		userConfig,
 		getTargetName(executionParams.target),
@@ -454,6 +378,27 @@ export async function loadAndExecuteDeployments<
 	// console.log(JSON.stringify(options, null, 2));
 	// console.log(JSON.stringify(resolvedConfig, null, 2));
 	return executeDeployScripts<NamedAccounts, Data, ArgumentsType>(userConfig, resolvedExecutionParams, args);
+}
+
+export async function executeDeployScriptsDirectly<
+	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
+	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
+	ArgumentsType = undefined,
+	Extra extends Record<string, unknown> = Record<string, unknown>
+>(
+	userConfig: UserConfig,
+	executionParams?: ExecutionParams<Extra>,
+	args?: ArgumentsType
+): Promise<Environment<NamedAccounts, Data, UnknownDeployments>> {
+	executionParams = executionParams || {};
+	const resolveduserConfig = resolveConfig<NamedAccounts, Data>(userConfig);
+	const chainId = await getChainIdForTarget(
+		resolveduserConfig,
+		getTargetName(executionParams.target),
+		executionParams.provider
+	);
+	const resolvedExecutionParams = resolveExecutionParams(resolveduserConfig, executionParams, chainId);
+	return executeDeployScripts<NamedAccounts, Data, ArgumentsType>(resolveduserConfig, resolvedExecutionParams, args);
 }
 
 export async function executeDeployScripts<

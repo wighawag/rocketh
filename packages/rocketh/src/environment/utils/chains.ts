@@ -1,14 +1,13 @@
 import * as chains from 'viem/chains';
 import {kebabCase} from 'change-case';
-import {ChainInfo} from '../../executor/types.js';
 import {
 	ChainConfig,
+	ChainInfo,
 	ChainUserConfig,
 	Create2DeterministicDeploymentInfo,
 	Create3DeterministicDeploymentInfo,
 	ResolvedUserConfig,
-	UserConfig,
-} from '../../executor/index.js';
+} from '../../types.js';
 
 export type ChainType = 'zksync' | 'op-stack' | 'celo' | 'default';
 

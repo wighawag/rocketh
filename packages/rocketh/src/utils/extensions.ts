@@ -3,8 +3,8 @@ import type {
 	UnknownDeployments,
 	UnresolvedNetworkSpecificData,
 	UnresolvedUnknownNamedAccounts,
-} from '../environment/types.js';
-import {CurriedFunctions} from '../executor/types.js';
+	CurriedFunctions,
+} from '../types.js';
 
 /**
  * @param env - The environment object to inject as the first parameter

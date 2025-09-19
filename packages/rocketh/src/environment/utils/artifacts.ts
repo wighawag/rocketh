@@ -1,5 +1,5 @@
 import {Abi} from 'abitype';
-import {Artifact, DevDoc, UserDoc} from '../types.js';
+import {Artifact, DevDoc, UserDoc} from '../../types.js';
 import {FunctionFragment} from 'ethers';
 
 type CreateMutable<Type> = {

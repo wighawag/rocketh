@@ -32,12 +32,18 @@ importers:
       '@types/prompts':
         specifier: ^2.4.9
         version: 2.4.9
+      abitype:
+        specifier: ^1.1.0
+        version: 1.1.0(typescript@5.9.2)(zod@4.1.8)
       change-case:
         specifier: ^5.4.4
         version: 5.4.4
       commander:
         specifier: ^13.1.0
         version: 13.1.0
+      eip-1193:
+        specifier: ^0.6.5
+        version: 0.6.5
       eip-1193-jsonrpc-provider:
         specifier: ^0.4.3
         version: 0.4.3
@@ -69,15 +75,9 @@ importers:
       '@types/node':
         specifier: ^24.4.0
         version: 24.4.0
-      abitype:
-        specifier: ^1.1.0
-        version: 1.1.0(typescript@5.9.2)(zod@4.1.8)
       as-soon:
         specifier: ^0.0.11
         version: 0.0.11
-      eip-1193:
-        specifier: ^0.6.5
-        version: 0.6.5
       ipfs-gateway-emulator:
         specifier: 4.2.1-ipfs.2
         version: 4.2.1-ipfs.2

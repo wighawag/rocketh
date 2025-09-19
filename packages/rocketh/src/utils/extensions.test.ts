@@ -1,4 +1,4 @@
-import type {Environment} from '../environment/types.js';
+import type {Environment} from '../types.js';
 import {withEnvironment} from './extensions.js';
 
 // Mock environment for testing
