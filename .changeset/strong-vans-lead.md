@@ -1,0 +1,5 @@
+---
+'@rocketh/router': patch
+---
+
+fix
