@@ -43,7 +43,7 @@ function objectMap<V, N, O extends Trandformed<{}, V> = Trandformed<{}, V>>(
 
 export async function run(
 	config: ResolvedUserConfig,
-	targetName: string,
+	environmentName: string,
 	options: {
 		tojs?: string[];
 		tots?: string[];
@@ -58,7 +58,7 @@ export async function run(
 		return;
 	}
 
-	const {deployments, chainId, genesisHash} = loadDeployments(config.deployments, targetName);
+	const {deployments, chainId, genesisHash} = loadDeployments(config.deployments, environmentName);
 
 	if (!deployments || Object.keys(deployments).length === 0) {
 		console.log(`no deployments to export`);
@@ -66,7 +66,7 @@ export async function run(
 	}
 
 	if (!chainId) {
-		throw new Error(`no chainId found for ${targetName}`);
+		throw new Error(`no chainId found for ${environmentName}`);
 	}
 
 	const chainConfig = getChainConfig(parseInt(chainId), config);
@@ -82,7 +82,7 @@ export async function run(
 			argsData: options.includeBytecode ? d.argsData : undefined,
 			startBlock: d.receipt?.blockNumber ? parseInt(d.receipt.blockNumber.slice(2), 16) : undefined,
 		})),
-		name: targetName,
+		name: environmentName,
 	};
 
 	const js = typeof options.tojs === 'string' ? [options.tojs] : options.tojs || [];

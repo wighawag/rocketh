@@ -1,5 +1,13 @@
 # @rocketh/verifier
 
+## 0.15.0-testing.13
+
+### Patch Changes
+
+- rname target to environment
+- Updated dependencies
+  - rocketh@0.15.0-testing.13
+
 ## 0.15.0-testing.12
 
 ### Patch Changes

@@ -16,7 +16,7 @@ program
 	.version(pkg.version)
 
 	.option('-d, --deployments <value>', 'folder where deployments are saved')
-	.requiredOption('--target <value>', 'target context to use');
+	.requiredOption('-e, --environment <value>', 'environment context to use');
 
 program
 	.command('etherscan')
@@ -25,9 +25,9 @@ program
 	.option('--license <value>', 'source code license')
 	.option('--force-license', 'force the use of the license provided')
 	.action(async (options: {endpoint?: string; forceLicense: boolean; license: string}) => {
-		const {target, ...programOptions} = program.opts();;
+		const {environment, ...programOptions} = program.opts();;
 		const resolvedConfig = await readAndResolveConfig({...programOptions});
-		run(resolvedConfig, target, {
+		run(resolvedConfig, environment, {
 			verifier: {
 				type: 'etherscan',
 				apiKey: process.env['ETHERSCAN_API_KEY'],
@@ -43,9 +43,9 @@ program
 	.description('submit contract for verification to sourcify')
 	.option('--endpoint <value>', 'endpoint to connect to')
 	.action(async (options: {endpoint?: string}) => {
-		const {target, ...programOptions} = program.opts();;
+		const {environment, ...programOptions} = program.opts();;
 		const resolvedConfig = await readAndResolveConfig({...programOptions});
-		run(resolvedConfig, target,  {verifier: {type: 'sourcify', endpoint: options.endpoint}});
+		run(resolvedConfig, environment,  {verifier: {type: 'sourcify', endpoint: options.endpoint}});
 	});
 
 program
@@ -54,9 +54,9 @@ program
 	.option('--endpoint <value>', 'endpoint to connect to')
 	// .option('--api <value>', 'api version (default to v2)')
 	.action(async (options: {endpoint?: string}) => {
-		const {target, ...programOptions} = program.opts();;
+		const {environment, ...programOptions} = program.opts();;
 		const resolvedConfig = await readAndResolveConfig({...programOptions});
-		run(resolvedConfig, target, {verifier: {type: 'blockscout', endpoint: options.endpoint}});
+		run(resolvedConfig, environment, {verifier: {type: 'blockscout', endpoint: options.endpoint}});
 	});
 
 program
@@ -64,9 +64,9 @@ program
 	.description('export metadata')
 	.option('--out <value>', 'folder to write metadata into')
 	.action(async (options: {out?: string}) => {
-		const {target, ...programOptions} = program.opts();;
+		const {environment, ...programOptions} = program.opts();;
 		const resolvedConfig = await readAndResolveConfig({...programOptions});
-		exportMetadata(resolvedConfig, target, {out: options.out || '_metadata'});
+		exportMetadata(resolvedConfig, environment, {out: options.out || '_metadata'});
 	});
 
 program.parse(process.argv);

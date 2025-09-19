@@ -24,12 +24,12 @@ program
 		'list of filepath where the javascript export  with individual exportwill be written, separated by commas'
 	)
 	.option('-b, --bytecode', 'if set, the bytecode will also be part of the output')
-	.requiredOption('--target <value>', 'target context to use')
+	.requiredOption('-e, --environment <value>', 'environment context to use')
 	.parse(process.argv);
 
-const {target, ...options} = program.opts();
+const {environment, ...options} = program.opts();
 const resolvedConfig = await readAndResolveConfig({...(options as ConfigOverrides)});
-run(resolvedConfig, target, {
+run(resolvedConfig, environment, {
 	tots: options.ts ? options.ts.split(',') : undefined,
 	tojson: options.json ? options.json.split(',') : undefined,
 	tojs: options.js ? options.js.split(',') : undefined,

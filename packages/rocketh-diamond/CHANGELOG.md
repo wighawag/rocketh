@@ -1,5 +1,14 @@
 # @rocketh/diamond
 
+## 0.15.0-testing.2
+
+### Patch Changes
+
+- rname target to environment
+- Updated dependencies
+  - @rocketh/read-execute@0.15.0-testing.2
+  - @rocketh/deploy@0.15.0-testing.4
+
 ## 0.15.0-testing.1
 
 ### Patch Changes

@@ -1,5 +1,14 @@
 # @rocketh/router
 
+## 0.15.0-testing.7
+
+### Patch Changes
+
+- rname target to environment
+- Updated dependencies
+  - @rocketh/deploy@0.15.0-testing.4
+  - rocketh@0.15.0-testing.13
+
 ## 0.15.0-testing.6
 
 ### Patch Changes

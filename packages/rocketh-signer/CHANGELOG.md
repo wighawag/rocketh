@@ -1,5 +1,11 @@
 # @rocketh/signer
 
+## 0.15.0-testing.2
+
+### Patch Changes
+
+- rname target to environment
+
 ## 0.15.0-testing.1
 
 ### Patch Changes

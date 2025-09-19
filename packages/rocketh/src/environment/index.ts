@@ -86,10 +86,10 @@ export async function createEnvironment<
 	}
 
 	const deploymentsFolder = userConfig.deployments;
-	const targetName = resolvedExecutionParams.target.name;
+	const environmentName = resolvedExecutionParams.environment.name;
 	const saveDeployments = resolvedExecutionParams.saveDeployments;
 	let networkTags: {[tag: string]: boolean} = {};
-	for (const networkTag of resolvedExecutionParams.target.tags) {
+	for (const networkTag of resolvedExecutionParams.environment.tags) {
 		networkTags[networkTag] = true;
 	}
 
@@ -157,7 +157,7 @@ export async function createEnvironment<
 			}
 		} else {
 			// TODO allow for canonical chain name ?
-			const accountForNetwork = accountDef[targetName] || accountDef[chainId] || accountDef['default'];
+			const accountForNetwork = accountDef[environmentName] || accountDef[chainId] || accountDef['default'];
 			if (typeof accountForNetwork !== undefined) {
 				const accountFetched = await getAccount(name, accounts, accountForNetwork);
 				if (accountFetched) {
@@ -179,7 +179,7 @@ export async function createEnvironment<
 
 	const resolvedData: ResolvedNetworkSpecificData<Data> = {} as ResolvedNetworkSpecificData<Data>;
 	async function getData<T = unknown>(name: string, dataDef: DataType<T>): Promise<T | undefined> {
-		const dataForNetwork = dataDef[targetName] || dataDef[chainId] || dataDef['default'];
+		const dataForNetwork = dataDef[environmentName] || dataDef[chainId] || dataDef['default'];
 		return dataForNetwork;
 	}
 
@@ -195,7 +195,7 @@ export async function createEnvironment<
 		accounts: resolvedAccounts,
 		data: resolvedData,
 		network: {
-			fork: resolvedExecutionParams.target.fork,
+			fork: resolvedExecutionParams.environment.fork,
 			saveDeployments,
 			tags: networkTags,
 		},
@@ -205,7 +205,7 @@ export async function createEnvironment<
 
 	const {deployments, migrations} = loadDeployments(
 		deploymentsFolder,
-		targetName,
+		environmentName,
 		false,
 		context.network.fork
 			? undefined
@@ -237,7 +237,7 @@ export async function createEnvironment<
 	}
 
 	const perliminaryEnvironment = {
-		name: targetName,
+		name: environmentName,
 		tags: context.network.tags,
 		deployments: deployments as Deployments,
 		namedAccounts: namedAccounts as ResolvedNamedAccounts<NamedAccounts>,
@@ -249,13 +249,13 @@ export async function createEnvironment<
 			chain: resolvedExecutionParams.chain,
 			fork: context.network.fork,
 			provider,
-			deterministicDeployment: resolvedExecutionParams.target.deterministicDeployment,
+			deterministicDeployment: resolvedExecutionParams.environment.deterministicDeployment,
 		},
 		extra: resolvedExecutionParams.extra || {},
 	};
 
 	function getDeploymentFolder(): string {
-		const folderPath = path.join(deploymentsFolder, targetName);
+		const folderPath = path.join(deploymentsFolder, environmentName);
 		return folderPath;
 	}
 

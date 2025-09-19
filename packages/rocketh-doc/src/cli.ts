@@ -16,10 +16,10 @@ program
 	.option('-o, --output <value>', 'folder where to generate docs')
 	.option('-t, --template <value>', 'template used to generate docs')
 	.option('--except-suffix <suffix, suffix....>', 'ignore contract that ends with the provided suffixes')
-	.requiredOption('--target <value>', 'target context to use')
+	.requiredOption('-e, --environment <value>', 'environment context to use')
 	.parse(process.argv);
 
-const {target, ...options} = program.opts();
+const {environment, ...options} = program.opts();
 options.exceptSuffix = options.exceptSuffix?.split(',') || [];
 const resolvedConfig = await readAndResolveConfig({...(options as ConfigOverrides)});
-run(resolvedConfig, target, options as RunOptions,);
+run(resolvedConfig, environment, options as RunOptions,);

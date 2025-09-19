@@ -29,16 +29,16 @@ export type VerificationOptions = {
 	logErrorOnFailure?: boolean;
 };
 
-export async function run(config: ResolvedUserConfig, targetName: string, options: VerificationOptions) {
-	const {deployments, chainId} = loadDeployments(config.deployments, targetName, false);
+export async function run(config: ResolvedUserConfig, environmentName: string, options: VerificationOptions) {
+	const {deployments, chainId} = loadDeployments(config.deployments, environmentName, false);
 
 	if (Object.keys(deployments).length === 0) {
-		console.log(`the target ${targetName} has zero deployments`);
+		console.log(`the environment ${environmentName} has zero deployments`);
 		process.exit();
 	}
 
 	if (!chainId) {
-		console.error(`the target ${targetName} has no chainId recorded`);
+		console.error(`the environment ${environmentName} has no chainId recorded`);
 		process.exit(1);
 	}
 
@@ -47,7 +47,7 @@ export async function run(config: ResolvedUserConfig, targetName: string, option
 			{
 				chainId,
 				deployments,
-				networkName: targetName, // TODO ? should this not be the actual network name
+				networkName: environmentName, // TODO ? should this not be the actual network name
 				deploymentNames: options.deploymentNames,
 				minInterval: options.minInterval,
 				logErrorOnFailure: options.logErrorOnFailure,
@@ -59,7 +59,7 @@ export async function run(config: ResolvedUserConfig, targetName: string, option
 			{
 				chainId,
 				deployments,
-				networkName: targetName, // TODO ? should this not be the actual network name
+				networkName: environmentName, // TODO ? should this not be the actual network name
 				deploymentNames: options.deploymentNames,
 				minInterval: options.minInterval,
 				logErrorOnFailure: options.logErrorOnFailure,
@@ -71,7 +71,7 @@ export async function run(config: ResolvedUserConfig, targetName: string, option
 			{
 				chainId,
 				deployments,
-				networkName: targetName, // TODO ? should this not be the actual network name
+				networkName: environmentName, // TODO ? should this not be the actual network name
 				deploymentNames: options.deploymentNames,
 				minInterval: options.minInterval,
 				logErrorOnFailure: options.logErrorOnFailure,

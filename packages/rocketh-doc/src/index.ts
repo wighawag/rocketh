@@ -37,10 +37,10 @@ function filter(options: RunOptions, name: string): boolean {
 	return true;
 }
 
-export async function run(config: ResolvedUserConfig, targetName: string, options: RunOptions) {
-	const {deployments, chainId} = loadDeployments(config.deployments, targetName);
+export async function run(config: ResolvedUserConfig, environmentName: string, options: RunOptions) {
+	const {deployments, chainId} = loadDeployments(config.deployments, environmentName);
 	if (!chainId) {
-		throw new Error(`no chainId found for ${targetName}`);
+		throw new Error(`no chainId found for ${environmentName}`);
 	}
 	generate({deployments}, options);
 }

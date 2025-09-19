@@ -1,5 +1,11 @@
 # @rocketh/deploy
 
+## 0.15.0-testing.4
+
+### Patch Changes
+
+- rname target to environment
+
 ## 0.15.0-testing.3
 
 ### Patch Changes

@@ -19,7 +19,7 @@ program
 	.option('--skip-gas-report', 'if set skip gas report')
 	.option('--skip-prompts', 'if set skip any prompts')
 	.option('--save-deployments', 'if set, save deployments')
-	.requiredOption('--target <value>', 'target context to use')
+	.requiredOption('-e, --environment <value>', 'environment to use')
 	.parse(process.argv);
 
 const options = program.opts();

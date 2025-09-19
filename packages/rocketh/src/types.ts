@@ -240,7 +240,7 @@ export type ChainConfig = {
 	properties: Record<string, JSONTypePlusBigInt>;
 };
 
-export type DeploymentTargetConfig = {
+export type DeploymentEnvironmentConfig = {
 	chainId: number;
 	scripts?: string | string[];
 	overrides: Omit<ChainUserConfig, 'info'>;
@@ -259,7 +259,7 @@ export type UserConfig<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData
 > = {
-	targets?: {[name: string]: DeploymentTargetConfig};
+	environments?: {[name: string]: DeploymentEnvironmentConfig};
 	chains?: Chains;
 	deployments?: string;
 	scripts?: string | string[];
@@ -279,7 +279,7 @@ export type ResolvedUserConfig<
 };
 
 export type ExecutionParams<Extra extends Record<string, unknown> = Record<string, unknown>> = {
-	target?: string | {fork: string};
+	environment?: string | {fork: string};
 	tags?: string[];
 	saveDeployments?: boolean;
 	askBeforeProceeding?: boolean;
@@ -504,7 +504,7 @@ export type ResolvedNamedSigners<T extends UnknownNamedAccounts> = {
 export type UnknownDeploymentsAcrossNetworks = Record<string, UnknownDeployments>;
 
 export type ResolvedExecutionParams<Extra extends Record<string, unknown> = Record<string, unknown>> = {
-	readonly target: {
+	readonly environment: {
 		readonly name: string;
 		readonly tags: readonly string[];
 		readonly fork?: boolean;

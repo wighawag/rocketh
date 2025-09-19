@@ -221,15 +221,15 @@ export async function readAndResolveConfig<
 	return resolveConfig(configFile, overrides);
 }
 
-export async function getChainIdForTarget(
+export async function getChainIdForEnvironment(
 	config: ResolvedUserConfig,
-	targetName: string,
+	environmentName: string,
 	provider?: EIP1193ProviderWithoutEvents
 ) {
-	if (config?.targets?.[targetName]?.chainId) {
-		return config.targets[targetName].chainId;
+	if (config?.environments?.[environmentName]?.chainId) {
+		return config.environments[environmentName].chainId;
 	} else {
-		const chainFound = getChainByName(targetName);
+		const chainFound = getChainByName(environmentName);
 		if (chainFound) {
 			return chainFound.id;
 		} else {
@@ -237,24 +237,24 @@ export async function getChainIdForTarget(
 				const chainIdAsHex = await provider.request({method: 'eth_chainId'});
 				return Number(chainIdAsHex);
 			} else {
-				throw new Error(`target ${targetName} chain id cannot be found, specify it in the rocketh config`);
+				throw new Error(`environment ${environmentName} chain id cannot be found, specify it in the rocketh config`);
 			}
 		}
 	}
 }
 
-function getTargetName(executionParams: ExecutionParams): {name: string; fork: boolean} {
-	const targetProvided = executionParams.target || (executionParams as any).network;
-	let targetName = 'memory';
-	if (targetProvided) {
-		if (typeof targetProvided === 'string') {
-			targetName = targetProvided;
-		} else if ('fork' in targetProvided) {
-			targetName = targetProvided.fork;
+function getEnvironmentName(executionParams: ExecutionParams): {name: string; fork: boolean} {
+	const environmentProvided = executionParams.environment || (executionParams as any).network;
+	let environmentName = 'memory';
+	if (environmentProvided) {
+		if (typeof environmentProvided === 'string') {
+			environmentName = environmentProvided;
+		} else if ('fork' in environmentProvided) {
+			environmentName = environmentProvided.fork;
 		}
 	}
-	const fork = typeof targetProvided !== 'string';
-	return {name: targetName, fork};
+	const fork = typeof environmentProvided !== 'string';
+	return {name: environmentName, fork};
 }
 
 export function resolveExecutionParams<Extra extends Record<string, unknown> = Record<string, unknown>>(
@@ -262,20 +262,20 @@ export function resolveExecutionParams<Extra extends Record<string, unknown> = R
 	executionParameters: ExecutionParams<Extra>,
 	chainId: number
 ): ResolvedExecutionParams<Extra> {
-	const {name: targetName, fork} = getTargetName(executionParameters);
+	const {name: environmentName, fork} = getEnvironmentName(executionParameters);
 
 	// TODO fork chainId resolution option to keep the network being used
 	let chainConfig: ChainConfig = getChainConfig(fork ? 31337 : chainId, config);
 
 	let chainInfo = chainConfig.info;
-	const targetConfig = config?.targets?.[targetName];
-	const actualChainConfig = targetConfig?.overrides
+	const environmentConfig = config?.environments?.[environmentName];
+	const actualChainConfig = environmentConfig?.overrides
 		? {
 				...chainConfig,
-				...targetConfig.overrides,
+				...environmentConfig.overrides,
 				properties: {
 					...chainConfig?.properties,
-					...targetConfig.overrides.properties,
+					...environmentConfig.overrides.properties,
 				},
 		  }
 		: chainConfig;
@@ -284,8 +284,8 @@ export function resolveExecutionParams<Extra extends Record<string, unknown> = R
 		chainInfo = {...chainInfo, properties: actualChainConfig.properties};
 	}
 
-	// let targetTags: string[] = actualChainConfig.tags.concat(targetConfig?.tags); // TODO
-	const targetTags = actualChainConfig.tags;
+	// let environmentTags: string[] = actualChainConfig.tags.concat(environmentConfig?.tags); // TODO
+	const environmentTags = actualChainConfig.tags;
 
 	let scripts = ['deploy'];
 	if (config.scripts) {
@@ -296,11 +296,11 @@ export function resolveExecutionParams<Extra extends Record<string, unknown> = R
 		}
 	}
 
-	if (targetConfig?.scripts) {
-		if (typeof targetConfig.scripts === 'string') {
-			scripts = [targetConfig.scripts];
+	if (environmentConfig?.scripts) {
+		if (typeof environmentConfig.scripts === 'string') {
+			scripts = [environmentConfig.scripts];
 		} else {
-			scripts = targetConfig.scripts;
+			scripts = environmentConfig.scripts;
 		}
 	}
 
@@ -313,7 +313,7 @@ export function resolveExecutionParams<Extra extends Record<string, unknown> = R
 		if (!executionParameters.provider) {
 			saveDeployments = true;
 		} else {
-			if (targetName === 'memory' || targetName === 'hardhat' || targetName === 'default') {
+			if (environmentName === 'memory' || environmentName === 'hardhat' || environmentName === 'default') {
 				// networkTags['memory'] = true;
 				saveDeployments = false;
 			} else {
@@ -330,9 +330,9 @@ export function resolveExecutionParams<Extra extends Record<string, unknown> = R
 		reportGasUse: executionParameters.reportGasUse || false,
 		saveDeployments,
 		tags: executionParameters.tags || [],
-		target: {
-			name: targetName,
-			tags: targetTags,
+		environment: {
+			name: environmentName,
+			tags: environmentTags,
 			fork,
 			deterministicDeployment: actualChainConfig.deterministicDeployment,
 		},
@@ -348,8 +348,8 @@ export async function loadEnvironment<
 	Extra extends Record<string, unknown> = Record<string, unknown>
 >(executionParams: ExecutionParams<Extra>): Promise<Environment<NamedAccounts, Data, UnknownDeployments>> {
 	const userConfig = await readAndResolveConfig<NamedAccounts, Data>(executionParams.config);
-	const {name: targetName, fork} = getTargetName(executionParams);
-	const chainId = await getChainIdForTarget(userConfig, targetName, executionParams.provider);
+	const {name: environmentName, fork} = getEnvironmentName(executionParams);
+	const chainId = await getChainIdForEnvironment(userConfig, environmentName, executionParams.provider);
 	const resolvedExecutionParams = resolveExecutionParams(userConfig, executionParams, chainId);
 	// console.log(JSON.stringify(resolvedConfig, null, 2));
 	const {external, internal} = await createEnvironment<NamedAccounts, Data, UnknownDeployments>(
@@ -369,8 +369,8 @@ export async function loadAndExecuteDeployments<
 	args?: ArgumentsType
 ): Promise<Environment<NamedAccounts, Data, UnknownDeployments>> {
 	const userConfig = await readAndResolveConfig<NamedAccounts, Data>(executionParams.config);
-	const {name: targetName, fork} = getTargetName(executionParams);
-	const chainId = await getChainIdForTarget(userConfig, targetName, executionParams.provider);
+	const {name: environmentName, fork} = getEnvironmentName(executionParams);
+	const chainId = await getChainIdForEnvironment(userConfig, environmentName, executionParams.provider);
 	const resolvedExecutionParams = resolveExecutionParams(userConfig, executionParams, chainId);
 	// console.log(JSON.stringify(options, null, 2));
 	// console.log(JSON.stringify(resolvedConfig, null, 2));
@@ -389,8 +389,8 @@ export async function executeDeployScriptsDirectly<
 ): Promise<Environment<NamedAccounts, Data, UnknownDeployments>> {
 	executionParams = executionParams || {};
 	const resolveduserConfig = resolveConfig<NamedAccounts, Data>(userConfig);
-	const {name: targetName, fork} = getTargetName(executionParams);
-	const chainId = await getChainIdForTarget(resolveduserConfig, targetName, executionParams.provider);
+	const {name: environmentName, fork} = getEnvironmentName(executionParams);
+	const chainId = await getChainIdForEnvironment(resolveduserConfig, environmentName, executionParams.provider);
 	const resolvedExecutionParams = resolveExecutionParams(resolveduserConfig, executionParams, chainId);
 	return executeDeployScripts<NamedAccounts, Data, ArgumentsType>(resolveduserConfig, resolvedExecutionParams, args);
 }
