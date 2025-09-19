@@ -244,9 +244,10 @@ export async function createEnvironment<
 	}
 
 	const perliminaryEnvironment = {
-		config: userConfig,
-		executionParameters: resolvedExecutionParams,
-		environmentName,
+		context: {
+			saveDeployments: context.saveDeployments,
+		},
+		name: environmentName,
 		tags: context.tags,
 		deployments: deployments as Deployments,
 		namedAccounts: namedAccounts as ResolvedNamedAccounts<NamedAccounts>,

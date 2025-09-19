@@ -528,9 +528,10 @@ export interface Environment<
 	Deployments extends UnknownDeployments = UnknownDeployments,
 	Extra extends Record<string, unknown> = Record<string, unknown>
 > {
-	readonly environmentName: string;
-	readonly config: ResolvedUserConfig<NamedAccounts, Data>;
-	readonly executionParameters: ResolvedExecutionParams<Extra>;
+	readonly name: string;
+	readonly context: {
+		readonly saveDeployments: boolean;
+	};
 	readonly tags: {readonly [tag: string]: boolean};
 	readonly network: {
 		readonly chain: Chain;
