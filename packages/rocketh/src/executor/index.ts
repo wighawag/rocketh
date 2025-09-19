@@ -317,7 +317,6 @@ export async function transformUserConfig<
 	const defaultPollingInterval = configFile?.defaultPollingInterval;
 	const pollingInterval = actualChainConfig?.pollingInterval;
 	const deterministicDeployment = actualChainConfig?.deterministicDeployment;
-	const properties = actualChainConfig?.properties;
 
 	let resolvedTargetConfig: TargetConfig;
 

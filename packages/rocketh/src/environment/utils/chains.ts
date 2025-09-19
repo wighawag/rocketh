@@ -31,7 +31,7 @@ export const chainTypes: {[chainId: string]: ChainType} = {};
 
 export const chainById: {[chainId: string]: ChainInfo} = {};
 export const allChains = {...((chains as any).default || chains)};
-delete allChains['localhost'];
+allChains['localhost'] = allChains['hardhat'];
 
 for (const key of Object.keys(allChains)) {
 	const chain = (allChains as any)[key] as ChainInfo;
