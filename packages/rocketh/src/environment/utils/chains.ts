@@ -148,7 +148,7 @@ export function getChainConfig(id: number, config: ResolvedUserConfig): ChainCon
 		proxyBytecode: '0x67363d3d37363d34f03d5260086018f3',
 	} as const;
 
-	const pollingInterval = chainConfig.pollingInterval || config.defaultPollingInterval || 1;
+	const pollingInterval = chainConfig.pollingInterval || config.defaultPollingInterval;
 
 	let deterministicDeployment: {
 		create2: Create2DeterministicDeploymentInfo;

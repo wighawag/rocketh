@@ -85,7 +85,7 @@ export async function createEnvironment<
 		console.error(`failed to get genesis block`);
 	}
 
-	const deploymentsFolder = userConfig.deployments || 'deployments';
+	const deploymentsFolder = userConfig.deployments;
 	const targetName = resolvedExecutionParams.target.name;
 	const saveDeployments = resolvedExecutionParams.saveDeployments;
 	let networkTags: {[tag: string]: boolean} = {};

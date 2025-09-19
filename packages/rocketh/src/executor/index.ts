@@ -196,6 +196,8 @@ export function resolveConfig<
 		scripts: configFile?.scripts
 			? typeof configFile.scripts === 'string'
 				? [configFile.scripts]
+				: configFile.scripts.length == 0
+				? ['deploy']
 				: configFile.scripts
 			: ['deploy'],
 	};
@@ -241,7 +243,8 @@ export async function getChainIdForTarget(
 	}
 }
 
-function getTargetName(targetProvided?: string | {fork: string}) {
+function getTargetName(executionParams: ExecutionParams): {name: string; fork: boolean} {
+	const targetProvided = executionParams.target || (executionParams as any).network;
 	let targetName = 'memory';
 	if (targetProvided) {
 		if (typeof targetProvided === 'string') {
@@ -250,7 +253,8 @@ function getTargetName(targetProvided?: string | {fork: string}) {
 			targetName = targetProvided.fork;
 		}
 	}
-	return targetName;
+	const fork = typeof targetProvided !== 'string';
+	return {name: targetName, fork};
 }
 
 export function resolveExecutionParams<Extra extends Record<string, unknown> = Record<string, unknown>>(
@@ -258,9 +262,7 @@ export function resolveExecutionParams<Extra extends Record<string, unknown> = R
 	executionParameters: ExecutionParams<Extra>,
 	chainId: number
 ): ResolvedExecutionParams<Extra> {
-	const targetProvided = executionParameters.target || (executionParameters as any).network; // fallback on network
-	const fork = typeof targetProvided !== 'string';
-	let targetName = getTargetName(targetProvided);
+	const {name: targetName, fork} = getTargetName(executionParameters);
 
 	let chainConfig: ChainConfig = getChainConfig(chainId, config);
 
@@ -345,11 +347,8 @@ export async function loadEnvironment<
 	Extra extends Record<string, unknown> = Record<string, unknown>
 >(executionParams: ExecutionParams<Extra>): Promise<Environment<NamedAccounts, Data, UnknownDeployments>> {
 	const userConfig = await readAndResolveConfig<NamedAccounts, Data>(executionParams.config);
-	const chainId = await getChainIdForTarget(
-		userConfig,
-		getTargetName(executionParams.target),
-		executionParams.provider
-	);
+	const {name: targetName, fork} = getTargetName(executionParams);
+	const chainId = await getChainIdForTarget(userConfig, targetName, executionParams.provider);
 	const resolvedExecutionParams = resolveExecutionParams(userConfig, executionParams, chainId);
 	// console.log(JSON.stringify(resolvedConfig, null, 2));
 	const {external, internal} = await createEnvironment<NamedAccounts, Data, UnknownDeployments>(
@@ -369,11 +368,8 @@ export async function loadAndExecuteDeployments<
 	args?: ArgumentsType
 ): Promise<Environment<NamedAccounts, Data, UnknownDeployments>> {
 	const userConfig = await readAndResolveConfig<NamedAccounts, Data>(executionParams.config);
-	const chainId = await getChainIdForTarget(
-		userConfig,
-		getTargetName(executionParams.target),
-		executionParams.provider
-	);
+	const {name: targetName, fork} = getTargetName(executionParams);
+	const chainId = await getChainIdForTarget(userConfig, targetName, executionParams.provider);
 	const resolvedExecutionParams = resolveExecutionParams(userConfig, executionParams, chainId);
 	// console.log(JSON.stringify(options, null, 2));
 	// console.log(JSON.stringify(resolvedConfig, null, 2));
@@ -392,11 +388,8 @@ export async function executeDeployScriptsDirectly<
 ): Promise<Environment<NamedAccounts, Data, UnknownDeployments>> {
 	executionParams = executionParams || {};
 	const resolveduserConfig = resolveConfig<NamedAccounts, Data>(userConfig);
-	const chainId = await getChainIdForTarget(
-		resolveduserConfig,
-		getTargetName(executionParams.target),
-		executionParams.provider
-	);
+	const {name: targetName, fork} = getTargetName(executionParams);
+	const chainId = await getChainIdForTarget(resolveduserConfig, targetName, executionParams.provider);
 	const resolvedExecutionParams = resolveExecutionParams(resolveduserConfig, executionParams, chainId);
 	return executeDeployScripts<NamedAccounts, Data, ArgumentsType>(resolveduserConfig, resolvedExecutionParams, args);
 }

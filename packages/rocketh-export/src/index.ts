@@ -61,8 +61,8 @@ export async function run(
 		throw new Error(`no chainId found for ${targetName}`);
 	}
 
-	const chainInfoFromConfig = getChainConfig(parseInt(chainId), config);
-	const chainInfo = {...chainInfoFromConfig.info, genesisHash};
+	const chainConfig = getChainConfig(parseInt(chainId), config);
+	const chainInfo = {...chainConfig.info, genesisHash, properties: chainConfig.properties};
 
 	const exportData: ExportedDeployments = {
 		chain: chainInfo,

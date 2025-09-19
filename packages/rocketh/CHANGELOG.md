@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.15.0-testing.9
+
+### Patch Changes
+
+- fixes
+
 ## 0.15.0-testing.8
 
 ### Patch Changes
