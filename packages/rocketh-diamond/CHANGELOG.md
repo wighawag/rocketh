@@ -1,5 +1,14 @@
 # @rocketh/diamond
 
+## 0.15.0-testing.1
+
+### Patch Changes
+
+- fix
+- Updated dependencies
+  - @rocketh/read-execute@0.15.0-testing.1
+  - @rocketh/deploy@0.15.0-testing.3
+
 ## 0.15.0-testing.0
 
 ### Patch Changes

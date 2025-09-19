@@ -1,5 +1,11 @@
 # @rocketh/signer
 
+## 0.15.0-testing.1
+
+### Patch Changes
+
+- fix
+
 ## 0.15.0-testing.0
 
 ### Patch Changes
