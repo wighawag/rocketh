@@ -139,9 +139,15 @@ export {loadAndExecuteDeployments, deployScript};
 
 ## Core Concepts
 
-### Deployments
+### Deployments and Environments
 
-A deployment in rocketh represents a deployed contract on a specific network. It includes:
+A deployment in rocketh represents a deployed contract on a specific environment.
+
+An environment is a named network. You can thus have multiple environment for the same chain.
+
+For example you can have sepolia environment and the sepolia2 environment both pointing to the same chain but having different deployments.
+
+Each deployment includes:
 
 - Contract address
 - ABI
@@ -150,7 +156,7 @@ A deployment in rocketh represents a deployed contract on a specific network. It
 - Transaction details
 - Metadata for verification
 
-Deployments are saved to disk in the `deployments/<network>` folder, allowing them to be tracked in version control and reused across different environments.
+Deployments are saved to disk in the `deployments/<environment>` folder, allowing them to be tracked in version control and reused.
 
 ### Named Accounts
 
@@ -172,7 +178,7 @@ export const config = {
 } as const satisfies UserConfig;
 ```
 
-In this example, `deployer` refers to the first account (index 0) on all networks except Sepolia, where it refers to the second account (index 1).
+In this example, `deployer` refers to the first account (index 0) on all environment except Sepolia, where it refers to the second account (index 1).
 
 ### Deploy Scripts
 
@@ -384,7 +390,7 @@ You can use deployments in your Hardhat tests:
 The `@rocketh/verifier` package provides contract verification capabilities:
 
 ```bash
-npx rocketh-verify -n sepolia etherscan
+npx rocketh-verify -e sepolia etherscan
 ```
 
 ### Exporting Deployments
@@ -392,7 +398,7 @@ npx rocketh-verify -n sepolia etherscan
 The `@rocketh/export` package allows you to export deployments for use in frontends:
 
 ```bash
-npx rocketh-export -n sepolia --ts ./src/contracts.ts
+npx rocketh-export -e sepolia --ts ./src/contracts.ts
 ```
 
 ### Generating Documentation
