@@ -1,5 +1,41 @@
 # @rocketh/export
 
+## 0.15.0
+
+### Minor Changes
+
+- 851378e: revamp the settings to be allowed to configure per chain as well as per target
+
+### Patch Changes
+
+- 0d7e7ed: fix export
+- 691d296: fixes
+- a0fcde6: fixes
+- 03f2406: fixes
+- 68151ae: rname target to environment
+- e2dbd6f: revamp of types and resolution
+- 4d1a814: fix cli
+- e260c6d: fix
+- Updated dependencies [8122cdb]
+- Updated dependencies [e6de720]
+- Updated dependencies [1f2e044]
+- Updated dependencies [9d920a8]
+- Updated dependencies [c682fd2]
+- Updated dependencies [0d7e7ed]
+- Updated dependencies [691d296]
+- Updated dependencies [cb340e2]
+- Updated dependencies [2b82b5b]
+- Updated dependencies [a0fcde6]
+- Updated dependencies [356f26c]
+- Updated dependencies [03f2406]
+- Updated dependencies [68151ae]
+- Updated dependencies [e2dbd6f]
+- Updated dependencies [851378e]
+- Updated dependencies [4d1a814]
+- Updated dependencies [e260c6d]
+- Updated dependencies [feb4780]
+  - rocketh@0.15.0
+
 ## 0.15.0-testing.17
 
 ### Patch Changes

@@ -1,5 +1,14 @@
 # @rocketh/signer
 
+## 0.15.0
+
+### Patch Changes
+
+- 691d296: fixes
+- 68151ae: rname target to environment
+- e2dbd6f: revamp of types and resolution
+- e260c6d: fix
+
 ## 0.15.0-testing.3
 
 ### Patch Changes

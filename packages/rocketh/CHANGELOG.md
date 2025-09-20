@@ -1,5 +1,31 @@
 # rocketh
 
+## 0.15.0
+
+### Minor Changes
+
+- 851378e: revamp the settings to be allowed to configure per chain as well as per target
+
+### Patch Changes
+
+- 8122cdb: fix
+- e6de720: fork
+- 1f2e044: fixes + support old hardhat-deploy
+- 9d920a8: fix
+- c682fd2: canonical chain names export
+- 0d7e7ed: fix export
+- 691d296: fixes
+- cb340e2: fix
+- 2b82b5b: fix
+- a0fcde6: fixes
+- 356f26c: executeDeployScriptsDirectly is now executeDeployScripts
+- 03f2406: fixes
+- 68151ae: rname target to environment
+- e2dbd6f: revamp of types and resolution
+- 4d1a814: fix cli
+- e260c6d: fix
+- feb4780: context only to be provided
+
 ## 0.15.0-testing.17
 
 ### Patch Changes

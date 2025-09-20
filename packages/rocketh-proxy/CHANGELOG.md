@@ -1,5 +1,22 @@
 # @rocketh/proxy
 
+## 0.15.0
+
+### Patch Changes
+
+- 691d296: fixes
+- 68151ae: rname target to environment
+- e2dbd6f: revamp of types and resolution
+- e260c6d: fix
+- Updated dependencies [691d296]
+- Updated dependencies [03f2406]
+- Updated dependencies [68151ae]
+- Updated dependencies [e2dbd6f]
+- Updated dependencies [851378e]
+- Updated dependencies [e260c6d]
+  - @rocketh/read-execute@0.15.0
+  - @rocketh/deploy@0.15.0
+
 ## 0.15.0-testing.3
 
 ### Patch Changes

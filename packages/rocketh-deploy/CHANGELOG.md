@@ -1,5 +1,19 @@
 # @rocketh/deploy
 
+## 0.15.0
+
+### Minor Changes
+
+- 851378e: revamp the settings to be allowed to configure per chain as well as per target
+
+### Patch Changes
+
+- 691d296: fixes
+- 03f2406: fixes
+- 68151ae: rname target to environment
+- e2dbd6f: revamp of types and resolution
+- e260c6d: fix
+
 ## 0.15.0-testing.5
 
 ### Patch Changes
