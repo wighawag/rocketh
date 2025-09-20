@@ -386,10 +386,10 @@ export async function loadAndExecuteDeployments<
 	const resolvedExecutionParams = resolveExecutionParams(userConfig, executionParams, chainId);
 	// console.log(JSON.stringify(options, null, 2));
 	// console.log(JSON.stringify(resolvedConfig, null, 2));
-	return executeDeployScripts<NamedAccounts, Data, ArgumentsType>(userConfig, resolvedExecutionParams, args);
+	return _executeDeployScripts<NamedAccounts, Data, ArgumentsType>(userConfig, resolvedExecutionParams, args);
 }
 
-export async function executeDeployScriptsDirectly<
+export async function executeDeployScripts<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 	ArgumentsType = undefined,
@@ -404,10 +404,10 @@ export async function executeDeployScriptsDirectly<
 	const {name: environmentName, fork} = getEnvironmentName(executionParams);
 	const chainId = await getChainIdForEnvironment(resolveduserConfig, environmentName, executionParams.provider);
 	const resolvedExecutionParams = resolveExecutionParams(resolveduserConfig, executionParams, chainId);
-	return executeDeployScripts<NamedAccounts, Data, ArgumentsType>(resolveduserConfig, resolvedExecutionParams, args);
+	return _executeDeployScripts<NamedAccounts, Data, ArgumentsType>(resolveduserConfig, resolvedExecutionParams, args);
 }
 
-export async function executeDeployScripts<
+async function _executeDeployScripts<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 	ArgumentsType = undefined

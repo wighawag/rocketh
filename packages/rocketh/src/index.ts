@@ -1,7 +1,7 @@
 export {
 	setup,
 	loadAndExecuteDeployments,
-	executeDeployScriptsDirectly,
+	executeDeployScripts,
 	readAndResolveConfig,
 	enhanceEnvIfNeeded,
 	loadEnvironment,

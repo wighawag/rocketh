@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.15.0-testing.17
+
+### Patch Changes
+
+- executeDeployScriptsDirectly is now executeDeployScripts
+
 ## 0.15.0-testing.16
 
 ### Patch Changes
