@@ -179,7 +179,7 @@ export async function createEnvironment<
 						userConfig.accounts[accountName],
 						null,
 						2
-					)}\n You might need to connect to a account-aware provider.`
+					)}\nEnsure your provider (or hardhat) has some accounts set up for ${environmentName}\n`
 				);
 			}
 			(resolvedAccounts as any)[accountName] = account;
