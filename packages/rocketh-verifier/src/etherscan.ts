@@ -155,7 +155,7 @@ export async function submitSourcesToEtherscan(
 			try {
 				contractABI = JSON.parse(json.result);
 			} catch (e) {
-				logError(e);
+				logError(`faled to get abi`, JSON.stringify(json), e);
 				return;
 			}
 		}
@@ -309,19 +309,29 @@ export async function submitSourcesToEtherscan(
 			headers: {'content-type': 'application/x-www-form-urlencoded'},
 			body: data,
 		});
-		const submissionJson = await submissionResponse.json();
 
-		let guid: string;
-		if (submissionJson.status === '1') {
-			guid = submissionJson.result;
-		} else {
-			logError(
-				`contract ${name} failed to submit : "${submissionJson.message}" : "${submissionJson.result}"`,
-				submissionJson
-			);
+		let submissionJson;
+		let guid: string | undefined;
+		const text = await submissionResponse.clone().text();
+		try {
+			submissionJson = await submissionResponse.json();
+
+			if (submissionJson?.status === '1') {
+				guid = submissionJson.result;
+			} else {
+				logError(
+					`contract ${name} failed to submit : "${submissionJson.message}" : "${submissionJson.result}"`,
+					submissionJson
+				);
+				writeRequestIfRequested(env?.logErrorOnFailure || false, networkName, name, formDataAsString, postData);
+				return;
+			}
+		} catch (err) {
+			logError(`failed to parse response`, text, err);
 			writeRequestIfRequested(env?.logErrorOnFailure || false, networkName, name, formDataAsString, postData);
 			return;
 		}
+
 		if (!guid) {
 			logError(`contract submission for ${name} failed to return a guid`);
 			writeRequestIfRequested(env?.logErrorOnFailure || false, networkName, name, formDataAsString, postData);

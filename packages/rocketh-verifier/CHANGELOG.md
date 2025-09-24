@@ -1,5 +1,11 @@
 # @rocketh/verifier
 
+## 0.15.4
+
+### Patch Changes
+
+- verifier: make --min-interval work + improve error
+
 ## 0.15.3
 
 ### Patch Changes

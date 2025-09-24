@@ -16,6 +16,7 @@ program
 	.version(pkg.version)
 
 	.option('-d, --deployments <value>', 'folder where deployments are saved')
+	.option('--min-interval <value>', 'min interval between request in ms')
 	.requiredOption('-e, --environment <value>', 'environment context to use');
 
 program
@@ -24,7 +25,7 @@ program
 	.option('--endpoint <value>', 'endpoint to connect to')
 	.option('--license <value>', 'source code license')
 	.option('--force-license', 'force the use of the license provided')
-	.action(async (options: {endpoint?: string; forceLicense: boolean; license: string}) => {
+	.action(async (options: {endpoint?: string; forceLicense: boolean; license: string, minInterval?: string}) => {
 		const {environment, ...programOptions} = program.opts();;
 		const resolvedConfig = await readAndResolveConfig({...programOptions});
 		run(resolvedConfig, environment, {
@@ -35,6 +36,7 @@ program
 				forceLicense: options.forceLicense,
 				license: options.license,
 			},
+			minInterval: options.minInterval? parseInt(options.minInterval): undefined
 		});
 	});
 
@@ -42,10 +44,16 @@ program
 	.command('sourcify')
 	.description('submit contract for verification to sourcify')
 	.option('--endpoint <value>', 'endpoint to connect to')
-	.action(async (options: {endpoint?: string}) => {
+	.action(async (options: {endpoint?: string, minInterval?: string}) => {
 		const {environment, ...programOptions} = program.opts();;
 		const resolvedConfig = await readAndResolveConfig({...programOptions});
-		run(resolvedConfig, environment,  {verifier: {type: 'sourcify', endpoint: options.endpoint}});
+		run(resolvedConfig, environment,  {
+			verifier: {
+				type: 'sourcify',
+				endpoint: options.endpoint
+			}, 
+			minInterval: options.minInterval? parseInt(options.minInterval): undefined
+		});
 	});
 
 program
@@ -53,10 +61,16 @@ program
 	.description('submit contract for verification to blockscout')
 	.option('--endpoint <value>', 'endpoint to connect to')
 	// .option('--api <value>', 'api version (default to v2)')
-	.action(async (options: {endpoint?: string}) => {
+	.action(async (options: {endpoint?: string, minInterval?: string}) => {
 		const {environment, ...programOptions} = program.opts();;
 		const resolvedConfig = await readAndResolveConfig({...programOptions});
-		run(resolvedConfig, environment, {verifier: {type: 'blockscout', endpoint: options.endpoint}});
+		run(resolvedConfig, environment, {
+			verifier: {
+				type: 'blockscout',
+				endpoint: options.endpoint
+			},
+			minInterval: options.minInterval? parseInt(options.minInterval): undefined
+		});
 	});
 
 program
