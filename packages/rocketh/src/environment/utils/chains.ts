@@ -173,11 +173,13 @@ export function getChainConfig(id: number, config: ResolvedUserConfig): ChainCon
 		defaultTags.push('testnet');
 	}
 
+	const properties = chainConfig.properties || config.defaultChainProperties || {};
+
 	return {
 		info: {...chainInfo},
 		deterministicDeployment,
 		pollingInterval,
-		properties: chainConfig.properties || {},
+		properties,
 		rpcUrl: rpcUrl || chainInfo.rpcUrls.default.http[0],
 		tags: chainConfig.tags || [...defaultTags],
 	};

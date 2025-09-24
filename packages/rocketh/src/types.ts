@@ -261,6 +261,7 @@ export type UserConfig<
 > = {
 	readonly environments?: {readonly [name: string]: DeploymentEnvironmentConfig};
 	readonly chains?: Chains;
+	readonly defaultChainProperties?: Record<string, JSONTypePlusBigInt>;
 	readonly deployments?: string;
 	readonly scripts?: string | readonly string[];
 	readonly accounts?: NamedAccounts;
