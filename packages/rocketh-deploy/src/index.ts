@@ -163,7 +163,7 @@ async function getCreate2Factory(env: Environment, signer: Signer, params: Facto
 	if (code === '0x') {
 		const balanceHexString = await env.network.provider.request({
 			method: 'eth_getBalance',
-			params: [factoryAddress, 'latest'],
+			params: [factoryDeployerAddress, 'latest'],
 		});
 		const balance = BigInt(balanceHexString);
 		if (balance < funding) {
