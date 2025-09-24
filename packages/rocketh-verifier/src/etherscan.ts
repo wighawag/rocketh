@@ -255,6 +255,9 @@ export async function submitSourcesToEtherscan(
 		}
 		const solcInputString = JSON.stringify(solcInput);
 
+		if (env.minInterval) {
+			await sleep(env.minInterval);
+		}
 		logInfo(`verifying ${name} (${address}) ...`);
 
 		let constructorArguments: string | undefined;
@@ -339,6 +342,9 @@ export async function submitSourcesToEtherscan(
 		}
 
 		async function checkStatus(): Promise<string | undefined> {
+			if (env.minInterval) {
+				await sleep(env.minInterval);
+			}
 			// TODO while loop and delay :
 			const statusResponse = await fetch(
 				`${endpoint}?chainid=${env.chainId}&apikey=${etherscanApiKey}&guid=${guid}&module=contract&action=checkverifystatus`

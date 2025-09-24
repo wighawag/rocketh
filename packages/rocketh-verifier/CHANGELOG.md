@@ -1,5 +1,11 @@
 # @rocketh/verifier
 
+## 0.15.5
+
+### Patch Changes
+
+- stronger minInterval
+
 ## 0.15.4
 
 ### Patch Changes

@@ -16,7 +16,6 @@ program
 	.version(pkg.version)
 
 	.option('-d, --deployments <value>', 'folder where deployments are saved')
-	.option('--min-interval <value>', 'min interval between request in ms')
 	.requiredOption('-e, --environment <value>', 'environment context to use');
 
 program
@@ -25,6 +24,7 @@ program
 	.option('--endpoint <value>', 'endpoint to connect to')
 	.option('--license <value>', 'source code license')
 	.option('--force-license', 'force the use of the license provided')
+	.option('--min-interval <value>', 'min interval between request in ms')
 	.action(async (options: {endpoint?: string; forceLicense: boolean; license: string, minInterval?: string}) => {
 		const {environment, ...programOptions} = program.opts();;
 		const resolvedConfig = await readAndResolveConfig({...programOptions});
@@ -44,6 +44,7 @@ program
 	.command('sourcify')
 	.description('submit contract for verification to sourcify')
 	.option('--endpoint <value>', 'endpoint to connect to')
+	.option('--min-interval <value>', 'min interval between request in ms')
 	.action(async (options: {endpoint?: string, minInterval?: string}) => {
 		const {environment, ...programOptions} = program.opts();;
 		const resolvedConfig = await readAndResolveConfig({...programOptions});
@@ -60,6 +61,7 @@ program
 	.command('blockscout')
 	.description('submit contract for verification to blockscout')
 	.option('--endpoint <value>', 'endpoint to connect to')
+	.option('--min-interval <value>', 'min interval between request in ms')
 	// .option('--api <value>', 'api version (default to v2)')
 	.action(async (options: {endpoint?: string, minInterval?: string}) => {
 		const {environment, ...programOptions} = program.opts();;
