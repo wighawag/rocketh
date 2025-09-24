@@ -9,6 +9,7 @@ export type EtherscanOptions = {
 	apiKey?: string;
 	license?: string;
 	forceLicense?: boolean;
+	fixMispell?: boolean;
 };
 
 export type SourcifyOptions = {

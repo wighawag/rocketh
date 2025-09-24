@@ -296,6 +296,11 @@ export async function submitSourcesToEtherscan(
 			licenseType,
 		};
 
+		if (config?.fixMispell) {
+			postData.constructorArguments = postData.constructorArguements;
+			delete postData.constructorArguements;
+		}
+
 		const formDataAsString = qs.stringify(postData);
 		const data = new URLSearchParams();
 		for (const entry of Object.entries(postData)) {
@@ -324,7 +329,7 @@ export async function submitSourcesToEtherscan(
 			} else {
 				logError(
 					`contract ${name} failed to submit : "${submissionJson.message}" : "${submissionJson.result}"`,
-					submissionJson
+					JSON.stringify(submissionJson)
 				);
 				writeRequestIfRequested(env?.logErrorOnFailure || false, networkName, name, formDataAsString, postData);
 				return;

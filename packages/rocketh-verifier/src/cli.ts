@@ -25,7 +25,8 @@ program
 	.option('--license <value>', 'source code license')
 	.option('--force-license', 'force the use of the license provided')
 	.option('--min-interval <value>', 'min interval between request in ms')
-	.action(async (options: {endpoint?: string; forceLicense: boolean; license: string, minInterval?: string}) => {
+	.option('--fix-mispell', 'if set, will use correct spelling of form field')
+	.action(async (options: {endpoint?: string; forceLicense: boolean; license: string, minInterval?: string, fixMispell?: boolean}) => {
 		const {environment, ...programOptions} = program.opts();;
 		const resolvedConfig = await readAndResolveConfig({...programOptions});
 		run(resolvedConfig, environment, {
@@ -35,8 +36,9 @@ program
 				endpoint: options.endpoint,
 				forceLicense: options.forceLicense,
 				license: options.license,
+				fixMispell: options.fixMispell
 			},
-			minInterval: options.minInterval? parseInt(options.minInterval): undefined
+			minInterval: options.minInterval? parseInt(options.minInterval): undefined,
 		});
 	});
 
