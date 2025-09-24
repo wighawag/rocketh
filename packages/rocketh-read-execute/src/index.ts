@@ -146,6 +146,10 @@ export function execute(
 
 		const signer = env.addressSigners[address];
 
+		if (!signer) {
+			throw new Error(`cannot get signer for ${address}`);
+		}
+
 		const txParam: EIP1193TransactionData = {
 			to: deployment.address,
 			type: '0x2',

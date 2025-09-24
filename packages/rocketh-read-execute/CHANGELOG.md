@@ -1,5 +1,11 @@
 # @rocketh/deploy
 
+## 0.15.1
+
+### Patch Changes
+
+- detect no sigenr
+
 ## 0.15.0
 
 ### Patch Changes
