@@ -155,10 +155,16 @@ export function getChainConfig(id: number, config: ResolvedUserConfig): ChainCon
 		create3: Create3DeterministicDeploymentInfo;
 	} = {
 		create2: (() => {
-			if (!chainConfig.deterministicDeployment) return create2Info;
-			if (!('create3' in chainConfig.deterministicDeployment) && !('create2' in chainConfig.deterministicDeployment))
+			const deterministicDeployment = chainConfig.deterministicDeployment;
+			if (!deterministicDeployment) {
 				return create2Info;
-			return chainConfig.deterministicDeployment.create2 || create2Info;
+			}
+
+			return 'create2' in deterministicDeployment && deterministicDeployment.create2
+				? deterministicDeployment.create2
+				: !('create2' in deterministicDeployment) && !('create3' in deterministicDeployment)
+				? (deterministicDeployment as Create2DeterministicDeploymentInfo)
+				: create2Info;
 		})(),
 		create3:
 			chainConfig.deterministicDeployment &&
