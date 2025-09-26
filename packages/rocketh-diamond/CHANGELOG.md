@@ -1,5 +1,11 @@
 # @rocketh/diamond
 
+## 0.15.3
+
+### Patch Changes
+
+- fix exports
+
 ## 0.15.2
 
 ### Patch Changes

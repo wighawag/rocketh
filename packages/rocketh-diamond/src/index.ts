@@ -1,13 +1,6 @@
-import {Abi} from 'abitype';
-import type {Artifact, DeploymentConstruction, Deployment, Environment, Libraries, LinkedData} from 'rocketh';
-import type {EIP1193Account} from 'eip-1193';
-import {
-	ContractFunctionArgs,
-	ContractFunctionName,
-	encodeFunctionData,
-	WriteContractParameters,
-	zeroAddress,
-} from 'viem';
+import type {Abi, Artifact, Deployment, Environment} from 'rocketh';
+
+import {encodeFunctionData, zeroAddress} from 'viem';
 import {logs} from 'named-logs';
 import artifactPureDiamond from './hardhat-deploy-v1-artifacts/Diamond.js';
 import artifactDiamondLoupeFact from './hardhat-deploy-v1-artifacts/DiamondLoupeFacet.js';
@@ -15,9 +8,10 @@ import artifactDiamondCutFact from './hardhat-deploy-v1-artifacts/DiamondCutFace
 import artifactOwnershipFacet from './hardhat-deploy-v1-artifacts/OwnershipFacet.js';
 import artifactDiamondERC165Init from './hardhat-deploy-v1-artifacts/DiamondERC165Init.js';
 import {filterABI, mergeABIs, sigsFromABI} from './utils.js';
-import {deploy, DeployOptions, DeployResult} from '@rocketh/deploy';
+import {deploy, DeployResult} from '@rocketh/deploy';
 
 import {read, execute} from '@rocketh/read-execute';
+import {DiamondDeploymentConstruction, DiamondDeployOptions, Facet, FacetCut, FacetCutAction} from './types.js';
 
 const logger = logs('@rocketh/diamond');
 
@@ -39,93 +33,6 @@ const artifactDiamond = {
 	...artifactPureDiamond,
 	abi: diamondAbi,
 };
-
-export type Facet = {
-	facetAddress: `0x${string}`;
-	functionSelectors: readonly `0x${string}`[];
-};
-
-export enum FacetCutAction {
-	Add,
-	Replace,
-	Remove,
-}
-
-export type FacetCut = Facet & {
-	action: FacetCutAction;
-};
-
-export type FacetOptions = {
-	name?: string;
-	artifact: Artifact;
-	args?: any[];
-	linkedData?: LinkedData;
-	libraries?: Libraries;
-	deterministic?: boolean | `0x${string}`;
-};
-export type DiamondFacets = Array<FacetOptions>;
-
-export type ExecutionArgs<
-	TAbi extends Abi,
-	TFunctionName extends ContractFunctionName<TAbi, 'nonpayable' | 'payable'>,
-	TArgs extends ContractFunctionArgs<TAbi, 'nonpayable' | 'payable', TFunctionName> = ContractFunctionArgs<
-		TAbi,
-		'nonpayable' | 'payable',
-		TFunctionName
-	>
-> = Pick<WriteContractParameters<TAbi, TFunctionName, TArgs>, 'args' | 'functionName'>;
-
-export type ExecuteOptions<
-	TAbi extends Abi,
-	TFunctionName extends ContractFunctionName<TAbi, 'nonpayable' | 'payable'>,
-	TArgs extends ContractFunctionArgs<TAbi, 'nonpayable' | 'payable', TFunctionName> = ContractFunctionArgs<
-		TAbi,
-		'nonpayable' | 'payable',
-		TFunctionName
-	>
-> = ExecutionArgs<TAbi, TFunctionName, TArgs> & {
-	type: 'artifact';
-	artifact: Artifact<TAbi>;
-};
-
-export type DiamondDeployOptions<
-	TAbi extends Abi = Abi,
-	TFunctionName extends ContractFunctionName<TAbi, 'nonpayable' | 'payable'> = ContractFunctionName<
-		TAbi,
-		'nonpayable' | 'payable'
-	>,
-	TArgs extends ContractFunctionArgs<TAbi, 'nonpayable' | 'payable', TFunctionName> = ContractFunctionArgs<
-		TAbi,
-		'nonpayable' | 'payable',
-		TFunctionName
-	>
-> = Omit<DeployOptions, 'skipIfAlreadyDeployed' | 'alwaysOverride' | 'deterministic'> & {
-	facets: DiamondFacets;
-	owner?: EIP1193Account;
-	execute?: ExecuteOptions<TAbi, TFunctionName, TArgs> | {type: 'facet'; functionName: string; args: any[]};
-	defaultCutFacet?: boolean;
-	defaultOwnershipFacet?: boolean;
-	diamondContractArgs?: any[];
-	excludeSelectors?: {
-		[facetName: string]: `0x${string}`[];
-	};
-	facetsArgs?: any[];
-	deterministicSalt?: `0x${string}`;
-};
-
-// TODO omit nonce ? // TODO omit chain ? same for rocketh-deploy
-export type DiamondDeploymentConstruction<TAbi extends Abi> = Omit<
-	DeploymentConstruction<TAbi>,
-	'artifact' | 'args'
-> & {
-	artifact?: Artifact;
-};
-
-export type DeployViaDiamondFunction = <TAbi extends Abi>(
-	name: string,
-	params: DiamondDeploymentConstruction<TAbi>,
-	options: DiamondDeployOptions
-) => Promise<Deployment<TAbi> & {newlyDeployed: boolean}>;
 
 export function diamond(
 	env: Environment
