@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.15.4
+
+### Patch Changes
+
+- megaeth exception not required anymore
+
 ## 0.15.3
 
 ### Patch Changes

@@ -32,16 +32,7 @@ export async function getGasPriceEstimate(
 	};
 	const optionsResolved = options ? {...defaultOptions, ...options} : defaultOptions;
 
-	let historicalBlocks: `0x${string}` | number = `0x${optionsResolved.blockCount.toString(16)}`;
-
-	// for now megaeth do not support 0x prefixed string for block count
-	// so we get the chain id
-	const chainId = await provider.request({
-		method: 'eth_chainId',
-	});
-	if (Number(chainId) == 6342) {
-		historicalBlocks = optionsResolved.blockCount;
-	}
+	const historicalBlocks = `0x${optionsResolved.blockCount.toString(16)}`;
 
 	const rawFeeHistory = await provider.request({
 		method: 'eth_feeHistory',
