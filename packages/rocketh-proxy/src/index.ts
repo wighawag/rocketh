@@ -1,5 +1,5 @@
 import {Abi, AbiFunction} from 'abitype';
-import {type Artifact, type DeploymentConstruction, type Deployment, type Environment, mergeArtifacts} from 'rocketh';
+import {type Artifact, type DeploymentConstruction, type Deployment, type Environment, mergeABIs} from 'rocketh';
 import type {EIP1193Account} from 'eip-1193';
 import {Chain, encodeFunctionData, zeroAddress} from 'viem';
 import {logs} from 'named-logs';
@@ -227,10 +227,10 @@ export function deployViaProxy(
 
 		// TODO throw specific error if artifact not found
 		const artifactToUse = artifactFromImplementationDeployment;
-		const {mergedABI, mergedDevDocs, mergedUserDocs} = mergeArtifacts(
+		const {mergedABI} = mergeABIs(
 			[
-				{name: implementationName, artifact: artifactFromImplementationDeployment},
-				{name: proxyName, artifact: proxyArtifact},
+				{name: implementationName, abi: artifactFromImplementationDeployment.abi},
+				{name: proxyName, abi: proxyArtifact.abi},
 			],
 			{doNotCheckForConflicts: !checkABIConflict}
 		);
@@ -335,8 +335,6 @@ export function deployViaProxy(
 				...proxy,
 				...artifactToUse,
 				abi: mergedABI as unknown as TAbi,
-				devdoc: mergedDevDocs,
-				userdoc: mergedUserDocs,
 				linkedData: options?.linkedData,
 			});
 

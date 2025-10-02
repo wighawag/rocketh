@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.15.7
+
+### Patch Changes
+
+- proxy: do not merge docs from proxy contract
+
 ## 0.15.6
 
 ### Patch Changes

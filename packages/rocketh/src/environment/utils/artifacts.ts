@@ -49,19 +49,13 @@ function mergeDoc(values: any, mergedDevDocs: any, field: string) {
 	}
 }
 
-export function mergeArtifacts(
-	list: {name: string; artifact: Partial<Artifact<Abi>> & {abi: Abi}}[],
-	options?: {doNotCheckForConflicts?: boolean}
-) {
-	const mergedABI: CreateMutable<Abi> = [];
+export function mergeABIs(list: {name: string; abi: Abi}[], options?: {doNotCheckForConflicts?: boolean}) {
 	const added: Map<string, ArrayElement<Abi>> = new Map();
-	const mergedDevDocs: CreateMutable<DevDoc> = {kind: 'dev', version: 1, methods: {}};
-	const mergedUserDocs: CreateMutable<UserDoc> = {kind: 'user', version: 1, methods: {}};
+	const mergedABI: CreateMutable<Abi> = [];
 	const sigJSMap: Map<`0x${string}`, {index: number; routeName: string; functionName: string}> = new Map();
-
 	for (let i = 0; i < list.length; i++) {
 		const listElem = list[i];
-		for (const element of listElem.artifact.abi) {
+		for (const element of listElem.abi) {
 			if (element.type === 'function') {
 				// const selector = getFunctionSelector(element);
 				const selector = FunctionFragment.from(element).selector as `0x${string}`;
@@ -118,6 +112,30 @@ export function mergeArtifacts(
 				// }
 			}
 		}
+	}
+
+	return {
+		mergedABI,
+		added,
+		sigJSMap,
+	};
+}
+
+export function mergeArtifacts(
+	list: {name: string; artifact: Partial<Artifact<Abi>> & {abi: Abi}}[],
+	options?: {doNotCheckForConflicts?: boolean}
+) {
+	const {mergedABI, added, sigJSMap} = mergeABIs(
+		list.map((v) => ({name: v.name, abi: v.artifact.abi})),
+		options
+	);
+
+	const mergedDevDocs: CreateMutable<DevDoc> = {kind: 'dev', version: 1, methods: {}};
+	const mergedUserDocs: CreateMutable<UserDoc> = {kind: 'user', version: 1, methods: {}};
+
+	for (let i = 0; i < list.length; i++) {
+		const listElem = list[i];
+
 		const devdoc = listElem.artifact.devdoc;
 		if (devdoc) {
 			mergeDoc(devdoc, mergedDevDocs, 'events');
