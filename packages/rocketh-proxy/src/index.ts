@@ -1,5 +1,5 @@
 import {Abi, AbiFunction} from 'abitype';
-import type {Artifact, DeploymentConstruction, Deployment, Environment} from 'rocketh';
+import {type Artifact, type DeploymentConstruction, type Deployment, type Environment, mergeArtifacts} from 'rocketh';
 import type {EIP1193Account} from 'eip-1193';
 import {Chain, encodeFunctionData, zeroAddress} from 'viem';
 import {logs} from 'named-logs';
@@ -32,6 +32,8 @@ export type ProxyDeployOptions = Omit<DeployOptions, 'skipIfAlreadyDeployed' | '
 				args: unknown[]; // TODO types
 		  };
 	upgradeIndex?: number;
+	checkProxyAdmin?: boolean;
+	checkABIConflict?: boolean;
 	proxyContract?:
 		| PredefinedProxyContract
 		| ({type: PredefinedProxyContract} & {
@@ -143,6 +145,8 @@ export function deployViaProxy(
 
 		let proxyArgsTemplate = ['{implementation}', '{admin}', '{data}'];
 		let proxyArtifact: Artifact = ERC173Proxy;
+		let checkABIConflict = true;
+		let checkProxyAdmin = true;
 		if (options?.proxyContract) {
 			if (typeof options.proxyContract !== 'string' && options.proxyContract.type === 'custom') {
 				proxyArtifact = options.proxyContract.artifact;
@@ -161,10 +165,13 @@ export function deployViaProxy(
 						proxyArgsTemplate = ['{implementation}', '{admin}', '{data}'];
 						break;
 					case 'UUPS':
+						checkABIConflict = false;
+						checkProxyAdmin = false;
 						proxyArtifact = ERC1967Proxy;
 						proxyArgsTemplate = ['{implementation}', '{data}'];
 						break;
 					case 'SharedAdminOpenZeppelinTransparentProxy':
+						checkABIConflict = false;
 						proxyArtifact = TransparentUpgradeableProxy;
 						proxyArgsTemplate = ['{implementation}', '{admin}', '{data}'];
 						viaAdminContract = {
@@ -175,6 +182,7 @@ export function deployViaProxy(
 						};
 						break;
 					case 'SharedAdminOptimizedTransparentProxy':
+						checkABIConflict = false;
 						proxyArtifact = OptimizedTransparentUpgradeableProxy;
 						proxyArgsTemplate = ['{implementation}', '{admin}', '{data}'];
 						viaAdminContract = {
@@ -189,6 +197,9 @@ export function deployViaProxy(
 				}
 			}
 		}
+
+		checkABIConflict = options?.checkABIConflict ?? checkABIConflict;
+		checkProxyAdmin = options?.checkProxyAdmin ?? checkProxyAdmin;
 
 		const implementationDeployment =
 			typeof params.artifact === 'function'
@@ -216,6 +227,13 @@ export function deployViaProxy(
 
 		// TODO throw specific error if artifact not found
 		const artifactToUse = artifactFromImplementationDeployment;
+		const {mergedABI, mergedDevDocs, mergedUserDocs} = mergeArtifacts(
+			[
+				{name: implementationName, artifact: artifactFromImplementationDeployment},
+				{name: proxyName, artifact: proxyArtifact},
+			],
+			{doNotCheckForConflicts: !checkABIConflict}
+		);
 
 		logger.info(`existingDeployment at ${existingDeployment?.address}`);
 
@@ -316,6 +334,9 @@ export function deployViaProxy(
 			existingDeployment = await env.save<TAbi>(name, {
 				...proxy,
 				...artifactToUse,
+				abi: mergedABI as unknown as TAbi,
+				devdoc: mergedDevDocs,
+				userdoc: mergedUserDocs,
 				linkedData: options?.linkedData,
 			});
 
@@ -363,14 +384,17 @@ export function deployViaProxy(
 					try {
 						const owner = await _read(existingDeployment as any, {functionName: 'owner'});
 						currentOwner = (owner as string).toLowerCase() as `0x${string}`;
-					} catch (err) {
-						throw new Error(`could not get owner of UUPS Proxy, tried ERC-1967 and ERC-173`, {cause: err});
+					} catch (err) {}
+				}
+
+				if (currentOwner === zeroAddress) {
+					if (checkProxyAdmin) {
+						throw new Error('The Proxy belongs to no-one. It cannot be upgraded anymore');
 					}
-					// } else {
-					// 	throw new Error(
-					// 		`as per ERC-1967, proxy owner is zero address. We only support ERC-1967 proxies for now, unless you used proxyContract:"UUPS"`
-					// 	);
-					// }
+				} else if (currentOwner.toLowerCase() !== proxyAdmin.toLowerCase()) {
+					throw new Error(
+						`To change owner/admin, you need to call the proxy directly, it currently is ${currentOwner}`
+					);
 				}
 
 				// if (preUpgradeCalldata) {

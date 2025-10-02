@@ -49,7 +49,10 @@ function mergeDoc(values: any, mergedDevDocs: any, field: string) {
 	}
 }
 
-export function mergeArtifacts(list: {name: string; artifact: Partial<Artifact<Abi>> & {abi: Abi}}[]) {
+export function mergeArtifacts(
+	list: {name: string; artifact: Partial<Artifact<Abi>> & {abi: Abi}}[],
+	options?: {doNotCheckForConflicts?: boolean}
+) {
 	const mergedABI: CreateMutable<Abi> = [];
 	const added: Map<string, ArrayElement<Abi>> = new Map();
 	const mergedDevDocs: CreateMutable<DevDoc> = {kind: 'dev', version: 1, methods: {}};
@@ -63,12 +66,16 @@ export function mergeArtifacts(list: {name: string; artifact: Partial<Artifact<A
 				// const selector = getFunctionSelector(element);
 				const selector = FunctionFragment.from(element).selector as `0x${string}`;
 				if (sigJSMap.has(selector)) {
-					const existing = sigJSMap.get(selector);
-					throw new Error(
-						`ABI conflict: ${existing!.routeName} has function "${existing!.functionName}" which conflict with ${
-							listElem.name
-						}'s "${element.name}" (selector: "${selector}")  `
-					);
+					if (!options?.doNotCheckForConflicts) {
+						const existing = sigJSMap.get(selector);
+						throw new Error(
+							`ABI conflict: ${existing!.routeName} has function "${existing!.functionName}" which conflict with ${
+								listElem.name
+							}'s "${element.name}" (selector: "${selector}")  `
+						);
+					} else {
+						continue;
+					}
 				}
 				sigJSMap.set(selector, {index: i, routeName: listElem.name, functionName: element.name});
 

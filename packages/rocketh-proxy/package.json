@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/proxy",
-	"version": "0.15.2",
+	"version": "0.15.3",
 	"description": "provide proxy-enabled deploy function for rocketh",
 	"publishConfig": {
 		"access": "public"
@@ -26,6 +26,9 @@
 		"rimraf": "^6.0.1",
 		"rocketh": "workspace:*",
 		"typescript": "^5.9.2"
+	},
+	"peerDependencies": {
+		"rocketh": "workspace:*"
 	},
 	"dependencies": {
 		"@rocketh/deploy": "workspace:*",

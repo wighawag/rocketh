@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.15.6
+
+### Patch Changes
+
+- proxy: add checkProxyAdmin and checkABIConflict + merge abi
+
 ## 0.15.5
 
 ### Patch Changes

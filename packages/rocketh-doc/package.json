@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/doc",
-	"version": "0.15.5",
+	"version": "0.15.6",
 	"description": "can generate doc from rocketh deployments and provided template",
 	"publishConfig": {
 		"access": "public"

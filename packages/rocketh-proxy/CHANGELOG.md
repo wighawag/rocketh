@@ -1,5 +1,15 @@
 # @rocketh/proxy
 
+## 0.15.3
+
+### Patch Changes
+
+- proxy: add checkProxyAdmin and checkABIConflict + merge abi
+- Updated dependencies
+  - rocketh@0.15.6
+  - @rocketh/deploy@0.15.1
+  - @rocketh/read-execute@0.15.1
+
 ## 0.15.2
 
 ### Patch Changes
