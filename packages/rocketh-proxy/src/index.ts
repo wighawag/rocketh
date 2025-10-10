@@ -298,7 +298,7 @@ export function deployViaProxy(
 					functionName: method.name,
 				});
 			} else {
-				throw new Error(`Method ${methodName} not found in artifact ${artifactToUse.abi}`);
+				throw new Error(`Method ${methodName} not found in artifact provided for ${name}`);
 			}
 		}
 		// let preUpgradeCalldata: `0x${string}` | undefined;
