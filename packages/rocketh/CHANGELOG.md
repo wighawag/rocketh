@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.15.9
+
+### Patch Changes
+
+- remove unecessary spinner
+
 ## 0.15.8
 
 ### Patch Changes

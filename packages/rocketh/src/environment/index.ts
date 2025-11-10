@@ -537,7 +537,7 @@ export async function createEnvironment<
 		const {abi, ...artifactObjectWithoutABI} = pendingDeployment.partialDeployment;
 
 		if (!pendingDeployment.transaction.nonce) {
-			const spinner = spin(`fetching nonce for ${pendingDeployment.transaction.hash}`);
+			// const spinner = spin(`fetching nonce for ${pendingDeployment.transaction.hash}`);
 			let transaction: EIP1193Transaction | null = null;
 			try {
 				transaction = await provider.request({
@@ -545,13 +545,14 @@ export async function createEnvironment<
 					params: [pendingDeployment.transaction.hash],
 				});
 			} catch (e) {
-				spinner.fail(`failed to get transaction, even after receipt was found`);
+				// spinner.fail(`failed to get transaction, even after receipt was found`);
 				throw e;
 			}
 			if (!transaction) {
-				spinner.fail(`tx ${pendingDeployment.transaction.hash} not found,  even after receipt was found`);
+				// spinner.fail(`tx ${pendingDeployment.transaction.hash} not found,  even after receipt was found`);
+				// or : spinner.stop();
 			} else {
-				spinner.stop();
+				// spinner.stop();
 			}
 
 			if (transaction) {
@@ -612,7 +613,8 @@ export async function createEnvironment<
 			throw e;
 		}
 		if (!transaction) {
-			spinner.fail(`execution tx ${pendingExecution.transaction.hash} not found in the mempool yet`);
+			// spinner.fail(`execution tx ${pendingExecution.transaction.hash} not found in the mempool yet`);
+			spinner.stop();
 		} else {
 			spinner.stop();
 		}
@@ -638,12 +640,12 @@ export async function createEnvironment<
 				params: [pendingDeployment.transaction.hash],
 			});
 		} catch (e) {
-			console.error(`failed to fetch tx ${pendingDeployment.transaction.hash}. Can't know its status`);
-			spinner.fail();
+			spinner.fail(`failed to fetch tx ${pendingDeployment.transaction.hash}. Can't know its status`);
 			throw e;
 		}
 		if (!transaction) {
-			spinner.fail(`deployment tx ${pendingDeployment.transaction.hash} not found in the mempool yet`);
+			// spinner.fail(`deployment tx ${pendingDeployment.transaction.hash} not found in the mempool yet`);
+			spinner.stop();
 		} else {
 			spinner.stop();
 		}
