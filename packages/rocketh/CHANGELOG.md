@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.15.8
+
+### Patch Changes
+
+- fix tx nonce fetching
+
 ## 0.15.7
 
 ### Patch Changes

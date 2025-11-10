@@ -1,5 +1,15 @@
 # @rocketh/proxy
 
+## 0.15.5
+
+### Patch Changes
+
+- 02fea02: fix error msg
+- Updated dependencies
+  - rocketh@0.15.8
+  - @rocketh/deploy@0.15.1
+  - @rocketh/read-execute@0.15.1
+
 ## 0.15.4
 
 ### Patch Changes

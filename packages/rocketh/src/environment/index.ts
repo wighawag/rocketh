@@ -536,8 +536,8 @@ export async function createEnvironment<
 
 		const {abi, ...artifactObjectWithoutABI} = pendingDeployment.partialDeployment;
 
-		if (!pendingDeployment.transaction.hash) {
-			const spinner = spin(); // TODO spin(`fetching nonce for ${pendingDeployment.txHash}`);
+		if (!pendingDeployment.transaction.nonce) {
+			const spinner = spin(`fetching nonce for ${pendingDeployment.transaction.hash}`);
 			let transaction: EIP1193Transaction | null = null;
 			try {
 				transaction = await provider.request({
@@ -545,11 +545,11 @@ export async function createEnvironment<
 					params: [pendingDeployment.transaction.hash],
 				});
 			} catch (e) {
-				spinner.fail();
+				spinner.fail(`failed to get transaction, even after receipt was found`);
 				throw e;
 			}
 			if (!transaction) {
-				spinner.fail(`tx ${pendingDeployment.transaction.hash} not found`);
+				spinner.fail(`tx ${pendingDeployment.transaction.hash} not found,  even after receipt was found`);
 			} else {
 				spinner.stop();
 			}
@@ -612,7 +612,7 @@ export async function createEnvironment<
 			throw e;
 		}
 		if (!transaction) {
-			spinner.fail(`tx ${pendingExecution.transaction.hash} not found`);
+			spinner.fail(`execution tx ${pendingExecution.transaction.hash} not found in the mempool yet`);
 		} else {
 			spinner.stop();
 		}
@@ -643,7 +643,7 @@ export async function createEnvironment<
 			throw e;
 		}
 		if (!transaction) {
-			spinner.fail(`tx ${pendingDeployment.transaction.hash} not found`);
+			spinner.fail(`deployment tx ${pendingDeployment.transaction.hash} not found in the mempool yet`);
 		} else {
 			spinner.stop();
 		}
