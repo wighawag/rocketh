@@ -1,5 +1,11 @@
 # @rocketh/signer
 
+## 0.15.1
+
+### Patch Changes
+
+- latest deps
+
 ## 0.15.0
 
 ### Patch Changes

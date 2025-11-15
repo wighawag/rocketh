@@ -1,6 +1,6 @@
 {
 	"name": "rocketh",
-	"version": "0.15.9",
+	"version": "0.15.10",
 	"description": "deploy smart contract on ethereum-compatible networks",
 	"publishConfig": {
 		"access": "public"
@@ -19,29 +19,28 @@
 		"rocketh": "dist/cli.js"
 	},
 	"devDependencies": {
-		"@types/node": "^24.4.0",
+		"@types/node": "^24.10.1",
 		"as-soon": "^0.0.11",
 		"ipfs-gateway-emulator": "4.2.1-ipfs.2",
-		"rimraf": "^6.0.1",
-		"typedoc": "^0.28.13",
-		"typescript": "^5.9.2"
+		"rimraf": "^6.1.0",
+		"typedoc": "^0.28.14",
+		"typescript": "^5.9.3"
 	},
 	"dependencies": {
 		"@types/figlet": "^1.7.0",
 		"@types/prompts": "^2.4.9",
-		"abitype": "^1.1.0",
+		"abitype": "^1.1.1",
 		"change-case": "^5.4.4",
-		"commander": "^13.1.0",
+		"commander": "^14.0.2",
 		"eip-1193": "^0.6.5",
 		"eip-1193-jsonrpc-provider": "^0.4.3",
 		"ethers": "^6.15.0",
-		"figlet": "^1.9.1",
-		"ldenv": "^0.3.12",
+		"ldenv": "^0.3.15",
 		"named-logs": "^0.3.2",
 		"named-logs-console": "^0.3.1",
 		"prompts": "^2.4.2",
-		"tsx": "^4.20.5",
-		"viem": "^2.37.6"
+		"tsx": "^4.20.6",
+		"viem": "^2.39.0"
 	},
 	"scripts": {
 		"build": "tsc --project tsconfig.json",

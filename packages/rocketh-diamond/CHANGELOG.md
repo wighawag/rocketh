@@ -1,5 +1,14 @@
 # @rocketh/diamond
 
+## 0.15.4
+
+### Patch Changes
+
+- latest deps
+- Updated dependencies
+  - @rocketh/read-execute@0.15.2
+  - @rocketh/deploy@0.15.2
+
 ## 0.15.3
 
 ### Patch Changes

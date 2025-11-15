@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/doc",
-	"version": "0.15.9",
+	"version": "0.15.10",
 	"description": "can generate doc from rocketh deployments and provided template",
 	"publishConfig": {
 		"access": "public"
@@ -24,20 +24,20 @@
 		"src"
 	],
 	"devDependencies": {
-		"@types/node": "^24.4.0",
+		"@types/node": "^24.10.1",
 		"as-soon": "^0.0.11",
-		"rimraf": "^6.0.1",
+		"rimraf": "^6.1.0",
 		"rocketh": "workspace:*",
-		"typescript": "^5.9.2"
+		"typescript": "^5.9.3"
 	},
 	"peerDependencies": {
 		"rocketh": "workspace:*"
 	},
 	"dependencies": {
 		"@types/fs-extra": "^11.0.4",
-		"commander": "^13.1.0",
+		"commander": "^14.0.2",
 		"ethers": "^6.15.0",
-		"fs-extra": "^11.3.1",
+		"fs-extra": "^11.3.2",
 		"handlebars": "^4.7.8"
 	},
 	"scripts": {

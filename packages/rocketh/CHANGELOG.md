@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.15.10
+
+### Patch Changes
+
+- latest deps
+
 ## 0.15.9
 
 ### Patch Changes
