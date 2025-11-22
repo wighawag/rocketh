@@ -1,5 +1,13 @@
 # @rocketh/router
 
+## 0.15.12
+
+### Patch Changes
+
+- Updated dependencies
+  - rocketh@0.15.11
+  - @rocketh/deploy@0.15.2
+
 ## 0.15.11
 
 ### Patch Changes
