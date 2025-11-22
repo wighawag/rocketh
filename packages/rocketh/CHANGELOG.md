@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.15.12
+
+### Patch Changes
+
+- only export types from eip-1193
+
 ## 0.15.11
 
 ### Patch Changes

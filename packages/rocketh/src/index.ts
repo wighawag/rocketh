@@ -14,4 +14,4 @@ export {mergeArtifacts, mergeABIs} from './environment/utils/artifacts.js';
 export {getGasPriceEstimate, getRoughGasPriceEstimate} from './utils/eth.js';
 export {bigIntToStringReplacer} from './utils/json.js';
 
-export * from 'eip-1193';
+export type * from 'eip-1193';
