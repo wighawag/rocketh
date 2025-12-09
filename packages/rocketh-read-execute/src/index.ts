@@ -187,6 +187,10 @@ export function execute(
 			});
 		}
 
+		if (env.tags["auto-mine"]) {
+			await (env.network.provider as any).request({method: "evm_mine", params: []});
+		}
+
 		const pendingExecution: PendingExecution = {
 			type: 'execution',
 			transaction: {hash: txHash, origin: address},

@@ -2,7 +2,8 @@ import {EIP1193GenericRequestProvider, EIP1193ProviderWithoutEvents} from 'eip-1
 import fs from 'node:fs';
 import path from 'node:path';
 import prompts from 'prompts';
-import {tsImport as tsImport_} from 'tsx/esm/api';
+// import {tsImport as tsImport_} from 'tsx/esm/api';
+import { register } from 'tsx/esm/api'
 import {formatEther} from 'viem';
 import type {
 	Environment,
@@ -27,8 +28,14 @@ import {getChainByName, getChainConfig} from '../environment/utils/chains.js';
 import {JSONRPCHTTPProvider} from 'eip-1193-jsonrpc-provider';
 import {createEnvironment} from '../environment/index.js';
 
+
+
 // @ts-ignore
-const tsImport = (path: string, opts: any) => (typeof Bun !== 'undefined' ? import(path) : tsImport_(path, opts));
+// const tsImport = (path: string, opts: any) => (typeof Bun !== 'undefined' ? import(path) : tsImport_(path, opts));
+
+const unregister = register();
+const tsImport = (path: string, opts: any) => import(path, opts);
+
 
 /**
  * Setup function that creates the execute function for deploy scripts. It allow to specify a set of functions that will be available in the environment.

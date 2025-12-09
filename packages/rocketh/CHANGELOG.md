@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.15.14
+
+### Patch Changes
+
+- auto-mine + faster import by caching
+
 ## 0.15.13
 
 ### Patch Changes

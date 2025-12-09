@@ -57,20 +57,32 @@ async function broadcastTransaction(
 	params: [EIP1193TransactionData]
 ): Promise<`0x${string}`> {
 	if (signer.type === 'wallet' || signer.type === 'remote') {
-		return signer.signer.request({
+		const tx = signer.signer.request({
 			method: 'eth_sendTransaction',
 			params: params as any, // TODO fix eip-1193 ?,
 		});
+
+		if (env.tags["auto-mine"]) {
+			await (env.network.provider as any).request({method: "evm_mine", params: []});
+		}
+
+		return tx;
 	} else {
 		const rawTx = await signer.signer.request({
 			method: 'eth_signTransaction',
 			params,
 		});
 
-		return env.network.provider.request({
+		const tx = env.network.provider.request({
 			method: 'eth_sendRawTransaction',
 			params: [rawTx],
 		});
+
+		if (env.tags["auto-mine"]) {
+			await (env.network.provider as any).request({method: "evm_mine", params: []});
+		}
+
+		return tx;
 	}
 }
 
