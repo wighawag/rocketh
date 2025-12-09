@@ -22,11 +22,11 @@
 		"dist"
 	],
 	"devDependencies": {
-		"@types/node": "^24.10.1",
-		"abitype": "^1.1.1",
+		"@types/node": "^24.10.2",
+		"abitype": "^1.2.1",
 		"as-soon": "^0.0.11",
 		"eip-1193": "^0.6.5",
-		"rimraf": "^6.1.0",
+		"rimraf": "^6.1.2",
 		"rocketh": "workspace:*",
 		"typescript": "^5.9.3"
 	},
