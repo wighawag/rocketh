@@ -32,10 +32,7 @@ import {createEnvironment} from '../environment/index.js';
 
 // @ts-ignore
 // const tsImport = (path: string, opts: any) => (typeof Bun !== 'undefined' ? import(path) : tsImport_(path, opts));
-
 const unregister = register();
-const tsImport = (path: string, opts: any) => import(path, opts);
-
 
 /**
  * Setup function that creates the execute function for deploy scripts. It allow to specify a set of functions that will be available in the environment.
@@ -174,7 +171,7 @@ export async function readConfig<
 		throw new Error('Multiple configuration files found. Please use only one of: rocketh.ts, rocketh.js');
 	}
 	if (tsVersion) {
-		const moduleLoaded = await tsImport(tsVersion, import.meta.url);
+		const moduleLoaded = await import(tsVersion);
 		configFile = moduleLoaded.config;
 		// console.log({tsVersionExists: configFile});
 		// if ((configFile as any).default) {
@@ -185,7 +182,7 @@ export async function readConfig<
 		// 	}
 		// }
 	} else if (jsVersion) {
-		const moduleLoaded = await tsImport(jsVersion, import.meta.url);
+		const moduleLoaded = await import(jsVersion);
 		configFile = moduleLoaded.config;
 	}
 
@@ -447,7 +444,7 @@ async function _executeDeployScripts<
 		const scriptFilePath = path.resolve(filepath);
 		let scriptModule: DeployScriptModule<NamedAccounts, Data, ArgumentsType>;
 		try {
-			scriptModule = await tsImport(`file://${scriptFilePath}`, import.meta.url);
+			scriptModule = await import(`file://${scriptFilePath}`);
 
 			// console.log({
 			// 	scriptFilePath,
