@@ -1,5 +1,11 @@
 # @rocketh/signer
 
+## 0.16.0
+
+### Minor Changes
+
+- add @roceth/core
+
 ## 0.15.1
 
 ### Patch Changes

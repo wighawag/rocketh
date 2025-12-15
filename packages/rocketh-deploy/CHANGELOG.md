@@ -1,5 +1,11 @@
 # @rocketh/deploy
 
+## 0.16.0
+
+### Minor Changes
+
+- add @roceth/core
+
 ## 0.15.3
 
 ### Patch Changes

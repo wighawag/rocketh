@@ -1,5 +1,17 @@
 # @rocketh/export
 
+## 0.16.0
+
+### Minor Changes
+
+- add @roceth/core
+
+### Patch Changes
+
+- Updated dependencies
+  - rocketh@0.16.0
+  - @rocketh/core@0.16.0
+
 ## 0.15.15
 
 ### Patch Changes
