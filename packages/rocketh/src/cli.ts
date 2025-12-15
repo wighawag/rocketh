@@ -1,8 +1,9 @@
 #! /usr/bin/env node
 import {loadEnv} from 'ldenv';
-import {ExecutionParams, loadAndExecuteDeployments} from './index.js';
 import {Command} from 'commander';
 import pkg from '../package.json' with {type: 'json'};
+import { loadAndExecuteDeployments } from './executor/index.js';
+import { ExecutionParams } from '@rocketh/core';
 
 loadEnv();
 

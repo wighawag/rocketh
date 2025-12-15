@@ -1,38 +1,31 @@
-import {EIP1193GenericRequestProvider, EIP1193ProviderWithoutEvents} from 'eip-1193';
 import fs from 'node:fs';
 import path from 'node:path';
 import prompts from 'prompts';
-// import {tsImport as tsImport_} from 'tsx/esm/api';
-import { register } from 'tsx/esm/api'
 import {formatEther} from 'viem';
-import type {
-	Environment,
-	ExecutionParams,
-	ResolvedExecutionParams,
-	UnknownDeployments,
-	UnresolvedNetworkSpecificData,
-	UnresolvedUnknownNamedAccounts,
-	DeployScriptModule,
-	EnhancedDeployScriptFunction,
-	EnhancedEnvironment,
-	ResolvedUserConfig,
-	ConfigOverrides,
-	UserConfig,
-	ChainConfig,
-} from '../types.js';
-import {withEnvironment} from '../utils/extensions.js';
-import {logger, setLogLevel, spin} from '../internal/logging.js';
-import {getRoughGasPriceEstimate} from '../utils/eth.js';
+import {
+	type Environment,
+	type ExecutionParams,
+	type ResolvedExecutionParams,
+	type UnknownDeployments,
+	type UnresolvedNetworkSpecificData,
+	type UnresolvedUnknownNamedAccounts,
+	type DeployScriptModule,
+	type EnhancedEnvironment,
+	type ResolvedUserConfig,
+	type ConfigOverrides,
+	type UserConfig,
+	withEnvironment,
+	EIP1193ProviderWithoutEvents,
+	getChainByName,
+	resolveConfig,
+	resolveExecutionParams,
+	createEnvironment,
+	getRoughGasPriceEstimate,
+	spin,
+} from '@rocketh/core';
+import {logger, setLogLevel} from '@rocketh/core/dist/internal/logging.js';
 import {traverseMultipleDirectory} from '../utils/fs.js';
-import {getChainByName, getChainConfig} from '../environment/utils/chains.js';
-import {JSONRPCHTTPProvider} from 'eip-1193-jsonrpc-provider';
-import {createEnvironment} from '../environment/index.js';
-
-
-
-// @ts-ignore
-// const tsImport = (path: string, opts: any) => (typeof Bun !== 'undefined' ? import(path) : tsImport_(path, opts));
-const unregister = register();
+import {createFSDeploymentStoreFactory} from '../environment/deployment-store.js';
 
 /**
  * Setup function that creates the execute function for deploy scripts. It allow to specify a set of functions that will be available in the environment.
@@ -60,40 +53,13 @@ const unregister = register();
  * }, { tags: ['deploy'] });
  * ```
  */
-export function setup<
+export function setupEnvironment<
 	Extensions extends Record<string, (env: Environment<any, any, any>) => any> = {},
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 	Deployments extends UnknownDeployments = UnknownDeployments,
 	Extra extends Record<string, unknown> = Record<string, unknown>
 >(extensions: Extensions) {
-	function enhancedExecute<ArgumentsType = undefined>(
-		callback: EnhancedDeployScriptFunction<NamedAccounts, Data, ArgumentsType, Deployments, Extensions>,
-		options: {tags?: string[]; dependencies?: string[]; id?: string; runAtTheEnd?: boolean}
-	): DeployScriptModule<NamedAccounts, Data, ArgumentsType, Deployments, Extra> {
-		const scriptModule: DeployScriptModule<NamedAccounts, Data, ArgumentsType, Deployments, Extra> = (
-			env: Environment<NamedAccounts, Data, Deployments, Extra>,
-			args?: ArgumentsType
-		) => {
-			// Create the enhanced environment by combining the original environment with extensions
-			const curriedFunctions = withEnvironment(env, extensions);
-			const enhancedEnv = Object.assign(
-				Object.create(Object.getPrototypeOf(env)),
-				env,
-				curriedFunctions
-			) as EnhancedEnvironment<NamedAccounts, Data, Deployments, Extensions, Extra>;
-
-			return callback(enhancedEnv, args);
-		};
-
-		scriptModule.tags = options.tags;
-		scriptModule.dependencies = options.dependencies;
-		scriptModule.id = options.id;
-		scriptModule.runAtTheEnd = options.runAtTheEnd;
-
-		return scriptModule;
-	}
-
 	async function loadAndExecuteDeploymentsWithExtensions<
 		Extra extends Record<string, unknown> = Record<string, unknown>,
 		ArgumentsType = undefined
@@ -113,7 +79,6 @@ export function setup<
 	}
 
 	return {
-		deployScript: enhancedExecute,
 		loadAndExecuteDeployments: loadAndExecuteDeploymentsWithExtensions,
 		loadEnvironment: loadEnvironmentWithExtensions,
 	};
@@ -155,12 +120,26 @@ export async function readConfig<
 	let jsVersion: string | undefined;
 
 	if (typeof process !== 'undefined') {
-		// TODO more sophisticated config file finding mechanism (look up parents, etc..)
-		const tsFilePath = path.join(process.cwd(), 'rocketh.ts');
-		const jsFilePath = path.join(process.cwd(), 'rocketh.js');
-
-		tsVersion = fs.existsSync(tsFilePath) ? `file://${tsFilePath}` : undefined;
-		jsVersion = fs.existsSync(jsFilePath) ? `file://${jsFilePath}` : undefined;
+		const listOfFileToTryForTS = [
+			path.join(process.cwd(), 'rocketh.ts'),
+			path.join(process.cwd(), 'rocketh', 'config.ts'),
+		];
+		for (const filepath of listOfFileToTryForTS) {
+			if (fs.existsSync(filepath)) {
+				tsVersion = `file://${filepath}`;
+				break;
+			}
+		}
+		const listOfFileToTryForJS = [
+			path.join(process.cwd(), 'rocketh.js'),
+			path.join(process.cwd(), 'rocketh', 'config.s'),
+		];
+		for (const filepath of listOfFileToTryForJS) {
+			if (fs.existsSync(filepath)) {
+				jsVersion = `file://${filepath}`;
+				break;
+			}
+		}
 	}
 	const existingConfigs = [tsVersion, jsVersion].filter(Boolean).length;
 
@@ -187,34 +166,6 @@ export async function readConfig<
 	}
 
 	return configFile || {};
-}
-
-export function resolveConfig<
-	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
-	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData
->(configFile: UserConfig, overrides?: ConfigOverrides): ResolvedUserConfig<NamedAccounts, Data> {
-	const config = {
-		deployments: 'deployments',
-		defaultPollingInterval: 1,
-		...configFile,
-		scripts: configFile?.scripts
-			? typeof configFile.scripts === 'string'
-				? [configFile.scripts]
-				: configFile.scripts.length == 0
-				? ['deploy']
-				: configFile.scripts
-			: ['deploy'],
-	};
-
-	if (overrides) {
-		for (const key of Object.keys(overrides)) {
-			if ((overrides as any)[key] !== undefined) {
-				(config as any)[key] = (overrides as any)[key];
-			}
-		}
-	}
-
-	return config;
 }
 
 export async function readAndResolveConfig<
@@ -273,90 +224,7 @@ function getEnvironmentName(executionParams: ExecutionParams): {name: string; fo
 	return {name: environmentName, fork};
 }
 
-export function resolveExecutionParams<Extra extends Record<string, unknown> = Record<string, unknown>>(
-	config: ResolvedUserConfig,
-	executionParameters: ExecutionParams<Extra>,
-	chainId: number
-): ResolvedExecutionParams<Extra> {
-	const {name: environmentName, fork} = getEnvironmentName(executionParameters);
-
-	// TODO fork chainId resolution option to keep the network being used
-	let chainConfig: ChainConfig = getChainConfig(fork ? 31337 : chainId, config);
-
-	let chainInfo = chainConfig.info;
-	const environmentConfig = config?.environments?.[environmentName];
-	const actualChainConfig = environmentConfig?.overrides
-		? {
-				...chainConfig,
-				...environmentConfig.overrides,
-				properties: {
-					...chainConfig?.properties,
-					...environmentConfig.overrides.properties,
-				},
-		  }
-		: chainConfig;
-
-	if (actualChainConfig?.properties) {
-		chainInfo = {...chainInfo, properties: actualChainConfig.properties};
-	}
-
-	// let environmentTags: string[] = actualChainConfig.tags.concat(environmentConfig?.tags); // TODO
-	const environmentTags = actualChainConfig.tags;
-
-	let scripts = ['deploy'];
-	if (config.scripts) {
-		if (typeof config.scripts === 'string') {
-			scripts = [config.scripts];
-		} else {
-			scripts = [...config.scripts];
-		}
-	}
-
-	if (environmentConfig?.scripts) {
-		if (typeof environmentConfig.scripts === 'string') {
-			scripts = [environmentConfig.scripts];
-		} else {
-			scripts = [...environmentConfig.scripts];
-		}
-	}
-
-	const provider =
-		executionParameters.provider || (new JSONRPCHTTPProvider(actualChainConfig.rpcUrl) as EIP1193ProviderWithoutEvents);
-
-	let saveDeployments = executionParameters.saveDeployments;
-
-	if (saveDeployments === undefined) {
-		if (!executionParameters.provider) {
-			saveDeployments = true;
-		} else {
-			if (environmentName === 'memory' || environmentName === 'hardhat' || environmentName === 'default') {
-				// networkTags['memory'] = true;
-				saveDeployments = false;
-			} else {
-				saveDeployments = true;
-			}
-		}
-	}
-
-	return {
-		askBeforeProceeding: executionParameters.askBeforeProceeding || false,
-		chain: chainInfo,
-		logLevel: executionParameters.logLevel || 0, // TODO
-		pollingInterval: actualChainConfig.pollingInterval,
-		reportGasUse: executionParameters.reportGasUse || false,
-		saveDeployments,
-		tags: executionParameters.tags || [],
-		environment: {
-			name: environmentName,
-			tags: environmentTags,
-			fork,
-			deterministicDeployment: actualChainConfig.deterministicDeployment,
-		},
-		extra: executionParameters.extra,
-		provider,
-		scripts,
-	};
-}
+const deploymentStoreFactory = createFSDeploymentStoreFactory();
 
 export async function loadEnvironment<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
@@ -370,7 +238,8 @@ export async function loadEnvironment<
 	// console.log(JSON.stringify(resolvedConfig, null, 2));
 	const {external, internal} = await createEnvironment<NamedAccounts, Data, UnknownDeployments>(
 		userConfig,
-		resolvedExecutionParams
+		resolvedExecutionParams,
+		deploymentStoreFactory
 	);
 	return external;
 }
@@ -501,7 +370,8 @@ async function _executeDeployScripts<
 
 	const {internal, external} = await createEnvironment<NamedAccounts, Data, UnknownDeployments>(
 		userConfig,
-		resolvedExecutionParams
+		resolvedExecutionParams,
+		deploymentStoreFactory
 	);
 
 	await internal.recoverTransactionsIfAny();

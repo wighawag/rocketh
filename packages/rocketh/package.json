@@ -27,17 +27,12 @@
 		"typescript": "^5.9.3"
 	},
 	"dependencies": {
-		"@types/figlet": "^1.7.0",
+		"@rocketh/core": "workspace:*",
 		"@types/prompts": "^2.4.9",
-		"abitype": "^1.2.1",
 		"change-case": "^5.4.4",
 		"commander": "^14.0.2",
 		"eip-1193": "^0.6.5",
-		"eip-1193-jsonrpc-provider": "^0.4.3",
-		"ethers": "^6.16.0",
 		"ldenv": "^0.3.16",
-		"named-logs": "^0.4.1",
-		"named-logs-console": "^0.4.5",
 		"prompts": "^2.4.2",
 		"tsx": "^4.21.0",
 		"viem": "^2.41.2"

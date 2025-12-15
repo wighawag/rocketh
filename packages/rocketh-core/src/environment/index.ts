@@ -1,5 +1,3 @@
-import fs from 'node:fs';
-
 import {
 	AccountType,
 	Artifact,
@@ -19,12 +17,11 @@ import {
 	ResolvedExecutionParams,
 	ResolvedUserConfig,
 	PendingExecution,
+	DeploymentStoreFactory,
 } from '../types.js';
 import {Abi, Address} from 'abitype';
 import {InternalEnvironment} from '../internal/types.js';
-import path from 'node:path';
 import {JSONToString, stringToJSON} from '../utils/json.js';
-import {loadDeployments} from './deployments.js';
 import {
 	EIP1193Account,
 	EIP1193Block,
@@ -59,7 +56,8 @@ export async function createEnvironment<
 	Deployments extends UnknownDeployments = UnknownDeployments
 >(
 	userConfig: ResolvedUserConfig<NamedAccounts, Data>,
-	resolvedExecutionParams: ResolvedExecutionParams
+	resolvedExecutionParams: ResolvedExecutionParams,
+	deploymentStoreFactory: DeploymentStoreFactory
 ): Promise<{internal: InternalEnvironment; external: Environment<NamedAccounts, Data, Deployments>}> {
 	const rawProvider = resolvedExecutionParams.provider;
 
@@ -210,7 +208,9 @@ export async function createEnvironment<
 
 	// console.log(`context`, JSON.stringify(context.network, null, 2));
 
-	const {deployments, migrations} = loadDeployments(
+	const deploymentStore = deploymentStoreFactory.create({chainId, genesisHash});
+
+	const {deployments, migrations} = await deploymentStore.loadDeployments(
 		deploymentsFolder,
 		environmentName,
 		false,
@@ -267,25 +267,6 @@ export async function createEnvironment<
 		extra: resolvedExecutionParams.extra || {},
 	};
 
-	function getDeploymentFolder(): string {
-		const folderPath = path.join(deploymentsFolder, environmentName);
-		return folderPath;
-	}
-
-	function ensureDeploymentFolder(): string {
-		const folderPath = getDeploymentFolder();
-		fs.mkdirSync(folderPath, {recursive: true});
-		// const chainIdFilepath = path.join(folderPath, '.chainId');
-		// if (!fs.existsSync(chainIdFilepath)) {
-		// 	fs.writeFileSync(chainIdFilepath, chainId);
-		// }
-		const chainFilepath = path.join(folderPath, '.chain');
-		if (!fs.existsSync(chainFilepath)) {
-			fs.writeFileSync(chainFilepath, JSON.stringify({chainId, genesisHash}));
-		}
-		return folderPath;
-	}
-
 	// const signer = {
 	// 	async sendTransaction(
 	// 		provider: EIP1193ProviderWithoutEvents,
@@ -322,8 +303,7 @@ export async function createEnvironment<
 	function recordMigration(id: string): void {
 		migrations[id] = Math.floor(Date.now() / 1000);
 		if (context.saveDeployments) {
-			const folderPath = ensureDeploymentFolder();
-			fs.writeFileSync(`${folderPath}/.migrations.json`, JSON.stringify(migrations));
+			deploymentStore.writeFile(deploymentsFolder, environmentName, '.migrations.json', JSON.stringify(migrations));
 		}
 	}
 
@@ -370,8 +350,7 @@ export async function createEnvironment<
 			deployments[name] = {...deployment, numDeployments: 1};
 		}
 		if (context.saveDeployments) {
-			const folderPath = ensureDeploymentFolder();
-			fs.writeFileSync(`${folderPath}/${name}.json`, JSONToString(deployment, 2));
+			deploymentStore.writeFile(deploymentsFolder, environmentName, `${name}.json`, JSONToString(deployment, 2));
 		}
 		return deployment;
 	}
@@ -380,11 +359,11 @@ export async function createEnvironment<
 		if (!context.saveDeployments) {
 			return;
 		}
-		const folderPath = getDeploymentFolder();
-		const filepath = path.join(folderPath, '.pending_transactions.json');
 		let existingPendingTansactions: PendingTransaction[];
 		try {
-			existingPendingTansactions = stringToJSON(fs.readFileSync(filepath, 'utf-8'));
+			existingPendingTansactions = stringToJSON(
+				await deploymentStore.readFile(deploymentsFolder, environmentName, '.pending_transactions.json')
+			);
 		} catch {
 			existingPendingTansactions = [];
 		}
@@ -398,7 +377,12 @@ export async function createEnvironment<
 						);
 						try {
 							await waitForDeploymentTransactionAndSave(pendingTransaction);
-							fs.writeFileSync(filepath, JSONToString(existingPendingTansactions, 2));
+							await deploymentStore.writeFile(
+								deploymentsFolder,
+								environmentName,
+								'.pending_transactions.json',
+								JSONToString(existingPendingTansactions, 2)
+							);
 							spinner.succeed();
 						} catch (e) {
 							spinner.fail();
@@ -408,7 +392,12 @@ export async function createEnvironment<
 						const spinner = spin(`recovering execution's transaction ${pendingTransaction.transaction.hash}`);
 						try {
 							await waitForTransaction(pendingTransaction.transaction.hash);
-							fs.writeFileSync(filepath, JSONToString(existingPendingTansactions, 2));
+							await deploymentStore.writeFile(
+								deploymentsFolder,
+								environmentName,
+								'.pending_transactions.json',
+								JSONToString(existingPendingTansactions, 2)
+							);
 							spinner.succeed();
 						} catch (e) {
 							spinner.fail();
@@ -417,22 +406,27 @@ export async function createEnvironment<
 					}
 				}
 			}
-			fs.rmSync(filepath);
+			await deploymentStore.deleteFile(deploymentsFolder, environmentName, '.pending_transactions.json');
 		}
 	}
 
 	async function savePendingTransaction(pendingTransaction: PendingTransaction) {
 		if (context.saveDeployments) {
-			const folderPath = ensureDeploymentFolder();
-			const filepath = path.join(folderPath, '.pending_transactions.json');
 			let existingPendinTransactions: PendingTransaction[];
 			try {
-				existingPendinTransactions = stringToJSON(fs.readFileSync(filepath, 'utf-8'));
+				existingPendinTransactions = stringToJSON(
+					await deploymentStore.readFile(deploymentsFolder, environmentName, '.pending_transactions.json')
+				);
 			} catch {
 				existingPendinTransactions = [];
 			}
 			existingPendinTransactions.push(pendingTransaction);
-			fs.writeFileSync(filepath, JSONToString(existingPendinTransactions, 2));
+			await deploymentStore.writeFile(
+				deploymentsFolder,
+				environmentName,
+				'.pending_transactions.json',
+				JSONToString(existingPendinTransactions, 2)
+			);
 		}
 		return deployments;
 	}
@@ -461,27 +455,26 @@ export async function createEnvironment<
 
 	async function deleteTransaction<TAbi extends Abi = Abi>(hash: string) {
 		if (context.saveDeployments) {
-			const folderPath = ensureDeploymentFolder();
-			const filepath = path.join(folderPath, '.pending_transactions.json');
 			let existingPendinTransactions: PendingTransaction[];
 			try {
-				existingPendinTransactions = stringToJSON(fs.readFileSync(filepath, 'utf-8'));
+				existingPendinTransactions = stringToJSON(
+					await deploymentStore.readFile(deploymentsFolder, environmentName, '.pending_transactions.json')
+				);
 			} catch {
 				existingPendinTransactions = [];
 			}
 			existingPendinTransactions = existingPendinTransactions.filter((v) => v.transaction.hash !== hash);
 			if (existingPendinTransactions.length === 0) {
-				fs.rmSync(filepath);
+				await deploymentStore.deleteFile(deploymentsFolder, environmentName, '.pending_transactions.json');
 			} else {
-				fs.writeFileSync(filepath, JSONToString(existingPendinTransactions, 2));
+				await deploymentStore.writeFile(
+					deploymentsFolder,
+					environmentName,
+					'.pending_transactions.json',
+					JSONToString(existingPendinTransactions, 2)
+				);
 			}
 		}
-	}
-
-	async function exportDeploymentsAsTypes() {
-		const folderPath = './generated';
-		fs.mkdirSync(folderPath, {recursive: true});
-		fs.writeFileSync(`${folderPath}/deployments.ts`, `export default ${JSONToString(deployments, 2)} as const;`);
 	}
 
 	async function waitForTransaction(
@@ -688,7 +681,6 @@ export async function createEnvironment<
 	return {
 		external: env,
 		internal: {
-			exportDeploymentsAsTypes,
 			recoverTransactionsIfAny,
 			recordMigration,
 		},

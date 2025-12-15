@@ -1,7 +1,7 @@
 {
-	"name": "@rocketh/diamond",
-	"version": "0.15.5",
-	"description": "provide diamond support for rocketh/hardhat-deploy",
+	"name": "@rocketh/core",
+	"version": "0.15.30",
+	"description": "core functionality of rocketh",
 	"publishConfig": {
 		"access": "public"
 	},
@@ -9,32 +9,30 @@
 	"main": "dist/index.js",
 	"module": "dist/index.js",
 	"types": "dist/index.d.ts",
-	"exports": {
-		".": {
+	".": {
+		"import": {
 			"types": "./dist/index.d.ts",
 			"default": "./dist/index.js"
-		},
-		"./types": {
-			"types": "./dist/types.d.ts",
-			"default": "./dist/indetypesx.js"
 		}
 	},
 	"files": [
-		"dist",
-		"solc_0_8"
+		"dist"
 	],
 	"devDependencies": {
-		"abitype": "^1.2.1",
 		"as-soon": "^0.0.11",
-		"eip-1193": "^0.6.5",
-		"rimraf": "^6.1.2",
-		"@rocketh/core": "workspace:*",
+		"rocketh": "workspace:*",
 		"typescript": "^5.9.3"
 	},
 	"dependencies": {
-		"@rocketh/deploy": "workspace:*",
-		"@rocketh/read-execute": "workspace:*",
+		"abitype": "^1.2.1",
+		"change-case": "^5.4.4",
+		"eip-1193": "^0.6.5",
+		"eip-1193-jsonrpc-provider": "^0.4.3",
+		"ethers": "^6.16.0",
+		"ldenv": "^0.3.16",
 		"named-logs": "^0.4.1",
+		"named-logs-console": "^0.4.5",
+		"tsx": "^4.21.0",
 		"viem": "^2.41.2"
 	},
 	"scripts": {

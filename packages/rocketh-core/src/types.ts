@@ -599,3 +599,24 @@ export type PendingExecution = {
 };
 
 export type PendingTransaction = PendingDeployment | PendingExecution;
+
+export type DeploymentStore = {
+	loadDeployments(
+		deploymentsPath: string,
+		networkName: string,
+		onlyABIAndAddress?: boolean,
+		expectedChain?: {chainId: string; genesisHash?: `0x${string}`; deleteDeploymentsIfDifferentGenesisHash?: boolean}
+	): Promise<{
+		deployments: UnknownDeployments;
+		migrations: Record<string, number>;
+		chainId?: string;
+		genesisHash?: `0x${string}`;
+	}>;
+	writeFile(deploymentsFolder: string, environmentName: string, name: string, content: string): Promise<void>;
+	readFile(deploymentsFolder: string, environmentName: string, name: string): Promise<string>;
+	deleteFile(deploymentsFolder: string, environmentName: string, name: string): Promise<void>;
+};
+
+export type DeploymentStoreFactory = {
+	create({chainId, genesisHash}: {chainId: string; genesisHash?: string}): DeploymentStore;
+};
