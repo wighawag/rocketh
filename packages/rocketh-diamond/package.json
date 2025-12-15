@@ -16,7 +16,7 @@
 		},
 		"./types": {
 			"types": "./dist/types.d.ts",
-			"default": "./dist/indetypesx.js"
+			"default": "./dist/types.js"
 		}
 	},
 	"files": [

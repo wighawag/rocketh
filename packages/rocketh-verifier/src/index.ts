@@ -1,4 +1,5 @@
-import {ResolvedUserConfig, loadDeployments} from 'rocketh';
+import {loadDeployments} from 'rocketh';
+import type {ResolvedUserConfig} from '@rocketh/core/types';
 import {submitSourcesToEtherscan} from './etherscan.js';
 import {submitSourcesToSourcify} from './sourcify.js';
 import {submitSourcesToBlockscout} from './blockscout.js';

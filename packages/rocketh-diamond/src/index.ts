@@ -1,4 +1,4 @@
-import type {Abi, Artifact, Deployment, Environment} from '@rocketh/core';
+import type {Abi, Artifact, Deployment, Environment} from '@rocketh/core/types';
 
 import {encodeFunctionData, zeroAddress} from 'viem';
 import {logs} from 'named-logs';

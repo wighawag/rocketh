@@ -9,10 +9,12 @@
 	"main": "dist/index.js",
 	"module": "dist/index.js",
 	"types": "dist/index.d.ts",
-	".": {
-		"import": {
-			"types": "./dist/index.d.ts",
-			"default": "./dist/index.js"
+	"exports": {
+		".": {
+			"import": {
+				"types": "./dist/index.d.ts",
+				"default": "./dist/index.js"
+			}
 		}
 	},
 	"bin": {
@@ -22,6 +24,7 @@
 		"dist"
 	],
 	"devDependencies": {
+		"@rocketh/core": "workspace:*",
 		"@types/node": "^24.10.2",
 		"as-soon": "^0.0.11",
 		"rimraf": "^6.1.2",

@@ -1,6 +1,6 @@
 import type {DeployOptions} from '@rocketh/deploy';
 import type {EIP1193Account} from 'eip-1193';
-import type {Artifact, Deployment, DeploymentConstruction, Libraries, LinkedData, Abi} from 'rocketh';
+import type {Artifact, Deployment, DeploymentConstruction, Libraries, LinkedData, Abi} from '@rocketh/core/types';
 import type {ContractFunctionArgs, ContractFunctionName, WriteContractParameters} from 'viem';
 
 export type Facet = {

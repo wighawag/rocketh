@@ -1,6 +1,6 @@
 import {Abi} from 'abitype';
 import {EIP1193DATA, EIP1193TransactionData, EIP1193TransactionReceipt} from 'eip-1193';
-import type {Artifact, Environment, MinimalDeployment, PendingExecution} from 'rocketh';
+import type {Artifact, Environment, MinimalDeployment, PendingExecution} from '@rocketh/core/types';
 import {
 	ContractFunctionArgs,
 	ContractFunctionName,
@@ -187,8 +187,8 @@ export function execute(
 			});
 		}
 
-		if (env.tags["auto-mine"]) {
-			await (env.network.provider as any).request({method: "evm_mine", params: []});
+		if (env.tags['auto-mine']) {
+			await (env.network.provider as any).request({method: 'evm_mine', params: []});
 		}
 
 		const pendingExecution: PendingExecution = {

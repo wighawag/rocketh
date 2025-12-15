@@ -1,4 +1,5 @@
-import {loadDeployments, ResolvedUserConfig} from 'rocketh';
+import {loadDeployments} from 'rocketh';
+import type {ResolvedUserConfig} from '@rocketh/core/types';
 import fs from 'fs-extra';
 import path from 'path';
 

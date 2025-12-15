@@ -1,5 +1,5 @@
 import {EIP1193LocalSigner} from 'eip-1193-signer';
-import type {SignerProtocolFunction} from 'rocketh';
+import type {SignerProtocolFunction} from '@rocketh/core/types';
 
 export const privateKey: SignerProtocolFunction = async (protocolString: string) => {
 	const [proto, privateKeyString] = protocolString.split(':');

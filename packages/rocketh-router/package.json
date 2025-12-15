@@ -9,10 +9,12 @@
 	"main": "dist/index.js",
 	"module": "dist/index.js",
 	"types": "dist/index.d.ts",
-	".": {
-		"import": {
-			"types": "./dist/index.d.ts",
-			"default": "./dist/index.js"
+	"exports": {
+		".": {
+			"import": {
+				"types": "./dist/index.d.ts",
+				"default": "./dist/index.js"
+			}
 		}
 	},
 	"files": [
@@ -23,13 +25,10 @@
 		"as-soon": "^0.0.11",
 		"eip-1193": "^0.6.5",
 		"rimraf": "^6.1.2",
-		"rocketh": "workspace:*",
 		"typescript": "^5.9.3"
 	},
-	"peerDependencies": {
-		"rocketh": "workspace:*"
-	},
 	"dependencies": {
+		"@rocketh/core": "workspace:*",
 		"@rocketh/deploy": "workspace:*",
 		"ethers": "^6.16.0",
 		"named-logs": "^0.4.1",

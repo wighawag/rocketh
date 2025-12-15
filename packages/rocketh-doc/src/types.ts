@@ -1,4 +1,4 @@
-import type {NoticeUserDoc, Abi, AbiConstructor, AbiFunction, AbiError, AbiEvent} from 'rocketh';
+import type {NoticeUserDoc, Abi, AbiConstructor, AbiFunction, AbiError, AbiEvent} from '@rocketh/core/types';
 
 export type ParamDoc = {name: string | `_${number}`; description: string};
 export type ReturnDoc = {name: string | `_${number}`; description: string};

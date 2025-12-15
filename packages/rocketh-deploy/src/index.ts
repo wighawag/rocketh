@@ -9,7 +9,7 @@ import type {
 	PartialDeployment,
 	PendingDeployment,
 	Signer,
-} from 'rocketh';
+} from '@rocketh/core/types';
 import {
 	Address,
 	Chain,
@@ -62,8 +62,8 @@ async function broadcastTransaction(
 			params: params as any, // TODO fix eip-1193 ?,
 		});
 
-		if (env.tags["auto-mine"]) {
-			await (env.network.provider as any).request({method: "evm_mine", params: []});
+		if (env.tags['auto-mine']) {
+			await (env.network.provider as any).request({method: 'evm_mine', params: []});
 		}
 
 		return tx;
@@ -78,8 +78,8 @@ async function broadcastTransaction(
 			params: [rawTx],
 		});
 
-		if (env.tags["auto-mine"]) {
-			await (env.network.provider as any).request({method: "evm_mine", params: []});
+		if (env.tags['auto-mine']) {
+			await (env.network.provider as any).request({method: 'evm_mine', params: []});
 		}
 
 		return tx;

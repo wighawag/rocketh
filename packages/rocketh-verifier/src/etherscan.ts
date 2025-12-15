@@ -3,7 +3,7 @@ import fs from 'fs';
 import * as qs from 'neoqs';
 import chalk from 'chalk';
 import {matchAll} from './utils/match-all.js';
-import {UnknownDeployments} from 'rocketh';
+import {UnknownDeployments} from '@rocketh/core/types';
 import {EtherscanOptions} from './index.js';
 
 const defaultEndpoint = `https://api.etherscan.io/v2/api`;

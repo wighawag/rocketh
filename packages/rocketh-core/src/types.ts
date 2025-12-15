@@ -620,3 +620,5 @@ export type DeploymentStore = {
 export type DeploymentStoreFactory = {
 	create({chainId, genesisHash}: {chainId: string; genesisHash?: string}): DeploymentStore;
 };
+
+export type * from 'eip-1193';

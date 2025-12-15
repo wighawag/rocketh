@@ -1,7 +1,7 @@
 import path from 'node:path';
 import fs from 'node:fs';
 import {traverse} from '../utils/fs.js';
-import {UnknownDeployments} from '@rocketh/core';
+import type {UnknownDeployments} from '@rocketh/core/types';
 
 export function loadDeployments(
 	deploymentsPath: string,

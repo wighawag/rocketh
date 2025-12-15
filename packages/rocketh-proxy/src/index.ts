@@ -1,5 +1,6 @@
 import {Abi, AbiFunction} from 'abitype';
-import {type Artifact, type DeploymentConstruction, type Deployment, type Environment, mergeABIs} from '@rocketh/core';
+import {mergeABIs} from '@rocketh/core';
+import type {Artifact, DeploymentConstruction, Deployment, Environment} from '@rocketh/core/types';
 import type {EIP1193Account} from 'eip-1193';
 import {Chain, encodeFunctionData, zeroAddress} from 'viem';
 import {logs} from 'named-logs';

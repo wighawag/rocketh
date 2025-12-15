@@ -10,7 +10,7 @@ import type {
 	AbiEvent,
 	UserConfig,
 	ResolvedUserConfig,
-} from 'rocketh';
+} from '@rocketh/core/types';
 import {loadDeployments} from 'rocketh';
 import Handlebars from 'handlebars';
 import path from 'path';

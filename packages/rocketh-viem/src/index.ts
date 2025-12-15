@@ -1,5 +1,5 @@
 import {logs} from 'named-logs';
-import type {Abi, Deployment, Environment} from 'rocketh';
+import type {Abi, Deployment, Environment} from '@rocketh/core/types';
 import {
 	createPublicClient,
 	createWalletClient,

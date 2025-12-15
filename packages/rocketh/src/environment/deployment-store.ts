@@ -1,6 +1,6 @@
 import path from 'node:path';
 import fs from 'node:fs';
-import type {DeploymentStoreFactory, UnknownDeployments} from '@rocketh/core';
+import type {DeploymentStoreFactory, UnknownDeployments} from '@rocketh/core/types';
 import {loadDeployments} from './deployments.js';
 
 export function createFSDeploymentStoreFactory(): DeploymentStoreFactory {

@@ -2,28 +2,31 @@ import fs from 'node:fs';
 import path from 'node:path';
 import prompts from 'prompts';
 import {formatEther} from 'viem';
-import {
-	type Environment,
-	type ExecutionParams,
-	type ResolvedExecutionParams,
-	type UnknownDeployments,
-	type UnresolvedNetworkSpecificData,
-	type UnresolvedUnknownNamedAccounts,
-	type DeployScriptModule,
-	type EnhancedEnvironment,
-	type ResolvedUserConfig,
-	type ConfigOverrides,
-	type UserConfig,
-	withEnvironment,
+import type {
+	Environment,
+	ExecutionParams,
+	ResolvedExecutionParams,
+	UnknownDeployments,
+	UnresolvedNetworkSpecificData,
+	UnresolvedUnknownNamedAccounts,
+	DeployScriptModule,
+	EnhancedEnvironment,
+	ResolvedUserConfig,
+	ConfigOverrides,
+	UserConfig,
 	EIP1193ProviderWithoutEvents,
+} from '@rocketh/core/types';
+import {
+	withEnvironment,
 	getChainByName,
 	resolveConfig,
 	resolveExecutionParams,
 	createEnvironment,
 	getRoughGasPriceEstimate,
 	spin,
+	logger,
+	setLogLevel,
 } from '@rocketh/core';
-import {logger, setLogLevel} from '@rocketh/core/dist/internal/logging.js';
 import {traverseMultipleDirectory} from '../utils/fs.js';
 import {createFSDeploymentStoreFactory} from '../environment/deployment-store.js';
 
