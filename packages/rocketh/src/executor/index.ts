@@ -65,11 +65,13 @@ export function setup<
 	Extra extends Record<string, unknown> = Record<string, unknown>
 >(extensions: Extensions) {
 	const {deployScript} = setupDeployScripts<Extensions, NamedAccounts, Data, Deployments, Extra>(extensions);
-	const {loadAndExecuteDeployments} = setupEnvironment<Extensions, NamedAccounts, Data, Deployments, Extra>(extensions);
+	const {loadAndExecuteDeployments} = setupEnvironmentFromFiles<Extensions, NamedAccounts, Data, Deployments, Extra>(
+		extensions
+	);
 	return {deployScript, loadAndExecuteDeployments};
 }
 
-export function setupEnvironment<
+export function setupEnvironmentFromFiles<
 	Extensions extends Record<string, (env: Environment<any, any, any>) => any> = {},
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
