@@ -1,4 +1,12 @@
-export {setupDeployScripts, loadEnvironment, resolveConfig, resolveExecutionParams} from './executor/index.js';
+export {
+	setupDeployScripts,
+	loadEnvironment,
+	resolveConfig,
+	resolveExecutionParams,
+	getChainIdForEnvironment,
+	getEnvironmentName,
+	createExecutor,
+} from './executor/index.js';
 export {createEnvironment} from './environment/index.js';
 
 export {getChainConfig, chainByCanonicalName, getChainByName} from './environment/utils/chains.js';

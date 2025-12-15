@@ -1,31 +1,30 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import prompts from 'prompts';
-import {formatEther} from 'viem';
-import type {
-	Environment,
-	ExecutionParams,
-	ResolvedExecutionParams,
-	UnknownDeployments,
-	UnresolvedNetworkSpecificData,
-	UnresolvedUnknownNamedAccounts,
-	DeployScriptModule,
-	EnhancedEnvironment,
-	ResolvedUserConfig,
-	ConfigOverrides,
-	UserConfig,
-	EIP1193ProviderWithoutEvents,
+import {
+	type Environment,
+	type ExecutionParams,
+	type ResolvedExecutionParams,
+	type UnknownDeployments,
+	type UnresolvedNetworkSpecificData,
+	type UnresolvedUnknownNamedAccounts,
+	type DeployScriptModule,
+	type EnhancedEnvironment,
+	type ResolvedUserConfig,
+	type ConfigOverrides,
+	type UserConfig,
+	type PromptExecutor,
 } from '@rocketh/core/types';
 import {
 	withEnvironment,
-	getChainByName,
 	resolveConfig,
 	resolveExecutionParams,
 	createEnvironment,
-	getRoughGasPriceEstimate,
-	spin,
 	logger,
-	setLogLevel,
+	getEnvironmentName,
+	getChainIdForEnvironment,
+	createExecutor,
+	setupDeployScripts,
 } from '@rocketh/core';
 import {traverseMultipleDirectory} from '../utils/fs.js';
 import {createFSDeploymentStoreFactory} from '../environment/deployment-store.js';
@@ -56,6 +55,19 @@ import {createFSDeploymentStoreFactory} from '../environment/deployment-store.js
  * }, { tags: ['deploy'] });
  * ```
  */
+
+export function setup<
+	Extensions extends Record<string, (env: Environment<any, any, any>) => any> = {},
+	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
+	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
+	Deployments extends UnknownDeployments = UnknownDeployments,
+	Extra extends Record<string, unknown> = Record<string, unknown>
+>(extensions: Extensions) {
+	const {deployScript} = setupDeployScripts<Extensions, NamedAccounts, Data, Deployments, Extra>(extensions);
+	const {loadAndExecuteDeployments} = setupEnvironment<Extensions, NamedAccounts, Data, Deployments, Extra>(extensions);
+	return {deployScript, loadAndExecuteDeployments};
+}
+
 export function setupEnvironment<
 	Extensions extends Record<string, (env: Environment<any, any, any>) => any> = {},
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
@@ -179,55 +191,14 @@ export async function readAndResolveConfig<
 	return resolveConfig(configFile, overrides);
 }
 
-export async function getChainIdForEnvironment(
-	config: ResolvedUserConfig,
-	environmentName: string,
-	provider?: EIP1193ProviderWithoutEvents
-) {
-	if (config?.environments?.[environmentName]?.chain) {
-		const chainAsNumber =
-			typeof config.environments[environmentName].chain === 'number'
-				? config.environments[environmentName].chain
-				: parseInt(config.environments[environmentName].chain);
-		if (!isNaN(chainAsNumber)) {
-			return chainAsNumber;
-		}
-		const chainFound = getChainByName(config.environments[environmentName].chain as string);
-		if (chainFound) {
-			return chainFound.id;
-		} else {
-			throw new Error(`environment ${environmentName} chain id cannot be found, specify it in the rocketh config`);
-		}
-	} else {
-		const chainFound = getChainByName(environmentName);
-		if (chainFound) {
-			return chainFound.id;
-		} else {
-			if (provider) {
-				const chainIdAsHex = await provider.request({method: 'eth_chainId'});
-				return Number(chainIdAsHex);
-			} else {
-				throw new Error(`environment ${environmentName} chain id cannot be found, specify it in the rocketh config`);
-			}
-		}
-	}
-}
-
-function getEnvironmentName(executionParams: ExecutionParams): {name: string; fork: boolean} {
-	const environmentProvided = executionParams.environment || (executionParams as any).network;
-	let environmentName = 'memory';
-	if (environmentProvided) {
-		if (typeof environmentProvided === 'string') {
-			environmentName = environmentProvided;
-		} else if ('fork' in environmentProvided) {
-			environmentName = environmentProvided.fork;
-		}
-	}
-	const fork = typeof environmentProvided !== 'string';
-	return {name: environmentName, fork};
-}
-
 const deploymentStoreFactory = createFSDeploymentStoreFactory();
+const promptExecutor: PromptExecutor = async (request: {type: 'confirm'; name: string; message: string}) => {
+	const answer = await prompts<string>(request);
+	return {
+		proceed: answer.proceed,
+	};
+};
+const executor = createExecutor(deploymentStoreFactory, promptExecutor);
 
 export async function loadEnvironment<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
@@ -262,6 +233,7 @@ export async function loadAndExecuteDeployments<
 	const resolvedExecutionParams = resolveExecutionParams(userConfig, executionParams, chainId);
 	// console.log(JSON.stringify(options, null, 2));
 	// console.log(JSON.stringify(resolvedConfig, null, 2));
+
 	return _executeDeployScripts<NamedAccounts, Data, ArgumentsType>(userConfig, resolvedExecutionParams, args);
 }
 
@@ -292,8 +264,6 @@ async function _executeDeployScripts<
 	resolvedExecutionParams: ResolvedExecutionParams,
 	args?: ArgumentsType
 ): Promise<Environment<NamedAccounts, Data, UnknownDeployments>> {
-	setLogLevel(typeof resolvedExecutionParams.logLevel === 'undefined' ? 0 : resolvedExecutionParams.logLevel);
-
 	let filepaths;
 	filepaths = traverseMultipleDirectory(resolvedExecutionParams.scripts);
 	filepaths = filepaths
@@ -308,10 +278,7 @@ async function _executeDeployScripts<
 			return 0;
 		});
 
-	const scriptModuleByFilePath: {[filename: string]: DeployScriptModule<NamedAccounts, Data, ArgumentsType>} = {};
-	const scriptPathBags: {[tag: string]: string[]} = {};
-	const scriptFilePaths: string[] = [];
-
+	const moduleObjects: {id: string; module: DeployScriptModule<NamedAccounts, Data, ArgumentsType>}[] = [];
 	for (const filepath of filepaths) {
 		const scriptFilePath = path.resolve(filepath);
 		let scriptModule: DeployScriptModule<NamedAccounts, Data, ArgumentsType>;
@@ -329,183 +296,17 @@ async function _executeDeployScripts<
 					scriptModule = (scriptModule as any).default as DeployScriptModule<NamedAccounts, Data, ArgumentsType>;
 				}
 			}
-			scriptModuleByFilePath[scriptFilePath] = scriptModule;
+			moduleObjects.push({id: scriptFilePath, module: scriptModule});
 		} catch (e) {
 			logger.error(`could not import ${filepath}`);
 			throw e;
 		}
-
-		let scriptTags = scriptModule.tags;
-		if (scriptTags !== undefined) {
-			if (typeof scriptTags === 'string') {
-				scriptTags = [scriptTags];
-			}
-			for (const tag of scriptTags) {
-				if (tag.indexOf(',') >= 0) {
-					throw new Error('Tag cannot contains commas');
-				}
-				const bag = scriptPathBags[tag] || [];
-				scriptPathBags[tag] = bag;
-				bag.push(scriptFilePath);
-			}
-		}
-
-		if (resolvedExecutionParams.tags !== undefined && resolvedExecutionParams.tags.length > 0) {
-			let found = false;
-			if (scriptTags !== undefined) {
-				for (const tagToFind of resolvedExecutionParams.tags) {
-					for (const tag of scriptTags) {
-						if (tag === tagToFind) {
-							scriptFilePaths.push(scriptFilePath);
-							found = true;
-							break;
-						}
-					}
-					if (found) {
-						break;
-					}
-				}
-			}
-		} else {
-			scriptFilePaths.push(scriptFilePath);
-		}
 	}
 
-	const {internal, external} = await createEnvironment<NamedAccounts, Data, UnknownDeployments>(
+	return executor.executeDeployScriptModules<NamedAccounts, Data, ArgumentsType>(
+		moduleObjects,
 		userConfig,
 		resolvedExecutionParams,
-		deploymentStoreFactory
+		args
 	);
-
-	await internal.recoverTransactionsIfAny();
-
-	const scriptsRegisteredToRun: {[filename: string]: boolean} = {};
-	const scriptsToRun: Array<{
-		func: DeployScriptModule<NamedAccounts, Data, ArgumentsType>;
-		filePath: string;
-	}> = [];
-	const scriptsToRunAtTheEnd: Array<{
-		func: DeployScriptModule<NamedAccounts, Data, ArgumentsType>;
-		filePath: string;
-	}> = [];
-	function recurseDependencies(scriptFilePath: string) {
-		if (scriptsRegisteredToRun[scriptFilePath]) {
-			return;
-		}
-		const scriptModule = scriptModuleByFilePath[scriptFilePath];
-		if (scriptModule.dependencies) {
-			for (const dependency of scriptModule.dependencies) {
-				const scriptFilePathsToAdd = scriptPathBags[dependency];
-				if (scriptFilePathsToAdd) {
-					for (const scriptFilenameToAdd of scriptFilePathsToAdd) {
-						recurseDependencies(scriptFilenameToAdd);
-					}
-				}
-			}
-		}
-		if (!scriptsRegisteredToRun[scriptFilePath]) {
-			if (scriptModule.runAtTheEnd) {
-				scriptsToRunAtTheEnd.push({
-					filePath: scriptFilePath,
-					func: scriptModule,
-				});
-			} else {
-				scriptsToRun.push({
-					filePath: scriptFilePath,
-					func: scriptModule,
-				});
-			}
-			scriptsRegisteredToRun[scriptFilePath] = true;
-		}
-	}
-	for (const scriptFilePath of scriptFilePaths) {
-		recurseDependencies(scriptFilePath);
-	}
-
-	if (resolvedExecutionParams.askBeforeProceeding) {
-		console.log(
-			`Network: ${external.name} \n \t Chain: ${external.network.chain.name} \n \t Tags: ${Object.keys(
-				external.tags
-			).join(',')}`
-		);
-		const gasPriceEstimate = await getRoughGasPriceEstimate(external.network.provider);
-		const prompt = await prompts({
-			type: 'confirm',
-			name: 'proceed',
-			message: `gas price is currently in this range:
-slow: ${formatEther(gasPriceEstimate.slow.maxFeePerGas)} (priority: ${formatEther(
-				gasPriceEstimate.slow.maxPriorityFeePerGas
-			)})
-average: ${formatEther(gasPriceEstimate.average.maxFeePerGas)} (priority: ${formatEther(
-				gasPriceEstimate.average.maxPriorityFeePerGas
-			)})
-fast: ${formatEther(gasPriceEstimate.fast.maxFeePerGas)} (priority: ${formatEther(
-				gasPriceEstimate.fast.maxPriorityFeePerGas
-			)})
-
-Do you want to proceed (note that gas price can change for each tx)`,
-		});
-
-		if (!prompt.proceed) {
-			process.exit();
-		}
-	}
-
-	for (const deployScript of scriptsToRun.concat(scriptsToRunAtTheEnd)) {
-		const filename = path.basename(deployScript.filePath);
-		const relativeFilepath = path.relative('.', deployScript.filePath);
-		if (deployScript.func.id && external.hasMigrationBeenDone(deployScript.func.id)) {
-			logger.info(`skipping ${filename} as migrations already executed and complete`);
-			continue;
-		}
-		let skip = false;
-		const spinner = spin(`- Executing ${filename}`);
-		// if (deployScript.func.skip) {
-		// 	const spinner = spin(`  - skip?()`);
-		// 	try {
-		// 		skip = await deployScript.func.skip(external, args);
-		// 		spinner.succeed(skip ? `skipping ${filename}` : undefined);
-		// 	} catch (e) {
-		// 		spinner.fail();
-		// 		throw e;
-		// 	}
-		// }
-		if (!skip) {
-			let result;
-
-			try {
-				result = await deployScript.func(external, args);
-				spinner.succeed(`\n`);
-			} catch (e) {
-				spinner.fail();
-				throw e;
-			}
-			if (result && typeof result === 'boolean') {
-				if (!deployScript.func.id) {
-					throw new Error(
-						`${deployScript.filePath} return true to not be executed again, but does not provide an id. the script function needs to have the field "id" to be set`
-					);
-				}
-				internal.recordMigration(deployScript.func.id);
-			}
-		}
-	}
-
-	if (resolvedExecutionParams.reportGasUse) {
-		const provider = external.network.provider;
-		const transactionHashes = provider.transactionHashes;
-
-		let totalGasUsed = 0;
-		for (const hash of transactionHashes) {
-			const transactionReceipt = await provider.request({method: 'eth_getTransactionReceipt', params: [hash]});
-			if (transactionReceipt) {
-				const gasUsed = Number(transactionReceipt.gasUsed);
-				totalGasUsed += gasUsed;
-			}
-		}
-
-		console.log({totalGasUsed});
-	}
-
-	return external;
 }

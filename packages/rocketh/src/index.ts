@@ -5,6 +5,7 @@ export {
 	loadEnvironment,
 	readAndResolveConfig,
 	loadAndExecuteDeployments,
+	setup,
 } from './executor/index.js';
 
 export {setupDeployScripts, chainByCanonicalName} from '@rocketh/core';

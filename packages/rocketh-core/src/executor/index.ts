@@ -15,11 +15,15 @@ import type {
 	UserConfig,
 	ChainConfig,
 	DeploymentStoreFactory,
+	PromptExecutor,
 } from '../types.js';
 import {withEnvironment} from '../utils/extensions.js';
 import {getChainByName, getChainConfig} from '../environment/utils/chains.js';
 import {JSONRPCHTTPProvider} from 'eip-1193-jsonrpc-provider';
 import {createEnvironment} from '../environment/index.js';
+import {logger, setLogLevel, spin} from '../internal/logging.js';
+import {getRoughGasPriceEstimate} from '../utils/eth.js';
+import {formatEther} from 'viem';
 
 /**
  * Setup function that creates the execute function for deploy scripts. It allow to specify a set of functions that will be available in the environment.
@@ -148,7 +152,7 @@ export async function getChainIdForEnvironment(
 	}
 }
 
-function getEnvironmentName(executionParams: ExecutionParams): {name: string; fork: boolean} {
+export function getEnvironmentName(executionParams: ExecutionParams): {name: string; fork: boolean} {
 	const environmentProvided = executionParams.environment || (executionParams as any).network;
 	let environmentName = 'memory';
 	if (environmentProvided) {
@@ -267,4 +271,229 @@ export async function loadEnvironment<
 		deploymentStoreFactory
 	);
 	return external;
+}
+
+export function createExecutor(deploymentStoreFactory: DeploymentStoreFactory, promptExecutor: PromptExecutor) {
+	async function resolveConfigAndExecuteDeployScriptModules<
+		NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
+		Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
+		ArgumentsType = undefined,
+		Extra extends Record<string, unknown> = Record<string, unknown>
+	>(
+		moduleObjects: {id: string; module: DeployScriptModule<NamedAccounts, Data, ArgumentsType>}[],
+		userConfig: UserConfig,
+		executionParams?: ExecutionParams<Extra>,
+		args?: ArgumentsType
+	): Promise<Environment<NamedAccounts, Data, UnknownDeployments>> {
+		executionParams = executionParams || {};
+		const resolveduserConfig = resolveConfig<NamedAccounts, Data>(userConfig, executionParams.config);
+		const {name: environmentName, fork} = getEnvironmentName(executionParams);
+		const chainId = await getChainIdForEnvironment(resolveduserConfig, environmentName, executionParams.provider);
+		const resolvedExecutionParams = resolveExecutionParams(resolveduserConfig, executionParams, chainId);
+		return executeDeployScriptModules<NamedAccounts, Data, ArgumentsType>(
+			moduleObjects,
+			resolveduserConfig,
+			resolvedExecutionParams,
+			args
+		);
+	}
+
+	async function executeDeployScriptModules<
+		NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
+		Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
+		ArgumentsType = undefined
+	>(
+		moduleObjects: {id: string; module: DeployScriptModule<NamedAccounts, Data, ArgumentsType>}[],
+		userConfig: ResolvedUserConfig<NamedAccounts, Data>,
+		resolvedExecutionParams: ResolvedExecutionParams,
+		args?: ArgumentsType
+	): Promise<Environment<NamedAccounts, Data, UnknownDeployments>> {
+		setLogLevel(typeof resolvedExecutionParams.logLevel === 'undefined' ? 0 : resolvedExecutionParams.logLevel);
+
+		const scriptModuleById: {[id: string]: DeployScriptModule<NamedAccounts, Data, ArgumentsType>} = {};
+		const scriptIdBags: {[tag: string]: string[]} = {};
+		const ids: string[] = [];
+
+		for (const moduleObject of moduleObjects) {
+			const id = moduleObject.id;
+			let scriptModule = moduleObject.module;
+			scriptModuleById[id] = scriptModule;
+
+			let scriptTags = scriptModule.tags;
+			if (scriptTags !== undefined) {
+				if (typeof scriptTags === 'string') {
+					scriptTags = [scriptTags];
+				}
+				for (const tag of scriptTags) {
+					if (tag.indexOf(',') >= 0) {
+						throw new Error('Tag cannot contains commas');
+					}
+					const bag = scriptIdBags[tag] || [];
+					scriptIdBags[tag] = bag;
+					bag.push(id);
+				}
+			}
+
+			if (resolvedExecutionParams.tags !== undefined && resolvedExecutionParams.tags.length > 0) {
+				let found = false;
+				if (scriptTags !== undefined) {
+					for (const tagToFind of resolvedExecutionParams.tags) {
+						for (const tag of scriptTags) {
+							if (tag === tagToFind) {
+								ids.push(id);
+								found = true;
+								break;
+							}
+						}
+						if (found) {
+							break;
+						}
+					}
+				}
+			} else {
+				ids.push(id);
+			}
+		}
+
+		const {internal, external} = await createEnvironment<NamedAccounts, Data, UnknownDeployments>(
+			userConfig,
+			resolvedExecutionParams,
+			deploymentStoreFactory
+		);
+
+		await internal.recoverTransactionsIfAny();
+
+		const scriptsRegisteredToRun: {[filename: string]: boolean} = {};
+		const scriptsToRun: Array<{
+			func: DeployScriptModule<NamedAccounts, Data, ArgumentsType>;
+			id: string;
+		}> = [];
+		const scriptsToRunAtTheEnd: Array<{
+			func: DeployScriptModule<NamedAccounts, Data, ArgumentsType>;
+			id: string;
+		}> = [];
+		function recurseDependencies(id: string) {
+			if (scriptsRegisteredToRun[id]) {
+				return;
+			}
+			const scriptModule = scriptModuleById[id];
+			if (scriptModule.dependencies) {
+				for (const dependency of scriptModule.dependencies) {
+					const scriptFilePathsToAdd = scriptIdBags[dependency];
+					if (scriptFilePathsToAdd) {
+						for (const scriptFilenameToAdd of scriptFilePathsToAdd) {
+							recurseDependencies(scriptFilenameToAdd);
+						}
+					}
+				}
+			}
+			if (!scriptsRegisteredToRun[id]) {
+				if (scriptModule.runAtTheEnd) {
+					scriptsToRunAtTheEnd.push({
+						id: id,
+						func: scriptModule,
+					});
+				} else {
+					scriptsToRun.push({
+						id: id,
+						func: scriptModule,
+					});
+				}
+				scriptsRegisteredToRun[id] = true;
+			}
+		}
+		for (const id of ids) {
+			recurseDependencies(id);
+		}
+
+		if (resolvedExecutionParams.askBeforeProceeding) {
+			console.log(
+				`Network: ${external.name} \n \t Chain: ${external.network.chain.name} \n \t Tags: ${Object.keys(
+					external.tags
+				).join(',')}`
+			);
+			const gasPriceEstimate = await getRoughGasPriceEstimate(external.network.provider);
+			const prompt = await promptExecutor({
+				type: 'confirm',
+				name: 'proceed',
+				message: `gas price is currently in this range:
+slow: ${formatEther(gasPriceEstimate.slow.maxFeePerGas)} (priority: ${formatEther(
+					gasPriceEstimate.slow.maxPriorityFeePerGas
+				)})
+average: ${formatEther(gasPriceEstimate.average.maxFeePerGas)} (priority: ${formatEther(
+					gasPriceEstimate.average.maxPriorityFeePerGas
+				)})
+fast: ${formatEther(gasPriceEstimate.fast.maxFeePerGas)} (priority: ${formatEther(
+					gasPriceEstimate.fast.maxPriorityFeePerGas
+				)})
+
+Do you want to proceed (note that gas price can change for each tx)`,
+			});
+
+			if (!prompt.proceed) {
+				process.exit();
+			}
+		}
+
+		for (const deployScript of scriptsToRun.concat(scriptsToRunAtTheEnd)) {
+			if (deployScript.func.id && external.hasMigrationBeenDone(deployScript.func.id)) {
+				logger.info(`skipping ${deployScript.id} as migrations already executed and complete`);
+				continue;
+			}
+			let skip = false;
+			const spinner = spin(`- Executing ${deployScript.id}`);
+			// if (deployScript.func.skip) {
+			// 	const spinner = spin(`  - skip?()`);
+			// 	try {
+			// 		skip = await deployScript.func.skip(external, args);
+			// 		spinner.succeed(skip ? `skipping ${filename}` : undefined);
+			// 	} catch (e) {
+			// 		spinner.fail();
+			// 		throw e;
+			// 	}
+			// }
+			if (!skip) {
+				let result;
+
+				try {
+					result = await deployScript.func(external, args);
+					spinner.succeed(`\n`);
+				} catch (e) {
+					spinner.fail();
+					throw e;
+				}
+				if (result && typeof result === 'boolean') {
+					if (!deployScript.func.id) {
+						throw new Error(
+							`${deployScript.id} return true to not be executed again, but does not provide an id. the script function needs to have the field "id" to be set`
+						);
+					}
+					internal.recordMigration(deployScript.func.id);
+				}
+			}
+		}
+
+		if (resolvedExecutionParams.reportGasUse) {
+			const provider = external.network.provider;
+			const transactionHashes = provider.transactionHashes;
+
+			let totalGasUsed = 0;
+			for (const hash of transactionHashes) {
+				const transactionReceipt = await provider.request({method: 'eth_getTransactionReceipt', params: [hash]});
+				if (transactionReceipt) {
+					const gasUsed = Number(transactionReceipt.gasUsed);
+					totalGasUsed += gasUsed;
+				}
+			}
+
+			console.log({totalGasUsed});
+		}
+
+		return external;
+	}
+
+	return {
+		executeDeployScriptModules,
+		resolveConfigAndExecuteDeployScriptModules,
+	};
 }

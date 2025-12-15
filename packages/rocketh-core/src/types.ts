@@ -621,4 +621,9 @@ export type DeploymentStoreFactory = {
 	create({chainId, genesisHash}: {chainId: string; genesisHash?: string}): DeploymentStore;
 };
 
+export type PromptAnswer = {
+	proceed: boolean;
+};
+export type PromptExecutor = (request: {type: 'confirm'; name: string; message: string}) => Promise<PromptAnswer>;
+
 export type * from 'eip-1193';
