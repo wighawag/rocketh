@@ -25,9 +25,10 @@ import {
 	getChainIdForEnvironment,
 	createExecutor,
 	setupDeployScripts,
+	loadDeployments,
 } from '@rocketh/core';
 import {traverseMultipleDirectory} from '../utils/fs.js';
-import {createFSDeploymentStoreFactory} from '../environment/deployment-store.js';
+import {createFSDeploymentStore} from '../environment/deployment-store.js';
 
 /**
  * Setup function that creates the execute function for deploy scripts. It allow to specify a set of functions that will be available in the environment.
@@ -191,14 +192,28 @@ export async function readAndResolveConfig<
 	return resolveConfig(configFile, overrides);
 }
 
-const deploymentStoreFactory = createFSDeploymentStoreFactory();
+const deploymentStore = createFSDeploymentStore();
 const promptExecutor: PromptExecutor = async (request: {type: 'confirm'; name: string; message: string}) => {
 	const answer = await prompts<string>(request);
 	return {
 		proceed: answer.proceed,
 	};
 };
-const executor = createExecutor(deploymentStoreFactory, promptExecutor);
+const executor = createExecutor(deploymentStore, promptExecutor);
+
+export function loadDeploymentsFromFiles(
+	deploymentsPath: string,
+	networkName: string,
+	onlyABIAndAddress?: boolean,
+	expectedChain?: {chainId: string; genesisHash?: `0x${string}`; deleteDeploymentsIfDifferentGenesisHash?: boolean}
+): Promise<{
+	deployments: UnknownDeployments;
+	migrations: Record<string, number>;
+	chainId?: string;
+	genesisHash?: `0x${string}`;
+}> {
+	return loadDeployments(deploymentStore, deploymentsPath, networkName, onlyABIAndAddress, expectedChain);
+}
 
 export async function loadEnvironment<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
@@ -213,7 +228,7 @@ export async function loadEnvironment<
 	const {external, internal} = await createEnvironment<NamedAccounts, Data, UnknownDeployments>(
 		userConfig,
 		resolvedExecutionParams,
-		deploymentStoreFactory
+		deploymentStore
 	);
 	return external;
 }

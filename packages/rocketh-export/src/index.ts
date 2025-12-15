@@ -4,7 +4,7 @@ import path from 'node:path';
 
 import type {ChainInfo, Deployment, LinkedData, ResolvedUserConfig} from '@rocketh/core/types';
 import {bigIntToStringReplacer, getChainConfig} from '@rocketh/core';
-import {loadDeployments} from 'rocketh';
+import {loadDeploymentsFromFiles} from 'rocketh';
 
 export interface ContractExport {
 	address: `0x${string}`;
@@ -52,7 +52,7 @@ export async function run(
 		return;
 	}
 
-	const {deployments, chainId, genesisHash} = loadDeployments(config.deployments, environmentName);
+	const {deployments, chainId, genesisHash} = await loadDeploymentsFromFiles(config.deployments, environmentName);
 
 	if (!deployments || Object.keys(deployments).length === 0) {
 		console.log(`no deployments to export`);

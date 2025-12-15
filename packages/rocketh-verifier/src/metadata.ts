@@ -1,10 +1,10 @@
-import {loadDeployments} from 'rocketh';
+import {loadDeploymentsFromFiles} from 'rocketh';
 import type {ResolvedUserConfig} from '@rocketh/core/types';
 import fs from 'fs-extra';
 import path from 'path';
 
-export function exportMetadata(config: ResolvedUserConfig, environmentName: string, {out}: {out: string}) {
-	const {deployments, chainId} = loadDeployments(config.deployments, environmentName, false);
+export async function exportMetadata(config: ResolvedUserConfig, environmentName: string, {out}: {out: string}) {
+	const {deployments, chainId} = await loadDeploymentsFromFiles(config.deployments, environmentName, false);
 
 	if (Object.keys(deployments).length === 0) {
 		console.log(`the environment ${environmentName} has zero deployments`);

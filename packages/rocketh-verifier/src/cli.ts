@@ -84,7 +84,7 @@ program
 	.action(async (options: {out?: string}) => {
 		const {environment, ...programOptions} = program.opts();;
 		const resolvedConfig = await readAndResolveConfig({...programOptions});
-		exportMetadata(resolvedConfig, environment, {out: options.out || '_metadata'});
+		await exportMetadata(resolvedConfig, environment, {out: options.out || '_metadata'});
 	});
 
 program.parse(process.argv);

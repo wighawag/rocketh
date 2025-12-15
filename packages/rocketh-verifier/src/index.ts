@@ -1,4 +1,4 @@
-import {loadDeployments} from 'rocketh';
+import {loadDeploymentsFromFiles} from 'rocketh';
 import type {ResolvedUserConfig} from '@rocketh/core/types';
 import {submitSourcesToEtherscan} from './etherscan.js';
 import {submitSourcesToSourcify} from './sourcify.js';
@@ -32,7 +32,7 @@ export type VerificationOptions = {
 };
 
 export async function run(config: ResolvedUserConfig, environmentName: string, options: VerificationOptions) {
-	const {deployments, chainId} = loadDeployments(config.deployments, environmentName, false);
+	const {deployments, chainId} = await loadDeploymentsFromFiles(config.deployments, environmentName, false);
 
 	if (Object.keys(deployments).length === 0) {
 		console.log(`the environment ${environmentName} has zero deployments`);

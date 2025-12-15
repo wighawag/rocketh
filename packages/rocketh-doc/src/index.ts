@@ -11,7 +11,7 @@ import type {
 	UserConfig,
 	ResolvedUserConfig,
 } from '@rocketh/core/types';
-import {loadDeployments} from 'rocketh';
+import {loadDeploymentsFromFiles} from 'rocketh';
 import Handlebars from 'handlebars';
 import path from 'path';
 import {Fragment, FunctionFragment} from 'ethers';
@@ -38,7 +38,7 @@ function filter(options: RunOptions, name: string): boolean {
 }
 
 export async function run(config: ResolvedUserConfig, environmentName: string, options: RunOptions) {
-	const {deployments, chainId} = loadDeployments(config.deployments, environmentName);
+	const {deployments, chainId} = await loadDeploymentsFromFiles(config.deployments, environmentName);
 	if (!chainId) {
 		throw new Error(`no chainId found for ${environmentName}`);
 	}

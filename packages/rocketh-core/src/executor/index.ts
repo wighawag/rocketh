@@ -14,8 +14,8 @@ import type {
 	ConfigOverrides,
 	UserConfig,
 	ChainConfig,
-	DeploymentStoreFactory,
 	PromptExecutor,
+	DeploymentStore,
 } from '../types.js';
 import {withEnvironment} from '../utils/extensions.js';
 import {getChainByName, getChainConfig} from '../environment/utils/chains.js';
@@ -258,7 +258,7 @@ export async function loadEnvironment<
 >(
 	config: UserConfig,
 	executionParams: ExecutionParams<Extra>,
-	deploymentStoreFactory: DeploymentStoreFactory
+	deploymentStore: DeploymentStore
 ): Promise<Environment<NamedAccounts, Data, UnknownDeployments>> {
 	const userConfig = await resolveConfig<NamedAccounts, Data>(config, executionParams.config);
 	const {name: environmentName, fork} = getEnvironmentName(executionParams);
@@ -268,12 +268,12 @@ export async function loadEnvironment<
 	const {external, internal} = await createEnvironment<NamedAccounts, Data, UnknownDeployments>(
 		userConfig,
 		resolvedExecutionParams,
-		deploymentStoreFactory
+		deploymentStore
 	);
 	return external;
 }
 
-export function createExecutor(deploymentStoreFactory: DeploymentStoreFactory, promptExecutor: PromptExecutor) {
+export function createExecutor(deploymentStore: DeploymentStore, promptExecutor: PromptExecutor) {
 	async function resolveConfigAndExecuteDeployScriptModules<
 		NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 		Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
@@ -358,7 +358,7 @@ export function createExecutor(deploymentStoreFactory: DeploymentStoreFactory, p
 		const {internal, external} = await createEnvironment<NamedAccounts, Data, UnknownDeployments>(
 			userConfig,
 			resolvedExecutionParams,
-			deploymentStoreFactory
+			deploymentStore
 		);
 
 		await internal.recoverTransactionsIfAny();

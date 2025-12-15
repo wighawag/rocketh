@@ -6,11 +6,10 @@ export {
 	readAndResolveConfig,
 	loadAndExecuteDeployments,
 	setup,
+	loadDeploymentsFromFiles,
 } from './executor/index.js';
 
 export {setupDeployScripts, chainByCanonicalName} from '@rocketh/core';
-
-export {loadDeployments} from './environment/deployments.js';
 
 export type * from '@rocketh/core/types';
 

@@ -17,7 +17,7 @@ import {
 	ResolvedExecutionParams,
 	ResolvedUserConfig,
 	PendingExecution,
-	DeploymentStoreFactory,
+	DeploymentStore,
 } from '../types.js';
 import {Abi, Address} from 'abitype';
 import {InternalEnvironment} from '../internal/types.js';
@@ -50,6 +50,115 @@ function displayTransaction(transaction: EIP1193Transaction) {
 	}
 }
 
+export async function loadDeployments(
+	deploymentStore: DeploymentStore,
+	deploymentsPath: string,
+	networkName: string,
+	onlyABIAndAddress?: boolean,
+	expectedChain?: {chainId: string; genesisHash?: `0x${string}`; deleteDeploymentsIfDifferentGenesisHash?: boolean}
+): Promise<{
+	deployments: UnknownDeployments;
+	migrations: Record<string, number>;
+	chainId?: string;
+	genesisHash?: `0x${string}`;
+}> {
+	const deploymentsFound: UnknownDeployments = {};
+
+	let fileNames: string[];
+	try {
+		fileNames = await deploymentStore.listFiles(
+			deploymentsPath,
+			networkName,
+			(name) => !(name.startsWith('.') && name !== '.migrations.json') && name !== 'solcInputs'
+		);
+	} catch (e) {
+		// console.log('no folder at ' + deployPath);
+		return {deployments: {}, migrations: {}};
+	}
+	let chainId: string;
+	let genesisHash: `0x${string}` | undefined;
+	if (fileNames.length > 0) {
+		if (await deploymentStore.hasFile(deploymentsPath, networkName, '.chain')) {
+			const chainSTR = await deploymentStore.readFile(deploymentsPath, networkName, '.chain');
+			const chainData = JSON.parse(chainSTR);
+			chainId = chainData.chainId;
+			genesisHash = chainData.genesisHash;
+		} else if (await deploymentStore.hasFile(deploymentsPath, networkName, '.chainId')) {
+			chainId = await deploymentStore.readFile(deploymentsPath, networkName, '.chainId');
+		} else {
+			throw new Error(
+				`A '.chain' or '.chainId' file is expected to be present in the deployment folder for network ${networkName}`
+			);
+		}
+
+		if (expectedChain) {
+			if (expectedChain.chainId !== chainId) {
+				throw new Error(
+					`Loading deployment from environment '${networkName}' (with chainId: ${chainId}) for a different chainId (${expectedChain.chainId})`
+				);
+			}
+
+			if (genesisHash) {
+				if (expectedChain.genesisHash && expectedChain.genesisHash !== genesisHash) {
+					if (expectedChain.deleteDeploymentsIfDifferentGenesisHash) {
+						// we delete the old folder
+
+						await deploymentStore.deleteAll(deploymentsPath, networkName);
+						return {deployments: {}, migrations: {}};
+					} else {
+						throw new Error(
+							`Loading deployment from environment '${networkName}' (with genesisHash: ${genesisHash}) for a different genesisHash (${expectedChain.genesisHash})`
+						);
+					}
+				}
+			} else {
+				console.warn(
+					`genesisHash not found in environment '${networkName}' (with chainId: ${chainId}), writing .chain with expected one...`
+				);
+				await deploymentStore.writeFile(
+					deploymentsPath,
+					networkName,
+					'.chain',
+					JSON.stringify({chainId: expectedChain.chainId, genesisHash: expectedChain.genesisHash})
+				);
+				try {
+					await deploymentStore.deleteFile(deploymentsPath, networkName, '.chainId');
+				} catch {}
+			}
+		}
+	} else {
+		return {deployments: {}, migrations: {}};
+	}
+
+	let migrations: Record<string, number> = {};
+	const migrationsFileName = '.migrations.json';
+	if (await deploymentStore.hasFile(deploymentsPath, networkName, migrationsFileName)) {
+		try {
+			migrations = JSON.parse(await deploymentStore.readFile(deploymentsPath, networkName, migrationsFileName));
+		} catch (err) {
+			console.error(`failed to parse .migrations.json`);
+		}
+	}
+
+	for (const fileName of fileNames) {
+		if (fileName.substring(fileName.length - 5) === '.json' && fileName !== '.migrations.json') {
+			let deployment = JSON.parse(await deploymentStore.readFile(deploymentsPath, networkName, fileName));
+			if (onlyABIAndAddress) {
+				deployment = {
+					address: deployment.address,
+					abi: deployment.abi,
+					linkedData: deployment.linkedData,
+				};
+			}
+			const name = fileName.slice(0, fileName.length - 5);
+			// console.log('fetching ' + deploymentFileName + '  for ' + name);
+
+			deploymentsFound[name] = deployment;
+		}
+	}
+	return {deployments: deploymentsFound, migrations, chainId, genesisHash};
+}
+
 export async function createEnvironment<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
@@ -57,7 +166,7 @@ export async function createEnvironment<
 >(
 	userConfig: ResolvedUserConfig<NamedAccounts, Data>,
 	resolvedExecutionParams: ResolvedExecutionParams,
-	deploymentStoreFactory: DeploymentStoreFactory
+	deploymentStore: DeploymentStore
 ): Promise<{internal: InternalEnvironment; external: Environment<NamedAccounts, Data, Deployments>}> {
 	const rawProvider = resolvedExecutionParams.provider;
 
@@ -206,11 +315,8 @@ export async function createEnvironment<
 		tags: networkTags,
 	};
 
-	// console.log(`context`, JSON.stringify(context.network, null, 2));
-
-	const deploymentStore = deploymentStoreFactory.create({chainId, genesisHash});
-
-	const {deployments, migrations} = await deploymentStore.loadDeployments(
+	const {deployments, migrations} = await loadDeployments(
+		deploymentStore,
 		deploymentsFolder,
 		environmentName,
 		false,
@@ -303,7 +409,13 @@ export async function createEnvironment<
 	function recordMigration(id: string): void {
 		migrations[id] = Math.floor(Date.now() / 1000);
 		if (context.saveDeployments) {
-			deploymentStore.writeFile(deploymentsFolder, environmentName, '.migrations.json', JSON.stringify(migrations));
+			deploymentStore.writeFileWithChainInfo(
+				{chainId, genesisHash},
+				deploymentsFolder,
+				environmentName,
+				'.migrations.json',
+				JSON.stringify(migrations)
+			);
 		}
 	}
 
@@ -350,7 +462,13 @@ export async function createEnvironment<
 			deployments[name] = {...deployment, numDeployments: 1};
 		}
 		if (context.saveDeployments) {
-			deploymentStore.writeFile(deploymentsFolder, environmentName, `${name}.json`, JSONToString(deployment, 2));
+			deploymentStore.writeFileWithChainInfo(
+				{chainId, genesisHash},
+				deploymentsFolder,
+				environmentName,
+				`${name}.json`,
+				JSONToString(deployment, 2)
+			);
 		}
 		return deployment;
 	}
@@ -377,7 +495,8 @@ export async function createEnvironment<
 						);
 						try {
 							await waitForDeploymentTransactionAndSave(pendingTransaction);
-							await deploymentStore.writeFile(
+							await deploymentStore.writeFileWithChainInfo(
+								{chainId, genesisHash},
 								deploymentsFolder,
 								environmentName,
 								'.pending_transactions.json',
@@ -392,7 +511,8 @@ export async function createEnvironment<
 						const spinner = spin(`recovering execution's transaction ${pendingTransaction.transaction.hash}`);
 						try {
 							await waitForTransaction(pendingTransaction.transaction.hash);
-							await deploymentStore.writeFile(
+							await deploymentStore.writeFileWithChainInfo(
+								{chainId, genesisHash},
 								deploymentsFolder,
 								environmentName,
 								'.pending_transactions.json',
@@ -421,7 +541,8 @@ export async function createEnvironment<
 				existingPendinTransactions = [];
 			}
 			existingPendinTransactions.push(pendingTransaction);
-			await deploymentStore.writeFile(
+			await deploymentStore.writeFileWithChainInfo(
+				{chainId, genesisHash},
 				deploymentsFolder,
 				environmentName,
 				'.pending_transactions.json',
@@ -467,7 +588,8 @@ export async function createEnvironment<
 			if (existingPendinTransactions.length === 0) {
 				await deploymentStore.deleteFile(deploymentsFolder, environmentName, '.pending_transactions.json');
 			} else {
-				await deploymentStore.writeFile(
+				await deploymentStore.writeFileWithChainInfo(
+					{chainId, genesisHash},
 					deploymentsFolder,
 					environmentName,
 					'.pending_transactions.json',
