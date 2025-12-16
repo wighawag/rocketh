@@ -35,6 +35,7 @@ export type ProxyDeployOptions = Omit<DeployOptions, 'skipIfAlreadyDeployed' | '
 	upgradeIndex?: number;
 	checkProxyAdmin?: boolean;
 	checkABIConflict?: boolean;
+	deterministicImplementation?: boolean;
 	proxyContract?:
 		| PredefinedProxyContract
 		| ({type: PredefinedProxyContract} & {
@@ -213,7 +214,11 @@ export function deployViaProxy(
 							artifact,
 							account: address,
 						} as DeploymentConstruction<TAbi>,
-						{alwaysOverride: true, deterministic: true, libraries: options?.libraries}
+						{
+							alwaysOverride: true,
+							deterministic: options?.deterministic || options?.deterministicImplementation || false,
+							libraries: options?.libraries,
+						}
 				  );
 
 		logger.info(`implementation at ${implementationDeployment.address}`, `${implementationName}`);

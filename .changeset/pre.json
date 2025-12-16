@@ -17,6 +17,7 @@
     "@rocketh/web": "0.16.0"
   },
   "changesets": [
-    "lazy-deer-jam"
+    "lazy-deer-jam",
+    "sixty-clowns-raise"
   ]
 }

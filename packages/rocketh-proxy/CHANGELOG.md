@@ -1,5 +1,11 @@
 # @rocketh/proxy
 
+## 0.17.0-next.1
+
+### Patch Changes
+
+- proxy implementation is now not deterministic by default add deterministicImplementation opetion field
+
 ## 0.17.0-next.0
 
 ### Minor Changes
