@@ -4,7 +4,7 @@ import path from 'node:path';
 
 import type {ChainInfo, Deployment, LinkedData, ResolvedUserConfig} from '@rocketh/core/types';
 import {bigIntToStringReplacer, getChainConfig} from '@rocketh/core';
-import {loadDeploymentsFromFiles} from 'rocketh';
+import {loadDeploymentsFromFiles} from '@rocketh/node';
 
 export interface ContractExport {
 	address: `0x${string}`;

@@ -1,7 +1,7 @@
 {
-	"name": "rocketh",
+	"name": "@rocketh/node",
 	"version": "0.16.0",
-	"description": "deploy smart contract on ethereum-compatible networks",
+	"description": "rocketh for server-side JS runtime like node, including a cli",
 	"publishConfig": {
 		"access": "public"
 	},
@@ -21,6 +21,7 @@
 		"rocketh": "dist/cli.js"
 	},
 	"devDependencies": {
+		"@rocketh/core": "workspace:*",
 		"@types/node": "^24.10.2",
 		"as-soon": "^0.0.11",
 		"ipfs-gateway-emulator": "4.2.1-ipfs.2",
@@ -28,8 +29,10 @@
 		"typedoc": "^0.28.15",
 		"typescript": "^5.9.3"
 	},
+	"peerDependencies": {
+		"@rocketh/core": "workspace:*"
+	},
 	"dependencies": {
-		"@rocketh/core": "workspace:*",
 		"@types/prompts": "^2.4.9",
 		"change-case": "^5.4.4",
 		"commander": "^14.0.2",

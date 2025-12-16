@@ -29,14 +29,15 @@
 		"as-soon": "^0.0.11",
 		"eip-1193": "^0.6.5",
 		"rimraf": "^6.1.2",
-		"rocketh": "workspace:*",
+		"@rocketh/core": "workspace:*",
+		"@rocketh/node": "workspace:*",
 		"typescript": "^5.9.3"
 	},
 	"peerDependencies": {
-		"rocketh": "workspace:*"
+		"@rocketh/core": "workspace:*",
+		"@rocketh/node": "workspace:*"
 	},
 	"dependencies": {
-		"@rocketh/core": "workspace:*",
 		"@types/fs-extra": "^11.0.4",
 		"chalk": "5.6.2",
 		"commander": "^14.0.2",

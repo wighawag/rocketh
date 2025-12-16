@@ -4,7 +4,7 @@ import {run} from './index.js';
 import {Command, Option} from 'commander';
 import pkg from '../package.json' with {type: 'json'};
 import {exportMetadata} from './metadata.js';
-import { readAndResolveConfig } from 'rocketh';
+import { readAndResolveConfig } from '@rocketh/node';
 loadEnv();
 
 const commandName = `rocketh-verify`;

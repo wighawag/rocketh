@@ -10,7 +10,3 @@ export {
 } from './executor/index.js';
 
 export {setupDeployScripts, chainByCanonicalName} from '@rocketh/core';
-
-export type * from '@rocketh/core/types';
-
-export type * from 'eip-1193';

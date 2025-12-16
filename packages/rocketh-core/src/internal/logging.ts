@@ -13,7 +13,7 @@ export function setLogLevel(level: number) {
 	}
 }
 
-export const logger = logs('rocketh');
+export const logger = logs('rocketh-core');
 
 export type ProgressIndicator = {
 	start(msg?: string): ProgressIndicator;
@@ -62,7 +62,7 @@ const voidProgressIndicator: ProgressIndicator = {
 // 	return Logging.level > 0 ? ora(message).start() : voidProgressIndicator;
 // }
 
-// let lastSpin = ora('rocketh');
+// let lastSpin = ora('rocketh-core');
 let lastSpin = loggerProgressIndicator;
 export function spin(message?: string): ProgressIndicator {
 	if (Logging.level > 0) {

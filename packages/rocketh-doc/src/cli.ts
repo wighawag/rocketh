@@ -3,7 +3,7 @@ import {run} from './index.js';
 import {Command} from 'commander';
 import pkg from '../package.json' with {type: 'json'};
 import {RunOptions} from './index.js';
-import { readAndResolveConfig } from 'rocketh';
+import { readAndResolveConfig } from '@rocketh/node';
 import type {ConfigOverrides} from '@rocketh/core/types'
 
 const commandName = "rocketh-doc";

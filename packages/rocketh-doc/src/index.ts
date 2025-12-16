@@ -11,7 +11,7 @@ import type {
 	UserConfig,
 	ResolvedUserConfig,
 } from '@rocketh/core/types';
-import {loadDeploymentsFromFiles} from 'rocketh';
+import {loadDeploymentsFromFiles} from '@rocketh/node';
 import Handlebars from 'handlebars';
 import path from 'path';
 import {Fragment, FunctionFragment} from 'ethers';

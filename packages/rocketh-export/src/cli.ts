@@ -1,5 +1,5 @@
 #! /usr/bin/env node
-import {readAndResolveConfig} from 'rocketh';
+import {readAndResolveConfig} from '@rocketh/node';
 import type {ConfigOverrides} from '@rocketh/core/types';
 import {run} from './index.js';
 import {Command} from 'commander';

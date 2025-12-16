@@ -24,55 +24,6 @@ importers:
         specifier: ^0.0.1
         version: 0.0.1
 
-  packages/rocketh:
-    dependencies:
-      '@rocketh/core':
-        specifier: workspace:*
-        version: link:../rocketh-core
-      '@types/prompts':
-        specifier: ^2.4.9
-        version: 2.4.9
-      change-case:
-        specifier: ^5.4.4
-        version: 5.4.4
-      commander:
-        specifier: ^14.0.2
-        version: 14.0.2
-      eip-1193:
-        specifier: ^0.6.5
-        version: 0.6.5
-      ldenv:
-        specifier: ^0.3.16
-        version: 0.3.16
-      prompts:
-        specifier: ^2.4.2
-        version: 2.4.2
-      tsx:
-        specifier: ^4.21.0
-        version: 4.21.0
-      viem:
-        specifier: ^2.41.2
-        version: 2.41.2(typescript@5.9.3)(zod@4.1.13)
-    devDependencies:
-      '@types/node':
-        specifier: ^24.10.2
-        version: 24.10.2
-      as-soon:
-        specifier: ^0.0.11
-        version: 0.0.11
-      ipfs-gateway-emulator:
-        specifier: 4.2.1-ipfs.2
-        version: 4.2.1-ipfs.2
-      rimraf:
-        specifier: ^6.1.2
-        version: 6.1.2
-      typedoc:
-        specifier: ^0.28.15
-        version: 0.28.15(typescript@5.9.3)
-      typescript:
-        specifier: ^5.9.3
-        version: 5.9.3
-
   packages/rocketh-core:
     dependencies:
       abitype:
@@ -109,9 +60,6 @@ importers:
       as-soon:
         specifier: ^0.0.11
         version: 0.0.11
-      rocketh:
-        specifier: workspace:*
-        version: link:../rocketh
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -199,6 +147,9 @@ importers:
       '@rocketh/core':
         specifier: workspace:*
         version: link:../rocketh-core
+      '@rocketh/node':
+        specifier: workspace:*
+        version: link:../rocketh-node
       '@types/node':
         specifier: ^24.10.2
         version: 24.10.2
@@ -208,18 +159,12 @@ importers:
       rimraf:
         specifier: ^6.1.2
         version: 6.1.2
-      rocketh:
-        specifier: workspace:*
-        version: link:../rocketh
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
 
   packages/rocketh-export:
     dependencies:
-      '@rocketh/core':
-        specifier: workspace:*
-        version: link:../rocketh-core
       '@types/fs-extra':
         specifier: ^11.0.4
         version: 11.0.4
@@ -233,6 +178,12 @@ importers:
         specifier: ^11.3.2
         version: 11.3.2
     devDependencies:
+      '@rocketh/core':
+        specifier: workspace:*
+        version: link:../rocketh-core
+      '@rocketh/node':
+        specifier: workspace:*
+        version: link:../rocketh-node
       '@types/node':
         specifier: ^24.10.2
         version: 24.10.2
@@ -248,9 +199,55 @@ importers:
       rimraf:
         specifier: ^6.1.2
         version: 6.1.2
-      rocketh:
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
+  packages/rocketh-node:
+    dependencies:
+      '@types/prompts':
+        specifier: ^2.4.9
+        version: 2.4.9
+      change-case:
+        specifier: ^5.4.4
+        version: 5.4.4
+      commander:
+        specifier: ^14.0.2
+        version: 14.0.2
+      eip-1193:
+        specifier: ^0.6.5
+        version: 0.6.5
+      ldenv:
+        specifier: ^0.3.16
+        version: 0.3.16
+      prompts:
+        specifier: ^2.4.2
+        version: 2.4.2
+      tsx:
+        specifier: ^4.21.0
+        version: 4.21.0
+      viem:
+        specifier: ^2.41.2
+        version: 2.41.2(typescript@5.9.3)(zod@4.1.13)
+    devDependencies:
+      '@rocketh/core':
         specifier: workspace:*
-        version: link:../rocketh
+        version: link:../rocketh-core
+      '@types/node':
+        specifier: ^24.10.2
+        version: 24.10.2
+      as-soon:
+        specifier: ^0.0.11
+        version: 0.0.11
+      ipfs-gateway-emulator:
+        specifier: 4.2.1-ipfs.2
+        version: 4.2.1-ipfs.2
+      rimraf:
+        specifier: ^6.1.2
+        version: 6.1.2
+      typedoc:
+        specifier: ^0.28.15
+        version: 0.28.15(typescript@5.9.3)
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -358,7 +355,7 @@ importers:
     dependencies:
       eip-1193-signer:
         specifier: ^0.1.1
-        version: 0.1.1(typescript@5.9.3)
+        version: 0.1.1(typescript@5.9.3)(zod@4.1.13)
     devDependencies:
       '@rocketh/core':
         specifier: workspace:*
@@ -403,6 +400,9 @@ importers:
       '@rocketh/core':
         specifier: workspace:*
         version: link:../rocketh-core
+      '@rocketh/node':
+        specifier: workspace:*
+        version: link:../rocketh-node
       '@types/node':
         specifier: ^24.10.2
         version: 24.10.2
@@ -412,9 +412,6 @@ importers:
       rimraf:
         specifier: ^6.1.2
         version: 6.1.2
-      rocketh:
-        specifier: workspace:*
-        version: link:../rocketh
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -1690,15 +1687,6 @@ packages:
       supports-color:
         optional: true
 
-  debug@4.3.5:
-    resolution: {integrity: sha512-pt0bNEmneDIvdL1Xsd9oDQ/wrQRkXDT4AUWlNZNPKvW5x/jyO9VFXkJUP07vQ2upmw5PlaITaPKc31jK13V+jg==}
-    engines: {node: '>=6.0'}
-    peerDependencies:
-      supports-color: '*'
-    peerDependenciesMeta:
-      supports-color:
-        optional: true
-
   debug@4.4.0:
     resolution: {integrity: sha512-6WTZ/IxCY/T6BALoZHaE4ctp9xm+Z5kY/pzYaCHRFeyVhojxlrm+46y68HA6hr0TcwEssoxNiDEUJQjfPZ/RYA==}
     engines: {node: '>=6.0'}
@@ -1971,16 +1959,8 @@ packages:
     resolution: {integrity: sha512-sKJf1+ceQBr4SMkvQnBDNDtf4TXpVhVGateu0t918bl30FnbE2m4vNLX+VWe/dpjlb+HugGYzW7uQXH98HPEYw==}
     engines: {node: '>=4'}
 
-  has-symbols@1.0.3:
-    resolution: {integrity: sha512-l3LCuF6MgDNwTDKkdYGEihYjt5pRPbEg46rtlmnSPlUbgmB8LOIrKJbYYFBSbnPaJexMKtiPO8hmeRjRz2Td+A==}
-    engines: {node: '>= 0.4'}
-
   has-symbols@1.1.0:
     resolution: {integrity: sha512-1cDNdwJ2Jaohmb3sg4OmKaMBwuC48sYni5HUw2DvsC8LjGTLK9h+eb1X6RyuOHe4hT0ULCW68iomhjUoKUqlPQ==}
-    engines: {node: '>= 0.4'}
-
-  has-tostringtag@1.0.0:
-    resolution: {integrity: sha512-kFjcSNhnlGV1kyoGk7OXKSawH5JOb/LzUc5w9B02hOTO0dfFRjbHQKvg1d6cf3HbeUmtU9VbbV3qzZ2Teh97WQ==}
     engines: {node: '>= 0.4'}
 
   has-tostringtag@1.0.2:
@@ -2173,6 +2153,7 @@ packages:
   keygrip@1.1.0:
     resolution: {integrity: sha512-iYSchDJ+liQ8iwbSI2QqsQOvqv58eJCEanyJPJi+Khyu8smkcKSFUCbPwzFcL7YVtZ6eONjqRX/38caJ7QjRAQ==}
     engines: {node: '>= 0.6'}
+    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
 
   kleur@3.0.3:
     resolution: {integrity: sha512-eTIzlVOSUR+JxdDFepEYcBMtZ9Qqdef+rnzWdRZuMbOywu5tO2w2N7rqjoANZ5k9vywhL6Br1VRjUIgTQx4E8w==}
@@ -2441,9 +2422,6 @@ packages:
 
   ms@2.0.0:
     resolution: {integrity: sha512-Tpp60P6IUJDTuOq/5Z8cdskzJujfwqfOTkrwIwj7IRISpnkJnT6SyJ4PCPnGMoFjC9ddhal5KVIYtAt97ix05A==}
-
-  ms@2.1.2:
-    resolution: {integrity: sha512-sGkPx+VjMtmA6MX27oA4FBFELFCZZ4S4XqeGOXCv68tT+jb3vk/RyaKWP0PTKyWtmLSM0b+adUTEvbs1PEaH2w==}
 
   ms@2.1.3:
     resolution: {integrity: sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==}
@@ -4338,10 +4316,6 @@ snapshots:
     dependencies:
       ms: 2.1.3
 
-  debug@4.3.5:
-    dependencies:
-      ms: 2.1.2
-
   debug@4.4.0:
     dependencies:
       ms: 2.1.3
@@ -4397,7 +4371,7 @@ snapshots:
       named-logs: 0.3.2
       promise-throttle: 1.1.2
 
-  eip-1193-signer@0.1.1(typescript@5.9.3):
+  eip-1193-signer@0.1.1(typescript@5.9.3)(zod@4.1.13):
     dependencies:
       viem: 2.41.2(typescript@5.9.3)(zod@4.1.13)
     transitivePeerDependencies:
@@ -4662,18 +4636,11 @@ snapshots:
 
   has-flag@3.0.0: {}
 
-  has-symbols@1.0.3: {}
-
   has-symbols@1.1.0: {}
-
-  has-tostringtag@1.0.0:
-    dependencies:
-      has-symbols: 1.0.3
 
   has-tostringtag@1.0.2:
     dependencies:
       has-symbols: 1.1.0
-    optional: true
 
   hasown@2.0.2:
     dependencies:
@@ -4737,7 +4704,7 @@ snapshots:
     dependencies:
       '@tootallnate/once': 1.1.2
       agent-base: 6.0.2
-      debug: 4.3.5
+      debug: 4.4.0
     transitivePeerDependencies:
       - supports-color
 
@@ -4804,7 +4771,7 @@ snapshots:
 
   is-generator-function@1.0.10:
     dependencies:
-      has-tostringtag: 1.0.0
+      has-tostringtag: 1.0.2
 
   is-glob@4.0.3:
     dependencies:
@@ -4924,7 +4891,7 @@ snapshots:
 
   koa-route@3.2.0:
     dependencies:
-      debug: 4.3.5
+      debug: 4.4.0
       methods: 1.1.2
       path-to-regexp: 1.8.0
     transitivePeerDependencies:
@@ -4932,7 +4899,7 @@ snapshots:
 
   koa-send@5.0.1:
     dependencies:
-      debug: 4.3.5
+      debug: 4.4.0
       http-errors: 1.8.1
       resolve-path: 1.4.0
     transitivePeerDependencies:
@@ -4952,7 +4919,7 @@ snapshots:
       content-disposition: 0.5.4
       content-type: 1.0.5
       cookies: 0.8.0
-      debug: 4.3.5
+      debug: 4.4.0
       delegates: 1.0.0
       depd: 2.0.0
       destroy: 1.2.0
@@ -5211,8 +5178,6 @@ snapshots:
   mri@1.2.0: {}
 
   ms@2.0.0: {}
-
-  ms@2.1.2: {}
 
   ms@2.1.3: {}
 

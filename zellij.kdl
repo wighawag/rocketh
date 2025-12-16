@@ -7,9 +7,9 @@ layout {
                 args "-c" "${SHELL-bash}"
 			}
 			pane {
-                name "rocketh"
+                name "rocketh-node"
                 command "bash"
-                args "-c" "pnpm run --filter rocketh dev; cd packages/rocketh; ${SHELL-bash}"
+				args "-c" "pnpm run --filter @rocketh/node dev; cd packages/rocketh-node; ${SHELL-bash}"
 			}
 			pane {
                 name "rocketh-core"
