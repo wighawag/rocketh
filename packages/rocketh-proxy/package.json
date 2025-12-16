@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/proxy",
-	"version": "0.17.0",
+	"version": "0.17.1",
 	"description": "provide proxy-enabled deploy function for rocketh",
 	"publishConfig": {
 		"access": "public"
@@ -15,7 +15,8 @@
 				"types": "./dist/index.d.ts",
 				"default": "./dist/index.js"
 			}
-		}
+		},
+		"./solc_0_8/*": "./solc_0_8/*"
 	},
 	"files": [
 		"dist",

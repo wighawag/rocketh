@@ -1,5 +1,11 @@
 # @rocketh/proxy
 
+## 0.17.1
+
+### Patch Changes
+
+- fix export
+
 ## 0.17.0
 
 ### Minor Changes
