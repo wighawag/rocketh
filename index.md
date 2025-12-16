@@ -22,7 +22,7 @@ features:
   - title: Declarative Deployments
     details: Define what state you want, rocketh takes care of the rest
   - title: Replicable Deployments
-    details: Reuse your deployments in test or for other networks
+    details: Reuse your deployments in test or even in the browser
   - title: Modular
     details: At its core, rocketh only provide a save and read function for deployment, everything else is an external module
 ---

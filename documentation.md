@@ -9,6 +9,7 @@ rocketh is a framework-agnostic system for deploying smart contracts on Ethereum
 Key features of rocketh include:
 
 - Deployment tracking and management
+- Deploy Scripts that can run anywahere, including in the browser
 - Named accounts for easier contract interaction
 - Deterministic deployments
 - Library linking
@@ -63,11 +64,13 @@ hardhat-deploy integrates rocketh with Hardhat through:
 
 ```bash
 # Using npm
-npm install -D hardhat-deploy@next rocketh @rocketh/deploy @rocketh/read-execute
+npm install -D hardhat-deploy@next rocketh @rocketh/node @rocketh/deploy @rocketh/read-execute
 
 # Using pnpm
-pnpm add -D hardhat-deploy@next rocketh @rocketh/deploy @rocketh/read-execute
+pnpm add -D hardhat-deploy@next rocketh @rocketh/node @rocketh/deploy @rocketh/read-execute
 ```
+
+Note that `@rocketh/node` is required for hardhat-deploy to function. this is a package that let rocketh read file and folders
 
 For additional functionality, you can install these optional packages:
 
@@ -81,58 +84,106 @@ pnpm add -D @rocketh/proxy @rocketh/diamond @rocketh/export @rocketh/verifier @r
 
 ### Setting Up Your Project
 
-1. **Create a `rocketh.ts` or `rocketh.js` file**:
+There are several ways to configure rocketh, but here is our recommended approach
+
+1. **Create a `rocketh` folder and add `config.ts/js` file (it has to be named this way) **
+
+As you ll see by reading it, we also add some extra to make it easier to use later
 
 ```typescript
-// rocketh.ts
-// ------------------------------------------------------------------------------------------------
+// rocketh/config.ts
+/// ----------------------------------------------------------------------------
 // Typed Config
-// ------------------------------------------------------------------------------------------------
-import {UserConfig} from 'rocketh';
+// ----------------------------------------------------------------------------
+import type {UserConfig} from 'rocketh/types';
+
+// this one provide a protocol supporting private key as account
+import {privateKey} from '@rocketh/signer';
+
+
+// we define our config and export it as "config"
 export const config = {
-	accounts: {
-		deployer: {
-			default: 0,
-		},
-		admin: {
-			default: 1,
-		},
-	},
+    accounts: {
+        deployer: {
+            default: 0,
+        },
+        admin: {
+            default: 1,
+        },
+    },
+    data: {},
+    signerProtocols: {
+        privateKey,
+    },
 } as const satisfies UserConfig;
 
-// ------------------------------------------------------------------------------------------------
-// Imports and Re-exports
-// ------------------------------------------------------------------------------------------------
-// We regroup all what is needed for the deploy scripts
-// so that they just need to import this file
+// then we import each extensions we are interested in using in our deploy script or elsewhere
 
-// we add here the extension we need, so that they are available in the deploy scripts
-// extensions are simply function that accept as their first argument the Environment
-// by passing them to the setup function (see below) you get to access them trhough the environment object with type-safety
-import * as deployExtension from '@rocketh/deploy'; // this one provide a deploy function
-import * as readExecuteExtension from '@rocketh/read-execute'; // this one provide read,execute functions
-const extensions = {...deployExtension, ...readExecuteExtension};
-// ------------------------------------------------------------------------------------------------
-// we re-export the artifacts, so they are easily available from the alias
-import artifacts from './generated/artifacts.js';
-export {artifacts};
-// ------------------------------------------------------------------------------------------------
-// we then create the deployScript function taht we use in our deploy script, you can call it whatever you want
-import {setup} from 'rocketh';
-// the setup function can take functions, accounts and data and will ensure you have type-safety 
-const {deployScript, loadAndExecuteDeployments} = setup<typeof extensions, typeof config.accounts>(extensions);
-// we also export loadAndExecuteDeployments for tests
-export {loadAndExecuteDeployments, deployScript};
+// this one provide a deploy function
+import * as deployExtension from '@rocketh/deploy';
+// this one provide read,execute functions
+import * as readExecuteExtension from '@rocketh/read-execute';
+// this one provide a deployViaProxy function that let you declaratively
+//  deploy proxy based contracts
+import * as deployProxyExtension from '@rocketh/proxy';
+// this one provide a viem handle to clients and contracts
+import * as viemExtension from '@rocketh/viem';
+
+// and export them as a unified object
+const extensions = {
+	...deployExtension,
+	...readExecuteExtension,
+	...deployProxyExtension,
+	...viemExtension,
+};
+export {extensions};
+
+// then we also export the types that our config ehibit so other can use it
+
+type Extensions = typeof extensions;
+type Accounts = typeof config.accounts;
+type Data = typeof config.data;
+
+export type {Extensions, Accounts, Data};
 ```
 
-2. **Update your `package.json` to add the `#rocketh` alias**:
+2. **We also want to create 2 more files: `rocketh/deploy.ts/js` and `rocketh/environment.ts/js` (you can name them whatever you want)**
 
-```json
-{
-	"imports": {
-		"#rocketh": "./rocketh.js"
-	},
-}
+These files create the variosu utility functions we wll need later
+
+- `deploy.ts` make use of only `rocketh` and allow deploy script to run in a web runtime if desired.
+- `environment.ts` make use of `rocketh/node` to read the config file and is export function to be used in tests or scripts
+
+```typescript
+// rocketh/deploy.ts
+import {type Accounts, type Data, type Extensions, extensions} from './config.js';
+
+// ----------------------------------------------------------------------------
+// we re-export the artifacts, so they are easily available from the alias
+import * as artifacts from '../generated/artifacts/index.js';
+export {artifacts};
+// ----------------------------------------------------------------------------
+// we create the rocketh functions we need by passing the extensions to the
+//  setup function
+import {setupDeployScripts} from 'rocketh';
+const {deployScript} = setupDeployScripts<Extensions,Accounts,Data>(extensions);
+
+export {deployScript};
+
+```
+
+```typescript
+// rocketh/environment.ts
+import {type Accounts, type Data, type Extensions, extensions} from './config.js';
+import {setupEnvironmentFromFiles} from '@rocketh/node';
+import {setupHardhatDeploy} from 'hardhat-deploy/helpers';
+
+// useful for test and scripts, uses file-system
+const {loadAndExecuteDeploymentsFromFiles} = setupEnvironmentFromFiles<Extensions,Accounts,Data>(extensions);
+const {loadEnvironmentFromHardhat} = setupHardhatDeploy<Extensions,Accounts,Data>(extensions)
+
+export {loadEnvironmentFromHardhat, loadAndExecuteDeploymentsFromFiles};
+
 ```
 
 3. **Create a `deploy` folder** for your deployment scripts.
@@ -230,14 +281,16 @@ export default deployScript(
 The `deployViaProxy` function from `@rocketh/proxy` allows you to deploy upgradeable contracts:
 
 ```typescript
-import {deployScript, artifacts} from '#rocketh';
+import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(
-	async ({deployViaProxy, namedAccounts}) => {
-		const {deployer, admin} = namedAccounts;
+	async (env) => {
+		const {deployer, admin} = env.namedAccounts;
+
+		console.log({deployer, admin})
 
 		const prefix = 'proxy:';
-		await deployViaProxy(
+		const deployment = await env.deployViaProxy(
 			'GreetingsRegistry',
 			{
 				account: deployer,
@@ -250,11 +303,13 @@ export default deployScript(
 					prefix,
 					admin,
 				},
-			}
+			},
 		);
 	},
-	{tags: ['GreetingsRegistry', 'GreetingsRegistry_deploy']}
+	// execute takes as a second argument an options object where you can specify tags and dependencies
+	{tags: ['GreetingsRegistry', 'GreetingsRegistry_deploy']},
 );
+
 ```
 
 ### Deploying Diamonds
@@ -262,7 +317,7 @@ export default deployScript(
 The `diamond` function from `@rocketh/diamond` allows you to deploy contracts using the Diamond pattern:
 
 ```typescript
-import {deployScript, artifacts} from '#rocketh';
+import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(
 	async ({diamond, namedAccounts}) => {
@@ -301,7 +356,7 @@ export default deployScript(
 rocketh supports linking libraries at deployment time:
 
 ```typescript
-import {deployScript, artifacts} from '#rocketh';
+import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(
 	async ({deploy, namedAccounts}) => {
@@ -337,7 +392,7 @@ export default deployScript(
 rocketh supports deterministic deployments using CREATE2:
 
 ```typescript
-import {deployScript, artifacts} from '#rocketh';
+import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(
 	async ({deploy, namedAccounts}) => {
@@ -414,7 +469,7 @@ npx rocketh-doc
 ### Basic Deployment
 
 ```typescript
-import {deployScript, artifacts} from '#rocketh';
+import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(
 	async ({deploy, namedAccounts}) => {
@@ -433,7 +488,7 @@ export default deployScript(
 ### Proxy Deployment
 
 ```typescript
-import {deployScript, artifacts} from '#rocketh';
+import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(
 	async ({deployViaProxy, namedAccounts}) => {
@@ -458,7 +513,7 @@ export default deployScript(
 ### Diamond Deployment
 
 ```typescript
-import {deployScript, artifacts} from '#rocketh';
+import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(
 	async ({diamond, namedAccounts}) => {
@@ -495,7 +550,7 @@ export default deployScript(
 ### Deployment with Dependencies
 
 ```typescript
-import {deployScript, artifacts} from '#rocketh';
+import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(
 	async ({deploy, namedAccounts}) => {
@@ -511,7 +566,7 @@ export default deployScript(
 );
 
 // In another file
-import {deployScript, artifacts} from '#rocketh';
+import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(
 	async ({deploy, get, namedAccounts}) => {
@@ -552,7 +607,7 @@ In v2:
 
 ```typescript
 // deploy/00_deploy_my_contract.ts
-import {deployScript, artifacts} from '#rocketh';
+import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(
 	async ({deploy, namedAccounts}) => {
