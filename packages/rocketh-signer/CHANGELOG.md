@@ -1,5 +1,11 @@
 # @rocketh/signer
 
+## 0.17.0-next.0
+
+### Minor Changes
+
+- reorg the package, to use rocketh you now need rocketh + @rocketh/node (for cli and rocketh.ts support)
+
 ## 0.16.0
 
 ### Minor Changes
@@ -336,7 +342,7 @@
 - Updated dependencies
   - rocketh@1.0.0-next.1
 
-## 1.0.0-next.0
+## 0.17.0-next.0
 
 ### Major Changes
 
@@ -345,7 +351,7 @@
 ### Patch Changes
 
 - Updated dependencies
-  - rocketh@1.0.0-next.0
+  - rocketh@0.17.0-next.0
 
 ## 0.10.12
 

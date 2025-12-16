@@ -1,4 +1,4 @@
-# rocketh
+# @rocketh/web
 
 ## 0.17.0-next.0
 
@@ -6,8 +6,7 @@
 
 - reorg the package, to use rocketh you now need rocketh + @rocketh/node (for cli and rocketh.ts support)
 
-## 0.16.0
+### Patch Changes
 
-### Minor Changes
-
-- add @roceth/core
+- Updated dependencies
+  - rocketh@0.17.0-next.0

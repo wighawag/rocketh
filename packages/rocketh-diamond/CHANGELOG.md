@@ -1,5 +1,17 @@
 # @rocketh/diamond
 
+## 0.17.0-next.0
+
+### Minor Changes
+
+- reorg the package, to use rocketh you now need rocketh + @rocketh/node (for cli and rocketh.ts support)
+
+### Patch Changes
+
+- Updated dependencies
+  - @rocketh/read-execute@0.17.0-next.0
+  - @rocketh/deploy@0.17.0-next.0
+
 ## 0.16.0
 
 ### Minor Changes

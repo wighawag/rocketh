@@ -1,5 +1,17 @@
 # @rocketh/router
 
+## 0.17.0-next.0
+
+### Minor Changes
+
+- reorg the package, to use rocketh you now need rocketh + @rocketh/node (for cli and rocketh.ts support)
+
+### Patch Changes
+
+- Updated dependencies
+  - @rocketh/deploy@0.17.0-next.0
+  - rocketh@0.17.0-next.0
+
 ## 0.16.0
 
 ### Minor Changes
@@ -683,7 +695,7 @@
   - rocketh@1.0.0-next.1
   - @rocketh/deploy@1.0.0-next.1
 
-## 1.0.0-next.0
+## 0.17.0-next.0
 
 ### Major Changes
 
@@ -692,8 +704,8 @@
 ### Patch Changes
 
 - Updated dependencies
-  - @rocketh/deploy@1.0.0-next.0
-  - rocketh@1.0.0-next.0
+  - @rocketh/deploy@0.17.0-next.0
+  - rocketh@0.17.0-next.0
 
 ## 0.10.12
 
