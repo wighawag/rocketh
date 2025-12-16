@@ -9,4 +9,4 @@ export {
 	loadDeploymentsFromFiles,
 } from './executor/index.js';
 
-export {setupDeployScripts, chainByCanonicalName} from '@rocketh/core';
+export {setupDeployScripts, chainByCanonicalName} from 'rocketh';

@@ -9,7 +9,7 @@ import type {
 	PartialDeployment,
 	PendingDeployment,
 	Signer,
-} from '@rocketh/core/types';
+} from 'rocketh/types';
 import {
 	Address,
 	Chain,

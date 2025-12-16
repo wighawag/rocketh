@@ -28,7 +28,7 @@
 		"typescript": "^5.9.3"
 	},
 	"dependencies": {
-		"@rocketh/core": "workspace:*",
+		"rocketh": "workspace:*",
 		"@rocketh/deploy": "workspace:*",
 		"ethers": "^6.16.0",
 		"named-logs": "^0.4.1",

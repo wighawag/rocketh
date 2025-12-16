@@ -29,7 +29,7 @@
 		"@types/node": "^24.10.2",
 		"as-soon": "^0.0.11",
 		"rimraf": "^6.1.2",
-		"@rocketh/core": "workspace:*",
+		"rocketh": "workspace:*",
 		"@rocketh/node": "workspace:*",
 		"typescript": "^5.9.3"
 	},

@@ -1,6 +1,6 @@
 #! /usr/bin/env node
 import {readAndResolveConfig} from '@rocketh/node';
-import type {ConfigOverrides} from '@rocketh/core/types';
+import type {ConfigOverrides} from 'rocketh/types';
 import {run} from './index.js';
 import {Command} from 'commander';
 import pkg from '../package.json' with {type: 'json'};

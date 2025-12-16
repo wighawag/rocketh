@@ -1,7 +1,7 @@
 import chalk from 'chalk';
 import fs from 'fs-extra';
 import path from 'path';
-import {UnknownDeployments} from '@rocketh/core/types';
+import {UnknownDeployments} from 'rocketh/types';
 import {SourcifyOptions} from './index.js';
 
 function sleep(ms: number) {

@@ -2,8 +2,8 @@ import {Abi, Address} from 'abitype';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import type {ChainInfo, Deployment, LinkedData, ResolvedUserConfig} from '@rocketh/core/types';
-import {bigIntToStringReplacer, getChainConfig} from '@rocketh/core';
+import type {ChainInfo, Deployment, LinkedData, ResolvedUserConfig} from 'rocketh/types';
+import {bigIntToStringReplacer, getChainConfig} from 'rocketh';
 import {loadDeploymentsFromFiles} from '@rocketh/node';
 
 export interface ContractExport {

@@ -21,7 +21,7 @@
 		"rocketh": "dist/cli.js"
 	},
 	"devDependencies": {
-		"@rocketh/core": "workspace:*",
+		"rocketh": "workspace:*",
 		"@types/node": "^24.10.2",
 		"as-soon": "^0.0.11",
 		"ipfs-gateway-emulator": "4.2.1-ipfs.2",
@@ -30,7 +30,7 @@
 		"typescript": "^5.9.3"
 	},
 	"peerDependencies": {
-		"@rocketh/core": "workspace:*"
+		"rocketh": "workspace:*"
 	},
 	"dependencies": {
 		"@types/prompts": "^2.4.9",

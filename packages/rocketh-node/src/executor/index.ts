@@ -14,7 +14,7 @@ import {
 	type ConfigOverrides,
 	type UserConfig,
 	type PromptExecutor,
-} from '@rocketh/core/types';
+} from 'rocketh/types';
 import {
 	withEnvironment,
 	resolveConfig,
@@ -26,7 +26,7 @@ import {
 	createExecutor,
 	setupDeployScripts,
 	loadDeployments,
-} from '@rocketh/core';
+} from 'rocketh';
 import {traverseMultipleDirectory} from '../utils/fs.js';
 import {createFSDeploymentStore} from '../environment/deployment-store.js';
 

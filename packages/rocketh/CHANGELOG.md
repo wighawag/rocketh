@@ -1,4 +1,4 @@
-# @rocketh/core
+# rocketh
 
 ## 0.16.0
 

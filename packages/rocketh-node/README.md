@@ -1,1 +1,1 @@
-# rocketh
+# @rocketh/node

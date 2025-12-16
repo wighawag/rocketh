@@ -1,7 +1,7 @@
 import chalk from 'chalk';
 import fs from 'fs-extra';
 import path from 'path';
-import type {Abi, Deployment, UnknownDeployments} from '@rocketh/core/types';
+import type {Abi, Deployment, UnknownDeployments} from 'rocketh/types';
 import {BlockscoutOptions} from './index.js';
 
 //https://eth.blockscout.com/api/v2/search?q=WETH

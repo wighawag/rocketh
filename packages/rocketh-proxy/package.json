@@ -29,7 +29,7 @@
 		"typescript": "^5.9.3"
 	},
 	"dependencies": {
-		"@rocketh/core": "workspace:*",
+		"rocketh": "workspace:*",
 		"@rocketh/deploy": "workspace:*",
 		"@rocketh/read-execute": "workspace:*",
 		"named-logs": "^0.4.1",

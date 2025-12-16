@@ -1,6 +1,6 @@
 import path from 'node:path';
 import fs from 'node:fs';
-import type {DeploymentStore} from '@rocketh/core/types';
+import type {DeploymentStore} from 'rocketh/types';
 
 export function createFSDeploymentStore(): DeploymentStore {
 	function getFolder(deploymentsFolder: string, environmentName: string) {

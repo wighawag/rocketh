@@ -24,7 +24,7 @@ importers:
         specifier: ^0.0.1
         version: 0.0.1
 
-  packages/rocketh-core:
+  packages/rocketh:
     dependencies:
       abitype:
         specifier: ^1.2.1
@@ -73,9 +73,6 @@ importers:
         specifier: ^2.41.2
         version: 2.41.2(typescript@5.9.3)(zod@4.1.13)
     devDependencies:
-      '@rocketh/core':
-        specifier: workspace:*
-        version: link:../rocketh-core
       abitype:
         specifier: ^1.2.1
         version: 1.2.1(typescript@5.9.3)(zod@4.1.13)
@@ -88,6 +85,9 @@ importers:
       rimraf:
         specifier: ^6.1.2
         version: 6.1.2
+      rocketh:
+        specifier: workspace:*
+        version: link:../rocketh
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -107,9 +107,6 @@ importers:
         specifier: ^2.41.2
         version: 2.41.2(typescript@5.9.3)(zod@4.1.13)
     devDependencies:
-      '@rocketh/core':
-        specifier: workspace:*
-        version: link:../rocketh-core
       abitype:
         specifier: ^1.2.1
         version: 1.2.1(typescript@5.9.3)(zod@4.1.13)
@@ -122,6 +119,9 @@ importers:
       rimraf:
         specifier: ^6.1.2
         version: 6.1.2
+      rocketh:
+        specifier: workspace:*
+        version: link:../rocketh
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -144,9 +144,6 @@ importers:
         specifier: ^4.7.8
         version: 4.7.8
     devDependencies:
-      '@rocketh/core':
-        specifier: workspace:*
-        version: link:../rocketh-core
       '@rocketh/node':
         specifier: workspace:*
         version: link:../rocketh-node
@@ -159,6 +156,9 @@ importers:
       rimraf:
         specifier: ^6.1.2
         version: 6.1.2
+      rocketh:
+        specifier: workspace:*
+        version: link:../rocketh
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -178,9 +178,6 @@ importers:
         specifier: ^11.3.2
         version: 11.3.2
     devDependencies:
-      '@rocketh/core':
-        specifier: workspace:*
-        version: link:../rocketh-core
       '@rocketh/node':
         specifier: workspace:*
         version: link:../rocketh-node
@@ -199,6 +196,9 @@ importers:
       rimraf:
         specifier: ^6.1.2
         version: 6.1.2
+      rocketh:
+        specifier: workspace:*
+        version: link:../rocketh
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -230,9 +230,6 @@ importers:
         specifier: ^2.41.2
         version: 2.41.2(typescript@5.9.3)(zod@4.1.13)
     devDependencies:
-      '@rocketh/core':
-        specifier: workspace:*
-        version: link:../rocketh-core
       '@types/node':
         specifier: ^24.10.2
         version: 24.10.2
@@ -245,6 +242,9 @@ importers:
       rimraf:
         specifier: ^6.1.2
         version: 6.1.2
+      rocketh:
+        specifier: workspace:*
+        version: link:../rocketh
       typedoc:
         specifier: ^0.28.15
         version: 0.28.15(typescript@5.9.3)
@@ -254,9 +254,6 @@ importers:
 
   packages/rocketh-proxy:
     dependencies:
-      '@rocketh/core':
-        specifier: workspace:*
-        version: link:../rocketh-core
       '@rocketh/deploy':
         specifier: workspace:*
         version: link:../rocketh-deploy
@@ -266,6 +263,9 @@ importers:
       named-logs:
         specifier: ^0.4.1
         version: 0.4.1
+      rocketh:
+        specifier: workspace:*
+        version: link:../rocketh
       viem:
         specifier: ^2.41.2
         version: 2.41.2(typescript@5.9.3)(zod@4.1.13)
@@ -295,9 +295,6 @@ importers:
         specifier: ^2.41.2
         version: 2.41.2(typescript@5.9.3)(zod@4.1.13)
     devDependencies:
-      '@rocketh/core':
-        specifier: workspace:*
-        version: link:../rocketh-core
       abitype:
         specifier: ^1.2.1
         version: 1.2.1(typescript@5.9.3)(zod@4.1.13)
@@ -310,15 +307,15 @@ importers:
       rimraf:
         specifier: ^6.1.2
         version: 6.1.2
+      rocketh:
+        specifier: workspace:*
+        version: link:../rocketh
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
 
   packages/rocketh-router:
     dependencies:
-      '@rocketh/core':
-        specifier: workspace:*
-        version: link:../rocketh-core
       '@rocketh/deploy':
         specifier: workspace:*
         version: link:../rocketh-deploy
@@ -328,6 +325,9 @@ importers:
       named-logs:
         specifier: ^0.4.1
         version: 0.4.1
+      rocketh:
+        specifier: workspace:*
+        version: link:../rocketh
       solidity-proxy:
         specifier: ^0.4.2
         version: 0.4.2
@@ -355,11 +355,8 @@ importers:
     dependencies:
       eip-1193-signer:
         specifier: ^0.1.1
-        version: 0.1.1(typescript@5.9.3)(zod@4.1.13)
+        version: 0.1.1(typescript@5.9.3)
     devDependencies:
-      '@rocketh/core':
-        specifier: workspace:*
-        version: link:../rocketh-core
       as-soon:
         specifier: ^0.0.11
         version: 0.0.11
@@ -369,6 +366,9 @@ importers:
       rimraf:
         specifier: ^6.1.2
         version: 6.1.2
+      rocketh:
+        specifier: workspace:*
+        version: link:../rocketh
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -397,9 +397,6 @@ importers:
         specifier: ^6.13.0
         version: 6.13.0
     devDependencies:
-      '@rocketh/core':
-        specifier: workspace:*
-        version: link:../rocketh-core
       '@rocketh/node':
         specifier: workspace:*
         version: link:../rocketh-node
@@ -412,6 +409,9 @@ importers:
       rimraf:
         specifier: ^6.1.2
         version: 6.1.2
+      rocketh:
+        specifier: workspace:*
+        version: link:../rocketh
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -422,9 +422,6 @@ importers:
         specifier: ^0.4.1
         version: 0.4.1
     devDependencies:
-      '@rocketh/core':
-        specifier: workspace:*
-        version: link:../rocketh-core
       abitype:
         specifier: ^1.2.1
         version: 1.2.1(typescript@5.9.3)(zod@4.1.13)
@@ -437,6 +434,9 @@ importers:
       rimraf:
         specifier: ^6.1.2
         version: 6.1.2
+      rocketh:
+        specifier: workspace:*
+        version: link:../rocketh
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -4371,7 +4371,7 @@ snapshots:
       named-logs: 0.3.2
       promise-throttle: 1.1.2
 
-  eip-1193-signer@0.1.1(typescript@5.9.3)(zod@4.1.13):
+  eip-1193-signer@0.1.1(typescript@5.9.3):
     dependencies:
       viem: 2.41.2(typescript@5.9.3)(zod@4.1.13)
     transitivePeerDependencies:
