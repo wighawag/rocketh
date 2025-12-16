@@ -1,5 +1,19 @@
 # @rocketh/proxy
 
+## 0.17.0
+
+### Minor Changes
+
+- d67b01f: reorg the package, to use rocketh you now need rocketh + @rocketh/node (for cli and rocketh.ts support)
+
+### Patch Changes
+
+- 58368b4: proxy implementation is now not deterministic by default add deterministicImplementation opetion field
+- Updated dependencies [d67b01f]
+  - @rocketh/read-execute@0.17.0
+  - @rocketh/deploy@0.17.0
+  - rocketh@0.17.0
+
 ## 0.17.0-next.1
 
 ### Patch Changes
@@ -630,56 +644,56 @@
   - @rocketh/deploy@0.11.1
   - @rocketh/read-execute@0.11.1
 
-## 1.0.0-next.6
+## invalid-next.6
 
 ### Patch Changes
 
 - Updated dependencies [9a9b3c4]
-  - rocketh@1.0.0-next.5
-  - @rocketh/deploy@1.0.0-next.5
-  - @rocketh/read-execute@1.0.0-next.2
+  - rocketh@invalid-next.5
+  - @rocketh/deploy@invalid-next.5
+  - @rocketh/read-execute@invalid-next.2
 
-## 1.0.0-next.5
+## invalid-next.5
 
 ### Patch Changes
 
 - add @rocketh/read-execute
 - Updated dependencies
-  - @rocketh/deploy@1.0.0-next.4
-  - rocketh@1.0.0-next.4
-  - @rocketh/read-execute@1.0.0-next.1
+  - @rocketh/deploy@invalid-next.4
+  - rocketh@invalid-next.4
+  - @rocketh/read-execute@invalid-next.1
 
-## 1.0.0-next.4
+## invalid-next.4
 
 ### Patch Changes
 
 - fix dist path
 - Updated dependencies
-  - @rocketh/deploy@1.0.0-next.3
-  - rocketh@1.0.0-next.3
+  - @rocketh/deploy@invalid-next.3
+  - rocketh@invalid-next.3
 
-## 1.0.0-next.3
+## invalid-next.3
 
 ### Patch Changes
 
 - proxy owner do the upgrade, regardless of account used to deploy the proxy
 
-## 1.0.0-next.2
+## invalid-next.2
 
 ### Patch Changes
 
 - update deps
 - Updated dependencies
-  - @rocketh/deploy@1.0.0-next.2
-  - rocketh@1.0.0-next.2
+  - @rocketh/deploy@invalid-next.2
+  - rocketh@invalid-next.2
 
-## 1.0.0-next.1
+## invalid-next.1
 
 ### Patch Changes
 
 - Updated dependencies
-  - rocketh@1.0.0-next.1
-  - @rocketh/deploy@1.0.0-next.1
+  - rocketh@invalid-next.1
+  - @rocketh/deploy@invalid-next.1
 
 ## 0.17.0-next.0
 
