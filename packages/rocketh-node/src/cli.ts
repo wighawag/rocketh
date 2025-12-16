@@ -2,7 +2,7 @@
 import {loadEnv} from 'ldenv';
 import {Command} from 'commander';
 import pkg from '../package.json' with {type: 'json'};
-import { loadAndExecuteDeployments } from './executor/index.js';
+import { loadAndExecuteDeploymentsFromFiles } from './executor/index.js';
 import { ExecutionParams } from 'rocketh/types';
 
 loadEnv();
@@ -26,7 +26,7 @@ program
 const options = program.opts();
 
 
-loadAndExecuteDeployments({
+loadAndExecuteDeploymentsFromFiles({
 	...(options as ExecutionParams),
 	logLevel: 1,
 	askBeforeProceeding: options.skipPrompts ? false : true,

@@ -16,11 +16,12 @@ import type {
 	ChainConfig,
 	PromptExecutor,
 	DeploymentStore,
+	ModuleObject,
 } from '../types.js';
 import {withEnvironment} from '../utils/extensions.js';
 import {getChainByName, getChainConfig} from '../environment/utils/chains.js';
 import {JSONRPCHTTPProvider} from 'eip-1193-jsonrpc-provider';
-import {createEnvironment} from '../environment/index.js';
+import {createEnvironment, loadDeployments} from '../environment/index.js';
 import {logger, setLogLevel, spin} from '../internal/logging.js';
 import {getRoughGasPriceEstimate} from '../utils/eth.js';
 import {formatEther} from 'viem';
@@ -88,6 +89,31 @@ export function setupDeployScripts<
 	return {
 		deployScript: enhancedExecute,
 	};
+}
+
+export function enhanceEnvIfNeeded<
+	Extensions extends Record<string, (env: Environment<any, any, any>) => any> = {},
+	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
+	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
+	Extra extends Record<string, unknown> = Record<string, unknown>
+>(
+	env: Environment,
+	extensions: Extensions
+): EnhancedEnvironment<NamedAccounts, Data, UnknownDeployments, Extensions, Extra> {
+	// Use the original env object as the base
+	const enhancedEnv = env as EnhancedEnvironment<NamedAccounts, Data, UnknownDeployments, Extensions, Extra>;
+
+	// Only create curried functions for extensions not already present in env
+	for (const key in extensions) {
+		if (!Object.prototype.hasOwnProperty.call(env, key)) {
+			// Create curried function only for this specific extension
+			const singleExtension: Record<string, unknown> = {};
+			singleExtension[key] = (extensions as any)[key];
+			const curriedFunction = withEnvironment(env, singleExtension as any);
+			(enhancedEnv as any)[key] = (curriedFunction as any)[key];
+		}
+	}
+	return enhancedEnv;
 }
 
 export function resolveConfig<
@@ -256,11 +282,11 @@ export async function loadEnvironment<
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 	Extra extends Record<string, unknown> = Record<string, unknown>
 >(
-	config: UserConfig,
+	config: UserConfig<NamedAccounts, Data>,
 	executionParams: ExecutionParams<Extra>,
 	deploymentStore: DeploymentStore
 ): Promise<Environment<NamedAccounts, Data, UnknownDeployments>> {
-	const userConfig = await resolveConfig<NamedAccounts, Data>(config, executionParams.config);
+	const userConfig = resolveConfig<NamedAccounts, Data>(config, executionParams.config);
 	const {name: environmentName, fork} = getEnvironmentName(executionParams);
 	const chainId = await getChainIdForEnvironment(userConfig, environmentName, executionParams.provider);
 	const resolvedExecutionParams = resolveExecutionParams(userConfig, executionParams, chainId);
@@ -280,7 +306,7 @@ export function createExecutor(deploymentStore: DeploymentStore, promptExecutor:
 		ArgumentsType = undefined,
 		Extra extends Record<string, unknown> = Record<string, unknown>
 	>(
-		moduleObjects: {id: string; module: DeployScriptModule<NamedAccounts, Data, ArgumentsType>}[],
+		moduleObjects: ModuleObject<NamedAccounts, Data, ArgumentsType>[],
 		userConfig: UserConfig,
 		executionParams?: ExecutionParams<Extra>,
 		args?: ArgumentsType
@@ -303,7 +329,7 @@ export function createExecutor(deploymentStore: DeploymentStore, promptExecutor:
 		Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 		ArgumentsType = undefined
 	>(
-		moduleObjects: {id: string; module: DeployScriptModule<NamedAccounts, Data, ArgumentsType>}[],
+		moduleObjects: ModuleObject<NamedAccounts, Data, ArgumentsType>[],
 		userConfig: ResolvedUserConfig<NamedAccounts, Data>,
 		resolvedExecutionParams: ResolvedExecutionParams,
 		args?: ArgumentsType

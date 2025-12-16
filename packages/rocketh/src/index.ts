@@ -6,6 +6,7 @@ export {
 	getChainIdForEnvironment,
 	getEnvironmentName,
 	createExecutor,
+	enhanceEnvIfNeeded,
 } from './executor/index.js';
 export {createEnvironment, loadDeployments} from './environment/index.js';
 

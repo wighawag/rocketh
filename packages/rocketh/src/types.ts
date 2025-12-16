@@ -616,6 +616,12 @@ export type DeploymentStore = {
 	deleteFile(deploymentsFolder: string, environmentName: string, name: string): Promise<void>;
 };
 
+export type ModuleObject<
+	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
+	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
+	ArgumentsType = undefined
+> = {id: string; module: DeployScriptModule<NamedAccounts, Data, ArgumentsType>};
+
 export type PromptAnswer = {
 	proceed: boolean;
 };

@@ -16,7 +16,7 @@ import {
 	type PromptExecutor,
 } from 'rocketh/types';
 import {
-	withEnvironment,
+	enhanceEnvIfNeeded,
 	resolveConfig,
 	resolveExecutionParams,
 	createEnvironment,
@@ -26,56 +26,15 @@ import {
 	createExecutor,
 	setupDeployScripts,
 	loadDeployments,
+	loadEnvironment,
 } from 'rocketh';
 import {traverseMultipleDirectory} from '../utils/fs.js';
 import {createFSDeploymentStore} from '../environment/deployment-store.js';
-
-/**
- * Setup function that creates the execute function for deploy scripts. It allow to specify a set of functions that will be available in the environment.
- *
- * @param functions - An object of utility functions that expect Environment as their first parameter
- * @returns An execute function that provides an enhanced environment with curried functions
- *
- * @example
- * ```typescript
- * const functions = {
- *   deploy: (env: Environment) => ((contractName: string, args: any[]) => Promise<void>),
- *   verify: (env: Environment) => ((address: string) => Promise<boolean>)
- * };
- *
- * const {deployScript} = setup(functions);
- *
- * export default deployScript(async (env, args) => {
- *   // env now includes both the original environment AND the curried functions
- *   await env.deploy('MyContract', []); // No need to pass env
- *   await env.verify('0x123...'); // No need to pass env
- *
- *   // Original environment properties are still available
- *   console.log(env.network.name);
- *   const deployment = env.get('MyContract');
- * }, { tags: ['deploy'] });
- * ```
- */
-
-export function setup<
-	Extensions extends Record<string, (env: Environment<any, any, any>) => any> = {},
-	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
-	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
-	Deployments extends UnknownDeployments = UnknownDeployments,
-	Extra extends Record<string, unknown> = Record<string, unknown>
->(extensions: Extensions) {
-	const {deployScript} = setupDeployScripts<Extensions, NamedAccounts, Data, Deployments, Extra>(extensions);
-	const {loadAndExecuteDeployments} = setupEnvironmentFromFiles<Extensions, NamedAccounts, Data, Deployments, Extra>(
-		extensions
-	);
-	return {deployScript, loadAndExecuteDeployments};
-}
 
 export function setupEnvironmentFromFiles<
 	Extensions extends Record<string, (env: Environment<any, any, any>) => any> = {},
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
-	Deployments extends UnknownDeployments = UnknownDeployments,
 	Extra extends Record<string, unknown> = Record<string, unknown>
 >(extensions: Extensions) {
 	async function loadAndExecuteDeploymentsWithExtensions<
@@ -85,52 +44,30 @@ export function setupEnvironmentFromFiles<
 		executionParams: ExecutionParams<Extra>,
 		args?: ArgumentsType
 	): Promise<EnhancedEnvironment<NamedAccounts, Data, UnknownDeployments, Extensions>> {
-		const env = await loadAndExecuteDeployments<NamedAccounts, Data, ArgumentsType, Extra>(executionParams, args);
+		const env = await loadAndExecuteDeploymentsFromFiles<NamedAccounts, Data, ArgumentsType, Extra>(
+			executionParams,
+			args
+		);
 		return enhanceEnvIfNeeded(env, extensions);
 	}
 
 	async function loadEnvironmentWithExtensions(
 		executionParams: ExecutionParams<Extra>
 	): Promise<EnhancedEnvironment<NamedAccounts, Data, UnknownDeployments, Extensions>> {
-		const env = await loadEnvironment<NamedAccounts, Data, Extra>(executionParams);
+		const env = await loadEnvironmentFromFiles<NamedAccounts, Data, Extra>(executionParams);
 		return enhanceEnvIfNeeded(env, extensions);
 	}
 
 	return {
-		loadAndExecuteDeployments: loadAndExecuteDeploymentsWithExtensions,
-		loadEnvironment: loadEnvironmentWithExtensions,
+		loadAndExecuteDeploymentsFromFiles: loadAndExecuteDeploymentsWithExtensions,
+		loadEnvironmentFromFiles: loadEnvironmentWithExtensions,
 	};
-}
-
-export function enhanceEnvIfNeeded<
-	Extensions extends Record<string, (env: Environment<any, any, any>) => any> = {},
-	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
-	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
-	Extra extends Record<string, unknown> = Record<string, unknown>
->(
-	env: Environment,
-	extensions: Extensions
-): EnhancedEnvironment<NamedAccounts, Data, UnknownDeployments, Extensions, Extra> {
-	// Use the original env object as the base
-	const enhancedEnv = env as EnhancedEnvironment<NamedAccounts, Data, UnknownDeployments, Extensions, Extra>;
-
-	// Only create curried functions for extensions not already present in env
-	for (const key in extensions) {
-		if (!Object.prototype.hasOwnProperty.call(env, key)) {
-			// Create curried function only for this specific extension
-			const singleExtension: Record<string, unknown> = {};
-			singleExtension[key] = (extensions as any)[key];
-			const curriedFunction = withEnvironment(env, singleExtension as any);
-			(enhancedEnv as any)[key] = (curriedFunction as any)[key];
-		}
-	}
-	return enhancedEnv;
 }
 
 export async function readConfig<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData
->(): Promise<UserConfig> {
+>(): Promise<UserConfig<NamedAccounts, Data>> {
 	type ConfigFile = UserConfig<NamedAccounts, Data>;
 	let configFile: ConfigFile | undefined;
 
@@ -217,25 +154,16 @@ export function loadDeploymentsFromFiles(
 	return loadDeployments(deploymentStore, deploymentsPath, networkName, onlyABIAndAddress, expectedChain);
 }
 
-export async function loadEnvironment<
+export async function loadEnvironmentFromFiles<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 	Extra extends Record<string, unknown> = Record<string, unknown>
 >(executionParams: ExecutionParams<Extra>): Promise<Environment<NamedAccounts, Data, UnknownDeployments>> {
-	const userConfig = await readAndResolveConfig<NamedAccounts, Data>(executionParams.config);
-	const {name: environmentName, fork} = getEnvironmentName(executionParams);
-	const chainId = await getChainIdForEnvironment(userConfig, environmentName, executionParams.provider);
-	const resolvedExecutionParams = resolveExecutionParams(userConfig, executionParams, chainId);
-	// console.log(JSON.stringify(resolvedConfig, null, 2));
-	const {external, internal} = await createEnvironment<NamedAccounts, Data, UnknownDeployments>(
-		userConfig,
-		resolvedExecutionParams,
-		deploymentStore
-	);
-	return external;
+	const config = await readConfig<NamedAccounts, Data>();
+	return loadEnvironment(config, executionParams, deploymentStore);
 }
 
-export async function loadAndExecuteDeployments<
+export async function loadAndExecuteDeploymentsFromFiles<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 	ArgumentsType = undefined,
@@ -251,10 +179,10 @@ export async function loadAndExecuteDeployments<
 	// console.log(JSON.stringify(options, null, 2));
 	// console.log(JSON.stringify(resolvedConfig, null, 2));
 
-	return _executeDeployScripts<NamedAccounts, Data, ArgumentsType>(userConfig, resolvedExecutionParams, args);
+	return _executeDeployScriptsFromFiles<NamedAccounts, Data, ArgumentsType>(userConfig, resolvedExecutionParams, args);
 }
 
-export async function executeDeployScripts<
+export async function executeDeployScriptsFromFiles<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 	ArgumentsType = undefined,
@@ -269,10 +197,14 @@ export async function executeDeployScripts<
 	const {name: environmentName, fork} = getEnvironmentName(executionParams);
 	const chainId = await getChainIdForEnvironment(resolveduserConfig, environmentName, executionParams.provider);
 	const resolvedExecutionParams = resolveExecutionParams(resolveduserConfig, executionParams, chainId);
-	return _executeDeployScripts<NamedAccounts, Data, ArgumentsType>(resolveduserConfig, resolvedExecutionParams, args);
+	return _executeDeployScriptsFromFiles<NamedAccounts, Data, ArgumentsType>(
+		resolveduserConfig,
+		resolvedExecutionParams,
+		args
+	);
 }
 
-async function _executeDeployScripts<
+async function _executeDeployScriptsFromFiles<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 	ArgumentsType = undefined

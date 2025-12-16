@@ -16,6 +16,11 @@ layout {
                 command "bash"
 				args "-c" "pnpm run --filter @rocketh/node dev; cd packages/rocketh-node; ${SHELL-bash}"
 			}
+			pane {
+                name "rocketh-web"
+                command "bash"
+				args "-c" "pnpm run --filter @rocketh/web dev; cd packages/rocketh-web; ${SHELL-bash}"
+			}
 		}
 		pane split_direction="vertical" {
 			pane {
