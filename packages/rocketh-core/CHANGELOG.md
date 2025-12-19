@@ -1,5 +1,11 @@
 # @rocketh/core
 
+## 0.17.3
+
+### Patch Changes
+
+- dc5aefe: allow for custom deployment message
+
 ## 0.17.2
 
 ### Patch Changes

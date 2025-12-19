@@ -1,5 +1,13 @@
 # rocketh
 
+## 0.17.4
+
+### Patch Changes
+
+- dc5aefe: allow for custom deployment message
+- Updated dependencies [dc5aefe]
+  - @rocketh/core@0.17.3
+
 ## 0.17.3
 
 ### Patch Changes

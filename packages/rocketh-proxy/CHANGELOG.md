@@ -1,5 +1,16 @@
 # @rocketh/proxy
 
+## 0.17.5
+
+### Patch Changes
+
+- 651abb7: fix passing of options
+- Updated dependencies [b03146f]
+- Updated dependencies [dc5aefe]
+  - @rocketh/read-execute@0.17.2
+  - @rocketh/deploy@0.17.3
+  - @rocketh/core@0.17.3
+
 ## 0.17.4
 
 ### Patch Changes

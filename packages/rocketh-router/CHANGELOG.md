@@ -1,5 +1,15 @@
 # @rocketh/router
 
+## 0.17.4
+
+### Patch Changes
+
+- 651abb7: fix passing of options
+- Updated dependencies [b03146f]
+- Updated dependencies [dc5aefe]
+  - @rocketh/deploy@0.17.3
+  - @rocketh/core@0.17.3
+
 ## 0.17.3
 
 ### Patch Changes

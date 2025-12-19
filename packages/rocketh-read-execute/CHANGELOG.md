@@ -1,5 +1,11 @@
 # @rocketh/deploy
 
+## 0.17.2
+
+### Patch Changes
+
+- b03146f: fix message + allow it everywhere
+
 ## 0.17.1
 
 ### Patch Changes

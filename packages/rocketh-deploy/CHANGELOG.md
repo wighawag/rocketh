@@ -1,5 +1,14 @@
 # @rocketh/deploy
 
+## 0.17.3
+
+### Patch Changes
+
+- b03146f: fix message + allow it everywhere
+- dc5aefe: allow for custom deployment message
+- Updated dependencies [dc5aefe]
+  - @rocketh/core@0.17.3
+
 ## 0.17.2
 
 ### Patch Changes
