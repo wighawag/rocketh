@@ -1,6 +1,6 @@
 {
 	"name": "rocketh",
-	"version": "0.17.0",
+	"version": "0.17.1",
 	"description": "core functionality of rocketh",
 	"publishConfig": {
 		"access": "public"
@@ -43,6 +43,7 @@
 		"viem": "^2.41.2"
 	},
 	"scripts": {
+		"show-chains-with-same-chainId": "tsx show-chains-with-same-chainId.ts",
 		"build": "tsc --project tsconfig.json",
 		"dev": "as-soon -w src pnpm build"
 	}

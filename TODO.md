@@ -2,3 +2,4 @@
 - [ ] rename @rocketh/proxy ?
 - [ ] test contract imports
 - [ ] named accounts auto impersonnation, so you can perform tx as if you had their private key.
+- [ ] pre-transform linkedData to be ready for json (covert bigint to string for example)

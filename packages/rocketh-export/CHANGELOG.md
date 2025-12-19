@@ -1,5 +1,14 @@
 # @rocketh/export
 
+## 0.17.1
+
+### Patch Changes
+
+- better default chain info resolution
+- Updated dependencies
+  - rocketh@0.17.1
+  - @rocketh/node@0.17.1
+
 ## 0.17.0
 
 ### Minor Changes

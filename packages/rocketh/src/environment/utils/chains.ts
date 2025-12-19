@@ -32,11 +32,11 @@ const chainTypesByNames: {[chainExportName: string]: ChainType} = {
 	zkSyncSepoliaTestnet: 'zksync',
 };
 
-export const chainTypes: {[chainId: string]: ChainType} = {};
+const chainTypes: {[chainId: string]: ChainType} = {};
 
-export const chainById: {[chainId: string]: ChainInfo} = {};
-export const allChains: {[chainExportName: string]: ChainInfo} = {...((chains as any).default || chains)};
-allChains['localhost'] = allChains['hardhat'];
+const chainById: {[chainId: string]: ChainInfo[]} = {};
+const allChains: {[chainExportName: string]: ChainInfo} = {...((chains as any).default || chains)};
+allChains['localhost'] = {...allChains['hardhat'], name: 'localhost'};
 
 for (const key of Object.keys(allChains)) {
 	const chain = (allChains as any)[key] as ChainInfo;
@@ -45,30 +45,67 @@ for (const key of Object.keys(allChains)) {
 	if (specificChainType) {
 		chainTypes[chainId] = specificChainType;
 	}
-	chainById[chainId] = {...chain, chainType: specificChainType};
+	const list = (chainById[chainId] = chainById[chainId] || []);
+	list.push({...chain, chainType: specificChainType});
 }
 
 export const chainByCanonicalName: {[canonicalName: string]: ChainInfo} = {};
-for (const key of Object.keys(chainById)) {
-	const chain = (chainById as any)[key] as ChainInfo;
+for (const key of Object.keys(allChains)) {
+	const chain = (allChains as any)[key] as ChainInfo;
 	const canonicalName = kebabCase(chain.name);
 	chainByCanonicalName[canonicalName] = chain;
 }
 
-export function getChainById(id: string | number): ChainInfo | undefined {
-	const chain = chainById['' + id];
+function getChainsById(id: string | number): ChainInfo[] | undefined {
+	const chains = chainById['' + id];
 
-	return chain;
+	return chains;
 }
 
-export function getChainByName(name: string): ChainInfo | undefined {
+export function getDefaultChainInfoByName(name: string): ChainInfo | undefined {
 	const chain = chainByCanonicalName[name];
 	return chain;
 }
 
-export function getChainConfig(id: number, config: ResolvedUserConfig): ChainConfig {
-	const defaultChainInfo = getChainById(id);
-	const canonicalName = defaultChainInfo ? kebabCase(defaultChainInfo.name) : undefined;
+// function getCanonicalNameFromChainId(id: string | number): string | undefined {
+// 	let defaultChainInfo: ChainInfo | undefined;
+// 	const defaultChainInfos = getChainsById(id);
+// 	if (defaultChainInfos && defaultChainInfos.length > 1) {
+// 		console.error(
+// 			`chainId ${id} refers to different chain, please specific it by name or provide the chainConfig yourself`
+// 		);
+// 	} else {
+// 		defaultChainInfo = defaultChainInfos ? defaultChainInfos[0] : undefined;
+// 	}
+// 	const canonicalName = defaultChainInfo ? kebabCase(defaultChainInfo.name) : undefined;
+// 	return canonicalName;
+// }
+
+export function getDefaultChainInfoFromChainId(id: string | number): ChainInfo | undefined {
+	let defaultChainInfo: ChainInfo | undefined;
+	const defaultChainInfos = getChainsById(id);
+	if (defaultChainInfos && defaultChainInfos.length > 1) {
+		console.warn(
+			`chainId ${id} refers to different chain, please specific it by name or provide the chainConfig yourself`
+		);
+	} else {
+		defaultChainInfo = defaultChainInfos ? defaultChainInfos[0] : undefined;
+	}
+	return defaultChainInfo;
+}
+
+export function getChainConfigFromUserConfigAndDefaultChainInfo(
+	config: ResolvedUserConfig,
+	id: number,
+	details: {chainInfo: ChainInfo; canonicalName: string} | undefined
+): ChainConfig {
+	const canonicalName = details?.canonicalName;
+	let chainInfo = details?.chainInfo ? {...details.chainInfo} : undefined;
+	if (chainInfo?.id && id != chainInfo.id) {
+		console.warn(`default chainInfo  has a different chainId (${chainInfo.id}) != ${id}, we thus assign it`);
+		// we ensure the chainInfo has the correct id
+		chainInfo.id = id;
+	}
 	if (canonicalName) {
 		if (config.chains?.[id] && config.chains?.[canonicalName]) {
 			throw new Error(
@@ -77,15 +114,15 @@ export function getChainConfig(id: number, config: ResolvedUserConfig): ChainCon
 		}
 	}
 
-	let chainConfig: ChainUserConfig | undefined = config.chains?.[id];
-	if (!chainConfig && canonicalName) {
-		chainConfig = config.chains?.[canonicalName];
+	let chainConfig: ChainUserConfig | undefined = canonicalName ? config.chains?.[canonicalName] : undefined;
+	if (!chainConfig) {
+		chainConfig = config.chains?.[id];
 	}
 	if (!chainConfig) {
-		chainConfig = {info: defaultChainInfo};
+		chainConfig = {info: chainInfo};
 	}
 
-	let chainInfo = chainConfig?.info || defaultChainInfo;
+	chainInfo = chainConfig?.info || chainInfo;
 
 	let rpcUrl = process.env['ETH_NODE_URI_' + id];
 	if (canonicalName) {

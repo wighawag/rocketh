@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.17.1
+
+### Patch Changes
+
+- better default chain info resolution
+
 ## 0.17.0
 
 ### Minor Changes

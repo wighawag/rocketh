@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/node",
-	"version": "0.17.0",
+	"version": "0.17.1",
 	"description": "rocketh for server-side JS runtime like node, including a cli",
 	"publishConfig": {
 		"access": "public"

@@ -3,7 +3,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import type {ChainInfo, Deployment, LinkedData, ResolvedUserConfig} from 'rocketh/types';
-import {bigIntToStringReplacer, getChainConfig} from 'rocketh';
+import {
+	bigIntToStringReplacer,
+	getChainConfigFromUserConfigAndDefaultChainInfo,
+	getDefaultChainInfoByName,
+	getDefaultChainInfoFromChainId,
+} from 'rocketh';
 import {loadDeploymentsFromFiles} from '@rocketh/node';
 
 export interface ContractExport {
@@ -63,7 +68,27 @@ export async function run(
 		throw new Error(`no chainId found for ${environmentName}`);
 	}
 
-	const chainConfig = getChainConfig(parseInt(chainId), config);
+	const idToFetch = parseInt(chainId);
+	let chainInfoFound = getDefaultChainInfoByName(environmentName);
+	if (!chainInfoFound) {
+		// console.log(`could not find chainInfo by name = "${environmentName}"`);
+		chainInfoFound = getDefaultChainInfoFromChainId(idToFetch);
+		if (!chainInfoFound) {
+			// console.log(`could not find chainInfo by chainId = "${idToFetch}"`);
+		}
+	}
+
+	const defaultChainInfo = chainInfoFound;
+	const chainConfig = getChainConfigFromUserConfigAndDefaultChainInfo(
+		config,
+		idToFetch,
+		defaultChainInfo
+			? {
+					chainInfo: defaultChainInfo,
+					canonicalName: environmentName,
+			  }
+			: undefined
+	);
 	const chainInfo = {...chainConfig.info, genesisHash, properties: chainConfig.properties};
 
 	const exportData: ExportedDeployments = {

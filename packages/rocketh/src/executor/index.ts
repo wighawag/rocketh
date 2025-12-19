@@ -19,7 +19,11 @@ import type {
 	ModuleObject,
 } from '../types.js';
 import {withEnvironment} from '../utils/extensions.js';
-import {getChainByName, getChainConfig} from '../environment/utils/chains.js';
+import {
+	getChainConfigFromUserConfigAndDefaultChainInfo,
+	getDefaultChainInfoByName,
+	getDefaultChainInfoFromChainId,
+} from '../environment/utils/chains.js';
 import {JSONRPCHTTPProvider} from 'eip-1193-jsonrpc-provider';
 import {createEnvironment, loadDeployments} from '../environment/index.js';
 import {logger, setLogLevel, spin} from '../internal/logging.js';
@@ -149,33 +153,41 @@ export async function getChainIdForEnvironment(
 	environmentName: string,
 	provider?: EIP1193ProviderWithoutEvents
 ) {
+	let chainId: number;
+	const chainIdFromProvider = provider ? Number(await provider.request({method: 'eth_chainId'})) : undefined;
 	if (config?.environments?.[environmentName]?.chain) {
 		const chainAsNumber =
 			typeof config.environments[environmentName].chain === 'number'
 				? config.environments[environmentName].chain
 				: parseInt(config.environments[environmentName].chain);
 		if (!isNaN(chainAsNumber)) {
-			return chainAsNumber;
-		}
-		const chainFound = getChainByName(config.environments[environmentName].chain as string);
-		if (chainFound) {
-			return chainFound.id;
+			chainId = chainAsNumber;
 		} else {
-			throw new Error(`environment ${environmentName} chain id cannot be found, specify it in the rocketh config`);
+			const chainFound = getDefaultChainInfoByName(config.environments[environmentName].chain as string);
+			if (chainFound) {
+				chainId = chainFound.id;
+			} else {
+				throw new Error(`environment ${environmentName} chain id cannot be found, specify it in the rocketh config`);
+			}
 		}
 	} else {
-		const chainFound = getChainByName(environmentName);
+		const chainFound = getDefaultChainInfoByName(environmentName);
 		if (chainFound) {
-			return chainFound.id;
+			chainId = chainFound.id;
 		} else {
-			if (provider) {
-				const chainIdAsHex = await provider.request({method: 'eth_chainId'});
-				return Number(chainIdAsHex);
+			if (chainIdFromProvider) {
+				chainId = chainIdFromProvider;
 			} else {
 				throw new Error(`environment ${environmentName} chain id cannot be found, specify it in the rocketh config`);
 			}
 		}
 	}
+	if (chainIdFromProvider && chainIdFromProvider != chainId) {
+		console.warn(
+			`provider give a different chainId (${chainIdFromProvider}) than the one expected for envvironment named "${environmentName}" (${chainId})`
+		);
+	}
+	return chainIdFromProvider || chainId;
 }
 
 export function getEnvironmentName(executionParams: ExecutionParams): {name: string; fork: boolean} {
@@ -200,7 +212,27 @@ export function resolveExecutionParams<Extra extends Record<string, unknown> = R
 	const {name: environmentName, fork} = getEnvironmentName(executionParameters);
 
 	// TODO fork chainId resolution option to keep the network being used
-	let chainConfig: ChainConfig = getChainConfig(fork ? 31337 : chainId, config);
+	const idToFetch = fork ? 31337 : chainId;
+	let chainInfoFound = getDefaultChainInfoByName(environmentName);
+	if (!chainInfoFound) {
+		// console.log(`could not find chainInfo by name = "${environmentName}"`);
+		chainInfoFound = getDefaultChainInfoFromChainId(idToFetch);
+		if (!chainInfoFound) {
+			// console.log(`could not find chainInfo by chainId = "${idToFetch}"`);
+		}
+	}
+
+	const defaultChainInfo = chainInfoFound;
+	const chainConfig = getChainConfigFromUserConfigAndDefaultChainInfo(
+		config,
+		idToFetch,
+		defaultChainInfo
+			? {
+					chainInfo: defaultChainInfo,
+					canonicalName: environmentName,
+			  }
+			: undefined
+	);
 
 	let chainInfo = chainConfig.info;
 	const environmentConfig = config?.environments?.[environmentName];
