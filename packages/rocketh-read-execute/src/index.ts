@@ -69,7 +69,7 @@ export type ReadFunctionByName = <
 	args: ReadingArgs<TAbi, TFunctionName, TArgs>
 ) => Promise<DecodeFunctionResultReturnType<TAbi, TFunctionName>>;
 
-export type TxFunction = (tx: TransactionData) => Promise<EIP1193DATA>;
+export type TxFunction = (tx: TransactionData, options?: {message?: string}) => Promise<EIP1193DATA>;
 
 export type ExecutionArgs<
 	TAbi extends Abi,
@@ -81,6 +81,7 @@ export type ExecutionArgs<
 	>
 > = Omit<WriteContractParameters<TAbi, TFunctionName, TArgs>, 'address' | 'abi' | 'account' | 'nonce' | 'chain'> & {
 	account: string;
+	message?: string;
 };
 
 export type ReadingArgs<
@@ -197,7 +198,7 @@ export function execute(
 			// description, // TODO
 			// TODO we should have the nonce, except for wallet like metamask where it is not usre you get the nonce you start with
 		};
-		const receipt = await env.savePendingExecution(pendingExecution);
+		const receipt = await env.savePendingExecution(pendingExecution, args.message);
 		return receipt;
 	};
 }
@@ -348,8 +349,8 @@ export function readyByName(
 	};
 }
 
-export function tx(env: Environment): (txData: TransactionData) => Promise<EIP1193DATA> {
-	return async (txData: TransactionData) => {
+export function tx(env: Environment): (txData: TransactionData, options?: {message?: string}) => Promise<EIP1193DATA> {
+	return async (txData: TransactionData, options?: {message?: string}) => {
 		const {account, ...viemArgs} = txData;
 		let address: `0x${string}`;
 		if (account.startsWith('0x')) {
@@ -409,7 +410,7 @@ export function tx(env: Environment): (txData: TransactionData) => Promise<EIP11
 			// description, // TODO
 			// TODO we should have the nonce, except for wallet like metamask where it is not usre you get the nonce you start with
 		};
-		await env.savePendingExecution(pendingExecution);
+		await env.savePendingExecution(pendingExecution, options?.message);
 		return txHash;
 	};
 }

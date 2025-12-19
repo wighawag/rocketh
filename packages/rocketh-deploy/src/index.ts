@@ -199,7 +199,7 @@ async function getCreate2Factory(env: Environment, signer: Signer, params: Facto
 					type: 'execution', // TODO different type ?
 					transaction: {hash: txHash, origin: params.address},
 				},
-				`  - Broadcasting Deterministic Create 2 Factory tx:\n      {hash}\n      {transaction}`
+				`  - Broadcasting Create 2 Factory Funding tx:\n      {hash}\n      {transaction}`
 			);
 		}
 
@@ -207,10 +207,13 @@ async function getCreate2Factory(env: Environment, signer: Signer, params: Facto
 			method: 'eth_sendRawTransaction',
 			params: [factoryDeploymentData],
 		});
-		await env.savePendingExecution({
-			type: 'execution', // TODO different type ?
-			transaction: {hash: txHash, origin: params.address},
-		});
+		await env.savePendingExecution(
+			{
+				type: 'execution', // TODO different type ?
+				transaction: {hash: txHash, origin: params.address},
+			},
+			`  - Deploying Create 2 Factory:\n      {hash}\n      {transaction}`
+		);
 	}
 
 	return {
@@ -261,7 +264,7 @@ async function getCreate3Factory(env: Environment, signer: Signer, params: Facto
 				type: 'execution', // TODO different type ?
 				transaction: {hash: txHash, origin: params.address},
 			},
-			`  - Broadcasting Deterministic Create 3 Factory tx:\n      {hash}\n      {transaction}`
+			`  - Deploying Create 3 Factory:\n      {hash}\n      {transaction}`
 		);
 	}
 
