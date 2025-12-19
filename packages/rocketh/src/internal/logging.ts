@@ -1,6 +1,7 @@
 import {logs} from 'named-logs';
 
 import {hookup, factory as Logging} from 'named-logs-console';
+import {ProgressIndicator} from '@rocketh/core/types';
 // import ora from 'ora-cjs';
 hookup();
 
@@ -15,12 +16,6 @@ export function setLogLevel(level: number) {
 
 export const logger = logs('rocketh');
 
-export type ProgressIndicator = {
-	start(msg?: string): ProgressIndicator;
-	stop(): ProgressIndicator;
-	succeed(msg?: string): ProgressIndicator;
-	fail(msg?: string): ProgressIndicator;
-};
 const loggerProgressIndicator: ProgressIndicator = {
 	start(msg?: string) {
 		if (msg) {

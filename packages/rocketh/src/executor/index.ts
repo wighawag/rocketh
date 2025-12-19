@@ -13,22 +13,21 @@ import type {
 	ResolvedUserConfig,
 	ConfigOverrides,
 	UserConfig,
-	ChainConfig,
 	PromptExecutor,
 	DeploymentStore,
 	ModuleObject,
-} from '../types.js';
-import {withEnvironment} from '../utils/extensions.js';
+} from '@rocketh/core/types';
+import {withEnvironment} from '@rocketh/core/environment';
 import {
 	getChainConfigFromUserConfigAndDefaultChainInfo,
 	getDefaultChainInfoByName,
 	getDefaultChainInfoFromChainId,
-} from '../environment/utils/chains.js';
+} from '../environment/chains.js';
 import {JSONRPCHTTPProvider} from 'eip-1193-jsonrpc-provider';
-import {createEnvironment, loadDeployments} from '../environment/index.js';
-import {logger, setLogLevel, spin} from '../internal/logging.js';
+import {createEnvironment} from '../environment/index.js';
 import {getRoughGasPriceEstimate} from '../utils/eth.js';
 import {formatEther} from 'viem';
+import {logger, setLogLevel, spin} from '../internal/logging.js';
 
 /**
  * Setup function that creates the execute function for deploy scripts. It allow to specify a set of functions that will be available in the environment.
@@ -93,31 +92,6 @@ export function setupDeployScripts<
 	return {
 		deployScript: enhancedExecute,
 	};
-}
-
-export function enhanceEnvIfNeeded<
-	Extensions extends Record<string, (env: Environment<any, any, any>) => any> = {},
-	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
-	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
-	Extra extends Record<string, unknown> = Record<string, unknown>
->(
-	env: Environment,
-	extensions: Extensions
-): EnhancedEnvironment<NamedAccounts, Data, UnknownDeployments, Extensions, Extra> {
-	// Use the original env object as the base
-	const enhancedEnv = env as EnhancedEnvironment<NamedAccounts, Data, UnknownDeployments, Extensions, Extra>;
-
-	// Only create curried functions for extensions not already present in env
-	for (const key in extensions) {
-		if (!Object.prototype.hasOwnProperty.call(env, key)) {
-			// Create curried function only for this specific extension
-			const singleExtension: Record<string, unknown> = {};
-			singleExtension[key] = (extensions as any)[key];
-			const curriedFunction = withEnvironment(env, singleExtension as any);
-			(enhancedEnv as any)[key] = (curriedFunction as any)[key];
-		}
-	}
-	return enhancedEnv;
 }
 
 export function resolveConfig<
@@ -471,7 +445,7 @@ export function createExecutor(deploymentStore: DeploymentStore, promptExecutor:
 				).join(',')}`
 			);
 			const gasPriceEstimate = await getRoughGasPriceEstimate(external.network.provider);
-			const prompt = await promptExecutor({
+			const prompt = await promptExecutor.prompt({
 				type: 'confirm',
 				name: 'proceed',
 				message: `gas price is currently in this range:
@@ -489,7 +463,7 @@ Do you want to proceed (note that gas price can change for each tx)`,
 			});
 
 			if (!prompt.proceed) {
-				process.exit();
+				promptExecutor.exit();
 			}
 		}
 

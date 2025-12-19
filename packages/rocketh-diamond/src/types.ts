@@ -5,10 +5,9 @@ import type {
 	Deployment,
 	DeploymentConstruction,
 	Libraries,
-	LinkedData,
 	Abi,
 	LinkedDataProvided,
-} from 'rocketh/types';
+} from '@rocketh/core/types';
 import type {ContractFunctionArgs, ContractFunctionName, WriteContractParameters} from 'viem';
 
 export type Facet = {

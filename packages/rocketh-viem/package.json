@@ -21,11 +21,11 @@
 		"dist"
 	],
 	"devDependencies": {
+		"@rocketh/core": "workspace:*",
 		"abitype": "^1.2.1",
 		"as-soon": "^0.0.11",
 		"eip-1193": "^0.6.5",
 		"rimraf": "^6.1.2",
-		"rocketh": "workspace:*",
 		"typescript": "^5.9.3",
 		"viem": "^2.41.2"
 	},
@@ -33,7 +33,7 @@
 		"named-logs": "^0.4.1"
 	},
 	"peerDependencies": {
-		"viem": "^2.23.12"
+		"viem": "^2.41.2"
 	},
 	"scripts": {
 		"build": "tsc --project tsconfig.json",

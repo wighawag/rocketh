@@ -1,7 +1,7 @@
 import {Abi} from 'abitype';
-import type {Artifact, DeploymentConstruction, Deployment, Environment, DevDoc, UserDoc} from 'rocketh/types';
+import type {Artifact, DeploymentConstruction, Deployment, Environment, DevDoc, UserDoc} from '@rocketh/core/types';
 import '@rocketh/deploy';
-import {mergeArtifacts} from 'rocketh';
+import {mergeArtifacts} from '@rocketh/core/artifacts';
 import {DeployContractParameters} from 'viem';
 import {logs} from 'named-logs';
 import {Router10X60} from 'solidity-proxy/artifacts/index.js';

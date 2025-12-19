@@ -1,6 +1,6 @@
 import {Abi} from 'abitype';
 import {EIP1193DATA, EIP1193TransactionData, EIP1193TransactionReceipt} from 'eip-1193';
-import type {Artifact, Environment, MinimalDeployment, PendingExecution} from 'rocketh/types';
+import type {Artifact, Environment, MinimalDeployment, PendingExecution} from '@rocketh/core/types';
 import {
 	ContractFunctionArgs,
 	ContractFunctionName,

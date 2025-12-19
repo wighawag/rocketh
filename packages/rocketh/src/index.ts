@@ -6,7 +6,6 @@ export {
 	getChainIdForEnvironment,
 	getEnvironmentName,
 	createExecutor,
-	enhanceEnvIfNeeded,
 } from './executor/index.js';
 export {createEnvironment, loadDeployments} from './environment/index.js';
 
@@ -15,10 +14,9 @@ export {
 	chainByCanonicalName,
 	getDefaultChainInfoByName,
 	getDefaultChainInfoFromChainId,
-} from './environment/utils/chains.js';
-export {mergeArtifacts, mergeABIs} from './environment/utils/artifacts.js';
-export {getGasPriceEstimate, getRoughGasPriceEstimate} from './utils/eth.js';
-export {bigIntToStringReplacer} from './utils/json.js';
-export {withEnvironment} from './utils/extensions.js';
+} from './environment/chains.js';
 
 export {setLogLevel, log, logger, spin} from './internal/logging.js';
+
+// TODO move to @rocketh/core
+// export {getGasPriceEstimate, getRoughGasPriceEstimate} from './utils/eth.js';

@@ -1,6 +1,5 @@
 import {Abi, AbiFunction} from 'abitype';
-import {mergeABIs} from 'rocketh';
-import type {Artifact, DeploymentConstruction, Deployment, Environment} from 'rocketh/types';
+import type {Artifact, DeploymentConstruction, Deployment, Environment} from '@rocketh/core/types';
 import type {EIP1193Account} from 'eip-1193';
 import {Chain, encodeFunctionData, zeroAddress} from 'viem';
 import {logs} from 'named-logs';
@@ -13,7 +12,8 @@ import TransparentUpgradeableProxy from './hardhat-deploy-v1-artifacts/Transpare
 import OptimizedTransparentUpgradeableProxy from './hardhat-deploy-v1-artifacts/OptimizedTransparentUpgradeableProxy.js';
 import DefaultProxyAdmin from './hardhat-deploy-v1-artifacts/ProxyAdmin.js';
 import {execute, read} from '@rocketh/read-execute';
-import {toJSONCompatibleLinkedData} from '@rocketh/utils';
+import {mergeABIs} from '@rocketh/core/artifacts';
+import {toJSONCompatibleLinkedData} from '@rocketh/core/json';
 
 const logger = logs('@rocketh/proxy');
 

@@ -24,11 +24,11 @@
 		"dist"
 	],
 	"devDependencies": {
-		"rocketh": "workspace:*",
+		"@rocketh/core": "workspace:*",
+		"@rocketh/node": "workspace:*",
 		"@types/node": "^24.10.2",
 		"as-soon": "^0.0.11",
 		"rimraf": "^6.1.2",
-		"@rocketh/node": "workspace:*",
 		"typescript": "^5.9.3"
 	},
 	"peerDependencies": {

@@ -9,10 +9,9 @@ import type {
 	UnresolvedUnknownNamedAccounts,
 	UserConfig,
 	EnhancedEnvironment,
-} from 'rocketh/types';
+} from '@rocketh/core/types';
 import {
 	createExecutor,
-	enhanceEnvIfNeeded,
 	getChainIdForEnvironment,
 	getEnvironmentName,
 	loadDeployments,
@@ -20,14 +19,20 @@ import {
 	resolveConfig,
 	resolveExecutionParams,
 } from 'rocketh';
+import {enhanceEnvIfNeeded} from '@rocketh/core/environment';
 import {createEmptyDeploymentStore} from './deployment-store.js';
 
 const deploymentStore: DeploymentStore = createEmptyDeploymentStore();
 
-const promptExecutor: PromptExecutor = async () => {
-	return {
-		proceed: true,
-	};
+const promptExecutor: PromptExecutor = {
+	async prompt() {
+		return {
+			proceed: true,
+		};
+	},
+	exit() {
+		console.error(`not implemented`);
+	},
 };
 
 const executor = createExecutor(deploymentStore, promptExecutor);

@@ -24,10 +24,10 @@
 		"eip-1193-signer": "^0.1.1"
 	},
 	"devDependencies": {
+		"@rocketh/core": "workspace:*",
 		"as-soon": "^0.0.11",
 		"eip-1193": "^0.6.5",
 		"rimraf": "^6.1.2",
-		"rocketh": "workspace:*",
 		"typescript": "^5.9.3"
 	},
 	"scripts": {

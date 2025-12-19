@@ -24,20 +24,22 @@
 		"dist"
 	],
 	"devDependencies": {
+		"@rocketh/core": "workspace:*",
+		"@rocketh/node": "workspace:*",
 		"@types/node": "^24.10.2",
 		"abitype": "^1.2.1",
 		"as-soon": "^0.0.11",
 		"eip-1193": "^0.6.5",
 		"rimraf": "^6.1.2",
 		"rocketh": "workspace:*",
-		"@rocketh/node": "workspace:*",
 		"typescript": "^5.9.3"
 	},
 	"peerDependencies": {
-		"rocketh": "workspace:*",
-		"@rocketh/node": "workspace:*"
+		"@rocketh/node": "workspace:*",
+		"rocketh": "workspace:*"
 	},
 	"dependencies": {
+		
 		"@types/fs-extra": "^11.0.4",
 		"chalk": "5.6.2",
 		"commander": "^14.0.2",

@@ -14,20 +14,18 @@ import {
 	type ConfigOverrides,
 	type UserConfig,
 	type PromptExecutor,
-} from 'rocketh/types';
+} from '@rocketh/core/types';
 import {
-	enhanceEnvIfNeeded,
 	resolveConfig,
 	resolveExecutionParams,
-	createEnvironment,
-	logger,
 	getEnvironmentName,
 	getChainIdForEnvironment,
 	createExecutor,
-	setupDeployScripts,
 	loadDeployments,
 	loadEnvironment,
+	logger,
 } from 'rocketh';
+import {enhanceEnvIfNeeded} from '@rocketh/core/environment';
 import {traverseMultipleDirectory} from '../utils/fs.js';
 import {createFSDeploymentStore} from '../environment/deployment-store.js';
 
@@ -132,11 +130,16 @@ export async function readAndResolveConfig<
 }
 
 const deploymentStore = createFSDeploymentStore();
-const promptExecutor: PromptExecutor = async (request: {type: 'confirm'; name: string; message: string}) => {
-	const answer = await prompts<string>(request);
-	return {
-		proceed: answer.proceed,
-	};
+const promptExecutor: PromptExecutor = {
+	async prompt(request: {type: 'confirm'; name: string; message: string}) {
+		const answer = await prompts<string>(request);
+		return {
+			proceed: answer.proceed,
+		};
+	},
+	exit() {
+		process.exit();
+	},
 };
 const executor = createExecutor(deploymentStore, promptExecutor);
 

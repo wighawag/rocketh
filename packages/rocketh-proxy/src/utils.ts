@@ -1,5 +1,5 @@
 import {DeployResult} from '@rocketh/deploy';
-import {Abi, Deployment} from 'rocketh/types';
+import type {Abi, Deployment} from '@rocketh/core/types';
 
 export function checkUpgradeIndex<TAbi extends Abi>(
 	oldDeployment: Deployment<TAbi> | null,

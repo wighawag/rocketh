@@ -22,9 +22,9 @@ layout {
 				args "-c" "pnpm run --filter @rocketh/web dev; cd packages/rocketh-web; ${SHELL-bash}"
 			}
 			pane {
-                name "rocketh-utils"
+                name "rocketh-core"
                 command "bash"
-				args "-c" "pnpm run --filter @rocketh/utils dev; cd packages/rocketh-utils; ${SHELL-bash}"
+				args "-c" "pnpm run --filter @rocketh/core dev; cd packages/rocketh-core; ${SHELL-bash}"
 			}
 		}
 		pane split_direction="vertical" {

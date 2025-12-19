@@ -29,6 +29,7 @@
 		"rocketh": "workspace:*"
 	},
 	"dependencies": {
+		"@rocketh/core": "workspace:*",
 		"ldenv": "^0.3.16",
 		"tsx": "^4.21.0"
 	},

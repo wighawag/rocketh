@@ -1,10 +1,11 @@
-import type {
+import {
+	EnhancedEnvironment,
 	Environment,
 	UnknownDeployments,
 	UnresolvedNetworkSpecificData,
 	UnresolvedUnknownNamedAccounts,
 	CurriedFunctions,
-} from '../types.js';
+} from './types.js';
 
 /**
  * @param env - The environment object to inject as the first parameter
@@ -69,4 +70,29 @@ export function withEnvironment<
 	}
 
 	return result;
+}
+
+export function enhanceEnvIfNeeded<
+	Extensions extends Record<string, (env: Environment<any, any, any>) => any> = {},
+	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
+	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
+	Extra extends Record<string, unknown> = Record<string, unknown>
+>(
+	env: Environment,
+	extensions: Extensions
+): EnhancedEnvironment<NamedAccounts, Data, UnknownDeployments, Extensions, Extra> {
+	// Use the original env object as the base
+	const enhancedEnv = env as EnhancedEnvironment<NamedAccounts, Data, UnknownDeployments, Extensions, Extra>;
+
+	// Only create curried functions for extensions not already present in env
+	for (const key in extensions) {
+		if (!Object.prototype.hasOwnProperty.call(env, key)) {
+			// Create curried function only for this specific extension
+			const singleExtension: Record<string, unknown> = {};
+			singleExtension[key] = (extensions as any)[key];
+			const curriedFunction = withEnvironment(env, singleExtension as any);
+			(enhancedEnv as any)[key] = (curriedFunction as any)[key];
+		}
+	}
+	return enhancedEnv;
 }

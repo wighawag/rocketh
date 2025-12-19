@@ -1,4 +1,4 @@
-import {EIP1193GenericRequest, EIP1193ProviderWithoutEvents} from 'eip-1193';
+import type {EIP1193GenericRequest, EIP1193ProviderWithoutEvents} from 'eip-1193';
 import {BaseProvider} from './BaseProvider.js';
 
 export class TransactionHashTrackerProvider extends BaseProvider implements EIP1193ProviderWithoutEvents {

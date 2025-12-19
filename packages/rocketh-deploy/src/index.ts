@@ -1,4 +1,4 @@
-import {toJSONCompatibleLinkedData} from '@rocketh/utils';
+import {toJSONCompatibleLinkedData} from '@rocketh/core/json';
 import {Abi} from 'abitype';
 import {EIP1193TransactionData} from 'eip-1193';
 import {logs} from 'named-logs';
@@ -10,7 +10,7 @@ import type {
 	PendingDeployment,
 	Signer,
 	LinkedDataProvided,
-} from 'rocketh/types';
+} from '@rocketh/core/types';
 import {
 	Address,
 	Chain,

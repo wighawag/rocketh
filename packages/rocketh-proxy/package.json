@@ -27,16 +27,12 @@
 		"as-soon": "^0.0.11",
 		"eip-1193": "^0.6.5",
 		"rimraf": "^6.1.2",
-		"typescript": "^5.9.3",
-		"rocketh": "workspace:*"
-	},
-	"peerDependencies": {
-		"rocketh": "workspace:*"
+		"typescript": "^5.9.3"
 	},
 	"dependencies": {
 		"@rocketh/deploy": "workspace:*",
 		"@rocketh/read-execute": "workspace:*",
-		"@rocketh/utils": "workspace:*",
+		"@rocketh/core": "workspace:*",
 		"named-logs": "^0.4.1",
 		"viem": "^2.41.2"
 	},

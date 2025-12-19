@@ -1,13 +1,13 @@
 import * as chains from 'viem/chains';
 import {kebabCase} from 'change-case';
-import {
+import type {
 	ChainConfig,
 	ChainInfo,
 	ChainUserConfig,
 	Create2DeterministicDeploymentInfo,
 	Create3DeterministicDeploymentInfo,
 	ResolvedUserConfig,
-} from '../../types.js';
+} from '@rocketh/core/types';
 
 export type ChainType = 'zksync' | 'op-stack' | 'celo' | 'default';
 
@@ -124,17 +124,18 @@ export function getChainConfigFromUserConfigAndDefaultChainInfo(
 
 	chainInfo = chainConfig?.info || chainInfo;
 
-	let rpcUrl = process.env['ETH_NODE_URI_' + id];
-	if (canonicalName) {
-		const fromEnv = process.env['ETH_NODE_URI_' + canonicalName];
-		if (fromEnv) {
-			rpcUrl = fromEnv;
-		}
-	}
+	// let rpcUrl = process.env['ETH_NODE_URI_' + id];
+	// if (canonicalName) {
+	// 	const fromEnv = process.env['ETH_NODE_URI_' + canonicalName];
+	// 	if (fromEnv) {
+	// 		rpcUrl = fromEnv;
+	// 	}
+	// }
+	// if (!rpcUrl) {
+	// 	rpcUrl = chainConfig.rpcUrl;
+	// }
 
-	if (!rpcUrl) {
-		rpcUrl = chainConfig.rpcUrl;
-	}
+	let rpcUrl = chainConfig.rpcUrl;
 
 	if (!rpcUrl) {
 		rpcUrl = chainConfig.info?.rpcUrls.default.http[0];

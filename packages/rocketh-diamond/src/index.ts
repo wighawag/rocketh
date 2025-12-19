@@ -1,4 +1,4 @@
-import type {Abi, Artifact, Deployment, Environment} from 'rocketh/types';
+import type {Abi, Artifact, Deployment, Environment} from '@rocketh/core/types';
 
 import {encodeFunctionData, zeroAddress} from 'viem';
 import {logs} from 'named-logs';
@@ -12,7 +12,7 @@ import {deploy, DeployResult} from '@rocketh/deploy';
 
 import {read, execute} from '@rocketh/read-execute';
 import {DiamondDeploymentConstruction, DiamondDeployOptions, Facet, FacetCut, FacetCutAction} from './types.js';
-import {toJSONCompatibleLinkedData} from '@rocketh/utils';
+import {toJSONCompatibleLinkedData} from '@rocketh/core/json';
 
 const logger = logs('@rocketh/diamond');
 
