@@ -194,10 +194,13 @@ async function getCreate2Factory(env: Environment, signer: Signer, params: Facto
 					maxPriorityFeePerGas: params.maxPriorityFeePerGas,
 				},
 			]);
-			await env.savePendingExecution({
-				type: 'execution', // TODO different type ?
-				transaction: {hash: txHash, origin: params.address},
-			});
+			await env.savePendingExecution(
+				{
+					type: 'execution', // TODO different type ?
+					transaction: {hash: txHash, origin: params.address},
+				},
+				`  - Broadcasting Deterministic Create 2 Factory tx:\n      {hash}\n      {transaction}`
+			);
 		}
 
 		const txHash = await env.network.provider.request({
@@ -253,10 +256,13 @@ async function getCreate3Factory(env: Environment, signer: Signer, params: Facto
 				maxPriorityFeePerGas: params.maxPriorityFeePerGas,
 			},
 		]);
-		await env.savePendingExecution({
-			type: 'execution', // TODO different type ?
-			transaction: {hash: txHash, origin: params.address},
-		});
+		await env.savePendingExecution(
+			{
+				type: 'execution', // TODO different type ?
+				transaction: {hash: txHash, origin: params.address},
+			},
+			`  - Broadcasting Deterministic Create 3 Factory tx:\n      {hash}\n      {transaction}`
+		);
 	}
 
 	return {

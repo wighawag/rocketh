@@ -562,7 +562,7 @@ export interface Environment<
 		options?: {doNotCountAsNewDeployment?: boolean}
 	): Promise<Deployment<TAbi>>;
 	savePendingDeployment<TAbi extends Abi = Abi>(pendingDeployment: PendingDeployment<TAbi>): Promise<Deployment<TAbi>>;
-	savePendingExecution(pendingExecution: PendingExecution): Promise<EIP1193TransactionReceipt>;
+	savePendingExecution(pendingExecution: PendingExecution, msg?: string): Promise<EIP1193TransactionReceipt>;
 	get<TAbi extends Abi>(name: string): Deployment<TAbi>;
 	getOrNull<TAbi extends Abi>(name: string): Deployment<TAbi> | null;
 	fromAddressToNamedABI<TAbi extends Abi>(address: Address): {mergedABI: TAbi; names: string[]};

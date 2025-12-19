@@ -604,13 +604,16 @@ export async function createEnvironment<
 		hash: `0x${string}`,
 		info?: {message?: string; transaction?: EIP1193Transaction | null}
 	): Promise<EIP1193TransactionReceipt> {
-		const spinner = spin(
-			info?.message
-				? info.message
-				: `  - Broadcasting tx:\n      ${hash}${
-						info?.transaction ? `\n      ${displayTransaction(info?.transaction)}` : ''
-				  }`
-		);
+		let message = `  - Broadcasting tx:\n      ${hash}${
+			info?.transaction ? `\n      ${displayTransaction(info?.transaction)}` : ''
+		}`;
+		if (info?.message) {
+			message = info.message.replaceAll('{hash}', hash);
+			if (info?.transaction) {
+				message = message.replaceAll('{transaction}', displayTransaction(info.transaction));
+			}
+		}
+		const spinner = spin(message);
 		let receipt: EIP1193TransactionReceipt;
 		try {
 			receipt = await waitForTransactionReceipt({
@@ -715,7 +718,7 @@ export async function createEnvironment<
 		}
 	}
 
-	async function savePendingExecution(pendingExecution: PendingExecution) {
+	async function savePendingExecution(pendingExecution: PendingExecution, msg?: string) {
 		await savePendingTransaction(pendingExecution);
 		let transaction: EIP1193Transaction | null = null;
 		const spinner = spin(); // TODO spin(`fetching tx from peers ${pendingDeployment.txHash}`);
@@ -740,7 +743,7 @@ export async function createEnvironment<
 			pendingExecution.transaction.origin = transaction.from;
 		}
 
-		const receipt = await waitForTransaction(pendingExecution.transaction.hash, {transaction});
+		const receipt = await waitForTransaction(pendingExecution.transaction.hash, {transaction, message: msg});
 
 		await deleteTransaction(pendingExecution.transaction.hash);
 		return receipt;

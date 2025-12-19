@@ -1,5 +1,14 @@
 # @rocketh/proxy
 
+## 0.17.4
+
+### Patch Changes
+
+- Updated dependencies
+  - @rocketh/deploy@0.17.2
+  - @rocketh/core@0.17.2
+  - @rocketh/read-execute@0.17.1
+
 ## 0.17.3
 
 ### Patch Changes

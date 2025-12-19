@@ -1,5 +1,11 @@
 # @rocketh/core
 
+## 0.17.2
+
+### Patch Changes
+
+- add ability to add message to simple tx broadcast
+
 ## 0.17.1
 
 ### Patch Changes
