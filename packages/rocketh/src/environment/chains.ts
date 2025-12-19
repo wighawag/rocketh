@@ -149,7 +149,7 @@ export function getChainConfigFromUserConfigAndDefaultChainInfo(
 
 	if (!chainInfo) {
 		if (!rpcUrl) {
-			throw new Error(`no chain info found for chain with id ${id}`);
+			throw new Error(`chain with id ${id} has no public info and no rpc url known to fallback on`);
 		} else {
 			console.error(`chain with id ${id} has no public info`);
 		}
