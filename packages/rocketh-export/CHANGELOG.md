@@ -1,5 +1,15 @@
 # @rocketh/export
 
+## 0.17.2
+
+### Patch Changes
+
+- 6642ece: reorg using @rocketh/core for utility functions and types (still reexported from rocketh)
+- Updated dependencies [6642ece]
+- Updated dependencies [c574413]
+  - @rocketh/node@0.17.2
+  - rocketh@0.17.2
+
 ## 0.17.1
 
 ### Patch Changes

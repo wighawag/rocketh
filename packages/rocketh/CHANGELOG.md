@@ -1,5 +1,14 @@
 # rocketh
 
+## 0.17.2
+
+### Patch Changes
+
+- 6642ece: reorg using @rocketh/core for utility functions and types (still reexported from rocketh)
+- c574413: LinkedData vs LinkedDataProvided
+- Updated dependencies [6642ece]
+  - @rocketh/core@0.17.1
+
 ## 0.17.1
 
 ### Patch Changes

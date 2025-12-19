@@ -1,5 +1,15 @@
 # @rocketh/router
 
+## 0.17.2
+
+### Patch Changes
+
+- 6642ece: reorg using @rocketh/core for utility functions and types (still reexported from rocketh)
+- Updated dependencies [6642ece]
+- Updated dependencies [c574413]
+  - @rocketh/deploy@0.17.1
+  - @rocketh/core@0.17.1
+
 ## 0.17.1
 
 ### Patch Changes
