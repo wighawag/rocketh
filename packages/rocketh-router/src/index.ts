@@ -24,7 +24,7 @@ export type RouterEnhancedDeploymentConstruction = Omit<
 
 export type RouterDeployOptions = DeployOptions & {
 	extraABIs?: Abi[];
-	routerContract: {
+	routerContract?: {
 		type: 'custom';
 		artifact: Artifact<typeof Router10X60.abi>;
 	};
