@@ -67,7 +67,8 @@ export type ProxyDeployOptions = Omit<DeployOptions, 'skipIfAlreadyDeployed' | '
 
 export type ImplementationDeployer<TAbi extends Abi> = (
 	name: string,
-	args: Omit<DeploymentConstruction<TAbi>, 'artifact'>
+	args: Omit<DeploymentConstruction<TAbi>, 'artifact'>,
+	options?: DeployOptions
 ) => Promise<Deployment<TAbi>>;
 
 // TODO omit nonce ? // TODO omit chain ? same for rocketh-deploy
@@ -103,6 +104,31 @@ export function deployViaProxy(
 		params: ProxyEnhancedDeploymentConstruction<TAbi>,
 		options?: ProxyDeployOptions
 	) => {
+		let optionsForImplementation = options
+			? {
+					alwaysOverride: true,
+					deterministic: options.deterministic || options.deterministicImplementation,
+					libraries: options.libraries,
+			  }
+			: undefined;
+		let optionsForProxy = options
+			? ((options) => {
+					const {
+						owner,
+						checkABIConflict,
+						checkProxyAdmin,
+						execute,
+						deterministicImplementation,
+						proxyContract,
+						proxyDisabled,
+						upgradeIndex,
+						linkedData,
+						...optionsForProxy
+					} = options;
+					return optionsForProxy;
+			  })(options)
+			: undefined;
+
 		const proxyName = `${name}_Proxy`;
 		const implementationName = `${name}_Implementation`;
 
@@ -113,10 +139,10 @@ export function deployViaProxy(
 				throw new Error(`cannot deploy ${name} with proxyDisabled, already deployed`);
 			} else {
 				if (typeof params.artifact === 'function') {
-					return params.artifact(name, params);
+					return params.artifact(name, params, {...optionsForProxy, linkedData: options.linkedData});
 				} else {
 					// TODO any ?
-					return _deploy<TAbi>(name, params as any, options);
+					return _deploy<TAbi>(name, params as any, {...optionsForProxy, linkedData: options.linkedData});
 				}
 			}
 		}
@@ -206,7 +232,7 @@ export function deployViaProxy(
 
 		const implementationDeployment =
 			typeof params.artifact === 'function'
-				? await params.artifact(implementationName, {...params})
+				? await params.artifact(implementationName, {...params}, optionsForImplementation)
 				: await _deploy(
 						implementationName,
 						{
@@ -215,11 +241,7 @@ export function deployViaProxy(
 							artifact,
 							account: address,
 						} as DeploymentConstruction<TAbi>,
-						{
-							alwaysOverride: true,
-							deterministic: options?.deterministic || options?.deterministicImplementation || false,
-							libraries: options?.libraries,
-						}
+						optionsForImplementation
 				  );
 
 		logger.info(`implementation at ${implementationDeployment.address}`, `${implementationName}`);

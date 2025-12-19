@@ -5,7 +5,7 @@ import {mergeArtifacts} from '@rocketh/core/artifacts';
 import {DeployContractParameters} from 'viem';
 import {logs} from 'named-logs';
 import {Router10X60} from 'solidity-proxy/artifacts/index.js';
-import {deploy, DeployResult} from '@rocketh/deploy';
+import {deploy, DeployOptions, DeployResult} from '@rocketh/deploy';
 
 const logger = logs('@rocketh/router');
 
@@ -22,43 +22,42 @@ export type RouterEnhancedDeploymentConstruction = Omit<
 	'artifact' | 'args'
 >;
 
+export type RouterDeployOptions = DeployOptions & {
+	extraABIs?: Abi[];
+	routerContract: {
+		type: 'custom';
+		artifact: Artifact<typeof Router10X60.abi>;
+	};
+};
+
 export type DeployViaRouterFunction = <TAbi extends Abi>(
 	name: string,
 	params: RouterEnhancedDeploymentConstruction,
 	routes: Route<Abi>[],
-	options?: {
-		extraABIs?: Abi[];
-		routerContract: {
-			type: 'custom';
-			artifact: Artifact<typeof Router10X60.abi>;
-		};
-	}
+	options?: RouterDeployOptions
 ) => Promise<Deployment<TAbi> & {newlyDeployed: boolean}>;
 
-export function deployViaRouter(env: Environment): <TAbi extends Abi>(
+export function deployViaRouter(
+	env: Environment
+): <TAbi extends Abi>(
 	name: string,
 	params: RouterEnhancedDeploymentConstruction,
 	routes: Route<Abi>[],
-	options?: {
-		extraABIs?: Abi[];
-		routerContract: {
-			type: 'custom';
-			artifact: Artifact<typeof Router10X60.abi>;
-		};
-	}
+	options?: RouterDeployOptions
 ) => Promise<DeployResult<TAbi>> {
 	return async <TAbi extends Abi>(
 		name: string,
 		params: RouterEnhancedDeploymentConstruction,
 		routes: Route<Abi>[],
-		options?: {
-			extraABIs?: Abi[];
-			routerContract: {
-				type: 'custom';
-				artifact: Artifact<typeof Router10X60.abi>;
-			};
-		}
+		options?: RouterDeployOptions
 	) => {
+		let optionsForRoutes = options ? {deterministic: options.deterministic, libraries: options.libraries} : undefined;
+		let optionsForRouter = options
+			? ((options) => {
+					const {extraABIs, routerContract, ...optionsForRouter} = options;
+					return optionsForRouter;
+			  })(options)
+			: undefined;
 		const _deploy = deploy(env);
 		const implementations: `0x${string}`[] = [];
 
@@ -80,11 +79,15 @@ export function deployViaRouter(env: Environment): <TAbi extends Abi>(
 
 		const {sigJSMap, mergedABI, mergedDevDocs, mergedUserDocs} = mergeArtifacts(namedAbis);
 		for (const route of routes) {
-			const deployedRoute = await _deploy<Abi>(`${name}_Router_${route.name}_Route`, {
-				...params,
-				artifact: route.artifact,
-				args: route.args as unknown[],
-			});
+			const deployedRoute = await _deploy<Abi>(
+				`${name}_Router_${route.name}_Route`,
+				{
+					...params,
+					artifact: route.artifact,
+					args: route.args as unknown[],
+				},
+				optionsForRoutes
+			);
 			implementations.push(deployedRoute.address);
 		}
 
@@ -108,11 +111,15 @@ export function deployViaRouter(env: Environment): <TAbi extends Abi>(
 
 		logger.info(`routes`, routeParams);
 
-		const router = await _deploy(`${name}_Router`, {
-			...params,
-			artifact: options?.routerContract?.artifact || Router10X60,
-			args: [routeParams],
-		});
+		const router = await _deploy(
+			`${name}_Router`,
+			{
+				...params,
+				artifact: options?.routerContract?.artifact || Router10X60,
+				args: [routeParams],
+			},
+			optionsForRouter
+		);
 
 		logger.info(`router deployed at ${router.address}`);
 
