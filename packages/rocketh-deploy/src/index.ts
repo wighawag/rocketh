@@ -1,3 +1,4 @@
+import {toJSONCompatibleLinkedData} from '@rocketh/utils';
 import {Abi} from 'abitype';
 import {EIP1193TransactionData} from 'eip-1193';
 import {logs} from 'named-logs';
@@ -5,10 +6,10 @@ import type {
 	DeploymentConstruction,
 	Deployment,
 	Environment,
-	LinkedData,
 	PartialDeployment,
 	PendingDeployment,
 	Signer,
+	LinkedDataProvided,
 } from 'rocketh/types';
 import {
 	Address,
@@ -33,7 +34,7 @@ export type DeployFunction = <TAbi extends Abi, TChain extends Chain = Chain>(
 ) => Promise<DeployResult<TAbi>>;
 
 export type DeployOptions = {
-	linkedData?: LinkedData;
+	linkedData?: LinkedDataProvided;
 	deterministic?:
 		| boolean
 		| `0x${string}`
@@ -372,7 +373,7 @@ export function deploy(env: Environment): <TAbi extends Abi>(
 		const partialDeployment: PartialDeployment<TAbi> = {
 			...artifactToUse,
 			argsData,
-			linkedData: options?.linkedData,
+			linkedData: toJSONCompatibleLinkedData(options?.linkedData),
 		};
 
 		const signer = env.addressSigners[address];

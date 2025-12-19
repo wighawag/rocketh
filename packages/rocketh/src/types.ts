@@ -390,7 +390,10 @@ export type JSONTypePlusBigInt =
 	| null
 	| JSONTypePlusBigInt[]
 	| {[key: string]: JSONTypePlusBigInt};
-export type LinkedData = Record<string, JSONTypePlusBigInt>;
+export type LinkedDataProvided = Record<string, JSONTypePlusBigInt>;
+
+export type JSONType = string | number | boolean | null | JSONType[] | {[key: string]: JSONType};
+export type LinkedData = Record<string, JSONType>;
 
 export type StorageLayout = {
 	readonly storage: readonly Storage[];

@@ -1,3 +1,5 @@
+import {JSONType, JSONTypePlusBigInt, LinkedData, LinkedDataProvided} from '../types.js';
+
 // TODO share with db-utils
 export function postfixBigIntReplacer(k: string, v: any): any {
 	if (typeof v === 'bigint') {

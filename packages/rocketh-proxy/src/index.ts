@@ -13,6 +13,7 @@ import TransparentUpgradeableProxy from './hardhat-deploy-v1-artifacts/Transpare
 import OptimizedTransparentUpgradeableProxy from './hardhat-deploy-v1-artifacts/OptimizedTransparentUpgradeableProxy.js';
 import DefaultProxyAdmin from './hardhat-deploy-v1-artifacts/ProxyAdmin.js';
 import {execute, read} from '@rocketh/read-execute';
+import {toJSONCompatibleLinkedData} from '@rocketh/utils';
 
 const logger = logs('@rocketh/proxy');
 
@@ -341,7 +342,7 @@ export function deployViaProxy(
 				...proxy,
 				...artifactToUse,
 				abi: mergedABI as unknown as TAbi,
-				linkedData: options?.linkedData,
+				linkedData: toJSONCompatibleLinkedData(options?.linkedData),
 			});
 
 			logger.info(`saving as ${name}`);
@@ -463,7 +464,7 @@ export function deployViaProxy(
 			existingDeployment = await env.save(name, {
 				...proxyDeployment,
 				...artifactToUse,
-				linkedData: options?.linkedData,
+				linkedData: toJSONCompatibleLinkedData(options?.linkedData),
 			});
 			logger.info(`saving as ${name}`);
 		}

@@ -35,6 +35,7 @@
 	"dependencies": {
 		"@rocketh/deploy": "workspace:*",
 		"@rocketh/read-execute": "workspace:*",
+		"@rocketh/utils": "workspace:*",
 		"named-logs": "^0.4.1",
 		"viem": "^2.41.2"
 	},

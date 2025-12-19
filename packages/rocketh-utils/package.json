@@ -1,7 +1,7 @@
 {
-	"name": "@rocketh/deploy",
+	"name": "@rocketh/utils",
 	"version": "0.17.0",
-	"description": "provide deploy function for rocketh",
+	"description": "utilities for other rocketh packages",
 	"publishConfig": {
 		"access": "public"
 	},
@@ -21,17 +21,12 @@
 		"dist"
 	],
 	"devDependencies": {
-		"abitype": "^1.2.1",
 		"as-soon": "^0.0.11",
-		"eip-1193": "^0.6.5",
-		"rimraf": "^6.1.2",
 		"rocketh": "workspace:*",
 		"typescript": "^5.9.3"
 	},
 	"dependencies": {
-		"@rocketh/utils": "workspace:*",
-		"named-logs": "^0.4.1",
-		"viem": "^2.41.2"
+		"named-logs": "^0.4.1"
 	},
 	"scripts": {
 		"build": "tsc --project tsconfig.json",

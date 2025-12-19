@@ -12,6 +12,7 @@ import {deploy, DeployResult} from '@rocketh/deploy';
 
 import {read, execute} from '@rocketh/read-execute';
 import {DiamondDeploymentConstruction, DiamondDeployOptions, Facet, FacetCut, FacetCutAction} from './types.js';
+import {toJSONCompatibleLinkedData} from '@rocketh/utils';
 
 const logger = logs('@rocketh/diamond');
 
@@ -440,7 +441,7 @@ export function diamond(
 					{
 						...proxy,
 						abi,
-						linkedData: options.linkedData,
+						linkedData: toJSONCompatibleLinkedData(options.linkedData),
 						facets: facetSnapshot,
 						execute: options.execute,
 					},
@@ -478,7 +479,7 @@ export function diamond(
 
 				const diamondDeployment: Deployment<TAbi> = {
 					...oldDeployment,
-					linkedData: options.linkedData,
+					linkedData: toJSONCompatibleLinkedData(options.linkedData),
 					address: proxy.address,
 					abi,
 					facets: facetSnapshot,
