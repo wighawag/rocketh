@@ -469,7 +469,12 @@ export function deploy(env: Environment): <TAbi extends Abi>(
 			name,
 			// TODO we should have the nonce, except for wallet like metamask where it is not usre you get the nonce you start with
 		};
-		const deployment = await env.savePendingDeployment(pendingDeployment);
+		const deployment = await env.savePendingDeployment(
+			pendingDeployment,
+			`  - Deploying {name} ${
+				options?.deterministic ? '(deterministically)' : ''
+			} with tx:\n      {hash}\n      {transaction}`
+		);
 		return {...(deployment as Deployment<TAbi>), newlyDeployed: true};
 	};
 }

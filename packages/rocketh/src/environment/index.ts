@@ -633,15 +633,17 @@ export async function createEnvironment<
 
 	async function waitForDeploymentTransactionAndSave<TAbi extends Abi = Abi>(
 		pendingDeployment: PendingDeployment<TAbi>,
-		transaction?: EIP1193Transaction | null
+		info?: {message?: string; transaction?: EIP1193Transaction | null}
 	): Promise<Deployment<TAbi>> {
 		const nameToDisplay = pendingDeployment.name || '<no name>';
-		const message = `  - Deploying ${nameToDisplay} with tx:\n      ${pendingDeployment.transaction.hash}${
-			transaction ? `\n      ${displayTransaction(transaction)}` : ''
-		}`;
+		let message = `  - Deploying ${nameToDisplay} with tx:\n      {hash}\n      {transaction}`;
+		if (info?.message) {
+			message = info.message.replaceAll('{name}', nameToDisplay);
+		}
+
 		const receipt = await waitForTransaction(pendingDeployment.transaction.hash, {
+			transaction: info?.transaction,
 			message,
-			transaction,
 		});
 
 		// TODO we could make pendingDeployment.expectedAddress a spec for fetching address from event too
@@ -749,7 +751,10 @@ export async function createEnvironment<
 		return receipt;
 	}
 
-	async function savePendingDeployment<TAbi extends Abi = Abi>(pendingDeployment: PendingDeployment<TAbi>) {
+	async function savePendingDeployment<TAbi extends Abi = Abi>(
+		pendingDeployment: PendingDeployment<TAbi>,
+		msg?: string
+	) {
 		await savePendingTransaction(pendingDeployment);
 		let transaction: EIP1193Transaction | null = null;
 		const spinner = spin(); // TODO spin(`fetching tx from peers ${pendingDeployment.txHash}`);
@@ -777,7 +782,7 @@ export async function createEnvironment<
 			};
 		}
 
-		const deployment = await waitForDeploymentTransactionAndSave<TAbi>(pendingDeployment, transaction);
+		const deployment = await waitForDeploymentTransactionAndSave<TAbi>(pendingDeployment, {transaction, message: msg});
 		await deleteTransaction(pendingDeployment.transaction.hash);
 		return deployment;
 	}
