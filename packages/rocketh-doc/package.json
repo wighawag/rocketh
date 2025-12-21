@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/doc",
-	"version": "0.17.6",
+	"version": "0.17.7",
 	"description": "can generate doc from rocketh deployments and provided template",
 	"publishConfig": {
 		"access": "public"
@@ -25,23 +25,23 @@
 		"public",
 		"src"
 	],
-	"devDependencies": {
-		"@types/node": "^24.10.2",
-		"as-soon": "^0.0.11",
-		"rimraf": "^6.1.2",
-		"@rocketh/core": "workspace:*",
-		"@rocketh/node": "workspace:*",
-		"typescript": "^5.9.3"
-	},
-	"peerDependencies": {
-		"@rocketh/node": "workspace:*"
-	},
 	"dependencies": {
+		"@rocketh/core": "workspace:*",
 		"@types/fs-extra": "^11.0.4",
 		"commander": "^14.0.2",
 		"ethers": "^6.16.0",
 		"fs-extra": "^11.3.2",
 		"handlebars": "^4.7.8"
+	},
+	"devDependencies": {
+		"@types/node": "^24.10.2",
+		"as-soon": "^0.0.11",
+		"rimraf": "^6.1.2",
+		"@rocketh/node": "workspace:*",
+		"typescript": "^5.9.3"
+	},
+	"peerDependencies": {
+		"@rocketh/node": "workspace:*"
 	},
 	"scripts": {
 		"build": "tsc --project tsconfig.json",

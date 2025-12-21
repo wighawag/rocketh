@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/node",
-	"version": "0.17.6",
+	"version": "0.17.7",
 	"description": "rocketh for server-side JS runtime like node, including a cli",
 	"publishConfig": {
 		"access": "public"
@@ -20,8 +20,18 @@
 	"bin": {
 		"rocketh": "dist/cli.js"
 	},
-	"devDependencies": {
+	"dependencies": {
 		"@rocketh/core": "workspace:*",
+		"@types/prompts": "^2.4.9",
+		"change-case": "^5.4.4",
+		"commander": "^14.0.2",
+		"eip-1193": "^0.6.5",
+		"ldenv": "^0.3.16",
+		"prompts": "^2.4.2",
+		"tsx": "^4.21.0",
+		"viem": "^2.41.2"
+	},
+	"devDependencies": {
 		"@types/node": "^24.10.2",
 		"as-soon": "^0.0.11",
 		"ipfs-gateway-emulator": "4.2.1-ipfs.2",
@@ -32,16 +42,6 @@
 	},
 	"peerDependencies": {
 		"rocketh": "workspace:*"
-	},
-	"dependencies": {
-		"@types/prompts": "^2.4.9",
-		"change-case": "^5.4.4",
-		"commander": "^14.0.2",
-		"eip-1193": "^0.6.5",
-		"ldenv": "^0.3.16",
-		"prompts": "^2.4.2",
-		"tsx": "^4.21.0",
-		"viem": "^2.41.2"
 	},
 	"scripts": {
 		"build": "tsc --project tsconfig.json",

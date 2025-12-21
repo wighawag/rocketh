@@ -1,6 +1,6 @@
 {
 	"name": "rocketh",
-	"version": "0.17.6",
+	"version": "0.17.7",
 	"description": "core functionality of rocketh",
 	"publishConfig": {
 		"access": "public"
@@ -26,10 +26,6 @@
 	"files": [
 		"dist"
 	],
-	"devDependencies": {
-		"as-soon": "^0.0.11",
-		"typescript": "^5.9.3"
-	},
 	"dependencies": {
 		"@rocketh/core": "workspace:*",
 		"abitype": "^1.2.1",
@@ -41,6 +37,10 @@
 		"named-logs-console": "^0.4.5",
 		"tsx": "^4.21.0",
 		"viem": "^2.41.2"
+	},
+	"devDependencies": {
+		"as-soon": "^0.0.11",
+		"typescript": "^5.9.3"
 	},
 	"scripts": {
 		"show-chains-with-same-chainId": "tsx show-chains-with-same-chainId.ts",

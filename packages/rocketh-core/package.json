@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/core",
-	"version": "0.17.4",
+	"version": "0.17.5",
 	"description": "utilities for other rocketh packages",
 	"publishConfig": {
 		"access": "public"
@@ -50,17 +50,16 @@
 	"files": [
 		"dist"
 	],
-	"devDependencies": {
-		"abitype": "^1.2.1",
-		"as-soon": "^0.0.11",
-		"eip-1193": "^0.6.5",
-		"rocketh": "workspace:*",
-		"typescript": "^5.9.3",
-		"viem": "^2.41.2"
-	},
 	"dependencies": {
+		"abitype": "^1.2.1",
+		"eip-1193": "^0.6.5",
 		"ethers": "^6.16.0",
 		"named-logs": "^0.4.1"
+	},
+	"devDependencies": {
+		"as-soon": "^0.0.11",
+		"typescript": "^5.9.3",
+		"viem": "^2.41.2"
 	},
 	"scripts": {
 		"build": "tsc --project tsconfig.json",

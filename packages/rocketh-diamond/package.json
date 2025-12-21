@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/diamond",
-	"version": "0.17.5",
+	"version": "0.17.6",
 	"description": "provide diamond support for rocketh/hardhat-deploy",
 	"publishConfig": {
 		"access": "public"
@@ -24,19 +24,19 @@
 		"dist",
 		"solc_0_8"
 	],
-	"devDependencies": {
-		"abitype": "^1.2.1",
-		"as-soon": "^0.0.11",
-		"eip-1193": "^0.6.5",
-		"rimraf": "^6.1.2",
-		"typescript": "^5.9.3"
-	},
 	"dependencies": {
 		"@rocketh/deploy": "workspace:*",
 		"@rocketh/read-execute": "workspace:*",
 		"@rocketh/core": "workspace:*",
+		"abitype": "^1.2.1",
+		"eip-1193": "^0.6.5",
 		"named-logs": "^0.4.1",
 		"viem": "^2.41.2"
+	},
+	"devDependencies": {
+		"as-soon": "^0.0.11",
+		"rimraf": "^6.1.2",
+		"typescript": "^5.9.3"
 	},
 	"scripts": {
 		"build": "tsc --project tsconfig.json",

@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/router",
-	"version": "0.17.6",
+	"version": "0.17.7",
 	"description": "provide router based proxy deployment for rocketh",
 	"publishConfig": {
 		"access": "public"
@@ -20,19 +20,19 @@
 	"files": [
 		"dist"
 	],
-	"devDependencies": {
-		"abitype": "^1.2.1",
-		"as-soon": "^0.0.11",
-		"eip-1193": "^0.6.5",
-		"rimraf": "^6.1.2",
-		"typescript": "^5.9.3"
-	},
 	"dependencies": {
 		"@rocketh/deploy": "workspace:*",
 		"@rocketh/core": "workspace:*",
+		"abitype": "^1.2.1",
+		"eip-1193": "^0.6.5",
 		"named-logs": "^0.4.1",
 		"solidity-proxy": "^0.4.2",
 		"viem": "^2.41.2"
+	},
+	"devDependencies": {
+		"as-soon": "^0.0.11",
+		"rimraf": "^6.1.2",
+		"typescript": "^5.9.3"
 	},
 	"scripts": {
 		"build": "tsc --project tsconfig.json",

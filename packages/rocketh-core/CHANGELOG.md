@@ -1,5 +1,11 @@
 # @rocketh/core
 
+## 0.17.5
+
+### Patch Changes
+
+- update deps and dev deps
+
 ## 0.17.4
 
 ### Patch Changes
