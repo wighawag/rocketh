@@ -79,16 +79,12 @@ export async function run(
 	}
 
 	const defaultChainInfo = chainInfoFound;
-	const chainConfig = getChainConfigFromUserConfigAndDefaultChainInfo(
-		config,
-		idToFetch,
-		defaultChainInfo
-			? {
-					chainInfo: defaultChainInfo,
-					canonicalName: environmentName,
-			  }
-			: undefined
-	);
+	const chainConfig = getChainConfigFromUserConfigAndDefaultChainInfo(config, {
+		id: idToFetch,
+		chainInfo: defaultChainInfo,
+		canonicalName: environmentName,
+		doNotRequireRpcURL: true,
+	});
 	const chainInfo = {...chainConfig.info, genesisHash, properties: chainConfig.properties};
 
 	const exportData: ExportedDeployments = {

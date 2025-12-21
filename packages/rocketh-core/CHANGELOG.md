@@ -1,5 +1,11 @@
 # @rocketh/core
 
+## 0.17.4
+
+### Patch Changes
+
+- provider available: doNotRequireRpcURL
+
 ## 0.17.3
 
 ### Patch Changes

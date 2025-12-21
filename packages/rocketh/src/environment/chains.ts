@@ -96,27 +96,33 @@ export function getDefaultChainInfoFromChainId(id: string | number): ChainInfo |
 
 export function getChainConfigFromUserConfigAndDefaultChainInfo(
 	config: ResolvedUserConfig,
-	id: number,
-	details: {chainInfo: ChainInfo; canonicalName: string} | undefined
+	chainDetails: {
+		id: number;
+		chainInfo?: ChainInfo;
+		canonicalName?: string;
+		doNotRequireRpcURL?: boolean;
+	}
 ): ChainConfig {
-	const canonicalName = details?.canonicalName;
-	let chainInfo = details?.chainInfo ? {...details.chainInfo} : undefined;
-	if (chainInfo?.id && id != chainInfo.id) {
-		console.warn(`default chainInfo  has a different chainId (${chainInfo.id}) != ${id}, we thus assign it`);
+	const canonicalName = chainDetails?.canonicalName;
+	let chainInfo = chainDetails?.chainInfo ? {...chainDetails.chainInfo} : undefined;
+	if (chainInfo?.id && chainDetails.id != chainInfo.id) {
+		console.warn(
+			`default chainInfo  has a different chainId (${chainInfo.id}) != ${chainDetails.id}, we thus assign it`
+		);
 		// we ensure the chainInfo has the correct id
-		chainInfo.id = id;
+		chainInfo.id = chainDetails.id;
 	}
 	if (canonicalName) {
-		if (config.chains?.[id] && config.chains?.[canonicalName]) {
+		if (config.chains?.[chainDetails.id] && config.chains?.[canonicalName]) {
 			throw new Error(
-				`chain should be configured by chainId or name but not both, remove either ${id} or ${canonicalName}`
+				`chain should be configured by chainId or name but not both, remove either ${chainDetails.id} or ${canonicalName}`
 			);
 		}
 	}
 
 	let chainConfig: ChainUserConfig | undefined = canonicalName ? config.chains?.[canonicalName] : undefined;
 	if (!chainConfig) {
-		chainConfig = config.chains?.[id];
+		chainConfig = config.chains?.[chainDetails.id];
 	}
 	if (!chainConfig) {
 		chainConfig = {info: chainInfo};
@@ -141,21 +147,22 @@ export function getChainConfigFromUserConfigAndDefaultChainInfo(
 		rpcUrl = chainConfig.info?.rpcUrls.default.http[0];
 	}
 
+	// TODO remove ?
 	if (!rpcUrl) {
-		if (id === 31337 || id === 1337) {
+		if (chainDetails.id === 31337 || chainDetails.id === 1337) {
 			rpcUrl = 'http://127.0.0.1:8545';
 		}
 	}
 
 	if (!chainInfo) {
-		if (!rpcUrl) {
-			throw new Error(`chain with id ${id} has no public info and no rpc url known to fallback on`);
+		if (!rpcUrl && !chainDetails.doNotRequireRpcURL) {
+			throw new Error(`chain with id ${chainDetails.id} has no public info and no rpc url known to fallback on`);
 		} else {
-			console.error(`chain with id ${id} has no public info`);
+			console.error(`chain with id ${chainDetails.id} has no public info`);
 		}
 
 		chainInfo = {
-			id,
+			id: chainDetails.id,
 			name: 'unkwown',
 			nativeCurrency: {
 				name: 'Unknown Currency',
@@ -164,7 +171,7 @@ export function getChainConfigFromUserConfigAndDefaultChainInfo(
 			},
 			rpcUrls: {
 				default: {
-					http: [rpcUrl],
+					http: rpcUrl ? [rpcUrl] : [],
 				},
 			},
 			chainType: 'default',

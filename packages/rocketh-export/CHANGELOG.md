@@ -1,5 +1,14 @@
 # @rocketh/export
 
+## 0.17.5
+
+### Patch Changes
+
+- provider available: doNotRequireRpcURL
+- Updated dependencies
+  - rocketh@0.17.5
+  - @rocketh/node@0.17.5
+
 ## 0.17.4
 
 ### Patch Changes

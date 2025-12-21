@@ -197,16 +197,12 @@ export function resolveExecutionParams<Extra extends Record<string, unknown> = R
 	}
 
 	const defaultChainInfo = chainInfoFound;
-	const chainConfig = getChainConfigFromUserConfigAndDefaultChainInfo(
-		config,
-		idToFetch,
-		defaultChainInfo
-			? {
-					chainInfo: defaultChainInfo,
-					canonicalName: environmentName,
-			  }
-			: undefined
-	);
+	const chainConfig = getChainConfigFromUserConfigAndDefaultChainInfo(config, {
+		id: idToFetch,
+		chainInfo: defaultChainInfo,
+		canonicalName: environmentName,
+		doNotRequireRpcURL: !!executionParameters.provider,
+	});
 
 	let chainInfo = chainConfig.info;
 	const environmentConfig = config?.environments?.[environmentName];
@@ -245,8 +241,12 @@ export function resolveExecutionParams<Extra extends Record<string, unknown> = R
 		}
 	}
 
+	// here we force type actualChainConfig.rpcUrl! as string
+	// as if provider was not available
+	// getChainConfigFromUserConfigAndDefaultChainInfo would throw
 	const provider =
-		executionParameters.provider || (new JSONRPCHTTPProvider(actualChainConfig.rpcUrl) as EIP1193ProviderWithoutEvents);
+		executionParameters.provider ||
+		(new JSONRPCHTTPProvider(actualChainConfig.rpcUrl!) as EIP1193ProviderWithoutEvents);
 
 	let saveDeployments = executionParameters.saveDeployments;
 

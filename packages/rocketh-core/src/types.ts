@@ -238,7 +238,7 @@ export type ChainUserConfig = {
 };
 
 export type ChainConfig = {
-	readonly rpcUrl: string;
+	readonly rpcUrl?: string;
 	readonly tags: readonly string[];
 	readonly deterministicDeployment: DeterministicDeploymentInfo;
 	readonly info: ChainInfo;
