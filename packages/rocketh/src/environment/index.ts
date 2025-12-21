@@ -611,6 +611,8 @@ export async function createEnvironment<
 			message = info.message.replaceAll('{hash}', hash);
 			if (info?.transaction) {
 				message = message.replaceAll('{transaction}', displayTransaction(info.transaction));
+			} else {
+				message = message.replaceAll('{transaction}', '');
 			}
 		}
 		const spinner = spin(message);

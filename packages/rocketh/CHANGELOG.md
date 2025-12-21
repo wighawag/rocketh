@@ -1,5 +1,12 @@
 # rocketh
 
+## 0.17.6
+
+### Patch Changes
+
+- fix message
+  - @rocketh/core@0.17.4
+
 ## 0.17.5
 
 ### Patch Changes
