@@ -1,5 +1,11 @@
 # @rocketh/core
 
+## 0.17.6
+
+### Patch Changes
+
+- f4431ed: removing dependence on ethers
+
 ## 0.17.5
 
 ### Patch Changes

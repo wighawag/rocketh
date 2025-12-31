@@ -1,5 +1,12 @@
 # @rocketh/signer
 
+## 0.17.3
+
+### Patch Changes
+
+- Updated dependencies [f4431ed]
+  - @rocketh/core@0.17.6
+
 ## 0.17.2
 
 ### Patch Changes

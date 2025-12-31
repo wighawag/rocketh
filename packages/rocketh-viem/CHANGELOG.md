@@ -1,5 +1,13 @@
 # @rocketh/viem
 
+## 0.17.3
+
+### Patch Changes
+
+- e737031: add option to get a contract with specific account
+- Updated dependencies [f4431ed]
+  - @rocketh/core@0.17.6
+
 ## 0.17.2
 
 ### Patch Changes

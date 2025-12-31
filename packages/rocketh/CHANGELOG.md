@@ -1,5 +1,13 @@
 # rocketh
 
+## 0.17.8
+
+### Patch Changes
+
+- e737031: get gas price at start + fallback on eth_gasPrice, todo: set for the duration of the execution
+- Updated dependencies [f4431ed]
+  - @rocketh/core@0.17.6
+
 ## 0.17.7
 
 ### Patch Changes
