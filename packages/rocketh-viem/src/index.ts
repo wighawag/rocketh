@@ -55,13 +55,27 @@ export function viem(env: Environment): ViemHandle {
 	return {
 		walletClient,
 		publicClient,
-		getWritableContract<TAbi extends Abi>(name: string | Deployment<TAbi>) {
+		getWritableContract<TAbi extends Abi>(
+			name: string | Deployment<TAbi>,
+			options?: {
+				account?: `0x${string}`;
+			}
+		) {
 			const deployment = typeof name === 'string' ? env.get<TAbi>(name) : name;
-			return getViemContract({
+			let contractWalletClient: WalletClient<Transport> = walletClient;
+			if (options?.account) {
+				contractWalletClient = createWalletClient({
+					chain: env.network.chain,
+					transport: custom(env.network.provider),
+					account: options.account,
+				});
+			}
+			const contract = getViemContract({
 				address: deployment.address,
 				abi: deployment.abi,
-				client: {public: publicClient, wallet: walletClient},
+				client: {public: publicClient, wallet: contractWalletClient},
 			}) as ViemWritableContract<TAbi>;
+			return contract;
 		},
 		getContract<TAbi extends Abi>(name: string | Deployment<TAbi>) {
 			const deployment = typeof name === 'string' ? env.get<TAbi>(name) : name;

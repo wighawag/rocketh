@@ -438,13 +438,15 @@ export function createExecutor(deploymentStore: DeploymentStore, promptExecutor:
 			recurseDependencies(id);
 		}
 
+		// TODO store in the execution context
+		const gasPriceEstimate = await getRoughGasPriceEstimate(external.network.provider);
 		if (resolvedExecutionParams.askBeforeProceeding) {
 			console.log(
 				`Network: ${external.name} \n \t Chain: ${external.network.chain.name} \n \t Tags: ${Object.keys(
 					external.tags
 				).join(',')}`
 			);
-			const gasPriceEstimate = await getRoughGasPriceEstimate(external.network.provider);
+
 			const prompt = await promptExecutor.prompt({
 				type: 'confirm',
 				name: 'proceed',

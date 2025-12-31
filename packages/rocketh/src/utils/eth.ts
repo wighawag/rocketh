@@ -1,4 +1,5 @@
-import {EIP1193BlockTag, EIP1193ProviderWithoutEvents, EIP1193QUANTITY} from 'eip-1193';
+import {EIP1193BlockTag, EIP1193FeeHistory, EIP1193ProviderWithoutEvents, EIP1193QUANTITY} from 'eip-1193';
+import {logger} from '../internal/logging.js';
 
 function avg(arr: bigint[]) {
 	const sum = arr.reduce((a: bigint, v: bigint) => a + v);
@@ -34,10 +35,31 @@ export async function getGasPriceEstimate(
 
 	const historicalBlocks = `0x${optionsResolved.blockCount.toString(16)}`;
 
-	const rawFeeHistory = await provider.request({
-		method: 'eth_feeHistory',
-		params: [historicalBlocks as EIP1193QUANTITY, optionsResolved.newestBlock, optionsResolved.rewardPercentiles],
-	});
+	let rawFeeHistory: EIP1193FeeHistory;
+	try {
+		rawFeeHistory = await provider.request({
+			method: 'eth_feeHistory',
+			params: [historicalBlocks as EIP1193QUANTITY, optionsResolved.newestBlock, optionsResolved.rewardPercentiles],
+		});
+	} catch (err: any) {
+		if (
+			('details' in err && err.details.indexOf('unknown method eth_feeHistory') != -1) ||
+			err.details.indexOf('Unknown method eth_feeHistory') != -1
+		) {
+			logger.warn(`eth_feeHistory not implemeted by node, falling back on "eth_gasPrice"`);
+			const gasPrice = await provider.request({method: 'eth_gasPrice'});
+			const result: EstimateGasPriceResult = [];
+			for (let i = 0; i < optionsResolved.rewardPercentiles.length; i++) {
+				result.push({
+					maxFeePerGas: BigInt(gasPrice),
+					maxPriorityFeePerGas: BigInt(gasPrice),
+				});
+			}
+			return result;
+		} else {
+			throw err;
+		}
+	}
 
 	let blockNum = Number(rawFeeHistory.oldestBlock);
 	const lastBlock = blockNum + rawFeeHistory.reward.length;
