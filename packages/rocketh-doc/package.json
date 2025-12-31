@@ -28,16 +28,17 @@
 	"dependencies": {
 		"@rocketh/core": "workspace:*",
 		"@types/fs-extra": "^11.0.4",
+		"abitype": "^1.2.1",
 		"commander": "^14.0.2",
-		"ethers": "^6.16.0",
 		"fs-extra": "^11.3.2",
-		"handlebars": "^4.7.8"
+		"handlebars": "^4.7.8",
+		"viem": "^2.41.2"
 	},
 	"devDependencies": {
+		"@rocketh/node": "workspace:*",
 		"@types/node": "^24.10.2",
 		"as-soon": "^0.0.11",
 		"rimraf": "^6.1.2",
-		"@rocketh/node": "workspace:*",
 		"typescript": "^5.9.3"
 	},
 	"peerDependencies": {

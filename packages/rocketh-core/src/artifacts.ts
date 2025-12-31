@@ -1,6 +1,6 @@
 import type {Abi} from 'abitype';
 import type {Artifact, DevDoc, UserDoc} from './types.js';
-import {FunctionFragment} from 'ethers';
+import {toFunctionSelector} from 'viem';
 
 type CreateMutable<Type> = {
 	-readonly [Property in keyof Type]: Type[Property];
@@ -58,7 +58,7 @@ export function mergeABIs(list: {name: string; abi: Abi}[], options?: {doNotChec
 		for (const element of listElem.abi) {
 			if (element.type === 'function') {
 				// const selector = getFunctionSelector(element);
-				const selector = FunctionFragment.from(element).selector as `0x${string}`;
+				const selector = toFunctionSelector(element);
 				if (sigJSMap.has(selector)) {
 					if (!options?.doNotCheckForConflicts) {
 						const existing = sigJSMap.get(selector);

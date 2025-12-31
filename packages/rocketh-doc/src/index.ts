@@ -8,17 +8,17 @@ import type {
 	AbiFunction,
 	AbiError,
 	AbiEvent,
-	UserConfig,
 	ResolvedUserConfig,
 } from '@rocketh/core/types';
 import {loadDeploymentsFromFiles} from '@rocketh/node';
 import Handlebars from 'handlebars';
 import path from 'path';
-import {Fragment, FunctionFragment} from 'ethers';
 import {dirname} from 'path';
 import {fileURLToPath} from 'url';
+import {formatAbiItem} from 'abitype';
 
 import {DocumentationData, ErrorDoc, EventDoc, MethodDoc, ParamDoc, ReturnDoc} from './types.js';
+import {toFunctionSelector} from 'viem';
 
 export * from './types.js';
 
@@ -164,7 +164,7 @@ export function generateDocumentationData(
 			if (!abi) {
 				continue;
 			}
-			const fullFormat = Fragment.from(abi).format('full');
+			const fullFormat = formatAbiItem(abi);
 			const paramNames = abi.inputs.map((v, index) => v.name || `_${index}`);
 
 			const errorFromUserDoc = deploymentOrArfifact.userdoc.errors[errorSignature];
@@ -216,7 +216,7 @@ export function generateDocumentationData(
 			if (!abi) {
 				continue;
 			}
-			const fullFormat = Fragment.from(abi).format('full');
+			const fullFormat = formatAbiItem(abi);
 			const paramNames = abi.inputs.map((v, index) => v.name || `_${index}`);
 
 			const eventFromUserDoc = deploymentOrArfifact.userdoc.events[eventSignature];
@@ -249,7 +249,7 @@ export function generateDocumentationData(
 			if (!abi) {
 				continue;
 			}
-			const fullFormat = Fragment.from(abi).format('full');
+			const fullFormat = formatAbiItem(abi);
 			const paramNames = abi ? abi.inputs.map((v, index) => v.name || `_${index}`) : undefined;
 			const returnNames = abi && 'outputs' in abi ? abi.outputs.map((v, index) => v.name || `_${index}`) : undefined;
 
@@ -268,7 +268,7 @@ export function generateDocumentationData(
 				}
 			}
 
-			if (methodName === 'constructor') {
+			if (abi.type === 'constructor') {
 				methods.push({
 					type: 'constructor',
 					name: 'constructor',
@@ -280,7 +280,7 @@ export function generateDocumentationData(
 					returns,
 				});
 			} else {
-				const selector = FunctionFragment.from(abi).selector as `0x${string}`;
+				const selector = toFunctionSelector(abi);
 				methods.push({
 					type: 'function',
 					name: methodName,

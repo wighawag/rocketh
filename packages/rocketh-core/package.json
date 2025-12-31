@@ -53,13 +53,12 @@
 	"dependencies": {
 		"abitype": "^1.2.1",
 		"eip-1193": "^0.6.5",
-		"ethers": "^6.16.0",
-		"named-logs": "^0.4.1"
+		"named-logs": "^0.4.1",
+		"viem": "^2.41.2"
 	},
 	"devDependencies": {
 		"as-soon": "^0.0.11",
-		"typescript": "^5.9.3",
-		"viem": "^2.41.2"
+		"typescript": "^5.9.3"
 	},
 	"scripts": {
 		"build": "tsc --project tsconfig.json",
