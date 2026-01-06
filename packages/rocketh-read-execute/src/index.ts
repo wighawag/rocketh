@@ -314,7 +314,7 @@ export function read(
 	};
 }
 
-export function readyByName(
+export function readByName(
 	env: Environment
 ): <
 	TAbi extends Abi,
