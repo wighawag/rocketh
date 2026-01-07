@@ -1,5 +1,11 @@
 # @rocketh/deploy
 
+## 0.17.5
+
+### Patch Changes
+
+- Fixed typo in readByName function
+
 ## 0.17.4
 
 ### Patch Changes
