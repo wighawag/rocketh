@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.17.9
+
+### Patch Changes
+
+- fix eth_feeHistory missing case
+
 ## 0.17.8
 
 ### Patch Changes

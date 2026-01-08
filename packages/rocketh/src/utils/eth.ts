@@ -42,9 +42,11 @@ export async function getGasPriceEstimate(
 			params: [historicalBlocks as EIP1193QUANTITY, optionsResolved.newestBlock, optionsResolved.rewardPercentiles],
 		});
 	} catch (err: any) {
+		const message = 'details' in err && err.details ? err.details : err.message;
 		if (
-			('details' in err && err.details.indexOf('unknown method eth_feeHistory') != -1) ||
-			err.details.indexOf('Unknown method eth_feeHistory') != -1
+			message &&
+			(message.indexOf('unknown method eth_feeHistory') != -1 ||
+				message.indexOf('The method "eth_feeHistory" does not exist') != -1)
 		) {
 			logger.warn(`eth_feeHistory not implemeted by node, falling back on "eth_gasPrice"`);
 			const gasPrice = await provider.request({method: 'eth_gasPrice'});
