@@ -19,7 +19,5 @@ export {
 	getDefaultChainInfoFromChainId,
 } from './environment/chains.js';
 
-export {setLogLevel, log, logger, spin} from './internal/logging.js';
-
 // TODO move to @rocketh/core
 // export {getGasPriceEstimate, getRoughGasPriceEstimate} from './utils/eth.js';

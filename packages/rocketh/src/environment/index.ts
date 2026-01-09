@@ -31,7 +31,7 @@ import {
 	EIP1193Transaction,
 	EIP1193TransactionReceipt,
 } from 'eip-1193';
-import {log, spin} from '../internal/logging.js';
+import {log, logger, spin} from '../internal/logging.js';
 import {mergeArtifacts} from '@rocketh/core/artifacts';
 import {TransactionHashTracker, TransactionHashTrackerProvider} from '@rocketh/core/providers';
 
@@ -301,6 +301,7 @@ export async function createEnvironment<
 	}
 
 	if (userConfig.data) {
+		logger.debug(`getting data for env = ${environmentName}, chainId = ${chainId}`);
 		const dataFields = Object.keys(userConfig.data);
 		for (const dataField of dataFields) {
 			let fieldData = await getData(dataField, userConfig.data[dataField]);

@@ -27,7 +27,6 @@ import {JSONRPCHTTPProvider} from 'eip-1193-jsonrpc-provider';
 import {createEnvironment} from '../environment/index.js';
 import {getRoughGasPriceEstimate} from '../utils/eth.js';
 import {formatEther} from 'viem';
-import {logger, setLogLevel, spin} from '../internal/logging.js';
 
 /**
  * Setup function that creates the execute function for deploy scripts. It allow to specify a set of functions that will be available in the environment.

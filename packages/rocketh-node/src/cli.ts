@@ -5,7 +5,20 @@ import pkg from '../package.json' with {type: 'json'};
 import { loadAndExecuteDeploymentsFromFiles } from './executor/index.js';
 import { ExecutionParams } from 'rocketh/types';
 
+import {hookup, factory as Logging} from 'named-logs-console';
+hookup();
+
+export function setLogLevel(level: number) {
+	Logging.level = level;
+	if (Logging.level > 0) {
+		Logging.enable();
+	} else {
+		Logging.disable();
+	}
+}
+
 loadEnv();
+
 
 const commandName = "rocketh";
 const program = new Command();
