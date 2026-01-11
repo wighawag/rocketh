@@ -1,5 +1,11 @@
 # @rocketh/deploy
 
+## 0.17.7
+
+### Patch Changes
+
+- export type so viem is not needed for inference
+
 ## 0.17.6
 
 ### Patch Changes

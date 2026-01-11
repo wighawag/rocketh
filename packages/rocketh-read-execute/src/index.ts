@@ -1,16 +1,24 @@
 import {Abi} from 'abitype';
 import {EIP1193DATA, EIP1193TransactionData, EIP1193TransactionReceipt} from 'eip-1193';
 import type {Artifact, Environment, MinimalDeployment, PendingExecution} from '@rocketh/core/types';
-import {
+import type {
 	ContractFunctionArgs,
 	ContractFunctionName,
 	DecodeFunctionResultReturnType,
 	ReadContractParameters,
 	TransactionRequestEIP1559,
 	WriteContractParameters,
-	decodeFunctionResult,
-	encodeFunctionData,
 } from 'viem';
+// export type so viem is not needed for inference
+export type {
+	ContractFunctionArgs,
+	ContractFunctionName,
+	DecodeFunctionResultReturnType,
+	ReadContractParameters,
+	TransactionRequestEIP1559,
+	WriteContractParameters,
+};
+import {decodeFunctionResult, encodeFunctionData} from 'viem';
 import {logs} from 'named-logs';
 
 const logger = logs('@rocketh/read-execute');
