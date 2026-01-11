@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.17.12
+
+### Patch Changes
+
+- add tsx back
+
 ## 0.17.11
 
 ### Patch Changes

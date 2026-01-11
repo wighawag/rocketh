@@ -1,3 +1,4 @@
+import 'tsx';
 import fs from 'node:fs';
 import path from 'node:path';
 import prompts from 'prompts';

@@ -1,5 +1,13 @@
 # @rocketh/node
 
+## 0.17.13
+
+### Patch Changes
+
+- add tsx back
+- Updated dependencies
+  - rocketh@0.17.12
+
 ## 0.17.12
 
 ### Patch Changes
