@@ -28,7 +28,7 @@ program
 
 const options = program.opts();
 
-let logLevelAsNumber = 2;
+let logLevelAsNumber = 3;
 if (options.logLevel) {
 	logLevelAsNumber = parseInt(options.logLevel);
 	if (isNaN(logLevelAsNumber)) {

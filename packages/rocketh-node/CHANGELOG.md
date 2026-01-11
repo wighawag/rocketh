@@ -1,5 +1,11 @@
 # @rocketh/node
 
+## 0.17.15
+
+### Patch Changes
+
+- use log level 3 by default
+
 ## 0.17.14
 
 ### Patch Changes
