@@ -293,7 +293,6 @@ export type ExecutionParams<Extra extends Record<string, unknown> = Record<strin
 	reportGasUse?: boolean;
 	defaultPollingInterval?: number;
 	extra?: Extra;
-	logLevel?: number;
 	provider?: EIP1193ProviderWithoutEvents;
 	config?: ConfigOverrides;
 };
@@ -527,7 +526,6 @@ export type ResolvedExecutionParams<Extra extends Record<string, unknown> = Reco
 	readonly reportGasUse: boolean;
 	readonly pollingInterval: number;
 	readonly extra?: Extra;
-	readonly logLevel: number;
 	readonly provider: EIP1193ProviderWithoutEvents;
 	readonly scripts: readonly string[];
 };

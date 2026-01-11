@@ -31,7 +31,7 @@ import {
 	EIP1193Transaction,
 	EIP1193TransactionReceipt,
 } from 'eip-1193';
-import {log, logger, spin} from '../internal/logging.js';
+import {logger, spin} from '../internal/logging.js';
 import {mergeArtifacts} from '@rocketh/core/artifacts';
 import {TransactionHashTracker, TransactionHashTrackerProvider} from '@rocketh/core/providers';
 
@@ -791,7 +791,7 @@ export async function createEnvironment<
 	}
 
 	function showMessage(message: string) {
-		log(message);
+		logger.log(message);
 	}
 
 	function showProgress(message?: string): ProgressIndicator {

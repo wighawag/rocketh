@@ -5,17 +5,8 @@ import pkg from '../package.json' with {type: 'json'};
 import { loadAndExecuteDeploymentsFromFiles } from './executor/index.js';
 import { ExecutionParams } from 'rocketh/types';
 
-import {hookup, factory as Logging} from 'named-logs-console';
+import {hookup, setupLogger} from 'named-logs-console';
 hookup();
-
-export function setLogLevel(level: number) {
-	Logging.level = level;
-	if (Logging.level > 0) {
-		Logging.enable();
-	} else {
-		Logging.disable();
-	}
-}
 
 loadEnv();
 
@@ -31,6 +22,7 @@ program
 	.option('-t, --tags <value>', 'comma separated list of tags to execute')
 	.option('-d, --deployments <value>', 'folder where deployments are saved')
 	.option('--skip-gas-report', 'if set skip gas report')
+	.option('--log-level <value>', 'set the log level')
 	.option('--skip-prompts', 'if set skip any prompts')
 	.option('--save-deployments', 'if set, save deployments')
 	.requiredOption('-e, --environment <value>', 'environment to use')
@@ -38,10 +30,30 @@ program
 
 const options = program.opts();
 
+let logLevelAsNumber = 2;
+if (options.logLevel) {
+	logLevelAsNumber = parseInt(options.logLevel);
+	if (isNaN(logLevelAsNumber)) {
+		switch(options.logLevel) {
+			case 'error': logLevelAsNumber = 1; break;
+			case 'warn': logLevelAsNumber = 2; break;
+			case 'info': logLevelAsNumber = 3; break;
+			case 'debug': logLevelAsNumber = 4; break; 
+			case 'trace': logLevelAsNumber = 5; break; 
+		}
+	}
+}
+
+setupLogger('rocketh', {
+	level: logLevelAsNumber
+});
+setupLogger('@rocketh/node', {
+	level: logLevelAsNumber
+});
+
 
 loadAndExecuteDeploymentsFromFiles({
 	...(options as ExecutionParams),
-	logLevel: 1,
 	askBeforeProceeding: options.skipPrompts ? false : true,
 	reportGasUse: options.skipGasReport ? false : true,
 	saveDeployments: options.saveDeployments,

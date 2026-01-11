@@ -23,11 +23,13 @@ import {
 	createExecutor,
 	loadDeployments,
 	loadEnvironment,
-	logger,
 } from 'rocketh';
 import {enhanceEnvIfNeeded} from '@rocketh/core/environment';
 import {traverseMultipleDirectory} from '../utils/fs.js';
 import {createFSDeploymentStore} from '../environment/deployment-store.js';
+import {logs} from 'named-logs';
+
+const logger = logs('@rocketh/node');
 
 export function setupEnvironmentFromFiles<
 	Extensions extends Record<string, (env: Environment<any, any, any>) => any> = {},

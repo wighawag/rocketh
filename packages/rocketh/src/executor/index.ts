@@ -27,6 +27,7 @@ import {JSONRPCHTTPProvider} from 'eip-1193-jsonrpc-provider';
 import {createEnvironment} from '../environment/index.js';
 import {getRoughGasPriceEstimate} from '../utils/eth.js';
 import {formatEther} from 'viem';
+import {logger, spin} from '../internal/logging.js';
 
 /**
  * Setup function that creates the execute function for deploy scripts. It allow to specify a set of functions that will be available in the environment.
@@ -265,7 +266,6 @@ export function resolveExecutionParams<Extra extends Record<string, unknown> = R
 	return {
 		askBeforeProceeding: executionParameters.askBeforeProceeding || false,
 		chain: chainInfo,
-		logLevel: executionParameters.logLevel || 0, // TODO
 		pollingInterval: actualChainConfig.pollingInterval,
 		reportGasUse: executionParameters.reportGasUse || false,
 		saveDeployments,
@@ -339,8 +339,6 @@ export function createExecutor(deploymentStore: DeploymentStore, promptExecutor:
 		resolvedExecutionParams: ResolvedExecutionParams,
 		args?: ArgumentsType
 	): Promise<Environment<NamedAccounts, Data, UnknownDeployments>> {
-		setLogLevel(typeof resolvedExecutionParams.logLevel === 'undefined' ? 0 : resolvedExecutionParams.logLevel);
-
 		const scriptModuleById: {[id: string]: DeployScriptModule<NamedAccounts, Data, ArgumentsType>} = {};
 		const scriptIdBags: {[tag: string]: string[]} = {};
 		const ids: string[] = [];
