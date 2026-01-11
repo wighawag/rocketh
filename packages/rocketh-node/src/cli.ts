@@ -1,15 +1,13 @@
 #! /usr/bin/env node
+import {hookup, setupLogger} from 'named-logs-console';
 import {loadEnv} from 'ldenv';
 import {Command} from 'commander';
 import pkg from '../package.json' with {type: 'json'};
 import { loadAndExecuteDeploymentsFromFiles } from './executor/index.js';
 import { ExecutionParams } from 'rocketh/types';
 
-import {hookup, setupLogger} from 'named-logs-console';
 hookup();
-
 loadEnv();
-
 
 const commandName = "rocketh";
 const program = new Command();

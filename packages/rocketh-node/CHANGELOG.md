@@ -1,5 +1,11 @@
 # @rocketh/node
 
+## 0.17.11
+
+### Patch Changes
+
+- ensure import order for setting up logging
+
 ## 0.17.10
 
 ### Patch Changes
