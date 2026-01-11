@@ -26,15 +26,15 @@
 	"dependencies": {
 		"@rocketh/core": "workspace:*",
 		"@types/fs-extra": "^11.0.4",
-		"abitype": "^1.2.1",
-		"eip-1193": "^0.6.5",
+		"abitype": "^1.2.3",
 		"chalk": "5.6.2",
 		"commander": "^14.0.2",
-		"fs-extra": "^11.3.2"
+		"eip-1193": "^0.6.5",
+		"fs-extra": "^11.3.3"
 	},
 	"devDependencies": {
 		"@rocketh/node": "workspace:*",
-		"@types/node": "^24.10.2",
+		"@types/node": "^25.0.6",
 		"as-soon": "^0.0.11",
 		"rimraf": "^6.1.2",
 		"rocketh": "workspace:*",

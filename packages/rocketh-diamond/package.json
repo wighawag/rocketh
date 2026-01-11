@@ -25,13 +25,13 @@
 		"solc_0_8"
 	],
 	"dependencies": {
+		"@rocketh/core": "workspace:*",
 		"@rocketh/deploy": "workspace:*",
 		"@rocketh/read-execute": "workspace:*",
-		"@rocketh/core": "workspace:*",
-		"abitype": "^1.2.1",
+		"abitype": "^1.2.3",
 		"eip-1193": "^0.6.5",
 		"named-logs": "^0.4.1",
-		"viem": "^2.41.2"
+		"viem": "^2.44.1"
 	},
 	"devDependencies": {
 		"as-soon": "^0.0.11",

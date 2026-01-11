@@ -27,12 +27,13 @@
 		"commander": "^14.0.2",
 		"eip-1193": "^0.6.5",
 		"ldenv": "^0.3.16",
+		"named-logs-console": "^0.5.0",
 		"prompts": "^2.4.2",
 		"tsx": "^4.21.0",
-		"viem": "^2.41.2"
+		"viem": "^2.44.1"
 	},
 	"devDependencies": {
-		"@types/node": "^24.10.2",
+		"@types/node": "^25.0.6",
 		"as-soon": "^0.0.11",
 		"ipfs-gateway-emulator": "4.2.1-ipfs.2",
 		"rimraf": "^6.1.2",
