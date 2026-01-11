@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.17.11
+
+### Patch Changes
+
+- explicit return type for `setupDeployScript`
+
 ## 0.17.10
 
 ### Patch Changes

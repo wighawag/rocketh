@@ -61,7 +61,14 @@ export function setupDeployScripts<
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 	Deployments extends UnknownDeployments = UnknownDeployments,
 	Extra extends Record<string, unknown> = Record<string, unknown>
->(extensions: Extensions) {
+>(
+	extensions: Extensions
+): {
+	deployScript<ArgumentsType = undefined>(
+		callback: EnhancedDeployScriptFunction<NamedAccounts, Data, ArgumentsType, Deployments, Extensions>,
+		options: {tags?: string[]; dependencies?: string[]; id?: string; runAtTheEnd?: boolean}
+	): DeployScriptModule<NamedAccounts, Data, ArgumentsType, Deployments, Extra>;
+} {
 	function enhancedExecute<ArgumentsType = undefined>(
 		callback: EnhancedDeployScriptFunction<NamedAccounts, Data, ArgumentsType, Deployments, Extensions>,
 		options: {tags?: string[]; dependencies?: string[]; id?: string; runAtTheEnd?: boolean}
