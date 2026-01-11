@@ -1,5 +1,11 @@
 # @rocketh/core
 
+## 0.17.7
+
+### Patch Changes
+
+- f7a81d8: refactor logging
+
 ## 0.17.6
 
 ### Patch Changes

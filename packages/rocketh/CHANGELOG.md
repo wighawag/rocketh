@@ -1,5 +1,13 @@
 # rocketh
 
+## 0.17.10
+
+### Patch Changes
+
+- f7a81d8: refactor logging
+- Updated dependencies [f7a81d8]
+  - @rocketh/core@0.17.7
+
 ## 0.17.9
 
 ### Patch Changes

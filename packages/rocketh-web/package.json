@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/web",
-	"version": "0.17.9",
+	"version": "0.17.10",
 	"description": "rocketh for web",
 	"publishConfig": {
 		"access": "public"
