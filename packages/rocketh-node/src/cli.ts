@@ -42,10 +42,8 @@ if (options.logLevel) {
 	}
 }
 
-setupLogger('rocketh', {
-	level: logLevelAsNumber
-});
-setupLogger('@rocketh/node', {
+setupLogger(['rocketh', '@rocketh/node'], {
+	enabled: true,
 	level: logLevelAsNumber
 });
 

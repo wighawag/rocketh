@@ -249,8 +249,8 @@ importers:
         specifier: ^0.4.1
         version: 0.4.1
       named-logs-console:
-        specifier: ^0.5.0
-        version: 0.5.0
+        specifier: ^0.5.1
+        version: 0.5.1
       prompts:
         specifier: ^2.4.2
         version: 2.4.2
@@ -2448,8 +2448,8 @@ packages:
   mz@2.7.0:
     resolution: {integrity: sha512-z81GNO7nnYMEhrGh9LeymoE4+Yr0Wn5McHIZMK5cfQCl+NDX08sCZgUc9/6MHni9IWuFLm1Z3HTCXu2z9fN62Q==}
 
-  named-logs-console@0.5.0:
-    resolution: {integrity: sha512-9YJy752EZyS0UPdfoS5qxOfJdd1UfIazYx2UPBd+x74BFOXFaz9n5tpAFwapHy5L++/EPrTrwW3WdtZV0QpX5w==}
+  named-logs-console@0.5.1:
+    resolution: {integrity: sha512-GL2mfmVO7vcOTIl9QRczOBq6aaXsVfehXTU150cIFscRbVMbNYivhDzRgLadPC5pK+URCHmnEn5jWo+LZ7GkHQ==}
 
   named-logs@0.3.2:
     resolution: {integrity: sha512-rpgShWrH6NakMKUDK32Pn/FZyPl7QoQRleMekHKkbrExXDymb2wNm3/BUbdTG5f3v7Qa17imVkSWHOfNFhDIPw==}
@@ -5156,7 +5156,7 @@ snapshots:
       object-assign: 4.1.1
       thenify-all: 1.6.0
 
-  named-logs-console@0.5.0:
+  named-logs-console@0.5.1:
     dependencies:
       named-logs: 0.4.1
 
