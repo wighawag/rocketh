@@ -42,12 +42,16 @@ function wait(numSeconds: number): Promise<void> {
 }
 
 function displayTransaction(transaction: EIP1193Transaction) {
-	if (transaction.type === '0x2') {
-		return `(maxFeePerGas: ${BigInt(transaction.maxFeePerGas).toString()}, maxPriorityFeePerGas: ${BigInt(
-			transaction.maxPriorityFeePerGas
+	if ('maxFeePerGas' in transaction) {
+		return `(type ${transaction.type}, maxFeePerGas: ${BigInt(
+			transaction.maxFeePerGas
+		).toString()}, maxPriorityFeePerGas: ${BigInt(transaction.maxPriorityFeePerGas).toString()})`;
+	} else if ('gasPrice' in transaction) {
+		return `(type ${transaction.type ? Number(transaction.type) : '0'}, gasPrice: ${BigInt(
+			transaction.gasPrice
 		).toString()})`;
 	} else {
-		return `(gasPrice: ${BigInt(transaction.gasPrice).toString()})`;
+		return `(tx with no gas pricing, type: ${Number((transaction as any).type)})`;
 	}
 }
 
@@ -511,8 +515,15 @@ export async function createEnvironment<
 						}
 					} else {
 						const spinner = spin(`recovering execution's transaction ${pendingTransaction.transaction.hash}`);
+						const transaction = await provider.request({
+							method: 'eth_getTransactionByHash',
+							params: [pendingTransaction.transaction.hash],
+						});
 						try {
-							await waitForTransaction(pendingTransaction.transaction.hash);
+							await waitForTransaction(pendingTransaction.transaction.hash, {
+								transaction: transaction,
+								message: `  tx: {hash}\n      {transaction}`,
+							});
 							await deploymentStore.writeFileWithChainInfo(
 								{chainId, genesisHash},
 								deploymentsFolder,
@@ -613,7 +624,7 @@ export async function createEnvironment<
 			if (info?.transaction) {
 				message = message.replaceAll('{transaction}', displayTransaction(info.transaction));
 			} else {
-				message = message.replaceAll('{transaction}', '');
+				message = message.replaceAll('{transaction}', '(tx not found)');
 			}
 		}
 		const spinner = spin(message);

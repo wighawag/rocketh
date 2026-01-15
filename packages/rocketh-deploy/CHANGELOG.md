@@ -1,5 +1,12 @@
 # @rocketh/deploy
 
+## 0.17.8
+
+### Patch Changes
+
+- Updated dependencies
+  - @rocketh/core@0.17.8
+
 ## 0.17.7
 
 ### Patch Changes

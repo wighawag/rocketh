@@ -1,5 +1,11 @@
 # @rocketh/core
 
+## 0.17.8
+
+### Patch Changes
+
+- add logging
+
 ## 0.17.7
 
 ### Patch Changes

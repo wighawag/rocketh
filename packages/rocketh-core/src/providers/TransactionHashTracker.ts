@@ -1,5 +1,8 @@
 import type {EIP1193GenericRequest, EIP1193ProviderWithoutEvents} from 'eip-1193';
 import {BaseProvider} from './BaseProvider.js';
+import {logs} from 'named-logs';
+
+const console = logs('rocketh-provider');
 
 export class TransactionHashTrackerProvider extends BaseProvider implements EIP1193ProviderWithoutEvents {
 	public transactionHashes: `0x${string}`[] = [];
@@ -9,6 +12,7 @@ export class TransactionHashTrackerProvider extends BaseProvider implements EIP1
 	}
 
 	protected async _request<T = unknown, V extends EIP1193GenericRequest = EIP1193GenericRequest>(args: V): Promise<T> {
+		console.debug(`calling ${args.method} with ${args.params?.length || 0} arguments`);
 		const response = await this.provider.request(args as any);
 		if (args.method === 'eth_sendRawTransaction' || args.method === 'eth_sendTransaction') {
 			this.transactionHashes.push(response as `0x${string}`);

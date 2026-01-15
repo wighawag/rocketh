@@ -1,5 +1,13 @@
 # rocketh
 
+## 0.17.13
+
+### Patch Changes
+
+- add logging
+- Updated dependencies
+  - @rocketh/core@0.17.8
+
 ## 0.17.12
 
 ### Patch Changes

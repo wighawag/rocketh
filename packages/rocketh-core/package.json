@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/core",
-	"version": "0.17.7",
+	"version": "0.17.8",
 	"description": "utilities for other rocketh packages",
 	"publishConfig": {
 		"access": "public"

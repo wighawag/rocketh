@@ -1,5 +1,12 @@
 # @rocketh/viem
 
+## 0.17.5
+
+### Patch Changes
+
+- Updated dependencies
+  - @rocketh/core@0.17.8
+
 ## 0.17.4
 
 ### Patch Changes
