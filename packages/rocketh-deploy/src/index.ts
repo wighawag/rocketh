@@ -455,8 +455,8 @@ export function deploy(env: Environment): <TAbi extends Abi>(
 			partialDeployment,
 			transaction: {hash: txHash, origin: address},
 			name,
-			// TODO we should have the nonce, except for wallet like metamask where it is not usre you get the nonce you start with
-		};
+				// TODO we should have the nonce, except for wallet like metamask where it is not sure you get the nonce you start with
+			};
 		const deployment = await env.savePendingDeployment(
 			pendingDeployment,
 			`  - Deploying {name} ${

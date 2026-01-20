@@ -29,7 +29,7 @@ export function mergeABIs<TAbi extends Abi = Abi>(
 					return false;
 				}
 				if (!existingFragment) {
-					return (v as any).name === (fragment as any).name; // TODO fallback and receive hanlding
+					return (v as any).name === (fragment as any).name; // TODO fallback and receive handling
 				}
 
 				if (existingFragment.type === 'constructor' || newFragment.type === 'constructor') {
@@ -41,7 +41,7 @@ export function mergeABIs<TAbi extends Abi = Abi>(
 				} else if (newFragment.type === 'event') {
 					return toEventHash(existingFragment as AbiEvent) === toEventHash(newFragment as AbiEvent);
 				} else {
-					return (v as any).name === (fragment as any).name; // TODO fallback and receive hanlding
+					return (v as any).name === (fragment as any).name; // TODO fallback and receive handling
 				}
 			});
 			if (foundSameSig) {
