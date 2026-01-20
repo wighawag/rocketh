@@ -1,4 +1,3 @@
 - [ ] support zksync (once hardhat v3 supports it)
 - [ ] rename @rocketh/proxy ?
-- [ ] test contract imports
 - [ ] named accounts auto impersonnation, so you can perform tx as if you had their private key.
