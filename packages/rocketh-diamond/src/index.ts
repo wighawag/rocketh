@@ -1,4 +1,5 @@
 import type {Abi, Artifact, Deployment, Environment} from '@rocketh/core/types';
+import {resolveAccount} from '@rocketh/core/account';
 
 import {encodeFunctionData, zeroAddress} from 'viem';
 import {logs} from 'named-logs';
@@ -63,19 +64,7 @@ export function diamond(
 		// }
 
 		const {account, ...viemArgs} = params;
-		let deployerAddress: `0x${string}`;
-		if (account.startsWith('0x')) {
-			deployerAddress = account as `0x${string}`;
-		} else {
-			if (env.namedAccounts) {
-				deployerAddress = env.namedAccounts[account];
-				if (!deployerAddress) {
-					throw new Error(`no address for ${account}`);
-				}
-			} else {
-				throw new Error(`no accounts setup, cannot get address for ${account}`);
-			}
-		}
+		const deployerAddress = resolveAccount(account, env);
 
 		// TODO
 		// if (options.diamondContract) {

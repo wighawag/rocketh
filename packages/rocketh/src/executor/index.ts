@@ -165,7 +165,7 @@ export async function getChainIdForEnvironment(
 	}
 	if (chainIdFromProvider && chainIdFromProvider != chainId) {
 		console.warn(
-			`provider give a different chainId (${chainIdFromProvider}) than the one expected for envvironment named "${environmentName}" (${chainId})`
+			`provider give a different chainId (${chainIdFromProvider}) than the one expected for environment named "${environmentName}" (${chainId})`
 		);
 	}
 	return chainIdFromProvider || chainId;

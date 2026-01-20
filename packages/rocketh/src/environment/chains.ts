@@ -163,7 +163,7 @@ export function getChainConfigFromUserConfigAndDefaultChainInfo(
 
 		chainInfo = {
 			id: chainDetails.id,
-			name: 'unkwown',
+			name: 'unknown',
 			nativeCurrency: {
 				name: 'Unknown Currency',
 				symbol: 'UNKNOWN',

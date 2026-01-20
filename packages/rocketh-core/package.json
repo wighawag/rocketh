@@ -36,7 +36,7 @@
 		},
 		"./providers": {
 			"import": {
-				"types": "./dist/providers/index..d.ts",
+				"types": "./dist/providers/index.d.ts",
 				"default": "./dist/providers/index.js"
 			}
 		},
@@ -44,6 +44,12 @@
 			"import": {
 				"types": "./dist/environment.d.ts",
 				"default": "./dist/environment.js"
+			}
+		},
+		"./account": {
+			"import": {
+				"types": "./dist/account.d.ts",
+				"default": "./dist/account.js"
 			}
 		}
 	},

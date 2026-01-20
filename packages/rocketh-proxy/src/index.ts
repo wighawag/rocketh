@@ -1,5 +1,6 @@
 import {Abi, AbiFunction} from 'abitype';
 import type {Artifact, DeploymentConstruction, Deployment, Environment} from '@rocketh/core/types';
+import {resolveAccount} from '@rocketh/core/account';
 import type {EIP1193Account} from 'eip-1193';
 import {Chain, encodeFunctionData, zeroAddress} from 'viem';
 import {logs} from 'named-logs';
@@ -152,23 +153,11 @@ export function deployViaProxy(
 		}
 
 		const {account, artifact, args, ...viemArgs} = params;
-		let address: `0x${string}`;
 
 		if (!account) {
 			throw new Error(`no account specified`);
 		}
-		if (account.startsWith('0x')) {
-			address = account as `0x${string}`;
-		} else {
-			if (env.namedAccounts) {
-				address = env.namedAccounts[account];
-				if (!address) {
-					throw new Error(`no address for ${account}`);
-				}
-			} else {
-				throw new Error(`no accounts setup, cannot get address for ${account}`);
-			}
-		}
+		const address = resolveAccount(account, env);
 
 		let viaAdminContract: {artifactName: 'DefaultProxyAdmin'; proxyAdminName: string} | undefined;
 

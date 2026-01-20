@@ -88,7 +88,7 @@ export async function readConfig<
 		}
 		const listOfFileToTryForJS = [
 			path.join(process.cwd(), 'rocketh.js'),
-			path.join(process.cwd(), 'rocketh', 'config.s'),
+			path.join(process.cwd(), 'rocketh', 'config.js'),
 		];
 		for (const filepath of listOfFileToTryForJS) {
 			if (fs.existsSync(filepath)) {

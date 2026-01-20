@@ -1,4 +1,4 @@
-import {toJSONCompatibleLinkedData} from '@rocketh/core/json';
+import {toJSONCompatibleLinkedData, resolveAccount} from '@rocketh/core';
 import {Abi} from 'abitype';
 import {EIP1193TransactionData} from 'eip-1193';
 import {logs} from 'named-logs';
@@ -306,10 +306,10 @@ export function deploy(env: Environment): <TAbi extends Abi>(
 	return async <TAbi extends Abi>(name: string, args: DeploymentConstruction<TAbi>, options?: DeployOptions) => {
 		const nameToDisplay = name || '<no name>';
 		const skipIfAlreadyDeployed = options && 'skipIfAlreadyDeployed' in options && options.skipIfAlreadyDeployed;
-		const allwaysOverride = options && 'allwaysOverride' in options && options.allwaysOverride;
+		const alwaysOverride = options && 'alwaysOverride' in options && options.alwaysOverride;
 
-		if (allwaysOverride && skipIfAlreadyDeployed) {
-			throw new Error(`conflicting options: "allwaysOverride" and "skipIfAlreadyDeployed"`);
+		if (alwaysOverride && skipIfAlreadyDeployed) {
+			throw new Error(`conflicting options: "alwaysOverride" and "skipIfAlreadyDeployed"`);
 		}
 
 		const existingDeployment = name && env.getOrNull(name);
@@ -321,19 +321,7 @@ export function deploy(env: Environment): <TAbi extends Abi>(
 		}
 
 		const {account, artifact, ...viemArgs} = args;
-		let address: `0x${string}`;
-		if (account.startsWith('0x')) {
-			address = account as `0x${string}`;
-		} else {
-			if (env.namedAccounts) {
-				address = env.namedAccounts[account];
-				if (!address) {
-					throw new Error(`no address for ${account}`);
-				}
-			} else {
-				throw new Error(`no accounts setup, cannot get address for ${account}`);
-			}
-		}
+		const address = resolveAccount(account, env);
 
 		// TODO throw specific error if artifact not found
 		const artifactToUse = artifact;
@@ -356,7 +344,7 @@ export function deploy(env: Environment): <TAbi extends Abi>(
 			logger.info(`existing deployment for ${nameToDisplay} at ${existingDeployment.address}`);
 		}
 
-		if (existingDeployment && !allwaysOverride) {
+		if (existingDeployment && !alwaysOverride) {
 			const previousBytecode = existingDeployment.bytecode;
 			const previousArgsData = existingDeployment.argsData;
 			// we assume cbor encoding of hash at the end

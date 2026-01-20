@@ -1,6 +1,7 @@
 import {Abi} from 'abitype';
 import {EIP1193DATA, EIP1193TransactionData, EIP1193TransactionReceipt} from 'eip-1193';
 import type {Artifact, Environment, MinimalDeployment, PendingExecution} from '@rocketh/core/types';
+import {resolveAccount, resolveAccountOrUndefined} from '@rocketh/core';
 import type {
 	ContractFunctionArgs,
 	ContractFunctionName,
@@ -131,19 +132,7 @@ export function execute(
 		args: ExecutionArgs<TAbi, TFunctionName, TArgs>
 	) => {
 		const {account, ...viemArgs} = args;
-		let address: `0x${string}`;
-		if (account.startsWith('0x')) {
-			address = account as `0x${string}`;
-		} else {
-			if (env.namedAccounts) {
-				address = env.namedAccounts[account];
-				if (!address) {
-					throw new Error(`no address for ${account}`);
-				}
-			} else {
-				throw new Error(`no accounts setup, cannot get address for ${account}`);
-			}
-		}
+		const address = resolveAccount(account, env);
 
 		const artifactToUse = deployment as unknown as Artifact<TAbi>;
 		const abi = artifactToUse.abi;
@@ -273,21 +262,7 @@ export function read(
 		args: ReadingArgs<TAbi, TFunctionName, TArgs>
 	) => {
 		const {account, ...viemArgs} = args;
-		let address: `0x${string}` | undefined;
-		if (account) {
-			if (account.startsWith('0x')) {
-				address = account as `0x${string}`;
-			} else {
-				if (env.namedAccounts) {
-					address = env.namedAccounts[account];
-					if (!address) {
-						throw new Error(`no address for ${account}`);
-					}
-				} else {
-					throw new Error(`no accounts setup, cannot get address for ${account}`);
-				}
-			}
-		}
+		const address = account ? resolveAccountOrUndefined(account, env) : undefined;
 
 		const artifactToUse = deployment as unknown as Artifact<TAbi>;
 		const abi = artifactToUse.abi;
@@ -359,20 +334,8 @@ export function readByName(
 
 export function tx(env: Environment): (txData: TransactionData, options?: {message?: string}) => Promise<EIP1193DATA> {
 	return async (txData: TransactionData, options?: {message?: string}) => {
-		const {account, ...viemArgs} = txData;
-		let address: `0x${string}`;
-		if (account.startsWith('0x')) {
-			address = account as `0x${string}`;
-		} else {
-			if (env.namedAccounts) {
-				address = env.namedAccounts[account];
-				if (!address) {
-					throw new Error(`no address for ${account}`);
-				}
-			} else {
-				throw new Error(`no accounts setup, cannot get address for ${account}`);
-			}
-		}
+	const {account, ...viemArgs} = txData;
+	const address = resolveAccount(account, env);
 
 		const signer = env.addressSigners[address];
 
