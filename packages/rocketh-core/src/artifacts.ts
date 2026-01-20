@@ -65,7 +65,7 @@ export function mergeABIs(list: {name: string; abi: Abi}[], options?: {doNotChec
 						throw new Error(
 							`ABI conflict: ${existing!.routeName} has function "${existing!.functionName}" which conflict with ${
 								listElem.name
-							}'s "${element.name}" (selector: "${selector}")  `
+							}'s "${element.name}" (selector: "${selector}")  `,
 						);
 					} else {
 						continue;
@@ -123,11 +123,11 @@ export function mergeABIs(list: {name: string; abi: Abi}[], options?: {doNotChec
 
 export function mergeArtifacts(
 	list: {name: string; artifact: Partial<Artifact<Abi>> & {abi: Abi}}[],
-	options?: {doNotCheckForConflicts?: boolean}
+	options?: {doNotCheckForConflicts?: boolean},
 ) {
 	const {mergedABI, added, sigJSMap} = mergeABIs(
 		list.map((v) => ({name: v.name, abi: v.artifact.abi})),
-		options
+		options,
 	);
 
 	const mergedDevDocs: CreateMutable<DevDoc> = {kind: 'dev', version: 1, methods: {}};

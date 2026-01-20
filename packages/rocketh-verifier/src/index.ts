@@ -54,7 +54,7 @@ export async function run(config: ResolvedUserConfig, environmentName: string, o
 				minInterval: options.minInterval,
 				logErrorOnFailure: options.logErrorOnFailure,
 			},
-			options.verifier
+			options.verifier,
 		);
 	} else if (options.verifier.type === 'sourcify') {
 		await submitSourcesToSourcify(
@@ -66,7 +66,7 @@ export async function run(config: ResolvedUserConfig, environmentName: string, o
 				minInterval: options.minInterval,
 				logErrorOnFailure: options.logErrorOnFailure,
 			},
-			options.verifier
+			options.verifier,
 		);
 	} else if (options.verifier.type === 'blockscout') {
 		await submitSourcesToBlockscout(
@@ -78,7 +78,7 @@ export async function run(config: ResolvedUserConfig, environmentName: string, o
 				minInterval: options.minInterval,
 				logErrorOnFailure: options.logErrorOnFailure,
 			},
-			options.verifier
+			options.verifier,
 		);
 	}
 }

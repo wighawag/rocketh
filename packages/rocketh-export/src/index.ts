@@ -32,12 +32,15 @@ type Trandformed<O, Value> = {
 
 function objectMap<V, N, O extends Trandformed<{}, V> = Trandformed<{}, V>>(
 	object: O,
-	mapFn: (v: V) => N
+	mapFn: (v: V) => N,
 ): Trandformed<O, N> {
-	return Object.keys(object).reduce((result, key) => {
-		(result as any)[key] = mapFn((object as any)[key]);
-		return result;
-	}, {} as Trandformed<O, N>);
+	return Object.keys(object).reduce(
+		(result, key) => {
+			(result as any)[key] = mapFn((object as any)[key]);
+			return result;
+		},
+		{} as Trandformed<O, N>,
+	);
 }
 
 export async function run(
@@ -50,7 +53,7 @@ export async function run(
 		totsm?: string[];
 		tojsm?: string[];
 		includeBytecode?: boolean;
-	}
+	},
 ) {
 	if (!options.tots && !options.tojs && !options.tojson && !options.tojsm && !options.totsm) {
 		console.log(`no filepath to export to are specified`);
@@ -120,12 +123,12 @@ export async function run(
 		const newContent = `export default /** @type {const} **/ (${JSON.stringify(
 			exportData,
 			bigIntToStringReplacer,
-			2
+			2,
 		)});`;
 		const dtsContent = `declare const _default:  ${JSON.stringify(
 			exportData,
 			bigIntToStringReplacer,
-			2
+			2,
 		)};\nexport default _default;`;
 		for (const jsFile of js) {
 			const folderPath = path.dirname(jsFile);
@@ -151,7 +154,7 @@ export async function run(
 			newContent += `export const ${contractName} = ${JSON.stringify(
 				(exportData.contracts as any)[contractName],
 				bigIntToStringReplacer,
-				2
+				2,
 			)} as const;`;
 		}
 
@@ -167,14 +170,14 @@ export async function run(
 		let newContent = `export const chain = /** @type {const} **/ (${JSON.stringify(
 			chainInfo,
 			bigIntToStringReplacer,
-			2
+			2,
 		)});\n`;
 
 		for (const contractName of Object.keys(exportData.contracts)) {
 			newContent += `export const ${contractName} = /** @type {const} **/ (${JSON.stringify(
 				(exportData.contracts as any)[contractName],
 				bigIntToStringReplacer,
-				2
+				2,
 			)});`;
 		}
 

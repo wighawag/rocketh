@@ -24,7 +24,7 @@ export type RoughEstimateGasPriceResult = {slow: GasPrice; average: GasPrice; fa
 
 export async function getGasPriceEstimate(
 	provider: EIP1193ProviderWithoutEvents,
-	options?: Partial<EstimateGasPriceOptions>
+	options?: Partial<EstimateGasPriceOptions>,
 ): Promise<EstimateGasPriceResult> {
 	const defaultOptions: EstimateGasPriceOptions = {
 		blockCount: 20,
@@ -98,7 +98,7 @@ export async function getGasPriceEstimate(
 
 export async function getRoughGasPriceEstimate(
 	provider: EIP1193ProviderWithoutEvents,
-	options?: Partial<RoughEstimateGasPriceOptions>
+	options?: Partial<RoughEstimateGasPriceOptions>,
 ): Promise<RoughEstimateGasPriceResult> {
 	const defaultOptions: EstimateGasPriceOptions = {
 		blockCount: 20,

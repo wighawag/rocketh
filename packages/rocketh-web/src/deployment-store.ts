@@ -29,7 +29,7 @@ export function createEmptyDeploymentStore(): DeploymentStore {
 		deploymentsFolder: string,
 		environmentName: string,
 		name: string,
-		content: string
+		content: string,
 	): Promise<void> {
 		// await ensureChainInfoRecorded(
 		// 	deploymentsFolder,
@@ -45,7 +45,7 @@ export function createEmptyDeploymentStore(): DeploymentStore {
 		deploymentsFolder: string,
 		environmentName: string,
 		name: string,
-		content: string
+		content: string,
 	): Promise<void> {
 		// fs.mkdirSync(getFolder(deploymentsFolder, environmentName), { recursive: true });
 		// fs.writeFileSync(getFile(deploymentsFolder, environmentName, name), content);

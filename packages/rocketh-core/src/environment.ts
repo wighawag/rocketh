@@ -49,7 +49,7 @@ export function withEnvironment<
 		string,
 		| ((env: Environment<NamedAccounts, Data, Deployments>) => (...args: any[]) => any)
 		| ((env: Environment<NamedAccounts, Data, Deployments>) => any)
-	>
+	>,
 >(env: Environment<NamedAccounts, Data, Deployments, Extra>, functionsAndGetters: T): CurriedFunctions<T> {
 	const result = {} as CurriedFunctions<T>;
 
@@ -76,10 +76,10 @@ export function enhanceEnvIfNeeded<
 	Extensions extends Record<string, (env: Environment<any, any, any>) => any> = {},
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
-	Extra extends Record<string, unknown> = Record<string, unknown>
+	Extra extends Record<string, unknown> = Record<string, unknown>,
 >(
 	env: Environment,
-	extensions: Extensions
+	extensions: Extensions,
 ): EnhancedEnvironment<NamedAccounts, Data, UnknownDeployments, Extensions, Extra> {
 	// Use the original env object as the base
 	const enhancedEnv = env as EnhancedEnvironment<NamedAccounts, Data, UnknownDeployments, Extensions, Extra>;

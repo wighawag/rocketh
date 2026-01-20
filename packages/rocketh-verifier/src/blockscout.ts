@@ -56,7 +56,7 @@ export async function submitSourcesToBlockscout(
 		minInterval?: number;
 		logErrorOnFailure?: boolean;
 	},
-	config?: BlockscoutOptions
+	config?: BlockscoutOptions,
 ): Promise<void> {
 	config = config || {type: 'blockscout'};
 	const all = env.deployments;
@@ -95,7 +95,7 @@ export async function submitSourcesToBlockscout(
 
 		if (!contractFilepath || !contractName) {
 			return logError(
-				`Failed to extract contract fully qualified name from metadata.settings.compilationTarget for ${name}. Skipping.`
+				`Failed to extract contract fully qualified name from metadata.settings.compilationTarget for ${name}. Skipping.`,
 			);
 		}
 
@@ -116,7 +116,7 @@ export async function submitSourcesToBlockscout(
 		try {
 			const submissionResponse = await fetch(
 				`${url}smart-contracts/${address.toLowerCase()}/verification/via/standard-input`,
-				{body: formData, method: 'POST'}
+				{body: formData, method: 'POST'},
 			);
 			const json = await submissionResponse.json();
 			if (json.message === 'Smart-contract verification started') {

@@ -3,7 +3,7 @@ import type {Abi, Deployment} from '@rocketh/core/types';
 
 export function checkUpgradeIndex<TAbi extends Abi>(
 	oldDeployment: Deployment<TAbi> | null,
-	upgradeIndex?: number
+	upgradeIndex?: number,
 ): DeployResult<TAbi> | undefined {
 	if (typeof upgradeIndex === 'undefined') {
 		return;
@@ -34,19 +34,19 @@ export function checkUpgradeIndex<TAbi extends Abi>(
 					return {...oldDeployment, newlyDeployed: false};
 				} else if (numDeployments < upgradeIndex) {
 					throw new Error(
-						`upgradeIndex === ${upgradeIndex} : expects Deployments numDeployments to be at least ${upgradeIndex}`
+						`upgradeIndex === ${upgradeIndex} : expects Deployments numDeployments to be at least ${upgradeIndex}`,
 					);
 				}
 			} else {
 				throw new Error(
-					`upgradeIndex > 1 : expects Deployments history to exists, or numDeployments to be greater than 1`
+					`upgradeIndex > 1 : expects Deployments history to exists, or numDeployments to be greater than 1`,
 				);
 			}
 		} else if (history.length > upgradeIndex - 1) {
 			return {...oldDeployment, newlyDeployed: false};
 		} else if (history.length < upgradeIndex - 1) {
 			throw new Error(
-				`upgradeIndex === ${upgradeIndex} : expects Deployments history length to be at least ${upgradeIndex - 1}`
+				`upgradeIndex === ${upgradeIndex} : expects Deployments history length to be at least ${upgradeIndex - 1}`,
 			);
 		}
 	}
@@ -64,7 +64,7 @@ export function replaceTemplateArgs(
 		proxyAdmin: string;
 		data: string;
 		proxyAddress?: string;
-	}
+	},
 ): any[] {
 	const proxyArgs: any[] = [];
 	for (let i = 0; i < proxyArgsTemplate.length; i++) {

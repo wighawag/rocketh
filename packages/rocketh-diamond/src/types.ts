@@ -42,7 +42,7 @@ export type ExecutionArgs<
 		TAbi,
 		'nonpayable' | 'payable',
 		TFunctionName
-	>
+	>,
 > = Pick<WriteContractParameters<TAbi, TFunctionName, TArgs>, 'args' | 'functionName'>;
 
 export type ExecuteOptions<
@@ -52,7 +52,7 @@ export type ExecuteOptions<
 		TAbi,
 		'nonpayable' | 'payable',
 		TFunctionName
-	>
+	>,
 > = ExecutionArgs<TAbi, TFunctionName, TArgs> & {
 	type: 'artifact';
 	artifact: Artifact<TAbi>;
@@ -68,7 +68,7 @@ export type DiamondDeployOptions<
 		TAbi,
 		'nonpayable' | 'payable',
 		TFunctionName
-	>
+	>,
 > = Omit<DeployOptions, 'skipIfAlreadyDeployed' | 'alwaysOverride' | 'deterministic'> & {
 	facets: DiamondFacets;
 	owner?: EIP1193Account;
@@ -94,5 +94,5 @@ export type DiamondDeploymentConstruction<TAbi extends Abi> = Omit<
 export type DeployViaDiamondFunction = <TAbi extends Abi>(
 	name: string,
 	params: DiamondDeploymentConstruction<TAbi>,
-	options: DiamondDeployOptions
+	options: DiamondDeployOptions,
 ) => Promise<Deployment<TAbi> & {newlyDeployed: boolean}>;

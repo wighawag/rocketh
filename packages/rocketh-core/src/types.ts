@@ -23,7 +23,7 @@ export type DeployScriptFunction<
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 	ArgumentsTypes = undefined,
 	Deployments extends UnknownDeployments = UnknownDeployments,
-	Extra extends Record<string, unknown> = Record<string, unknown>
+	Extra extends Record<string, unknown> = Record<string, unknown>,
 > = (env: Environment<NamedAccounts, Data, Deployments, Extra>, args?: ArgumentsTypes) => Promise<void | boolean>;
 
 export interface DeployScriptModule<
@@ -31,7 +31,7 @@ export interface DeployScriptModule<
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 	ArgumentsTypes = undefined,
 	Deployments extends UnknownDeployments = UnknownDeployments,
-	Extra extends Record<string, unknown> = Record<string, unknown>
+	Extra extends Record<string, unknown> = Record<string, unknown>,
 > {
 	(env: Environment<NamedAccounts, Data, Deployments, Extra>, args?: ArgumentsTypes): Promise<void | boolean>;
 	tags?: string[];
@@ -44,7 +44,7 @@ export type ScriptCallback<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 	Deployments extends UnknownDeployments = UnknownDeployments,
-	Extra extends Record<string, unknown> = Record<string, unknown>
+	Extra extends Record<string, unknown> = Record<string, unknown>,
 > = (env: Environment<NamedAccounts, Data, Deployments, Extra>) => Promise<void>;
 
 /**
@@ -69,11 +69,9 @@ export type EnhancedEnvironment<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 	Deployments extends UnknownDeployments = UnknownDeployments,
-	Extensions extends Record<
-		string,
-		(env: Environment<NamedAccounts, Data, Deployments>, ...args: any[]) => any
-	> = Record<string, (env: Environment<NamedAccounts, Data, Deployments>, ...args: any[]) => any>,
-	Extra extends Record<string, unknown> = Record<string, unknown>
+	Extensions extends Record<string, (env: Environment<NamedAccounts, Data, Deployments>, ...args: any[]) => any> =
+		Record<string, (env: Environment<NamedAccounts, Data, Deployments>, ...args: any[]) => any>,
+	Extra extends Record<string, unknown> = Record<string, unknown>,
 > = Environment<NamedAccounts, Data, Deployments, Extra> & CurriedFunctions<Extensions>;
 
 /**
@@ -84,14 +82,12 @@ export type EnhancedDeployScriptFunction<
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 	ArgumentsTypes = undefined,
 	Deployments extends UnknownDeployments = UnknownDeployments,
-	Functions extends Record<
-		string,
-		(env: Environment<NamedAccounts, Data, Deployments>, ...args: any[]) => any
-	> = Record<string, (env: Environment<NamedAccounts, Data, Deployments>, ...args: any[]) => any>,
-	Extra extends Record<string, unknown> = Record<string, unknown>
+	Functions extends Record<string, (env: Environment<NamedAccounts, Data, Deployments>, ...args: any[]) => any> =
+		Record<string, (env: Environment<NamedAccounts, Data, Deployments>, ...args: any[]) => any>,
+	Extra extends Record<string, unknown> = Record<string, unknown>,
 > = (
 	env: EnhancedEnvironment<NamedAccounts, Data, Deployments, Functions, Extra>,
-	args?: ArgumentsTypes
+	args?: ArgumentsTypes,
 ) => Promise<void | boolean>;
 
 type ChainBlockExplorer = {
@@ -188,10 +184,10 @@ export type ChainInfo = {
 
 export type NamedAccountExecuteFunction<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
-	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData
+	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 > = <ArgumentsType = undefined, Deployments extends UnknownDeployments = UnknownDeployments>(
 	callback: DeployScriptFunction<NamedAccounts, Data, ArgumentsType, Deployments>,
-	options: {tags?: string[]; dependencies?: string[]; id?: string}
+	options: {tags?: string[]; dependencies?: string[]; id?: string},
 ) => DeployScriptModule<NamedAccounts, Data, ArgumentsType, Deployments>;
 
 export interface UntypedRequestArguments {
@@ -263,7 +259,7 @@ export type SignerProtocol = {
 
 export type UserConfig<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
-	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData
+	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 > = {
 	readonly environments?: {readonly [name: string]: DeploymentEnvironmentConfig};
 	readonly chains?: Chains;
@@ -278,7 +274,7 @@ export type UserConfig<
 
 export type ResolvedUserConfig<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
-	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData
+	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 > = UserConfig & {
 	readonly deployments: string;
 	readonly scripts: readonly string[];
@@ -534,7 +530,7 @@ export interface Environment<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 	Deployments extends UnknownDeployments = UnknownDeployments,
-	Extra extends Record<string, unknown> = Record<string, unknown>
+	Extra extends Record<string, unknown> = Record<string, unknown>,
 > {
 	readonly name: string;
 	readonly context: {
@@ -557,11 +553,11 @@ export interface Environment<
 	save<TAbi extends Abi = Abi>(
 		name: string,
 		deployment: Deployment<TAbi>,
-		options?: {doNotCountAsNewDeployment?: boolean}
+		options?: {doNotCountAsNewDeployment?: boolean},
 	): Promise<Deployment<TAbi>>;
 	savePendingDeployment<TAbi extends Abi = Abi>(
 		pendingDeployment: PendingDeployment<TAbi>,
-		msg?: string
+		msg?: string,
 	): Promise<Deployment<TAbi>>;
 	savePendingExecution(pendingExecution: PendingExecution, msg?: string): Promise<EIP1193TransactionReceipt>;
 	get<TAbi extends Abi>(name: string): Deployment<TAbi>;
@@ -620,7 +616,7 @@ export type DeploymentStore = {
 		deploymentsFolder: string,
 		environmentName: string,
 		name: string,
-		content: string
+		content: string,
 	): Promise<void>;
 	readFile(deploymentsFolder: string, environmentName: string, name: string): Promise<string>;
 	deleteFile(deploymentsFolder: string, environmentName: string, name: string): Promise<void>;
@@ -629,7 +625,7 @@ export type DeploymentStore = {
 export type ModuleObject<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
-	ArgumentsType = undefined
+	ArgumentsType = undefined,
 > = {id: string; module: DeployScriptModule<NamedAccounts, Data, ArgumentsType>};
 
 export type PromptAnswer = {

@@ -14,7 +14,7 @@ export function createFSDeploymentStore(): DeploymentStore {
 		deploymentsFolder: string,
 		environmentName: string,
 		chainId: string,
-		genesisHash?: string
+		genesisHash?: string,
 	) {
 		if (!(await hasFile(deploymentsFolder, environmentName, '.chain'))) {
 			await writeFile(deploymentsFolder, environmentName, '.chain', JSON.stringify({chainId, genesisHash}));
@@ -26,7 +26,7 @@ export function createFSDeploymentStore(): DeploymentStore {
 		deploymentsFolder: string,
 		environmentName: string,
 		name: string,
-		content: string
+		content: string,
 	): Promise<void> {
 		await ensureChainInfoRecorded(deploymentsFolder, environmentName, chaininfo.chainId, chaininfo.genesisHash);
 		fs.mkdirSync(getFolder(deploymentsFolder, environmentName), {recursive: true});
@@ -37,7 +37,7 @@ export function createFSDeploymentStore(): DeploymentStore {
 		deploymentsFolder: string,
 		environmentName: string,
 		name: string,
-		content: string
+		content: string,
 	): Promise<void> {
 		fs.mkdirSync(getFolder(deploymentsFolder, environmentName), {recursive: true});
 		fs.writeFileSync(getFile(deploymentsFolder, environmentName, name), content);

@@ -11,7 +11,7 @@ export function filterABI(abi: Abi, excludeSighashes: Set<string>): any[] {
 
 export function mergeABIs<TAbi extends Abi = Abi>(
 	abis: Abi[],
-	options: {check: boolean; skipSupportsInterface: boolean}
+	options: {check: boolean; skipSupportsInterface: boolean},
 ): TAbi {
 	if (abis.length === 0) {
 		return [] as unknown as TAbi;
@@ -50,7 +50,7 @@ export function mergeABIs<TAbi extends Abi = Abi>(
 						throw new Error(
 							`function "${fragment.name}" will shadow "${
 								(foundSameSig as any).name
-							}". Please update code to avoid conflict.`
+							}". Please update code to avoid conflict.`,
 						);
 					}
 				}

@@ -34,29 +34,29 @@ export type DeployViaRouterFunction = <TAbi extends Abi>(
 	name: string,
 	params: RouterEnhancedDeploymentConstruction,
 	routes: Route<Abi>[],
-	options?: RouterDeployOptions
+	options?: RouterDeployOptions,
 ) => Promise<Deployment<TAbi> & {newlyDeployed: boolean}>;
 
 export function deployViaRouter(
-	env: Environment
+	env: Environment,
 ): <TAbi extends Abi>(
 	name: string,
 	params: RouterEnhancedDeploymentConstruction,
 	routes: Route<Abi>[],
-	options?: RouterDeployOptions
+	options?: RouterDeployOptions,
 ) => Promise<DeployResult<TAbi>> {
 	return async <TAbi extends Abi>(
 		name: string,
 		params: RouterEnhancedDeploymentConstruction,
 		routes: Route<Abi>[],
-		options?: RouterDeployOptions
+		options?: RouterDeployOptions,
 	) => {
 		let optionsForRoutes = options ? {deterministic: options.deterministic, libraries: options.libraries} : undefined;
 		let optionsForRouter = options
 			? ((options) => {
 					const {extraABIs, routerContract, ...optionsForRouter} = options;
 					return optionsForRouter;
-			  })(options)
+				})(options)
 			: undefined;
 		const _deploy = deploy(env);
 		const implementations: `0x${string}`[] = [];
@@ -86,7 +86,7 @@ export function deployViaRouter(
 					artifact: route.artifact,
 					args: route.args as unknown[],
 				},
-				optionsForRoutes
+				optionsForRoutes,
 			);
 			implementations.push(deployedRoute.address);
 		}
@@ -118,7 +118,7 @@ export function deployViaRouter(
 				artifact: options?.routerContract?.artifact || Router10X60,
 				args: [routeParams],
 			},
-			optionsForRouter
+			optionsForRouter,
 		);
 
 		logger.info(`router deployed at ${router.address}`);

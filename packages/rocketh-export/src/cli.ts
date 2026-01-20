@@ -5,7 +5,7 @@ import {run} from './index.js';
 import {Command} from 'commander';
 import pkg from '../package.json' with {type: 'json'};
 
-const commandName = "rocketh-export";
+const commandName = 'rocketh-export';
 
 const program = new Command();
 program
@@ -18,11 +18,11 @@ program
 	.option('--json <value>', 'list of filepath where the json export will be written, separated by commas')
 	.option(
 		'--tsm <value>',
-		'list of filepath where the typescript export with individual export will be written, separated by commas'
+		'list of filepath where the typescript export with individual export will be written, separated by commas',
 	)
 	.option(
 		'--jsm <value>',
-		'list of filepath where the javascript export  with individual exportwill be written, separated by commas'
+		'list of filepath where the javascript export  with individual exportwill be written, separated by commas',
 	)
 	.option('-b, --bytecode', 'if set, the bytecode will also be part of the output')
 	.requiredOption('-e, --environment <value>', 'environment context to use')

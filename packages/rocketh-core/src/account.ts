@@ -23,7 +23,7 @@ import type {Environment} from './types.js';
  */
 export function resolveAccount(
 	account: string | EIP1193Account,
-	env: Pick<Environment, 'namedAccounts'>
+	env: Pick<Environment, 'namedAccounts'>,
 ): `0x${string}` {
 	if (account.startsWith('0x')) {
 		return account as `0x${string}`;
@@ -60,7 +60,7 @@ export function resolveAccount(
  */
 export function resolveAccountOrUndefined(
 	account: string | EIP1193Account,
-	env: Pick<Environment, 'namedAccounts'>
+	env: Pick<Environment, 'namedAccounts'>,
 ): `0x${string}` | undefined {
 	if (account.startsWith('0x')) {
 		return account as `0x${string}`;

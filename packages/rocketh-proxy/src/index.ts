@@ -69,7 +69,7 @@ export type ProxyDeployOptions = Omit<DeployOptions, 'skipIfAlreadyDeployed' | '
 export type ImplementationDeployer<TAbi extends Abi> = (
 	name: string,
 	args: Omit<DeploymentConstruction<TAbi>, 'artifact'>,
-	options?: DeployOptions
+	options?: DeployOptions,
 ) => Promise<Deployment<TAbi>>;
 
 // TODO omit nonce ? // TODO omit chain ? same for rocketh-deploy
@@ -87,15 +87,15 @@ export type ProxyEnhancedDeploymentConstructionWithoutFunction<TAbi extends Abi>
 export type DeployViaProxyFunction = <TAbi extends Abi>(
 	name: string,
 	params: ProxyEnhancedDeploymentConstruction<TAbi>,
-	options?: ProxyDeployOptions
+	options?: ProxyDeployOptions,
 ) => Promise<Deployment<TAbi>>;
 
 export function deployViaProxy(
-	env: Environment
+	env: Environment,
 ): <TAbi extends Abi>(
 	name: string,
 	params: ProxyEnhancedDeploymentConstruction<TAbi>,
-	options?: ProxyDeployOptions
+	options?: ProxyDeployOptions,
 ) => Promise<Deployment<TAbi>> {
 	const _deploy = deploy(env);
 	const _read = read(env);
@@ -103,14 +103,14 @@ export function deployViaProxy(
 	return async <TAbi extends Abi>(
 		name: string,
 		params: ProxyEnhancedDeploymentConstruction<TAbi>,
-		options?: ProxyDeployOptions
+		options?: ProxyDeployOptions,
 	) => {
 		let optionsForImplementation = options
 			? {
 					alwaysOverride: true,
 					deterministic: options.deterministic || options.deterministicImplementation,
 					libraries: options.libraries,
-			  }
+				}
 			: undefined;
 		let optionsForProxy = options
 			? ((options) => {
@@ -127,7 +127,7 @@ export function deployViaProxy(
 						...optionsForProxy
 					} = options;
 					return optionsForProxy;
-			  })(options)
+				})(options)
 			: undefined;
 
 		const proxyName = `${name}_Proxy`;
@@ -230,8 +230,8 @@ export function deployViaProxy(
 							artifact,
 							account: address,
 						} as DeploymentConstruction<TAbi>,
-						optionsForImplementation
-				  );
+						optionsForImplementation,
+					);
 
 		logger.info(`implementation at ${implementationDeployment.address}`, `${implementationName}`);
 
@@ -250,7 +250,7 @@ export function deployViaProxy(
 				{name: implementationName, abi: artifactFromImplementationDeployment.abi},
 				{name: proxyName, abi: proxyArtifact.abi},
 			],
-			{doNotCheckForConflicts: !checkABIConflict}
+			{doNotCheckForConflicts: !checkABIConflict},
 		);
 
 		logger.info(`existingDeployment at ${existingDeployment?.address}`);
@@ -279,7 +279,7 @@ export function deployViaProxy(
 					},
 					{
 						deterministic: options?.deterministic,
-					}
+					},
 				);
 				proxyAdminDeployed = proxyAdminDeployment;
 			}
@@ -305,7 +305,7 @@ export function deployViaProxy(
 			const methodName = typeof options.execute === 'string' ? options.execute : options.execute.methodName;
 			const argsToExecute = typeof options.execute === 'string' ? (args as unknown[]) : options.execute.args;
 			const method: AbiFunction | undefined = artifactToUse.abi.find(
-				(v) => v.type === 'function' && v.name === methodName
+				(v) => v.type === 'function' && v.name === methodName,
 			) as AbiFunction;
 			if (method) {
 				postUpgradeCalldata = encodeFunctionData({
@@ -344,7 +344,7 @@ export function deployViaProxy(
 				{
 					skipIfAlreadyDeployed: true,
 					deterministic: options?.deterministic,
-				}
+				},
 			);
 
 			logger.info(`proxy deployed at ${proxy.address}`);
@@ -375,7 +375,7 @@ export function deployViaProxy(
 
 			if (currentImplementationAddress.toLowerCase() !== implementationDeployment.address.toLowerCase()) {
 				logger.info(
-					`different implementation old: ${currentImplementationAddress} new: ${implementationDeployment.address}, upgrade...`
+					`different implementation old: ${currentImplementationAddress} new: ${implementationDeployment.address}, upgrade...`,
 				);
 
 				// let currentOwner: `0x${string}` | undefined;
@@ -409,7 +409,7 @@ export function deployViaProxy(
 					}
 				} else if (currentOwner.toLowerCase() !== proxyAdmin.toLowerCase()) {
 					throw new Error(
-						`To change owner/admin, you need to call the proxy directly, it currently is ${currentOwner}`
+						`To change owner/admin, you need to call the proxy directly, it currently is ${currentOwner}`,
 					);
 				}
 

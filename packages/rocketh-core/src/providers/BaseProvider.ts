@@ -8,6 +8,6 @@ export abstract class BaseProvider implements EIP1193ProviderWithoutEvents {
 	}
 
 	protected abstract _request<T = unknown, V extends EIP1193GenericRequest = EIP1193GenericRequest>(
-		args: V
+		args: V,
 	): Promise<T>;
 }

@@ -86,7 +86,7 @@ export function getDefaultChainInfoFromChainId(id: string | number): ChainInfo |
 	const defaultChainInfos = getChainsById(id);
 	if (defaultChainInfos && defaultChainInfos.length > 1) {
 		console.warn(
-			`chainId ${id} refers to different chain, please specific it by name or provide the chainConfig yourself`
+			`chainId ${id} refers to different chain, please specific it by name or provide the chainConfig yourself`,
 		);
 	} else {
 		defaultChainInfo = defaultChainInfos ? defaultChainInfos[0] : undefined;
@@ -101,13 +101,13 @@ export function getChainConfigFromUserConfigAndDefaultChainInfo(
 		chainInfo?: ChainInfo;
 		canonicalName?: string;
 		doNotRequireRpcURL?: boolean;
-	}
+	},
 ): ChainConfig {
 	const canonicalName = chainDetails?.canonicalName;
 	let chainInfo = chainDetails?.chainInfo ? {...chainDetails.chainInfo} : undefined;
 	if (chainInfo?.id && chainDetails.id != chainInfo.id) {
 		console.warn(
-			`default chainInfo  has a different chainId (${chainInfo.id}) != ${chainDetails.id}, we thus assign it`
+			`default chainInfo  has a different chainId (${chainInfo.id}) != ${chainDetails.id}, we thus assign it`,
 		);
 		// we ensure the chainInfo has the correct id
 		chainInfo.id = chainDetails.id;
@@ -115,7 +115,7 @@ export function getChainConfigFromUserConfigAndDefaultChainInfo(
 	if (canonicalName) {
 		if (config.chains?.[chainDetails.id] && config.chains?.[canonicalName]) {
 			throw new Error(
-				`chain should be configured by chainId or name but not both, remove either ${chainDetails.id} or ${canonicalName}`
+				`chain should be configured by chainId or name but not both, remove either ${chainDetails.id} or ${canonicalName}`,
 			);
 		}
 	}
@@ -208,8 +208,8 @@ export function getChainConfigFromUserConfigAndDefaultChainInfo(
 			return 'create2' in deterministicDeployment && deterministicDeployment.create2
 				? deterministicDeployment.create2
 				: !('create2' in deterministicDeployment) && !('create3' in deterministicDeployment)
-				? (deterministicDeployment as Create2DeterministicDeploymentInfo)
-				: create2Info;
+					? (deterministicDeployment as Create2DeterministicDeploymentInfo)
+					: create2Info;
 		})(),
 		create3:
 			chainConfig.deterministicDeployment &&

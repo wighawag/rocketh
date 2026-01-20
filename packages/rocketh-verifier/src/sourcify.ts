@@ -44,7 +44,7 @@ export async function submitSourcesToSourcify(
 		minInterval?: number;
 		logErrorOnFailure?: boolean;
 	},
-	config?: SourcifyOptions
+	config?: SourcifyOptions,
 ): Promise<void> {
 	config = config || {type: 'sourcify'};
 	const all = env.deployments;
@@ -56,7 +56,7 @@ export async function submitSourcesToSourcify(
 
 		try {
 			const checkResponse = await fetch(
-				`${url}checkByAddresses?addresses=${address.toLowerCase()}&chainIds=${env.chainId}`
+				`${url}checkByAddresses?addresses=${address.toLowerCase()}&chainIds=${env.chainId}`,
 			);
 			const json = await checkResponse.json();
 			if (json[0].status === 'perfect') {

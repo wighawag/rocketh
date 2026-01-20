@@ -36,24 +36,24 @@ export function setupEnvironmentFromFiles<
 	Extensions extends Record<string, (env: Environment<any, any, any>) => any> = {},
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
-	Extra extends Record<string, unknown> = Record<string, unknown>
+	Extra extends Record<string, unknown> = Record<string, unknown>,
 >(extensions: Extensions) {
 	async function loadAndExecuteDeploymentsWithExtensions<
 		Extra extends Record<string, unknown> = Record<string, unknown>,
-		ArgumentsType = undefined
+		ArgumentsType = undefined,
 	>(
 		executionParams: ExecutionParams<Extra>,
-		args?: ArgumentsType
+		args?: ArgumentsType,
 	): Promise<EnhancedEnvironment<NamedAccounts, Data, UnknownDeployments, Extensions>> {
 		const env = await loadAndExecuteDeploymentsFromFiles<NamedAccounts, Data, ArgumentsType, Extra>(
 			executionParams,
-			args
+			args,
 		);
 		return enhanceEnvIfNeeded(env, extensions);
 	}
 
 	async function loadEnvironmentWithExtensions(
-		executionParams: ExecutionParams<Extra>
+		executionParams: ExecutionParams<Extra>,
 	): Promise<EnhancedEnvironment<NamedAccounts, Data, UnknownDeployments, Extensions>> {
 		const env = await loadEnvironmentFromFiles<NamedAccounts, Data, Extra>(executionParams);
 		return enhanceEnvIfNeeded(env, extensions);
@@ -67,7 +67,7 @@ export function setupEnvironmentFromFiles<
 
 export async function readConfig<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
-	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData
+	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 >(): Promise<UserConfig<NamedAccounts, Data>> {
 	type ConfigFile = UserConfig<NamedAccounts, Data>;
 	let configFile: ConfigFile | undefined;
@@ -126,7 +126,7 @@ export async function readConfig<
 
 export async function readAndResolveConfig<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
-	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData
+	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 >(overrides?: ConfigOverrides): Promise<ResolvedUserConfig<NamedAccounts, Data>> {
 	const configFile = await readConfig();
 	return resolveConfig(configFile, overrides);
@@ -150,7 +150,7 @@ export function loadDeploymentsFromFiles(
 	deploymentsPath: string,
 	networkName: string,
 	onlyABIAndAddress?: boolean,
-	expectedChain?: {chainId: string; genesisHash?: `0x${string}`; deleteDeploymentsIfDifferentGenesisHash?: boolean}
+	expectedChain?: {chainId: string; genesisHash?: `0x${string}`; deleteDeploymentsIfDifferentGenesisHash?: boolean},
 ): Promise<{
 	deployments: UnknownDeployments;
 	migrations: Record<string, number>;
@@ -163,7 +163,7 @@ export function loadDeploymentsFromFiles(
 export async function loadEnvironmentFromFiles<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
-	Extra extends Record<string, unknown> = Record<string, unknown>
+	Extra extends Record<string, unknown> = Record<string, unknown>,
 >(executionParams: ExecutionParams<Extra>): Promise<Environment<NamedAccounts, Data, UnknownDeployments>> {
 	const config = await readConfig<NamedAccounts, Data>();
 	return loadEnvironment(config, executionParams, deploymentStore);
@@ -173,10 +173,10 @@ export async function loadAndExecuteDeploymentsFromFiles<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 	ArgumentsType = undefined,
-	Extra extends Record<string, unknown> = Record<string, unknown>
+	Extra extends Record<string, unknown> = Record<string, unknown>,
 >(
 	executionParams: ExecutionParams<Extra>,
-	args?: ArgumentsType
+	args?: ArgumentsType,
 ): Promise<Environment<NamedAccounts, Data, UnknownDeployments>> {
 	const userConfig = await readAndResolveConfig<NamedAccounts, Data>(executionParams.config);
 	const {name: environmentName, fork} = getEnvironmentName(executionParams);
@@ -192,11 +192,11 @@ export async function executeDeployScriptsFromFiles<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 	ArgumentsType = undefined,
-	Extra extends Record<string, unknown> = Record<string, unknown>
+	Extra extends Record<string, unknown> = Record<string, unknown>,
 >(
 	userConfig: UserConfig,
 	executionParams?: ExecutionParams<Extra>,
-	args?: ArgumentsType
+	args?: ArgumentsType,
 ): Promise<Environment<NamedAccounts, Data, UnknownDeployments>> {
 	executionParams = executionParams || {};
 	const resolveduserConfig = resolveConfig<NamedAccounts, Data>(userConfig, executionParams.config);
@@ -206,18 +206,18 @@ export async function executeDeployScriptsFromFiles<
 	return _executeDeployScriptsFromFiles<NamedAccounts, Data, ArgumentsType>(
 		resolveduserConfig,
 		resolvedExecutionParams,
-		args
+		args,
 	);
 }
 
 async function _executeDeployScriptsFromFiles<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
-	ArgumentsType = undefined
+	ArgumentsType = undefined,
 >(
 	userConfig: ResolvedUserConfig<NamedAccounts, Data>,
 	resolvedExecutionParams: ResolvedExecutionParams,
-	args?: ArgumentsType
+	args?: ArgumentsType,
 ): Promise<Environment<NamedAccounts, Data, UnknownDeployments>> {
 	let filepaths;
 	filepaths = traverseMultipleDirectory(resolvedExecutionParams.scripts);
@@ -262,6 +262,6 @@ async function _executeDeployScriptsFromFiles<
 		moduleObjects,
 		userConfig,
 		resolvedExecutionParams,
-		args
+		args,
 	);
 }

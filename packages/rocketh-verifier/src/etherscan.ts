@@ -33,7 +33,7 @@ function writeRequestIfRequested(
 	name: string,
 	request: string,
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	postData: any
+	postData: any,
 ) {
 	if (write) {
 		try {
@@ -130,7 +130,7 @@ export async function submitSourcesToEtherscan(
 		minInterval?: number;
 		logErrorOnFailure?: boolean;
 	},
-	config?: EtherscanOptions
+	config?: EtherscanOptions,
 ): Promise<void> {
 	config = config || {type: 'etherscan'};
 	const licenseOption = config.license;
@@ -147,7 +147,7 @@ export async function submitSourcesToEtherscan(
 		const deployment = all[name];
 		const {address, metadata: metadataString} = deployment;
 		const abiResponse = await fetch(
-			`${endpoint}?chainid=${env.chainId}&module=contract&action=getabi&address=${address}&apikey=${etherscanApiKey}`
+			`${endpoint}?chainid=${env.chainId}&module=contract&action=getabi&address=${address}&apikey=${etherscanApiKey}`,
 		);
 		const json = await abiResponse.json();
 		let contractABI;
@@ -180,7 +180,7 @@ export async function submitSourcesToEtherscan(
 
 		if (!contractFilepath || !contractName) {
 			return logError(
-				`Failed to extract contract fully qualified name from metadata.settings.compilationTarget for ${name}. Skipping.`
+				`Failed to extract contract fully qualified name from metadata.settings.compilationTarget for ${name}. Skipping.`,
 			);
 		}
 
@@ -193,21 +193,21 @@ export async function submitSourcesToEtherscan(
 		if (!sourceLicenseType) {
 			if (!license) {
 				return logError(
-					`no license speccified in the source code for ${name} (${contractNamePath}), Please use option --license <SPDX>`
+					`no license speccified in the source code for ${name} (${contractNamePath}), Please use option --license <SPDX>`,
 				);
 			}
 		} else {
 			if (license && license !== sourceLicenseType) {
 				if (!forceLicense) {
 					return logError(
-						`mismatch for --license option (${licenseOption}) and the one specified in the source code for ${name}.\nLicenses found in source : ${sourceLicenseType}\nYou can use option --force-license to force option --license`
+						`mismatch for --license option (${licenseOption}) and the one specified in the source code for ${name}.\nLicenses found in source : ${sourceLicenseType}\nYou can use option --force-license to force option --license`,
 					);
 				}
 			} else {
 				license = sourceLicenseType;
 				if (!getLicenseType(license)) {
 					return logError(
-						`license :"${license}" found in source code for ${name} (${contractNamePath}) but this license is not supported by etherscan, list of supported license can be found here : https://etherscan.io/contract-license-types . This tool expect the SPDX id, except for "None" and "UNLICENSED"`
+						`license :"${license}" found in source code for ${name} (${contractNamePath}) but this license is not supported by etherscan, list of supported license can be found here : https://etherscan.io/contract-license-types . This tool expect the SPDX id, except for "None" and "UNLICENSED"`,
 					);
 				}
 			}
@@ -217,7 +217,7 @@ export async function submitSourcesToEtherscan(
 
 		if (!licenseType) {
 			return logError(
-				`license :"${license}" not supported by etherscan, list of supported license can be found here : https://etherscan.io/contract-license-types . This tool expect the SPDX id, except for "None" and "UNLICENSED"`
+				`license :"${license}" not supported by etherscan, list of supported license can be found here : https://etherscan.io/contract-license-types . This tool expect the SPDX id, except for "None" and "UNLICENSED"`,
 			);
 		}
 
@@ -329,7 +329,7 @@ export async function submitSourcesToEtherscan(
 			} else {
 				logError(
 					`contract ${name} failed to submit : "${submissionJson.message}" : "${submissionJson.result}"`,
-					JSON.stringify(submissionJson)
+					JSON.stringify(submissionJson),
 				);
 				writeRequestIfRequested(env?.logErrorOnFailure || false, networkName, name, formDataAsString, postData);
 				return;
@@ -352,7 +352,7 @@ export async function submitSourcesToEtherscan(
 			}
 			// TODO while loop and delay :
 			const statusResponse = await fetch(
-				`${endpoint}?chainid=${env.chainId}&apikey=${etherscanApiKey}&guid=${guid}&module=contract&action=checkverifystatus`
+				`${endpoint}?chainid=${env.chainId}&apikey=${etherscanApiKey}&guid=${guid}&module=contract&action=checkverifystatus`,
 			);
 			const json = await statusResponse.json();
 
@@ -384,8 +384,8 @@ export async function submitSourcesToEtherscan(
 						licenseType,
 					},
 					null,
-					'  '
-				)
+					'  ',
+				),
 			);
 			// logError(JSON.stringify(postData, null, "  "));
 			// logInfo(postData.sourceCode);

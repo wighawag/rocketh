@@ -60,29 +60,29 @@ export function setupDeployScripts<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 	Deployments extends UnknownDeployments = UnknownDeployments,
-	Extra extends Record<string, unknown> = Record<string, unknown>
+	Extra extends Record<string, unknown> = Record<string, unknown>,
 >(
-	extensions: Extensions
+	extensions: Extensions,
 ): {
 	deployScript<ArgumentsType = undefined>(
 		callback: EnhancedDeployScriptFunction<NamedAccounts, Data, ArgumentsType, Deployments, Extensions>,
-		options: {tags?: string[]; dependencies?: string[]; id?: string; runAtTheEnd?: boolean}
+		options: {tags?: string[]; dependencies?: string[]; id?: string; runAtTheEnd?: boolean},
 	): DeployScriptModule<NamedAccounts, Data, ArgumentsType, Deployments, Extra>;
 } {
 	function enhancedExecute<ArgumentsType = undefined>(
 		callback: EnhancedDeployScriptFunction<NamedAccounts, Data, ArgumentsType, Deployments, Extensions>,
-		options: {tags?: string[]; dependencies?: string[]; id?: string; runAtTheEnd?: boolean}
+		options: {tags?: string[]; dependencies?: string[]; id?: string; runAtTheEnd?: boolean},
 	): DeployScriptModule<NamedAccounts, Data, ArgumentsType, Deployments, Extra> {
 		const scriptModule: DeployScriptModule<NamedAccounts, Data, ArgumentsType, Deployments, Extra> = (
 			env: Environment<NamedAccounts, Data, Deployments, Extra>,
-			args?: ArgumentsType
+			args?: ArgumentsType,
 		) => {
 			// Create the enhanced environment by combining the original environment with extensions
 			const curriedFunctions = withEnvironment(env, extensions);
 			const enhancedEnv = Object.assign(
 				Object.create(Object.getPrototypeOf(env)),
 				env,
-				curriedFunctions
+				curriedFunctions,
 			) as EnhancedEnvironment<NamedAccounts, Data, Deployments, Extensions, Extra>;
 
 			return callback(enhancedEnv, args);
@@ -103,7 +103,7 @@ export function setupDeployScripts<
 
 export function resolveConfig<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
-	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData
+	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 >(configFile: UserConfig, overrides?: ConfigOverrides): ResolvedUserConfig<NamedAccounts, Data> {
 	const config = {
 		deployments: 'deployments',
@@ -113,8 +113,8 @@ export function resolveConfig<
 			? typeof configFile.scripts === 'string'
 				? [configFile.scripts]
 				: configFile.scripts.length == 0
-				? ['deploy']
-				: configFile.scripts
+					? ['deploy']
+					: configFile.scripts
 			: ['deploy'],
 	};
 
@@ -132,7 +132,7 @@ export function resolveConfig<
 export async function getChainIdForEnvironment(
 	config: ResolvedUserConfig,
 	environmentName: string,
-	provider?: EIP1193ProviderWithoutEvents
+	provider?: EIP1193ProviderWithoutEvents,
 ) {
 	let chainId: number;
 	const chainIdFromProvider = provider ? Number(await provider.request({method: 'eth_chainId'})) : undefined;
@@ -165,7 +165,7 @@ export async function getChainIdForEnvironment(
 	}
 	if (chainIdFromProvider && chainIdFromProvider != chainId) {
 		console.warn(
-			`provider give a different chainId (${chainIdFromProvider}) than the one expected for environment named "${environmentName}" (${chainId})`
+			`provider give a different chainId (${chainIdFromProvider}) than the one expected for environment named "${environmentName}" (${chainId})`,
 		);
 	}
 	return chainIdFromProvider || chainId;
@@ -188,7 +188,7 @@ export function getEnvironmentName(executionParams: ExecutionParams): {name: str
 export function resolveExecutionParams<Extra extends Record<string, unknown> = Record<string, unknown>>(
 	config: ResolvedUserConfig,
 	executionParameters: ExecutionParams<Extra>,
-	chainId: number
+	chainId: number,
 ): ResolvedExecutionParams<Extra> {
 	const {name: environmentName, fork} = getEnvironmentName(executionParameters);
 
@@ -221,7 +221,7 @@ export function resolveExecutionParams<Extra extends Record<string, unknown> = R
 					...chainConfig?.properties,
 					...environmentConfig.overrides.properties,
 				},
-		  }
+			}
 		: chainConfig;
 
 	if (actualChainConfig?.properties) {
@@ -292,11 +292,11 @@ export function resolveExecutionParams<Extra extends Record<string, unknown> = R
 export async function loadEnvironment<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
-	Extra extends Record<string, unknown> = Record<string, unknown>
+	Extra extends Record<string, unknown> = Record<string, unknown>,
 >(
 	config: UserConfig<NamedAccounts, Data>,
 	executionParams: ExecutionParams<Extra>,
-	deploymentStore: DeploymentStore
+	deploymentStore: DeploymentStore,
 ): Promise<Environment<NamedAccounts, Data, UnknownDeployments>> {
 	const userConfig = resolveConfig<NamedAccounts, Data>(config, executionParams.config);
 	const {name: environmentName, fork} = getEnvironmentName(executionParams);
@@ -306,7 +306,7 @@ export async function loadEnvironment<
 	const {external, internal} = await createEnvironment<NamedAccounts, Data, UnknownDeployments>(
 		userConfig,
 		resolvedExecutionParams,
-		deploymentStore
+		deploymentStore,
 	);
 	return external;
 }
@@ -316,12 +316,12 @@ export function createExecutor(deploymentStore: DeploymentStore, promptExecutor:
 		NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 		Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 		ArgumentsType = undefined,
-		Extra extends Record<string, unknown> = Record<string, unknown>
+		Extra extends Record<string, unknown> = Record<string, unknown>,
 	>(
 		moduleObjects: ModuleObject<NamedAccounts, Data, ArgumentsType>[],
 		userConfig: UserConfig,
 		executionParams?: ExecutionParams<Extra>,
-		args?: ArgumentsType
+		args?: ArgumentsType,
 	): Promise<Environment<NamedAccounts, Data, UnknownDeployments>> {
 		executionParams = executionParams || {};
 		const resolveduserConfig = resolveConfig<NamedAccounts, Data>(userConfig, executionParams.config);
@@ -332,19 +332,19 @@ export function createExecutor(deploymentStore: DeploymentStore, promptExecutor:
 			moduleObjects,
 			resolveduserConfig,
 			resolvedExecutionParams,
-			args
+			args,
 		);
 	}
 
 	async function executeDeployScriptModules<
 		NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 		Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
-		ArgumentsType = undefined
+		ArgumentsType = undefined,
 	>(
 		moduleObjects: ModuleObject<NamedAccounts, Data, ArgumentsType>[],
 		userConfig: ResolvedUserConfig<NamedAccounts, Data>,
 		resolvedExecutionParams: ResolvedExecutionParams,
-		args?: ArgumentsType
+		args?: ArgumentsType,
 	): Promise<Environment<NamedAccounts, Data, UnknownDeployments>> {
 		const scriptModuleById: {[id: string]: DeployScriptModule<NamedAccounts, Data, ArgumentsType>} = {};
 		const scriptIdBags: {[tag: string]: string[]} = {};
@@ -394,7 +394,7 @@ export function createExecutor(deploymentStore: DeploymentStore, promptExecutor:
 		const {internal, external} = await createEnvironment<NamedAccounts, Data, UnknownDeployments>(
 			userConfig,
 			resolvedExecutionParams,
-			deploymentStore
+			deploymentStore,
 		);
 
 		await internal.recoverTransactionsIfAny();
@@ -447,8 +447,8 @@ export function createExecutor(deploymentStore: DeploymentStore, promptExecutor:
 		if (resolvedExecutionParams.askBeforeProceeding) {
 			console.log(
 				`Network: ${external.name} \n \t Chain: ${external.network.chain.name} \n \t Tags: ${Object.keys(
-					external.tags
-				).join(',')}`
+					external.tags,
+				).join(',')}`,
 			);
 
 			const prompt = await promptExecutor.prompt({
@@ -456,13 +456,13 @@ export function createExecutor(deploymentStore: DeploymentStore, promptExecutor:
 				name: 'proceed',
 				message: `gas price is currently in this range:
 slow: ${formatEther(gasPriceEstimate.slow.maxFeePerGas)} (priority: ${formatEther(
-					gasPriceEstimate.slow.maxPriorityFeePerGas
+					gasPriceEstimate.slow.maxPriorityFeePerGas,
 				)})
 average: ${formatEther(gasPriceEstimate.average.maxFeePerGas)} (priority: ${formatEther(
-					gasPriceEstimate.average.maxPriorityFeePerGas
+					gasPriceEstimate.average.maxPriorityFeePerGas,
 				)})
 fast: ${formatEther(gasPriceEstimate.fast.maxFeePerGas)} (priority: ${formatEther(
-					gasPriceEstimate.fast.maxPriorityFeePerGas
+					gasPriceEstimate.fast.maxPriorityFeePerGas,
 				)})
 
 Do you want to proceed (note that gas price can change for each tx)`,
@@ -503,7 +503,7 @@ Do you want to proceed (note that gas price can change for each tx)`,
 				if (result && typeof result === 'boolean') {
 					if (!deployScript.func.id) {
 						throw new Error(
-							`${deployScript.id} return true to not be executed again, but does not provide an id. the script function needs to have the field "id" to be set`
+							`${deployScript.id} return true to not be executed again, but does not provide an id. the script function needs to have the field "id" to be set`,
 						);
 					}
 					internal.recordMigration(deployScript.func.id);

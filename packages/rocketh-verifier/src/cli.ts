@@ -4,7 +4,7 @@ import {run} from './index.js';
 import {Command, Option} from 'commander';
 import pkg from '../package.json' with {type: 'json'};
 import {exportMetadata} from './metadata.js';
-import { readAndResolveConfig } from '@rocketh/node';
+import {readAndResolveConfig} from '@rocketh/node';
 loadEnv();
 
 const commandName = `rocketh-verify`;
@@ -26,36 +26,44 @@ program
 	.option('--force-license', 'force the use of the license provided')
 	.option('--min-interval <value>', 'min interval between request in ms')
 	.option('--fix-mispell', 'if set, will use correct spelling of form field')
-	.action(async (options: {endpoint?: string; forceLicense: boolean; license: string, minInterval?: string, fixMispell?: boolean}) => {
-		const {environment, ...programOptions} = program.opts();;
-		const resolvedConfig = await readAndResolveConfig({...programOptions});
-		run(resolvedConfig, environment, {
-			verifier: {
-				type: 'etherscan',
-				apiKey: process.env['ETHERSCAN_API_KEY'],
-				endpoint: options.endpoint,
-				forceLicense: options.forceLicense,
-				license: options.license,
-				fixMispell: options.fixMispell
-			},
-			minInterval: options.minInterval? parseInt(options.minInterval): undefined,
-		});
-	});
+	.action(
+		async (options: {
+			endpoint?: string;
+			forceLicense: boolean;
+			license: string;
+			minInterval?: string;
+			fixMispell?: boolean;
+		}) => {
+			const {environment, ...programOptions} = program.opts();
+			const resolvedConfig = await readAndResolveConfig({...programOptions});
+			run(resolvedConfig, environment, {
+				verifier: {
+					type: 'etherscan',
+					apiKey: process.env['ETHERSCAN_API_KEY'],
+					endpoint: options.endpoint,
+					forceLicense: options.forceLicense,
+					license: options.license,
+					fixMispell: options.fixMispell,
+				},
+				minInterval: options.minInterval ? parseInt(options.minInterval) : undefined,
+			});
+		},
+	);
 
 program
 	.command('sourcify')
 	.description('submit contract for verification to sourcify')
 	.option('--endpoint <value>', 'endpoint to connect to')
 	.option('--min-interval <value>', 'min interval between request in ms')
-	.action(async (options: {endpoint?: string, minInterval?: string}) => {
-		const {environment, ...programOptions} = program.opts();;
+	.action(async (options: {endpoint?: string; minInterval?: string}) => {
+		const {environment, ...programOptions} = program.opts();
 		const resolvedConfig = await readAndResolveConfig({...programOptions});
-		run(resolvedConfig, environment,  {
+		run(resolvedConfig, environment, {
 			verifier: {
 				type: 'sourcify',
-				endpoint: options.endpoint
-			}, 
-			minInterval: options.minInterval? parseInt(options.minInterval): undefined
+				endpoint: options.endpoint,
+			},
+			minInterval: options.minInterval ? parseInt(options.minInterval) : undefined,
 		});
 	});
 
@@ -65,15 +73,15 @@ program
 	.option('--endpoint <value>', 'endpoint to connect to')
 	.option('--min-interval <value>', 'min interval between request in ms')
 	// .option('--api <value>', 'api version (default to v2)')
-	.action(async (options: {endpoint?: string, minInterval?: string}) => {
-		const {environment, ...programOptions} = program.opts();;
+	.action(async (options: {endpoint?: string; minInterval?: string}) => {
+		const {environment, ...programOptions} = program.opts();
 		const resolvedConfig = await readAndResolveConfig({...programOptions});
 		run(resolvedConfig, environment, {
 			verifier: {
 				type: 'blockscout',
-				endpoint: options.endpoint
+				endpoint: options.endpoint,
 			},
-			minInterval: options.minInterval? parseInt(options.minInterval): undefined
+			minInterval: options.minInterval ? parseInt(options.minInterval) : undefined,
 		});
 	});
 
@@ -82,7 +90,7 @@ program
 	.description('export metadata')
 	.option('--out <value>', 'folder to write metadata into')
 	.action(async (options: {out?: string}) => {
-		const {environment, ...programOptions} = program.opts();;
+		const {environment, ...programOptions} = program.opts();
 		const resolvedConfig = await readAndResolveConfig({...programOptions});
 		await exportMetadata(resolvedConfig, environment, {out: options.out || '_metadata'});
 	});

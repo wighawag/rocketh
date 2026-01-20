@@ -40,7 +40,7 @@ export const traverse = function (
 	dir: string,
 	result: any[] = [],
 	topDir?: string,
-	filter?: (name: string, stats: any) => boolean // TODO any is Stats
+	filter?: (name: string, stats: any) => boolean, // TODO any is Stats
 ): Array<{
 	name: string;
 	path: string;

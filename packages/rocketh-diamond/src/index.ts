@@ -29,7 +29,7 @@ const diamondAbi = mergeABIs(
 	{
 		check: true,
 		skipSupportsInterface: true,
-	}
+	},
 );
 const artifactDiamond = {
 	...artifactPureDiamond,
@@ -37,11 +37,11 @@ const artifactDiamond = {
 };
 
 export function diamond(
-	env: Environment
+	env: Environment,
 ): <TAbi extends Abi>(
 	name: string,
 	params: DiamondDeploymentConstruction<TAbi>,
-	options: DiamondDeployOptions
+	options: DiamondDeployOptions,
 ) => Promise<DeployResult<TAbi>> {
 	const _read = read(env);
 	const _deploy = deploy(env);
@@ -49,7 +49,7 @@ export function diamond(
 	return async <TAbi extends Abi>(
 		name: string,
 		params: DiamondDeploymentConstruction<TAbi>,
-		options: DiamondDeployOptions
+		options: DiamondDeployOptions,
 	) => {
 		let proxy: Deployment<DiamondABI> | undefined;
 		const proxyName = `${name}_DiamondProxy`;
@@ -166,7 +166,7 @@ export function diamond(
 					artifact,
 					args: facetArgs,
 				},
-				{libraries, linkedData, deterministic: deterministicFacet}
+				{libraries, linkedData, deterministic: deterministicFacet},
 			);
 
 			let facetAddress: `0x${string}`;
@@ -284,7 +284,7 @@ export function diamond(
 					},
 					{
 						deterministic: true,
-					}
+					},
 				);
 
 				addressSpecified = executionDeployment.address;
@@ -332,7 +332,7 @@ export function diamond(
 							artifact: artifactDiamondERC165Init,
 							args: [],
 						},
-						{deterministic: true}
+						{deterministic: true},
 					);
 
 					const interfaceInitCallData = encodeFunctionData({
@@ -398,12 +398,12 @@ export function diamond(
 					if (typeof options.deterministicSalt === 'string') {
 						if (options.deterministicSalt === salt) {
 							throw new Error(
-								`deterministicSalt cannot be 0x000..., it needs to be a non-zero bytes32 salt. This is to ensure you are explicitly specifying different addresses for multiple diamonds`
+								`deterministicSalt cannot be 0x000..., it needs to be a non-zero bytes32 salt. This is to ensure you are explicitly specifying different addresses for multiple diamonds`,
 							);
 						}
 						if (options.deterministicSalt.length !== 66) {
 							throw new Error(
-								`deterministicSalt needs to be a string of 66 hexadecimal characters (including the 0x prefix)`
+								`deterministicSalt needs to be a string of 66 hexadecimal characters (including the 0x prefix)`,
 							);
 						}
 						salt = options.deterministicSalt;
@@ -422,7 +422,7 @@ export function diamond(
 					{
 						deterministic: options.deterministicSalt,
 						skipIfAlreadyDeployed: true,
-					}
+					},
 				);
 
 				await env.save<TAbi>(
@@ -436,7 +436,7 @@ export function diamond(
 					},
 					{
 						doNotCountAsNewDeployment: proxy.newlyDeployed ? false : true,
-					}
+					},
 				);
 			} else {
 				if (!oldDeployment) {

@@ -47,7 +47,7 @@ export async function run(config: ResolvedUserConfig, environmentName: string, o
 
 export async function generate(
 	{deployments}: {deployments: UnknownDeployments; chainId?: string},
-	options: RunOptions
+	options: RunOptions,
 ) {
 	if (!deployments || Object.keys(deployments).length === 0) {
 		console.log(`no deployments to export`);
@@ -129,7 +129,7 @@ export async function generateFromDeployments(deployments: UnknownDeployments, o
 
 export function generateDocumentationData(
 	name: string,
-	deploymentOrArfifact: Partial<Deployment<Abi>> & Artifact<Abi>
+	deploymentOrArfifact: Partial<Deployment<Abi>> & Artifact<Abi>,
 ): DocumentationData {
 	const abi = deploymentOrArfifact.abi;
 	const abiMap = new Map<string, AbiConstructor | AbiError | AbiEvent | AbiFunction>();

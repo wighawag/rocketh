@@ -24,7 +24,7 @@ export async function exportMetadata(config: ResolvedUserConfig, environmentName
 		if (deployment.metadata) {
 			fs.writeFileSync(
 				path.join(folder, `${deploymentName}_at_${deployment.address}.metadata.json`),
-				deployment.metadata
+				deployment.metadata,
 			);
 		}
 	}

@@ -44,11 +44,11 @@ function wait(numSeconds: number): Promise<void> {
 function displayTransaction(transaction: EIP1193Transaction) {
 	if ('maxFeePerGas' in transaction) {
 		return `(type ${transaction.type}, maxFeePerGas: ${BigInt(
-			transaction.maxFeePerGas
+			transaction.maxFeePerGas,
 		).toString()}, maxPriorityFeePerGas: ${BigInt(transaction.maxPriorityFeePerGas).toString()})`;
 	} else if ('gasPrice' in transaction) {
 		return `(type ${transaction.type ? Number(transaction.type) : '0'}, gasPrice: ${BigInt(
-			transaction.gasPrice
+			transaction.gasPrice,
 		).toString()})`;
 	} else {
 		return `(tx with no gas pricing, type: ${Number((transaction as any).type)})`;
@@ -60,7 +60,7 @@ export async function loadDeployments(
 	deploymentsPath: string,
 	networkName: string,
 	onlyABIAndAddress?: boolean,
-	expectedChain?: {chainId: string; genesisHash?: `0x${string}`; deleteDeploymentsIfDifferentGenesisHash?: boolean}
+	expectedChain?: {chainId: string; genesisHash?: `0x${string}`; deleteDeploymentsIfDifferentGenesisHash?: boolean},
 ): Promise<{
 	deployments: UnknownDeployments;
 	migrations: Record<string, number>;
@@ -74,7 +74,7 @@ export async function loadDeployments(
 		fileNames = await deploymentStore.listFiles(
 			deploymentsPath,
 			networkName,
-			(name) => !(name.startsWith('.') && name !== '.migrations.json') && name !== 'solcInputs'
+			(name) => !(name.startsWith('.') && name !== '.migrations.json') && name !== 'solcInputs',
 		);
 	} catch (e) {
 		// console.log('no folder at ' + deployPath);
@@ -92,14 +92,14 @@ export async function loadDeployments(
 			chainId = await deploymentStore.readFile(deploymentsPath, networkName, '.chainId');
 		} else {
 			throw new Error(
-				`A '.chain' or '.chainId' file is expected to be present in the deployment folder for network ${networkName}`
+				`A '.chain' or '.chainId' file is expected to be present in the deployment folder for network ${networkName}`,
 			);
 		}
 
 		if (expectedChain) {
 			if (expectedChain.chainId !== chainId) {
 				throw new Error(
-					`Loading deployment from environment '${networkName}' (with chainId: ${chainId}) for a different chainId (${expectedChain.chainId})`
+					`Loading deployment from environment '${networkName}' (with chainId: ${chainId}) for a different chainId (${expectedChain.chainId})`,
 				);
 			}
 
@@ -112,19 +112,19 @@ export async function loadDeployments(
 						return {deployments: {}, migrations: {}};
 					} else {
 						throw new Error(
-							`Loading deployment from environment '${networkName}' (with genesisHash: ${genesisHash}) for a different genesisHash (${expectedChain.genesisHash})`
+							`Loading deployment from environment '${networkName}' (with genesisHash: ${genesisHash}) for a different genesisHash (${expectedChain.genesisHash})`,
 						);
 					}
 				}
 			} else {
 				console.warn(
-					`genesisHash not found in environment '${networkName}' (with chainId: ${chainId}), writing .chain with expected one...`
+					`genesisHash not found in environment '${networkName}' (with chainId: ${chainId}), writing .chain with expected one...`,
 				);
 				await deploymentStore.writeFile(
 					deploymentsPath,
 					networkName,
 					'.chain',
-					JSON.stringify({chainId: expectedChain.chainId, genesisHash: expectedChain.genesisHash})
+					JSON.stringify({chainId: expectedChain.chainId, genesisHash: expectedChain.genesisHash}),
 				);
 				try {
 					await deploymentStore.deleteFile(deploymentsPath, networkName, '.chainId');
@@ -167,11 +167,11 @@ export async function loadDeployments(
 export async function createEnvironment<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
-	Deployments extends UnknownDeployments = UnknownDeployments
+	Deployments extends UnknownDeployments = UnknownDeployments,
 >(
 	userConfig: ResolvedUserConfig<NamedAccounts, Data>,
 	resolvedExecutionParams: ResolvedExecutionParams,
-	deploymentStore: DeploymentStore
+	deploymentStore: DeploymentStore,
 ): Promise<{internal: InternalEnvironment; external: Environment<NamedAccounts, Data, Deployments>}> {
 	const rawProvider = resolvedExecutionParams.provider;
 
@@ -213,7 +213,7 @@ export async function createEnvironment<
 	async function getAccount(
 		name: string,
 		accounts: UnresolvedUnknownNamedAccounts,
-		accountDef: AccountType
+		accountDef: AccountType,
 	): Promise<ResolvedAccount | undefined> {
 		if (accountCache[name]) {
 			return accountCache[name];
@@ -290,8 +290,8 @@ export async function createEnvironment<
 					`cannot get account for ${accountName} = ${JSON.stringify(
 						userConfig.accounts[accountName],
 						null,
-						2
-					)}\nEnsure your provider (or hardhat) has some accounts set up for ${environmentName}\n`
+						2,
+					)}\nEnsure your provider (or hardhat) has some accounts set up for ${environmentName}\n`,
 				);
 			}
 			(resolvedAccounts as any)[accountName] = account;
@@ -332,7 +332,7 @@ export async function createEnvironment<
 					chainId,
 					genesisHash,
 					deleteDeploymentsIfDifferentGenesisHash: true,
-			  }
+				},
 	);
 
 	const namedAccounts: {[name: string]: EIP1193Account} = {};
@@ -420,7 +420,7 @@ export async function createEnvironment<
 				deploymentsFolder,
 				environmentName,
 				'.migrations.json',
-				JSON.stringify(migrations)
+				JSON.stringify(migrations),
 			);
 		}
 	}
@@ -455,7 +455,7 @@ export async function createEnvironment<
 	async function save<TAbi extends Abi>(
 		name: string,
 		deployment: Deployment<TAbi>,
-		options?: {doNotCountAsNewDeployment?: boolean}
+		options?: {doNotCountAsNewDeployment?: boolean},
 	): Promise<Deployment<TAbi>> {
 		if (!options?.doNotCountAsNewDeployment) {
 			let numDeployments = 1;
@@ -473,7 +473,7 @@ export async function createEnvironment<
 				deploymentsFolder,
 				environmentName,
 				`${name}.json`,
-				JSONToString(deployment, 2)
+				JSONToString(deployment, 2),
 			);
 		}
 		return deployment;
@@ -486,7 +486,7 @@ export async function createEnvironment<
 		let existingPendingTansactions: PendingTransaction[];
 		try {
 			existingPendingTansactions = stringToJSON(
-				await deploymentStore.readFile(deploymentsFolder, environmentName, '.pending_transactions.json')
+				await deploymentStore.readFile(deploymentsFolder, environmentName, '.pending_transactions.json'),
 			);
 		} catch {
 			existingPendingTansactions = [];
@@ -497,7 +497,7 @@ export async function createEnvironment<
 				if (pendingTransaction) {
 					if (pendingTransaction.type === 'deployment') {
 						const spinner = spin(
-							`recovering ${pendingTransaction.name} with transaction ${pendingTransaction.transaction.hash}`
+							`recovering ${pendingTransaction.name} with transaction ${pendingTransaction.transaction.hash}`,
 						);
 						try {
 							await waitForDeploymentTransactionAndSave(pendingTransaction);
@@ -506,7 +506,7 @@ export async function createEnvironment<
 								deploymentsFolder,
 								environmentName,
 								'.pending_transactions.json',
-								JSONToString(existingPendingTansactions, 2)
+								JSONToString(existingPendingTansactions, 2),
 							);
 							spinner.succeed();
 						} catch (e) {
@@ -529,7 +529,7 @@ export async function createEnvironment<
 								deploymentsFolder,
 								environmentName,
 								'.pending_transactions.json',
-								JSONToString(existingPendingTansactions, 2)
+								JSONToString(existingPendingTansactions, 2),
 							);
 							spinner.succeed();
 						} catch (e) {
@@ -548,7 +548,7 @@ export async function createEnvironment<
 			let existingPendinTransactions: PendingTransaction[];
 			try {
 				existingPendinTransactions = stringToJSON(
-					await deploymentStore.readFile(deploymentsFolder, environmentName, '.pending_transactions.json')
+					await deploymentStore.readFile(deploymentsFolder, environmentName, '.pending_transactions.json'),
 				);
 			} catch {
 				existingPendinTransactions = [];
@@ -559,7 +559,7 @@ export async function createEnvironment<
 				deploymentsFolder,
 				environmentName,
 				'.pending_transactions.json',
-				JSONToString(existingPendinTransactions, 2)
+				JSONToString(existingPendinTransactions, 2),
 			);
 		}
 		return deployments;
@@ -592,7 +592,7 @@ export async function createEnvironment<
 			let existingPendinTransactions: PendingTransaction[];
 			try {
 				existingPendinTransactions = stringToJSON(
-					await deploymentStore.readFile(deploymentsFolder, environmentName, '.pending_transactions.json')
+					await deploymentStore.readFile(deploymentsFolder, environmentName, '.pending_transactions.json'),
 				);
 			} catch {
 				existingPendinTransactions = [];
@@ -606,7 +606,7 @@ export async function createEnvironment<
 					deploymentsFolder,
 					environmentName,
 					'.pending_transactions.json',
-					JSONToString(existingPendinTransactions, 2)
+					JSONToString(existingPendinTransactions, 2),
 				);
 			}
 		}
@@ -614,7 +614,7 @@ export async function createEnvironment<
 
 	async function waitForTransaction(
 		hash: `0x${string}`,
-		info?: {message?: string; transaction?: EIP1193Transaction | null}
+		info?: {message?: string; transaction?: EIP1193Transaction | null},
 	): Promise<EIP1193TransactionReceipt> {
 		let message = `  - Broadcasting tx:\n      ${hash}${
 			info?.transaction ? `\n      ${displayTransaction(info?.transaction)}` : ''
@@ -647,7 +647,7 @@ export async function createEnvironment<
 
 	async function waitForDeploymentTransactionAndSave<TAbi extends Abi = Abi>(
 		pendingDeployment: PendingDeployment<TAbi>,
-		info?: {message?: string; transaction?: EIP1193Transaction | null}
+		info?: {message?: string; transaction?: EIP1193Transaction | null},
 	): Promise<Deployment<TAbi>> {
 		const nameToDisplay = pendingDeployment.name || '<no name>';
 		let message = `  - Deploying ${nameToDisplay} with tx:\n      {hash}\n      {transaction}`;
@@ -767,7 +767,7 @@ export async function createEnvironment<
 
 	async function savePendingDeployment<TAbi extends Abi = Abi>(
 		pendingDeployment: PendingDeployment<TAbi>,
-		msg?: string
+		msg?: string,
 	) {
 		await savePendingTransaction(pendingDeployment);
 		let transaction: EIP1193Transaction | null = null;

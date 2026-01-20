@@ -30,7 +30,7 @@ export type DeployResult<TAbi extends Abi> = Deployment<TAbi> & {newlyDeployed: 
 export type DeployFunction = <TAbi extends Abi, TChain extends Chain = Chain>(
 	name: string,
 	args: DeploymentConstruction<TAbi>,
-	options?: DeployOptions
+	options?: DeployOptions,
 ) => Promise<DeployResult<TAbi>>;
 
 export type DeployOptions = {
@@ -55,7 +55,7 @@ export type DeployOptions = {
 async function broadcastTransaction(
 	env: Environment,
 	signer: Signer,
-	params: [EIP1193TransactionData]
+	params: [EIP1193TransactionData],
 ): Promise<`0x${string}`> {
 	if (signer.type === 'wallet' || signer.type === 'remote') {
 		const tx = signer.signer.request({
@@ -119,7 +119,7 @@ function linkLibraries(
 			};
 		};
 	},
-	libraries?: {[libraryName: string]: Address}
+	libraries?: {[libraryName: string]: Address},
 ) {
 	let bytecode = artifact.bytecode;
 
@@ -161,8 +161,8 @@ async function getCreate2Factory(env: Environment, signer: Signer, params: Facto
 		'create2' in env.network.deterministicDeployment
 			? env.network.deterministicDeployment.create2
 			: 'factory' in env.network.deterministicDeployment
-			? env.network.deterministicDeployment
-			: undefined;
+				? env.network.deterministicDeployment
+				: undefined;
 	if (!deploymentInfo) throw new Error('create2 deterministic deployment info not found');
 
 	const factoryAddress = deploymentInfo.factory;
@@ -199,7 +199,7 @@ async function getCreate2Factory(env: Environment, signer: Signer, params: Facto
 					type: 'execution', // TODO different type ?
 					transaction: {hash: txHash, origin: params.address},
 				},
-				`  - Broadcasting Create 2 Factory Funding tx:\n      {hash}\n      {transaction}`
+				`  - Broadcasting Create 2 Factory Funding tx:\n      {hash}\n      {transaction}`,
 			);
 		}
 
@@ -212,7 +212,7 @@ async function getCreate2Factory(env: Environment, signer: Signer, params: Facto
 				type: 'execution', // TODO different type ?
 				transaction: {hash: txHash, origin: params.address},
 			},
-			`  - Deploying Create 2 Factory:\n      {hash}\n      {transaction}`
+			`  - Deploying Create 2 Factory:\n      {hash}\n      {transaction}`,
 		);
 	}
 
@@ -264,7 +264,7 @@ async function getCreate3Factory(env: Environment, signer: Signer, params: Facto
 				type: 'execution', // TODO different type ?
 				transaction: {hash: txHash, origin: params.address},
 			},
-			`  - Deploying Create 3 Factory:\n      {hash}\n      {transaction}`
+			`  - Deploying Create 3 Factory:\n      {hash}\n      {transaction}`,
 		);
 	}
 
@@ -284,7 +284,7 @@ async function getCreate3Factory(env: Environment, signer: Signer, params: Facto
 			// 0x94 = 0x80 + 0x14 (0x14 is the length of an address)
 			const rlpEncodedData = encodePacked(
 				['bytes1', 'bytes1', 'address', 'bytes1'],
-				['0xd6', '0x94', proxyAddress, '0x01']
+				['0xd6', '0x94', proxyAddress, '0x01'],
 			);
 
 			return `0x${keccak256(rlpEncodedData).slice(26)}`;
@@ -301,7 +301,7 @@ async function getCreate3Factory(env: Environment, signer: Signer, params: Facto
 export function deploy(env: Environment): <TAbi extends Abi>(
 	name: string, // '' allow to not save it
 	args: DeploymentConstruction<TAbi>,
-	options?: DeployOptions
+	options?: DeployOptions,
 ) => Promise<DeployResult<TAbi>> {
 	return async <TAbi extends Abi>(name: string, args: DeploymentConstruction<TAbi>, options?: DeployOptions) => {
 		const nameToDisplay = name || '<no name>';
@@ -315,7 +315,7 @@ export function deploy(env: Environment): <TAbi extends Abi>(
 		const existingDeployment = name && env.getOrNull(name);
 		if (existingDeployment && skipIfAlreadyDeployed) {
 			logger.info(
-				`deployment for ${nameToDisplay} at ${existingDeployment.address}, skipIfAlreadyDeployed: true => we skip`
+				`deployment for ${nameToDisplay} at ${existingDeployment.address}, skipIfAlreadyDeployed: true => we skip`,
 			);
 			return {...(existingDeployment as Deployment<TAbi>), newlyDeployed: false};
 		}
@@ -435,7 +435,7 @@ export function deploy(env: Environment): <TAbi extends Abi>(
 							address: expectedAddress,
 							...partialDeployment,
 						},
-						{doNotCountAsNewDeployment: true}
+						{doNotCountAsNewDeployment: true},
 					);
 					return {...(deployment as Deployment<TAbi>), newlyDeployed: false};
 				} else {
@@ -461,7 +461,7 @@ export function deploy(env: Environment): <TAbi extends Abi>(
 			pendingDeployment,
 			`  - Deploying {name} ${
 				options?.deterministic ? '(deterministically)' : ''
-			} with tx:\n      {hash}\n      {transaction}`
+			} with tx:\n      {hash}\n      {transaction}`,
 		);
 		return {...(deployment as Deployment<TAbi>), newlyDeployed: true};
 	};

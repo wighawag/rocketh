@@ -33,10 +33,10 @@ export type ExecuteFunction = <
 		TAbi,
 		'nonpayable' | 'payable',
 		TFunctionName
-	>
+	>,
 >(
 	deployment: MinimalDeployment<TAbi>,
-	args: ExecutionArgs<TAbi, TFunctionName, TArgs>
+	args: ExecutionArgs<TAbi, TFunctionName, TArgs>,
 ) => Promise<EIP1193DATA>;
 
 export type ExecuteFunctionByName = <
@@ -46,10 +46,10 @@ export type ExecuteFunctionByName = <
 		TAbi,
 		'nonpayable' | 'payable',
 		TFunctionName
-	>
+	>,
 >(
 	name: string,
-	args: ExecutionArgs<TAbi, TFunctionName, TArgs>
+	args: ExecutionArgs<TAbi, TFunctionName, TArgs>,
 ) => Promise<EIP1193DATA>;
 
 export type ReadFunction = <
@@ -59,10 +59,10 @@ export type ReadFunction = <
 		TAbi,
 		'pure' | 'view',
 		TFunctionName
-	>
+	>,
 >(
 	deployment: MinimalDeployment<TAbi>,
-	args: ReadingArgs<TAbi, TFunctionName, TArgs>
+	args: ReadingArgs<TAbi, TFunctionName, TArgs>,
 ) => Promise<DecodeFunctionResultReturnType<TAbi, TFunctionName>>;
 
 export type ReadFunctionByName = <
@@ -72,10 +72,10 @@ export type ReadFunctionByName = <
 		TAbi,
 		'pure' | 'view',
 		TFunctionName
-	>
+	>,
 >(
 	name: string,
-	args: ReadingArgs<TAbi, TFunctionName, TArgs>
+	args: ReadingArgs<TAbi, TFunctionName, TArgs>,
 ) => Promise<DecodeFunctionResultReturnType<TAbi, TFunctionName>>;
 
 export type TxFunction = (tx: TransactionData, options?: {message?: string}) => Promise<EIP1193DATA>;
@@ -87,7 +87,7 @@ export type ExecutionArgs<
 		TAbi,
 		'nonpayable' | 'payable',
 		TFunctionName
-	>
+	>,
 > = Omit<WriteContractParameters<TAbi, TFunctionName, TArgs>, 'address' | 'abi' | 'account' | 'nonce' | 'chain'> & {
 	account: string;
 	message?: string;
@@ -100,13 +100,13 @@ export type ReadingArgs<
 		TAbi,
 		'pure' | 'view',
 		TFunctionName
-	>
+	>,
 > = Omit<ReadContractParameters<TAbi, TFunctionName, TArgs>, 'address' | 'abi' | 'account' | 'nonce'> & {
 	account?: string;
 };
 
 export function execute(
-	env: Environment
+	env: Environment,
 ): <
 	TAbi extends Abi,
 	TFunctionName extends ContractFunctionName<TAbi, 'nonpayable' | 'payable'>,
@@ -114,10 +114,10 @@ export function execute(
 		TAbi,
 		'nonpayable' | 'payable',
 		TFunctionName
-	>
+	>,
 >(
 	deployment: MinimalDeployment<TAbi>,
-	args: ExecutionArgs<TAbi, TFunctionName, TArgs>
+	args: ExecutionArgs<TAbi, TFunctionName, TArgs>,
 ) => Promise<EIP1193TransactionReceipt> {
 	return async <
 		TAbi extends Abi,
@@ -126,10 +126,10 @@ export function execute(
 			TAbi,
 			'nonpayable' | 'payable',
 			TFunctionName
-		>
+		>,
 	>(
 		deployment: MinimalDeployment<TAbi>,
-		args: ExecutionArgs<TAbi, TFunctionName, TArgs>
+		args: ExecutionArgs<TAbi, TFunctionName, TArgs>,
 	) => {
 		const {account, ...viemArgs} = args;
 		const address = resolveAccount(account, env);
@@ -201,7 +201,7 @@ export function execute(
 }
 
 export function executeByName(
-	env: Environment
+	env: Environment,
 ): <
 	TAbi extends Abi,
 	TFunctionName extends ContractFunctionName<TAbi, 'nonpayable' | 'payable'>,
@@ -209,10 +209,10 @@ export function executeByName(
 		TAbi,
 		'nonpayable' | 'payable',
 		TFunctionName
-	>
+	>,
 >(
 	name: string,
-	args: ExecutionArgs<TAbi, TFunctionName, TArgs>
+	args: ExecutionArgs<TAbi, TFunctionName, TArgs>,
 ) => Promise<EIP1193TransactionReceipt> {
 	return async <
 		TAbi extends Abi,
@@ -221,10 +221,10 @@ export function executeByName(
 			TAbi,
 			'nonpayable' | 'payable',
 			TFunctionName
-		>
+		>,
 	>(
 		name: string,
-		args: ExecutionArgs<TAbi, TFunctionName, TArgs>
+		args: ExecutionArgs<TAbi, TFunctionName, TArgs>,
 	) => {
 		const deployment = env.getOrNull<TAbi>(name);
 		if (!deployment) {
@@ -236,7 +236,7 @@ export function executeByName(
 }
 
 export function read(
-	env: Environment
+	env: Environment,
 ): <
 	TAbi extends Abi,
 	TFunctionName extends ContractFunctionName<TAbi, 'pure' | 'view'>,
@@ -244,10 +244,10 @@ export function read(
 		TAbi,
 		'pure' | 'view',
 		TFunctionName
-	>
+	>,
 >(
 	deployment: MinimalDeployment<TAbi>,
-	args: ReadingArgs<TAbi, TFunctionName, TArgs>
+	args: ReadingArgs<TAbi, TFunctionName, TArgs>,
 ) => Promise<DecodeFunctionResultReturnType<TAbi, TFunctionName>> {
 	return async <
 		TAbi extends Abi,
@@ -256,10 +256,10 @@ export function read(
 			TAbi,
 			'pure' | 'view',
 			TFunctionName
-		>
+		>,
 	>(
 		deployment: MinimalDeployment<TAbi>,
-		args: ReadingArgs<TAbi, TFunctionName, TArgs>
+		args: ReadingArgs<TAbi, TFunctionName, TArgs>,
 	) => {
 		const {account, ...viemArgs} = args;
 		const address = account ? resolveAccountOrUndefined(account, env) : undefined;
@@ -298,7 +298,7 @@ export function read(
 }
 
 export function readByName(
-	env: Environment
+	env: Environment,
 ): <
 	TAbi extends Abi,
 	TFunctionName extends ContractFunctionName<TAbi, 'pure' | 'view'>,
@@ -306,10 +306,10 @@ export function readByName(
 		TAbi,
 		'pure' | 'view',
 		TFunctionName
-	>
+	>,
 >(
 	name: string,
-	args: ReadingArgs<TAbi, TFunctionName, TArgs>
+	args: ReadingArgs<TAbi, TFunctionName, TArgs>,
 ) => Promise<DecodeFunctionResultReturnType<TAbi, TFunctionName>> {
 	return async <
 		TAbi extends Abi,
@@ -318,10 +318,10 @@ export function readByName(
 			TAbi,
 			'pure' | 'view',
 			TFunctionName
-		>
+		>,
 	>(
 		name: string,
-		args: ReadingArgs<TAbi, TFunctionName, TArgs>
+		args: ReadingArgs<TAbi, TFunctionName, TArgs>,
 	) => {
 		const deployment = env.getOrNull<TAbi>(name);
 		if (!deployment) {
@@ -334,8 +334,8 @@ export function readByName(
 
 export function tx(env: Environment): (txData: TransactionData, options?: {message?: string}) => Promise<EIP1193DATA> {
 	return async (txData: TransactionData, options?: {message?: string}) => {
-	const {account, ...viemArgs} = txData;
-	const address = resolveAccount(account, env);
+		const {account, ...viemArgs} = txData;
+		const address = resolveAccount(account, env);
 
 		const signer = env.addressSigners[address];
 

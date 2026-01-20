@@ -19,7 +19,7 @@ import {
 const logger = logs('@rocketh/viem');
 
 type KeyedClient<
-	transport extends Transport = Transport
+	transport extends Transport = Transport,
 	// chain extends Chain | undefined = Chain | undefined,
 	// account extends Account | undefined = Account | undefined
 > = {
@@ -59,7 +59,7 @@ export function viem(env: Environment): ViemHandle {
 			name: string | Deployment<TAbi>,
 			options?: {
 				account?: `0x${string}`;
-			}
+			},
 		) {
 			const deployment = typeof name === 'string' ? env.get<TAbi>(name) : name;
 			let contractWalletClient: WalletClient<Transport> = walletClient;
