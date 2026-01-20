@@ -18,6 +18,3 @@ export {
 	getDefaultChainInfoByName,
 	getDefaultChainInfoFromChainId,
 } from './environment/chains.js';
-
-// TODO move to @rocketh/core
-// export {getGasPriceEstimate, getRoughGasPriceEstimate} from './utils/eth.js';
