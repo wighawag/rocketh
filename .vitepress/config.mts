@@ -38,4 +38,10 @@ export default defineConfig({
 		}
 		return id;
 	},
+
+	ignoreDeadLinks: [
+		// Ignore any link starting with ./packages/
+		/^\.\/packages\//,
+		'./LICENSE',
+	],
 });
