@@ -1,5 +1,5 @@
 import {describe, it, expect} from 'vitest';
-import {mergeABIs, mergeArtifacts} from './artifacts.js';
+import {mergeABIs, mergeArtifacts} from '../src/artifacts.js';
 
 describe('Artifact Utilities', () => {
 	describe('mergeABIs', () => {

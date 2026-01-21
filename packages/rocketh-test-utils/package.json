@@ -1,7 +1,7 @@
 {
-	"name": "@rocketh/deploy",
-	"version": "0.17.8",
-	"description": "provide deploy function for rocketh",
+	"name": "@rocketh/test-utils",
+	"version": "0.0.1",
+	"description": "Test utilities for rocketh packages",
 	"publishConfig": {
 		"access": "public"
 	},
@@ -21,22 +21,16 @@
 		"dist"
 	],
 	"dependencies": {
-		"@rocketh/core": "workspace:*",
-		"abitype": "^1.2.3",
 		"eip-1193": "^0.6.5",
-		"named-logs": "^0.4.1",
-		"viem": "^2.44.1"
+		"viem": "^2.44.1",
+		"@rocketh/core": "workspace:*"
 	},
 	"devDependencies": {
-		"@rocketh/test-utils": "workspace:*",
 		"as-soon": "^0.0.11",
-		"rimraf": "^6.1.2",
-		"typescript": "^5.9.3",
-		"vitest": "^2.0.0"
+		"typescript": "^5.9.3"
 	},
 	"scripts": {
 		"build": "tsc --project tsconfig.json",
-		"dev": "as-soon -w src pnpm build",
-		"test": "vitest"
+		"dev": "as-soon -w src pnpm build"
 	}
 }

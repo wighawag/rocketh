@@ -88,6 +88,9 @@ importers:
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
+      vitest:
+        specifier: ^2.0.0
+        version: 2.1.9(@types/node@25.0.9)
 
   packages/rocketh-deploy:
     dependencies:
@@ -107,6 +110,9 @@ importers:
         specifier: ^2.44.1
         version: 2.44.1(typescript@5.9.3)(zod@4.3.5)
     devDependencies:
+      '@rocketh/test-utils':
+        specifier: workspace:*
+        version: link:../rocketh-test-utils
       as-soon:
         specifier: ^0.0.11
         version: 0.0.11
@@ -116,6 +122,9 @@ importers:
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
+      vitest:
+        specifier: ^2.0.0
+        version: 2.1.9(@types/node@25.0.9)
 
   packages/rocketh-diamond:
     dependencies:
@@ -141,6 +150,9 @@ importers:
         specifier: ^2.44.1
         version: 2.44.1(typescript@5.9.3)(zod@4.3.5)
     devDependencies:
+      '@rocketh/test-utils':
+        specifier: workspace:*
+        version: link:../rocketh-test-utils
       as-soon:
         specifier: ^0.0.11
         version: 0.0.11
@@ -150,6 +162,9 @@ importers:
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
+      vitest:
+        specifier: ^2.0.0
+        version: 2.1.9(@types/node@25.0.9)
 
   packages/rocketh-doc:
     dependencies:
@@ -316,6 +331,9 @@ importers:
         specifier: ^2.44.1
         version: 2.44.1(typescript@5.9.3)(zod@4.3.5)
     devDependencies:
+      '@rocketh/test-utils':
+        specifier: workspace:*
+        version: link:../rocketh-test-utils
       as-soon:
         specifier: ^0.0.11
         version: 0.0.11
@@ -325,6 +343,9 @@ importers:
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
+      vitest:
+        specifier: ^2.0.0
+        version: 2.1.9(@types/node@25.0.9)
 
   packages/rocketh-read-execute:
     dependencies:
@@ -406,6 +427,25 @@ importers:
       rimraf:
         specifier: ^6.1.2
         version: 6.1.2
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
+  packages/rocketh-test-utils:
+    dependencies:
+      '@rocketh/core':
+        specifier: workspace:*
+        version: link:../rocketh-core
+      eip-1193:
+        specifier: ^0.6.5
+        version: 0.6.5
+      viem:
+        specifier: ^2.44.1
+        version: 2.44.1(typescript@5.9.3)(zod@4.3.5)
+    devDependencies:
+      as-soon:
+        specifier: ^0.0.11
+        version: 0.0.11
       typescript:
         specifier: ^5.9.3
         version: 5.9.3

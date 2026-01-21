@@ -424,9 +424,13 @@ export function deploy(env: Environment): <TAbi extends Abi>(
 				params: [expectedAddress, 'latest'],
 			});
 
-			if (codeAlreadyDeployed !== '0x') {
+			if (!codeAlreadyDeployed) {
+				throw new Error(`invalid code : ${codeAlreadyDeployed}`);
+			} else if (codeAlreadyDeployed !== '0x') {
 				if (deterministicType === 'create3' && codeAlreadyDeployed !== bytecode)
-					throw new Error(`code already deployed at ${expectedAddress} but is not the expected bytecode`);
+					throw new Error(
+						`code (length: ${(codeAlreadyDeployed.length - 2) / 2}) already deployed at ${expectedAddress} but is not the expected bytecode (length: ${(bytecode.length - 2) / 2})`,
+					);
 				env.showMessage(`contract was already deterministically deployed at ${expectedAddress}`);
 				if (name) {
 					const deployment = await env.save(
@@ -455,8 +459,8 @@ export function deploy(env: Environment): <TAbi extends Abi>(
 			partialDeployment,
 			transaction: {hash: txHash, origin: address},
 			name,
-				// TODO we should have the nonce, except for wallet like metamask where it is not sure you get the nonce you start with
-			};
+			// TODO we should have the nonce, except for wallet like metamask where it is not sure you get the nonce you start with
+		};
 		const deployment = await env.savePendingDeployment(
 			pendingDeployment,
 			`  - Deploying {name} ${

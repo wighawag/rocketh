@@ -1,7 +1,7 @@
-import { describe, it, expect } from 'vitest';
-import { resolveAccount, resolveAccountOrUndefined } from './account.js';
-import type { Environment } from './types.js';
-import type { EIP1193Account } from 'eip-1193';
+import {describe, it, expect} from 'vitest';
+import {resolveAccount, resolveAccountOrUndefined} from '../src/account.js';
+import type {Environment} from '../src/types.js';
+import type {EIP1193Account} from 'eip-1193';
 
 describe('Account Resolution', () => {
 	describe('resolveAccount', () => {
@@ -132,9 +132,7 @@ describe('Account Resolution', () => {
 				};
 				const account = 'deployer';
 
-				expect(() => resolveAccount(account, env)).toThrow(
-					'no accounts setup, cannot get address for deployer',
-				);
+				expect(() => resolveAccount(account, env)).toThrow('no accounts setup, cannot get address for deployer');
 			});
 
 			it('should throw descriptive error for missing named account', () => {
@@ -248,15 +246,9 @@ describe('Account Resolution', () => {
 					},
 				};
 
-				expect(resolveAccountOrUndefined('deployer', env)).toBe(
-					'0x1111111111111111111111111111111111111111',
-				);
-				expect(resolveAccountOrUndefined('user1', env)).toBe(
-					'0x2222222222222222222222222222222222222222',
-				);
-				expect(resolveAccountOrUndefined('user2', env)).toBe(
-					'0x3333333333333333333333333333333333333333',
-				);
+				expect(resolveAccountOrUndefined('deployer', env)).toBe('0x1111111111111111111111111111111111111111');
+				expect(resolveAccountOrUndefined('user1', env)).toBe('0x2222222222222222222222222222222222222222');
+				expect(resolveAccountOrUndefined('user2', env)).toBe('0x3333333333333333333333333333333333333333');
 			});
 		});
 
