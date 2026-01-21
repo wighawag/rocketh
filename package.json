@@ -10,12 +10,15 @@
   "bugs": {
     "url": "https://github.com/wighawag/rocketh/issues"
   },
+  "type":"module",
   "devDependencies": {
     "@changesets/cli": "^2.29.8",
+    "@types/node": "^25.0.6",
     "prettier": "^3.8.0",
     "set-defaults": "^0.0.5",
     "syncpack": "^13.0.4",
     "vitepress": "^1.6.4",
+    "vitest": "^2.0.5",
     "zellij-launcher": "^0.0.1"
   },
   "volta": {
@@ -31,6 +34,10 @@
     "prepublish": "pnpm build",
     "build": "pnpm -r build",
     "typecheck": "pnpm -r --parallel exec tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage",
     "prettier:version": "prettier --version",
     "format": "prettier --write \"packages/*/src/**/*.ts\"",
     "format:check": "prettier --check \"packages/*/src/**/*.ts\"",
