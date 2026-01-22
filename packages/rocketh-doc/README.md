@@ -1,11 +1,7 @@
 # @rocketh/doc
 
-`rocketh-doc` generates documentation from deployments files, following rocketh format composed of address,abi, etc....
+Documentation generation tool for rocketh, capable of generating documentation from deployed contracts using customizable Handlebars templates.
 
-There is plan to support doc generation from compiled artifacts too, but no work has started on that.
+For full documentation, visit [rocketh.dev](https://rocketh.dev).
 
-We welcome contribution if you are interested to support that feature.
-
-For now rocketh-doc is intended to be used to document a set of deployed contract.
-
-Note that documentation template (written in handlebars) have access to the deployment address.
+For hardhat-deploy documentation, see [rocketh.dev/hardhat-deploy/](https://rocketh.dev/hardhat-deploy/).
