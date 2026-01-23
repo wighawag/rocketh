@@ -14,7 +14,7 @@
   "devDependencies": {
     "@changesets/cli": "^2.29.8",
     "@types/node": "^25.0.10",
-    "ezx": "^0.0.5",
+    "ezx": "^0.0.6",
     "prettier": "^3.8.1",
     "set-defaults": "^0.0.5",
     "syncpack": "^13.0.4",
@@ -35,7 +35,7 @@
     "prepublish": "pnpm build",
     "build": "pnpm -r build",
     "typecheck": "pnpm -r --parallel exec tsc --noEmit",
-    "test:getting-started": "ezx --verbose GETTING_STARTED.md && rm -Rf my-rocketh-project",
+    "test:getting-started": "ezx --verbose README.md -s 'Getting Started' && rm -Rf my-rocketh-project",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
