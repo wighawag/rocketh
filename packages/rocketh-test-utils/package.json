@@ -21,12 +21,12 @@
 		"dist"
 	],
 	"dependencies": {
+		"@rocketh/core": "workspace:*",
 		"eip-1193": "^0.6.5",
-		"viem": "^2.44.1",
-		"@rocketh/core": "workspace:*"
+		"viem": "^2.44.4"
 	},
 	"devDependencies": {
-		"as-soon": "^0.0.11",
+		"as-soon": "^0.1.0",
 		"typescript": "^5.9.3"
 	},
 	"scripts": {

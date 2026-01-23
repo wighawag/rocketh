@@ -25,14 +25,14 @@
 		"abitype": "^1.2.3",
 		"eip-1193": "^0.6.5",
 		"named-logs": "^0.4.1",
-		"viem": "^2.44.1"
+		"viem": "^2.44.4"
 	},
 	"devDependencies": {
 		"@rocketh/test-utils": "workspace:*",
-		"as-soon": "^0.0.11",
+		"as-soon": "^0.1.0",
 		"rimraf": "^6.1.2",
 		"typescript": "^5.9.3",
-		"vitest": "^2.0.0"
+		"vitest": "^4.0.18"
 	},
 	"scripts": {
 		"build": "tsc --project tsconfig.json",

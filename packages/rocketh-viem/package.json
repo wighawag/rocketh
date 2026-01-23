@@ -27,10 +27,10 @@
 		"named-logs": "^0.4.1"
 	},
 	"devDependencies": {
-		"as-soon": "^0.0.11",
+		"as-soon": "^0.1.0",
 		"rimraf": "^6.1.2",
 		"typescript": "^5.9.3",
-		"viem": "^2.44.1"
+		"viem": "^2.44.4"
 	},
 	"peerDependencies": {
 		"viem": "^2.41.2"

@@ -10,15 +10,15 @@
   "bugs": {
     "url": "https://github.com/wighawag/rocketh/issues"
   },
-  "type":"module",
+  "type": "module",
   "devDependencies": {
     "@changesets/cli": "^2.29.8",
-    "@types/node": "^25.0.6",
-    "prettier": "^3.8.0",
+    "@types/node": "^25.0.10",
+    "prettier": "^3.8.1",
     "set-defaults": "^0.0.5",
     "syncpack": "^13.0.4",
     "vitepress": "^1.6.4",
-    "vitest": "^2.0.5",
+    "vitest": "^4.0.18",
     "zellij-launcher": "^0.0.1"
   },
   "volta": {

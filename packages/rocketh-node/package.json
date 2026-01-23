@@ -31,15 +31,15 @@
 		"named-logs-console": "^0.5.1",
 		"prompts": "^2.4.2",
 		"tsx": "^4.21.0",
-		"viem": "^2.44.1"
+		"viem": "^2.44.4"
 	},
 	"devDependencies": {
-		"@types/node": "^25.0.6",
-		"as-soon": "^0.0.11",
+		"@types/node": "^25.0.10",
+		"as-soon": "^0.1.0",
 		"ipfs-gateway-emulator": "4.2.1-ipfs.2",
 		"rimraf": "^6.1.2",
 		"rocketh": "workspace:*",
-		"typedoc": "^0.28.15",
+		"typedoc": "^0.28.16",
 		"typescript": "^5.9.3"
 	},
 	"peerDependencies": {

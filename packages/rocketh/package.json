@@ -34,10 +34,10 @@
 		"eip-1193-jsonrpc-provider": "^0.4.3",
 		"ldenv": "^0.3.16",
 		"named-logs": "^0.4.1",
-		"viem": "^2.44.1"
+		"viem": "^2.44.4"
 	},
 	"devDependencies": {
-		"as-soon": "^0.0.11",
+		"as-soon": "^0.1.0",
 		"typescript": "^5.9.3"
 	},
 	"scripts": {

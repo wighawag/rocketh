@@ -26,7 +26,7 @@
 		"tsx": "^4.21.0"
 	},
 	"devDependencies": {
-		"as-soon": "^0.0.11",
+		"as-soon": "^0.1.0",
 		"rocketh": "workspace:*",
 		"typescript": "^5.9.3"
 	},
