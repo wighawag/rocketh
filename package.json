@@ -19,7 +19,8 @@
     "syncpack": "^13.0.4",
     "vitepress": "^1.6.4",
     "vitest": "^4.0.18",
-    "zellij-launcher": "^0.0.1"
+    "zellij-launcher": "^0.0.1",
+    "zx": "^8.8.5"
   },
   "volta": {
     "node": "22.14.0"
