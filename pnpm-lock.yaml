@@ -61,8 +61,8 @@ importers:
         version: 2.44.4(typescript@5.9.3)(zod@4.3.6)
     devDependencies:
       as-soon:
-        specifier: ^0.1.0
-        version: 0.1.0
+        specifier: ^0.1.4
+        version: 0.1.4
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -83,8 +83,8 @@ importers:
         version: 2.44.4(typescript@5.9.3)(zod@4.3.6)
     devDependencies:
       as-soon:
-        specifier: ^0.1.0
-        version: 0.1.0
+        specifier: ^0.1.4
+        version: 0.1.4
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -114,8 +114,8 @@ importers:
         specifier: workspace:*
         version: link:../rocketh-test-utils
       as-soon:
-        specifier: ^0.1.0
-        version: 0.1.0
+        specifier: ^0.1.4
+        version: 0.1.4
       rimraf:
         specifier: ^6.1.2
         version: 6.1.2
@@ -154,8 +154,8 @@ importers:
         specifier: workspace:*
         version: link:../rocketh-test-utils
       as-soon:
-        specifier: ^0.1.0
-        version: 0.1.0
+        specifier: ^0.1.4
+        version: 0.1.4
       rimraf:
         specifier: ^6.1.2
         version: 6.1.2
@@ -197,8 +197,8 @@ importers:
         specifier: ^25.0.10
         version: 25.0.10
       as-soon:
-        specifier: ^0.1.0
-        version: 0.1.0
+        specifier: ^0.1.4
+        version: 0.1.4
       rimraf:
         specifier: ^6.1.2
         version: 6.1.2
@@ -237,8 +237,8 @@ importers:
         specifier: ^25.0.10
         version: 25.0.10
       as-soon:
-        specifier: ^0.1.0
-        version: 0.1.0
+        specifier: ^0.1.4
+        version: 0.1.4
       rimraf:
         specifier: ^6.1.2
         version: 6.1.2
@@ -289,8 +289,8 @@ importers:
         specifier: ^25.0.10
         version: 25.0.10
       as-soon:
-        specifier: ^0.1.0
-        version: 0.1.0
+        specifier: ^0.1.4
+        version: 0.1.4
       ipfs-gateway-emulator:
         specifier: 4.2.1-ipfs.2
         version: 4.2.1-ipfs.2
@@ -335,8 +335,8 @@ importers:
         specifier: workspace:*
         version: link:../rocketh-test-utils
       as-soon:
-        specifier: ^0.1.0
-        version: 0.1.0
+        specifier: ^0.1.4
+        version: 0.1.4
       rimraf:
         specifier: ^6.1.2
         version: 6.1.2
@@ -366,8 +366,8 @@ importers:
         version: 2.44.4(typescript@5.9.3)(zod@4.3.6)
     devDependencies:
       as-soon:
-        specifier: ^0.1.0
-        version: 0.1.0
+        specifier: ^0.1.4
+        version: 0.1.4
       rimraf:
         specifier: ^6.1.2
         version: 6.1.2
@@ -400,8 +400,8 @@ importers:
         version: 2.44.4(typescript@5.9.3)(zod@4.3.6)
     devDependencies:
       as-soon:
-        specifier: ^0.1.0
-        version: 0.1.0
+        specifier: ^0.1.4
+        version: 0.1.4
       rimraf:
         specifier: ^6.1.2
         version: 6.1.2
@@ -422,8 +422,8 @@ importers:
         version: 0.1.1(typescript@5.9.3)
     devDependencies:
       as-soon:
-        specifier: ^0.1.0
-        version: 0.1.0
+        specifier: ^0.1.4
+        version: 0.1.4
       rimraf:
         specifier: ^6.1.2
         version: 6.1.2
@@ -444,8 +444,8 @@ importers:
         version: 2.44.4(typescript@5.9.3)(zod@4.3.6)
     devDependencies:
       as-soon:
-        specifier: ^0.1.0
-        version: 0.1.0
+        specifier: ^0.1.4
+        version: 0.1.4
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -484,8 +484,8 @@ importers:
         specifier: ^25.0.10
         version: 25.0.10
       as-soon:
-        specifier: ^0.1.0
-        version: 0.1.0
+        specifier: ^0.1.4
+        version: 0.1.4
       rimraf:
         specifier: ^6.1.2
         version: 6.1.2
@@ -509,8 +509,8 @@ importers:
         version: 0.4.1
     devDependencies:
       as-soon:
-        specifier: ^0.1.0
-        version: 0.1.0
+        specifier: ^0.1.4
+        version: 0.1.4
       rimraf:
         specifier: ^6.1.2
         version: 6.1.2
@@ -534,8 +534,8 @@ importers:
         version: 4.21.0
     devDependencies:
       as-soon:
-        specifier: ^0.1.0
-        version: 0.1.0
+        specifier: ^0.1.4
+        version: 0.1.4
       rocketh:
         specifier: workspace:*
         version: link:../rocketh
@@ -1874,8 +1874,8 @@ packages:
     resolution: {integrity: sha512-HGyxoOTYUyCM6stUe6EJgnd4EoewAI7zMdfqO+kGjnlZmBDz/cR5pf8r/cR4Wq60sL/p0IkcjUEEPwS3GFrIyw==}
     engines: {node: '>=8'}
 
-  as-soon@0.1.0:
-    resolution: {integrity: sha512-O1NsF5YdvYyJAAe/k44fagSdeen/ICfVmrEPA0A0PGSu6wPgp29SV58YjOdTPBwZotdxJME/H5WzgFQmkIZ1Sw==}
+  as-soon@0.1.4:
+    resolution: {integrity: sha512-hWkB6gACQAFXAVF0RmcKca7WQEFOeLQ/+w+qJaJaUK/KjrnD5m+jK0X4EcQ8jhzkfy3jOmMtDrCWEz8cPpIgew==}
     hasBin: true
 
   assertion-error@2.0.1:
@@ -4831,7 +4831,7 @@ snapshots:
 
   array-union@2.1.0: {}
 
-  as-soon@0.1.0:
+  as-soon@0.1.4:
     dependencies:
       '@parcel/watcher': 2.5.4
       ldenv: 0.3.16

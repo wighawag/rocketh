@@ -63,7 +63,7 @@
 		"viem": "^2.44.4"
 	},
 	"devDependencies": {
-		"as-soon": "^0.1.0",
+		"as-soon": "^0.1.4",
 		"typescript": "^5.9.3",
 		"vitest": "^4.0.18"
 	},

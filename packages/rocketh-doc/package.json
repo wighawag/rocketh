@@ -37,7 +37,7 @@
 	"devDependencies": {
 		"@rocketh/node": "workspace:*",
 		"@types/node": "^25.0.10",
-		"as-soon": "^0.1.0",
+		"as-soon": "^0.1.4",
 		"rimraf": "^6.1.2",
 		"typescript": "^5.9.3"
 	},

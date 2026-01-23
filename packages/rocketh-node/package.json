@@ -35,7 +35,7 @@
 	},
 	"devDependencies": {
 		"@types/node": "^25.0.10",
-		"as-soon": "^0.1.0",
+		"as-soon": "^0.1.4",
 		"ipfs-gateway-emulator": "4.2.1-ipfs.2",
 		"rimraf": "^6.1.2",
 		"rocketh": "workspace:*",
