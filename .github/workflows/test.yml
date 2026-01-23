@@ -38,3 +38,6 @@ jobs:
 
       - name: Run tests
         run: pnpm test
+
+      - name: Run Getting Started
+        run: pnpm test:getting-started

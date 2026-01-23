@@ -2,7 +2,7 @@
 
 In this guide, we will create a new project using Rocketh.
 
-This mardkown file can be executed by [zx](https://github.com/google/zx)
+This mardkown file can be executed by [ezx](https://github.com/wighawag/ezx)
 
 ## Prerequisites
 
@@ -11,36 +11,44 @@ This mardkown file can be executed by [zx](https://github.com/google/zx)
 
 ## Create a new project
 
-### create a new directory and initialize a new project
+### create a new directory and cd into it
+
+We will be working in that folder going forward.
 ```bash
 mkdir my-rocketh-project
+# set the current directory
 cd my-rocketh-project
 ```
 
 ### initialize a new project
 
-```bash
-cd my-rocketh-project
-cat <<EOF > package.json
+Just create a new `package.json` file with the following content:
+```json
+// file: package.json
 {
   "name": "my-rocketh-project",
   "version": "0.0.0",
   "type": "module"
 }
-EOF
 ```
 
 ### install dependencies
 ```bash
-cd my-rocketh-project
 pnpm add -D hardhat @types/node typescript forge-std@github:foundry-rs/forge-std#v1.9.4 hardhat-deploy@next rocketh @rocketh/node @rocketh/deploy @rocketh/read-execute
 ```
 
 ### create a new solidity file
+
+First we create a new directory for our solidity files.
+
 ```bash
-cd my-rocketh-project
 mkdir src
-cat <<EOF > src/Counter.sol
+```
+
+Then we create a new solidity file in that folder.
+
+```solidity
+// file: src/Counter.sol
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.28;
 
@@ -60,12 +68,14 @@ contract Counter {
     emit Increment(by);
   }
 }
-EOF
 ```
+
 ### create a new hardhat config file
-```bash
-cd my-rocketh-project
-cat <<EOF > hardhat.config.ts
+
+We then create a new hardhat config file.
+
+```typescript
+// file: hardhat.config.ts
 import {defineConfig} from 'hardhat/config';
 import HardhatDeploy from "hardhat-deploy";
 
@@ -107,18 +117,19 @@ export default defineConfig({
     }]
   }
 });
-EOF
 ```
 ### create a new rocketh directory
+
+Then we setup a rocketh by first creating a new directory for rocketh configurations.
 ```bash
-cd my-rocketh-project
 mkdir rocketh
 ```
 ### create a new rocketh config file
-```bash
-cd my-rocketh-project
-cat <<EOF > rocketh/config.ts
-// rocketh/config.ts
+
+We create the rocketh config file.
+
+```typescript
+// file: rocketh/config.ts
 /// ----------------------------------------------------------------------------
 // Typed Config
 // ----------------------------------------------------------------------------
@@ -159,13 +170,14 @@ type Accounts = typeof config.accounts;
 type Data = typeof config.data;
 
 export type {Extensions, Accounts, Data};
-EOF
 ```
 
 ### create a new rocketh deploy file
-```bash
-cd my-rocketh-project
-cat <<EOF > rocketh/deploy.ts
+
+the rocketh deploy file is used to export the deploy script function and the artifacts.
+
+```typescript
+// file: rocketh/deploy.ts
 import {type Accounts, type Data, type Extensions, extensions} from './config.js';
 
 // ----------------------------------------------------------------------------
@@ -179,13 +191,14 @@ import {setupDeployScripts} from 'rocketh';
 const {deployScript} = setupDeployScripts<Extensions,Accounts,Data>(extensions);
 
 export {deployScript};
-EOF
 ```
 
 ### create a new rocketh environment file
-```bash
-cd my-rocketh-project
-cat <<EOF > rocketh/environment.ts
+
+the environment file is used to export the environment functions, to be used in test and scripts..
+
+```typescript
+// file: rocketh/environment.ts
 import {type Accounts, type Data, type Extensions, extensions} from './config.js';
 import {setupEnvironmentFromFiles} from '@rocketh/node';
 import {setupHardhatDeploy} from 'hardhat-deploy/helpers';
@@ -195,19 +208,22 @@ const {loadAndExecuteDeploymentsFromFiles} = setupEnvironmentFromFiles<Extension
 const {loadEnvironmentFromHardhat} = setupHardhatDeploy<Extensions,Accounts,Data>(extensions)
 
 export {loadEnvironmentFromHardhat, loadAndExecuteDeploymentsFromFiles};
-EOF
 ```
 
 ### create a new deploy directory
+
+Then we can create a new deploy directory where our deploy scripts will be stored.
+
 ```bash
-cd my-rocketh-project
 mkdir deploy
 ```
 
 ### create a new deploy script
-```bash
-cd my-rocketh-project
-cat <<EOF > deploy/deploy_Counter.ts
+
+And here we create a basic deploy script for our Counter contract.
+
+```typescript
+// file: deploy/deploy_Counter.ts
 import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(
@@ -221,17 +237,20 @@ export default deployScript(
 	},
 	{tags: ['Counter', 'Counter_deploy']}
 );
-EOF
 ```
 
 ### compile 
+
+We can now compile our contracts using the following command:
+
 ```bash
-cd my-rocketh-project
 pnpm hardhat compile
 ```
 
 ### deploy
+
+And finally we can deploy our contracts in a in-memory hardhat network using the following command:
+
 ```bash
-cd my-rocketh-project
 pnpm hardhat deploy
 ```
