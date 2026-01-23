@@ -2,7 +2,11 @@
 
 In this guide, we will create a new project using Rocketh.
 
-This mardkown file can be executed by [ezx](https://github.com/wighawag/ezx)
+We will be using hardhat for contract compilation and hardhat-deploy to hook hardhat with rocketh.
+
+> **Note**
+> While rocketh is agnostic to the compilation system you use, it require one and for this guide we will use hardhat.
+
 
 ## Prerequisites
 
