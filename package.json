@@ -20,7 +20,7 @@
     "vitepress": "^1.6.4",
     "vitest": "^4.0.18",
     "zellij-launcher": "^0.0.1",
-    "ezx": "^0.0.3"
+    "ezx": "^0.0.4"
   },
   "volta": {
     "node": "22.14.0"
