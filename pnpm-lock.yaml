@@ -15,8 +15,8 @@ importers:
         specifier: ^25.0.10
         version: 25.0.10
       ezx:
-        specifier: ^0.0.4
-        version: 0.0.4
+        specifier: ^0.0.5
+        version: 0.0.5
       prettier:
         specifier: ^3.8.1
         version: 3.8.1
@@ -2278,8 +2278,8 @@ packages:
   extendable-error@0.1.7:
     resolution: {integrity: sha512-UOiS2in6/Q0FK0R0q6UY9vYpQ21mr/Qn1KOnte7vsACuNJf514WvCCUHSRCPcgjPT2bAhNIJdlE6bVap1GKmeg==}
 
-  ezx@0.0.4:
-    resolution: {integrity: sha512-a8K+IzHhA41wDAHMzg8+fnXncA3g1B8G9VIsQt8vB7AcxLukgz/rMTScA8hhAnpex6SNnCZGKwP+U5Qz6sDcCQ==}
+  ezx@0.0.5:
+    resolution: {integrity: sha512-gipl2V+Jsx+8Qw3CFtSNQtOSH3q60aFuqwM/OdJwac4k/0fiSzmAux6EHdrT/I0G1U+h1PafSGkA6qfkfhTcPg==}
     engines: {node: '>=18.0.0'}
     hasBin: true
 
@@ -5406,7 +5406,7 @@ snapshots:
 
   extendable-error@0.1.7: {}
 
-  ezx@0.0.4:
+  ezx@0.0.5:
     dependencies:
       commander: 14.0.2
       zx: 8.8.5
