@@ -23,7 +23,9 @@ cd my-rocketh-project
 ### initialize a new project
 
 Just create a new `package.json` file with the following content:
-```json file:package.json
+
+> `package.json`
+```json
 {
   "name": "my-rocketh-project",
   "version": "0.0.0",
@@ -46,7 +48,8 @@ mkdir src
 
 Then we create a new solidity file in that folder.
 
-```solidity file:src/Counter.sol
+> `src/Counter.sol`
+```solidity
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.28;
 
@@ -72,7 +75,8 @@ contract Counter {
 
 We then create a new hardhat config file.
 
-```typescript file:hardhat.config.ts
+> `hardhat.config.ts`
+```typescript
 import {defineConfig} from 'hardhat/config';
 import HardhatDeploy from "hardhat-deploy";
 
@@ -125,7 +129,8 @@ mkdir rocketh
 
 We create the rocketh config file.
 
-```typescript file:rocketh/config.ts
+> `rocketh/config.ts`
+```typescript
 /// ----------------------------------------------------------------------------
 // Typed Config
 // ----------------------------------------------------------------------------
@@ -172,7 +177,8 @@ export type {Extensions, Accounts, Data};
 
 the rocketh deploy file is used to export the deploy script function and the artifacts.
 
-```typescript file:rocketh/deploy.ts
+> `rocketh/deploy.ts`
+```typescript
 import {type Accounts, type Data, type Extensions, extensions} from './config.js';
 
 // ----------------------------------------------------------------------------
@@ -190,9 +196,10 @@ export {deployScript};
 
 ### create a new rocketh environment file
 
-the environment file is used to export the environment functions, to be used in test and scripts..
+the environment file is used to export the environment functions, to be used in test and scripts.
 
-```typescript file:rocketh/environment.ts
+> `rocketh/environment.ts`
+```typescript
 import {type Accounts, type Data, type Extensions, extensions} from './config.js';
 import {setupEnvironmentFromFiles} from '@rocketh/node';
 import {setupHardhatDeploy} from 'hardhat-deploy/helpers';
@@ -216,7 +223,8 @@ mkdir deploy
 
 And here we create a basic deploy script for our Counter contract.
 
-```typescript file:deploy/deploy_Counter.ts
+> `deploy/deploy_Counter.ts`
+```typescript
 import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(
