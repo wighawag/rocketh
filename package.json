@@ -29,23 +29,22 @@
   },
   "packageManager": "pnpm@9.3.0",
   "scripts": {
-    "reset": "git clean -fdX; pnpm i",
     "prepare": "set-defaults .vscode",
+    "prepublish": "pnpm build",
+    "reset": "git clean -fdX; pnpm i",
+    "sync-deps": "syncpack fix-mismatches",
     "docs:dev": "vitepress dev",
     "docs:build": "pnpm prepare && vitepress build",
     "docs:preview": "vitepress preview",
-    "prepublish": "pnpm build",
-    "build": "pnpm -r build",
     "typecheck": "pnpm -r --parallel exec tsc --noEmit",
     "test:getting-started": "ezx --verbose README.md -s 'Getting Started' && rm -Rf my-rocketh-project",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest run --coverage",
-    "prettier:version": "prettier --version",
     "format": "prettier --write \"packages/*/src/**/*.ts\"",
     "format:check": "prettier --check \"packages/*/src/**/*.ts\"",
-    "sync-deps": "syncpack fix-mismatches",
+    "build": "nx run-many -t build",
     "start": "nx run-many -t dev"
   }
 }
