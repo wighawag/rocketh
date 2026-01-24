@@ -18,8 +18,8 @@ importers:
         specifier: ^25.0.10
         version: 25.0.10
       ezx:
-        specifier: ^0.0.6
-        version: 0.0.6
+        specifier: ^0.0.8
+        version: 0.0.8
       nx:
         specifier: ^22.4.1
         version: 22.4.1
@@ -45,14 +45,14 @@ importers:
   my-rocketh-project:
     devDependencies:
       '@rocketh/deploy':
-        specifier: ^0.17.8
-        version: 0.17.8(typescript@5.9.3)(zod@3.25.76)
+        specifier: workspace:^
+        version: link:../packages/rocketh-deploy
       '@rocketh/node':
-        specifier: ^0.17.16
-        version: 0.17.16(rocketh@0.17.13(typescript@5.9.3)(zod@3.25.76))(typescript@5.9.3)(zod@3.25.76)
+        specifier: workspace:^
+        version: link:../packages/rocketh-node
       '@rocketh/read-execute':
-        specifier: ^0.17.8
-        version: 0.17.8(typescript@5.9.3)(zod@3.25.76)
+        specifier: workspace:^
+        version: link:../packages/rocketh-read-execute
       '@types/node':
         specifier: ^25.0.10
         version: 25.0.10
@@ -64,10 +64,10 @@ importers:
         version: 3.1.5
       hardhat-deploy:
         specifier: 2.0.0-next.61
-        version: 2.0.0-next.61(@rocketh/node@0.17.16(rocketh@0.17.13(typescript@5.9.3)(zod@3.25.76))(typescript@5.9.3)(zod@3.25.76))(hardhat@3.1.5)
+        version: 2.0.0-next.61(@rocketh/node@packages+rocketh-node)(hardhat@3.1.5)
       rocketh:
-        specifier: ^0.17.13
-        version: 0.17.13(typescript@5.9.3)(zod@3.25.76)
+        specifier: workspace:^
+        version: link:../packages/rocketh
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -1953,21 +1953,6 @@ packages:
     resolution: {integrity: sha512-tmmZ3lQxAe/k/+rNnXQRawJ4NjxO2hqiOLTHvWchtGZULp4RyFeh6aU4XdOYBFe2KE1oShQTv4AblOs2iOrNnQ==}
     engines: {node: '>= 10.0.0'}
 
-  '@rocketh/core@0.17.8':
-    resolution: {integrity: sha512-xzAX1pZ3g8WQlx3GJezowU9rm4h7TucwWmeU8Jf+jpfaHV5EKDAt5rJMWPDjSXkUWIxiMZbsPDx78S75Q6Cixw==}
-
-  '@rocketh/deploy@0.17.8':
-    resolution: {integrity: sha512-XuHTI4NKCCyYCJO/UwT0+THTtB7UDU5KMxp+rHHI0PrL9g2WSSo7Hgz1yzYgcIpoEwBx2B3ljXsp9JBEPFtujg==}
-
-  '@rocketh/node@0.17.16':
-    resolution: {integrity: sha512-ZgvQ9zfpbB4aItxeLdJsHIviRtdFKxbH9sPGDNHMEXiVILFhqKX3YutqeglkqdKoyI7oFpDlDWdAlVD6uuqJUQ==}
-    hasBin: true
-    peerDependencies:
-      rocketh: 0.17.13
-
-  '@rocketh/read-execute@0.17.8':
-    resolution: {integrity: sha512-4dk48km24PEeC54nFt3BxR0DniBxV8Y4rjNV89vl/ChKkWmMl42FHUvgQHEf079nsk62GCSW5a0DAVD7xBTdzA==}
-
   '@rollup/rollup-android-arm-eabi@4.50.2':
     resolution: {integrity: sha512-uLN8NAiFVIRKX9ZQha8wy6UUs06UNSZ32xj6giK/rmMXAgKahwExvK6SsmgU5/brh4w/nSgj8e0k3c1HBQpa0A==}
     cpu: [arm]
@@ -3095,8 +3080,8 @@ packages:
   extendable-error@0.1.7:
     resolution: {integrity: sha512-UOiS2in6/Q0FK0R0q6UY9vYpQ21mr/Qn1KOnte7vsACuNJf514WvCCUHSRCPcgjPT2bAhNIJdlE6bVap1GKmeg==}
 
-  ezx@0.0.6:
-    resolution: {integrity: sha512-fqhfTcUmVadEZTkgl3P2tfgqHjgO3uOInmVn+hrleWXlRRaCRbSPxHUTAZt60Ce+4I6SH0eOr8jDC8XQdSQ7nA==}
+  ezx@0.0.8:
+    resolution: {integrity: sha512-MuYPTeKmIEpZ9JCjWZR/0iA4eWos/DUAKZqG5uWqoyoVLfAJdMHSWt6cXske4/V1eLcKi4KHNlfTPySytmzqVg==}
     engines: {node: '>=18.0.0'}
     hasBin: true
 
@@ -3708,6 +3693,11 @@ packages:
     resolution: {integrity: sha512-a54IwgWPaeBCAAsv13YgmALOF1elABB08FxO9i+r4VFk5Vl4pKokRPeX8u5TCgSsPi6ec1otfLjdOpVcgbpshg==}
     hasBin: true
 
+  marked@17.0.1:
+    resolution: {integrity: sha512-boeBdiS0ghpWcSwoNm/jJBwdpFaMnZWRzjA6SkUMYb40SVaN1x7mmfGKp0jvexGcx+7y2La5zRZsYFZI6Qpypg==}
+    engines: {node: '>= 20'}
+    hasBin: true
+
   math-intrinsics@1.1.0:
     resolution: {integrity: sha512-/IXtbwEk5HTPyEwyKX6hGkYXxM9nbj64B+ilVJnC/R6B0pH5G4V3b0pVbL7DBj4tkhBAppbQUlf6F6Xl9LHu1g==}
     engines: {node: '>= 0.4'}
@@ -4207,9 +4197,6 @@ packages:
     resolution: {integrity: sha512-cFCkPslJv7BAXJsYlK1dZsbP8/ZNLkCAQ0bi1hf5EKX2QHegmDFEFA6QhuYJlk7UDdc+02JjO80YSOrWPpw06g==}
     engines: {node: 20 || >=22}
     hasBin: true
-
-  rocketh@0.17.13:
-    resolution: {integrity: sha512-W7pdiDh6a46DcG2e6CW0/VZgl8P7HEVpeoJohLuu/fAxKCIvZFHoTQgFIswY0iBIpZpzZhX0q3iDhc6ErKwVIw==}
 
   rollup@4.50.2:
     resolution: {integrity: sha512-BgLRGy7tNS9H66aIMASq1qSYbAAJV6Z6WR4QYTvj5FgF15rZ/ympT1uixHXwzbZUBDbkvqUI1KR0fH1FhMaQ9w==}
@@ -6386,64 +6373,6 @@ snapshots:
       '@parcel/watcher-win32-ia32': 2.5.6
       '@parcel/watcher-win32-x64': 2.5.6
 
-  '@rocketh/core@0.17.8(typescript@5.9.3)(zod@3.25.76)':
-    dependencies:
-      abitype: 1.2.3(typescript@5.9.3)(zod@3.25.76)
-      eip-1193: 0.6.5
-      named-logs: 0.4.1
-      viem: 2.44.4(typescript@5.9.3)(zod@3.25.76)
-    transitivePeerDependencies:
-      - bufferutil
-      - typescript
-      - utf-8-validate
-      - zod
-
-  '@rocketh/deploy@0.17.8(typescript@5.9.3)(zod@3.25.76)':
-    dependencies:
-      '@rocketh/core': 0.17.8(typescript@5.9.3)(zod@3.25.76)
-      abitype: 1.2.3(typescript@5.9.3)(zod@3.25.76)
-      eip-1193: 0.6.5
-      named-logs: 0.4.1
-      viem: 2.44.4(typescript@5.9.3)(zod@3.25.76)
-    transitivePeerDependencies:
-      - bufferutil
-      - typescript
-      - utf-8-validate
-      - zod
-
-  '@rocketh/node@0.17.16(rocketh@0.17.13(typescript@5.9.3)(zod@3.25.76))(typescript@5.9.3)(zod@3.25.76)':
-    dependencies:
-      '@rocketh/core': 0.17.8(typescript@5.9.3)(zod@3.25.76)
-      '@types/prompts': 2.4.9
-      change-case: 5.4.4
-      commander: 14.0.2
-      eip-1193: 0.6.5
-      ldenv: 0.3.16
-      named-logs: 0.4.1
-      named-logs-console: 0.5.1
-      prompts: 2.4.2
-      rocketh: 0.17.13(typescript@5.9.3)(zod@3.25.76)
-      tsx: 4.21.0
-      viem: 2.44.4(typescript@5.9.3)(zod@3.25.76)
-    transitivePeerDependencies:
-      - bufferutil
-      - typescript
-      - utf-8-validate
-      - zod
-
-  '@rocketh/read-execute@0.17.8(typescript@5.9.3)(zod@3.25.76)':
-    dependencies:
-      '@rocketh/core': 0.17.8(typescript@5.9.3)(zod@3.25.76)
-      abitype: 1.2.3(typescript@5.9.3)(zod@3.25.76)
-      eip-1193: 0.6.5
-      named-logs: 0.4.1
-      viem: 2.44.4(typescript@5.9.3)(zod@3.25.76)
-    transitivePeerDependencies:
-      - bufferutil
-      - typescript
-      - utf-8-validate
-      - zod
-
   '@rollup/rollup-android-arm-eabi@4.50.2':
     optional: true
 
@@ -7514,9 +7443,10 @@ snapshots:
 
   extendable-error@0.1.7: {}
 
-  ezx@0.0.6:
+  ezx@0.0.8:
     dependencies:
       commander: 14.0.2
+      marked: 17.0.1
       zx: 8.8.5
 
   fast-check@3.23.2:
@@ -7682,10 +7612,10 @@ snapshots:
     optionalDependencies:
       uglify-js: 3.19.3
 
-  hardhat-deploy@2.0.0-next.61(@rocketh/node@0.17.16(rocketh@0.17.13(typescript@5.9.3)(zod@3.25.76))(typescript@5.9.3)(zod@3.25.76))(hardhat@3.1.5):
+  hardhat-deploy@2.0.0-next.61(@rocketh/node@packages+rocketh-node)(hardhat@3.1.5):
     dependencies:
       '@nomicfoundation/hardhat-zod-utils': 3.0.1(zod@3.25.76)
-      '@rocketh/node': 0.17.16(rocketh@0.17.13(typescript@5.9.3)(zod@3.25.76))(typescript@5.9.3)(zod@3.25.76)
+      '@rocketh/node': link:packages/rocketh-node
       '@types/debug': 4.1.12
       debug: 4.4.3
       hardhat: 3.1.5
@@ -8242,6 +8172,8 @@ snapshots:
       punycode.js: 2.3.1
       uc.micro: 2.1.0
 
+  marked@17.0.1: {}
+
   math-intrinsics@1.1.0: {}
 
   mdast-util-to-hast@13.2.0:
@@ -8757,22 +8689,6 @@ snapshots:
     dependencies:
       glob: 13.0.0
       package-json-from-dist: 1.0.1
-
-  rocketh@0.17.13(typescript@5.9.3)(zod@3.25.76):
-    dependencies:
-      '@rocketh/core': 0.17.8(typescript@5.9.3)(zod@3.25.76)
-      abitype: 1.2.3(typescript@5.9.3)(zod@3.25.76)
-      change-case: 5.4.4
-      eip-1193: 0.6.5
-      eip-1193-jsonrpc-provider: 0.4.3
-      ldenv: 0.3.16
-      named-logs: 0.4.1
-      viem: 2.44.4(typescript@5.9.3)(zod@3.25.76)
-    transitivePeerDependencies:
-      - bufferutil
-      - typescript
-      - utf-8-validate
-      - zod
 
   rollup@4.50.2:
     dependencies:
