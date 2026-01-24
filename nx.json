@@ -1,0 +1,20 @@
+{
+	"$schema": "./node_modules/nx/schemas/nx-schema.json",
+	"namedInputs": {
+		"default": ["{projectRoot}/**/*", "sharedGlobals"],
+		"production": ["default", "!{projectRoot}/src/**/*.spec.ts", "!{projectRoot}/test/**/*"],
+		"sharedGlobals": []
+	},
+	"targetDefaults": {
+		"build": {
+			"cache": true,
+			"dependsOn": ["^build"],
+			"inputs": ["production", "^production"]
+		},
+		"dev": {
+			"cache": false,
+			"continuous": true
+		}
+	},
+	"plugins": ["@nx/js"]
+}
