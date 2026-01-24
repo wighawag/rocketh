@@ -18,8 +18,8 @@ importers:
         specifier: ^25.0.10
         version: 25.0.10
       ezx:
-        specifier: ^0.0.8
-        version: 0.0.8
+        specifier: ^0.0.11
+        version: 0.0.11
       nx:
         specifier: ^22.4.1
         version: 22.4.1
@@ -3080,8 +3080,8 @@ packages:
   extendable-error@0.1.7:
     resolution: {integrity: sha512-UOiS2in6/Q0FK0R0q6UY9vYpQ21mr/Qn1KOnte7vsACuNJf514WvCCUHSRCPcgjPT2bAhNIJdlE6bVap1GKmeg==}
 
-  ezx@0.0.8:
-    resolution: {integrity: sha512-MuYPTeKmIEpZ9JCjWZR/0iA4eWos/DUAKZqG5uWqoyoVLfAJdMHSWt6cXske4/V1eLcKi4KHNlfTPySytmzqVg==}
+  ezx@0.0.11:
+    resolution: {integrity: sha512-BvpzIErxqbQgRAafYW2fRcqKKA8Hzh7vx/SIwLzR6bAVseETPSdBkXZ+0MJDyTl1qKt+DDhYeIBrAmPkLhRsRw==}
     engines: {node: '>=18.0.0'}
     hasBin: true
 
@@ -7443,7 +7443,7 @@ snapshots:
 
   extendable-error@0.1.7: {}
 
-  ezx@0.0.8:
+  ezx@0.0.11:
     dependencies:
       commander: 14.0.2
       marked: 17.0.1
