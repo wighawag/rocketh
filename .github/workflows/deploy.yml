@@ -36,6 +36,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0 # Not needed if lastUpdated is not enabled
+
       - name: Checkout hardhat-deploy
         uses: actions/checkout@v4
         with:
@@ -43,22 +44,30 @@ jobs:
           ref: ${{ github.event.client_payload.ref || 'main' }}
           fetch-depth: 0 # Not needed if lastUpdated is not enabled
           path: hardhat-deploy
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v3
+        with:
+          version: 10.28.1
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
+
       - name: Setup Pages
         uses: actions/configure-pages@v4
+
       - name: Install dependencies
         run: pnpm i --ignore-scripts
+
       - name: VitePress rocketh
         run: pnpm run docs:build
 
       - name: Install dependencies for hardhat-deploy
         run: cd hardhat-deploy && pnpm i --ignore-scripts
+
       - name: VitePress hardhat-deploy
         run: cd hardhat-deploy && pnpm run docs:build && mkdir -p ../.vitepress/dist/hardhat-deploy && cp -r .vitepress/dist/* ../.vitepress/dist/hardhat-deploy/
         env:
