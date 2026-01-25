@@ -21,7 +21,8 @@
 		"rocketh-export": "dist/cli.js"
 	},
 	"files": [
-		"dist"
+		"dist",
+		"src"
 	],
 	"dependencies": {
 		"@rocketh/core": "workspace:*",

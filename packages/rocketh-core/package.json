@@ -54,7 +54,8 @@
 		}
 	},
 	"files": [
-		"dist"
+		"dist",
+		"src"
 	],
 	"dependencies": {
 		"abitype": "^1.2.3",

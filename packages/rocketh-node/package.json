@@ -17,6 +17,10 @@
 			}
 		}
 	},
+	"files": [
+		"dist",
+		"src"
+	],
 	"bin": {
 		"rocketh": "dist/cli.js"
 	},

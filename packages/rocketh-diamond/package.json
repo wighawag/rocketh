@@ -22,6 +22,7 @@
 	},
 	"files": [
 		"dist",
+		"src",
 		"solc_0_8"
 	],
 	"dependencies": {
