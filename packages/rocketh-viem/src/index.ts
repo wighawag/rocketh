@@ -38,7 +38,12 @@ export type ViemHandle = {
 	walletClient: WalletClient;
 	publicClient: PublicClient;
 	getContract<TAbi extends Abi>(name: string | Deployment<TAbi>): ViemContract<TAbi>;
-	getWritableContract<TAbi extends Abi>(name: string | Deployment<TAbi>): ViemWritableContract<TAbi>;
+	getWritableContract<TAbi extends Abi>(
+		name: string | Deployment<TAbi>,
+		options?: {
+			account?: `0x${string}`;
+		},
+	): ViemWritableContract<TAbi>;
 };
 
 export function viem(env: Environment): ViemHandle {
