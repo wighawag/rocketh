@@ -81,17 +81,20 @@ export function getDefaultChainInfoByName(name: string): ChainInfo | undefined {
 // 	return canonicalName;
 // }
 
-export function getDefaultChainInfoFromChainId(id: string | number): ChainInfo | undefined {
+export function getDefaultChainInfoFromChainId(
+	id: string | number,
+): {success: true; chainInfo: ChainInfo} | {success: false; error?: string} {
 	let defaultChainInfo: ChainInfo | undefined;
 	const defaultChainInfos = getChainsById(id);
 	if (defaultChainInfos && defaultChainInfos.length > 1) {
-		console.warn(
-			`chainId ${id} refers to different chain, please specific it by name or provide the chainConfig yourself`,
-		);
+		return {
+			success: false,
+			error: `chainId ${id} refers to different chains, please specify it by name or provide the chainConfig yourself`,
+		};
 	} else {
 		defaultChainInfo = defaultChainInfos ? defaultChainInfos[0] : undefined;
 	}
-	return defaultChainInfo;
+	return defaultChainInfo ? {success: true, chainInfo: defaultChainInfo} : {success: false};
 }
 
 export function getChainConfigFromUserConfigAndDefaultChainInfo(

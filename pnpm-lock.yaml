@@ -268,6 +268,9 @@ importers:
       fs-extra:
         specifier: ^11.3.3
         version: 11.3.3
+      named-logs:
+        specifier: ^0.4.1
+        version: 0.4.1
     devDependencies:
       '@rocketh/node':
         specifier: workspace:*

@@ -196,8 +196,11 @@ export function resolveExecutionParams<Extra extends Record<string, unknown> = R
 	const idToFetch = fork ? 31337 : chainId;
 	let chainInfoFound = getDefaultChainInfoByName(environmentName);
 	if (!chainInfoFound) {
-		// console.log(`could not find chainInfo by name = "${environmentName}"`);
-		chainInfoFound = getDefaultChainInfoFromChainId(idToFetch);
+		const result = getDefaultChainInfoFromChainId(idToFetch);
+		chainInfoFound = result.success ? result.chainInfo : undefined;
+		if (!result.success && result.error) {
+			// logger.warn(`could not find chainInfo by name = "${environmentName}"\n ${result.error}`);
+		}
 		if (!chainInfoFound) {
 			// console.log(`could not find chainInfo by chainId = "${idToFetch}"`);
 		}

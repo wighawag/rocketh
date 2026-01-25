@@ -1,6 +1,7 @@
 import {Abi, Address} from 'abitype';
 import fs from 'node:fs';
 import path from 'node:path';
+import {logs} from 'named-logs';
 
 import type {ChainInfo, Deployment, LinkedData, ResolvedUserConfig} from '@rocketh/core/types';
 import {
@@ -10,6 +11,8 @@ import {
 } from 'rocketh';
 import {loadDeploymentsFromFiles} from '@rocketh/node';
 import {bigIntToStringReplacer} from '@rocketh/core/json';
+
+export const logger = logs('@rocketh/export');
 
 export interface ContractExport {
 	address: `0x${string}`;
@@ -74,8 +77,11 @@ export async function run(
 	const idToFetch = parseInt(chainId);
 	let chainInfoFound = getDefaultChainInfoByName(environmentName);
 	if (!chainInfoFound) {
-		// console.log(`could not find chainInfo by name = "${environmentName}"`);
-		chainInfoFound = getDefaultChainInfoFromChainId(idToFetch);
+		const result = getDefaultChainInfoFromChainId(idToFetch);
+		chainInfoFound = result.success ? result.chainInfo : undefined;
+		if (!result.success && result.error) {
+			// logger.warn(`could not find chainInfo by name = "${environmentName}"\n ${result.error}`);
+		}
 		if (!chainInfoFound) {
 			// console.log(`could not find chainInfo by chainId = "${idToFetch}"`);
 		}
