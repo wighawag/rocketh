@@ -62,10 +62,12 @@ For full documentation, visit [rocketh.dev](https://rocketh.dev).
 
 ## Getting Started
 
-In this guide, we will create a new project using Rocketh.
+In this guide, we will create a new project using Rocketh from scratch..
 
 > **Note**
 > if you want to use a full featured template, you can use the [template-ethereum-contracts](https://github.com/wighawag/template-ethereum-contracts) repository.
+>
+> You can also use `hardhat-deploy init`, see [hardhat-deploy](https://rocketh.dev/hardhat-deploy/) for more information.
 
 We will be using hardhat for contract compilation and hardhat-deploy to hook hardhat with rocketh.
 
