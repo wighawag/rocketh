@@ -1,5 +1,20 @@
 # @rocketh/viem
 
+## 0.17.6
+
+### Patch Changes
+
+- 8ef1407: fix typos + improvements
+- ef83a74: update deps
+- 7c42de1: fixes types
+- ce1e98f: readme
+- e01378e: publish src too
+- Updated dependencies [8ef1407]
+- Updated dependencies [ef83a74]
+- Updated dependencies [ce1e98f]
+- Updated dependencies [e01378e]
+  - @rocketh/core@0.17.9
+
 ## 0.17.5
 
 ### Patch Changes

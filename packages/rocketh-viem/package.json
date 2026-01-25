@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/viem",
-	"version": "0.17.5",
+	"version": "0.17.6",
 	"description": "provide viem functionality for rocketh",
 	"publishConfig": {
 		"access": "public"

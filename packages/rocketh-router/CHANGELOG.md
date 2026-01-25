@@ -1,5 +1,20 @@
 # @rocketh/router
 
+## 0.17.11
+
+### Patch Changes
+
+- 8ef1407: fix typos + improvements
+- ef83a74: update deps
+- ce1e98f: readme
+- e01378e: publish src too
+- Updated dependencies [8ef1407]
+- Updated dependencies [ef83a74]
+- Updated dependencies [ce1e98f]
+- Updated dependencies [e01378e]
+  - @rocketh/deploy@0.17.9
+  - @rocketh/core@0.17.9
+
 ## 0.17.10
 
 ### Patch Changes

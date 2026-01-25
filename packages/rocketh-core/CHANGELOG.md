@@ -1,5 +1,14 @@
 # @rocketh/core
 
+## 0.17.9
+
+### Patch Changes
+
+- 8ef1407: fix typos + improvements
+- ef83a74: update deps
+- ce1e98f: readme
+- e01378e: publish src too
+
 ## 0.17.8
 
 ### Patch Changes
