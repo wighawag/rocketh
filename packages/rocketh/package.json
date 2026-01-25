@@ -1,6 +1,6 @@
 {
 	"name": "rocketh",
-	"version": "0.17.14",
+	"version": "0.17.15",
 	"description": "core functionality of rocketh",
 	"publishConfig": {
 		"access": "public"

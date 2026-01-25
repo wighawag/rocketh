@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/export",
-	"version": "0.17.17",
+	"version": "0.17.18",
 	"description": "export deployments",
 	"publishConfig": {
 		"access": "public"

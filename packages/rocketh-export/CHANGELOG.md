@@ -1,5 +1,14 @@
 # @rocketh/export
 
+## 0.17.18
+
+### Patch Changes
+
+- b765457: better warning for cahing info missing
+- Updated dependencies [b765457]
+  - rocketh@0.17.15
+  - @rocketh/node@0.17.18
+
 ## 0.17.17
 
 ### Patch Changes

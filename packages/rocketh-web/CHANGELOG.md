@@ -1,5 +1,12 @@
 # @rocketh/web
 
+## 0.17.15
+
+### Patch Changes
+
+- Updated dependencies [b765457]
+  - rocketh@0.17.15
+
 ## 0.17.14
 
 ### Patch Changes

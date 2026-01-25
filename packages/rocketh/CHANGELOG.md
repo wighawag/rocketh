@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.17.15
+
+### Patch Changes
+
+- b765457: better warning for cahing info missing
+
 ## 0.17.14
 
 ### Patch Changes
