@@ -42,9 +42,9 @@
 		"typescript": "^5.9.3"
 	},
 	"scripts": {
+		"prepublishOnly": "cp ../../README.md README.md",
 		"show-chains-with-same-chainId": "tsx show-chains-with-same-chainId.ts",
 		"build": "tsc --project tsconfig.json",
-		"dev": "as-soon -w src pnpm build",
-		"prepublishOnly": "cp ../../README.md README.md"
+		"dev": "as-soon -w src pnpm build"
 	}
 }
