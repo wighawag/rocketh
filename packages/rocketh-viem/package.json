@@ -34,7 +34,7 @@
 		"viem": "^2.45.0"
 	},
 	"peerDependencies": {
-		"viem": "^2.41.2"
+		"viem": "^2.45.0"
 	},
 	"scripts": {
 		"build": "tsc --project tsconfig.json",
