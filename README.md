@@ -8,13 +8,13 @@
 <img src="https://img.shields.io/npm/dw/rocketh" alt="weekly downloads" />
 <img alt="Dependents" src="https://img.shields.io/librariesio/dependents/npm/rocketh" />
 <img alt="Github Stars" src="https://img.shields.io/github/stars/wighawag/rocketh" />
-<!-- <img alt="Node Version" src="https://img.shields.io/node/v/rocketh"> -->
+<img alt="Node Version" src="https://img.shields.io/node/v/rocketh">
 <img alt="Issues and PRs" src="https://img.shields.io/github/issues-pr/wighawag/rocketh" />
 <img alt="Tests Status" src="https://img.shields.io/github/actions/workflow/status/wighawag/rocketh/test.yml?label=test">
 <img alt="Commit activity" src="https://img.shields.io/github/commit-activity/w/wighawag/rocketh">
 <img alt="Last commit" src="https://img.shields.io/github/last-commit/wighawag/rocketh">
-<img alt="dependencies status" src="https://img.shields.io/librariesio/release/npm/rocketh" />
-</div>
+<!-- <img alt="dependencies status" src="https://img.shields.io/librariesio/release/npm/rocketh" />
+</div> -->
 
 # Rocketh
 
