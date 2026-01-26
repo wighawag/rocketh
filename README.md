@@ -3,7 +3,6 @@
   <a href="https://rocketh.dev">Rocketh</a>
 <hr/>
 
-<img src="https://img.shields.io/github/repo-size/wighawag/rocketh" alt="Repo Size">
 <img src="https://img.shields.io/npm/v/rocketh" alt="npm version">
 <img src="https://img.shields.io/github/license/wighawag/rocketh" alt="License">
 
