@@ -1,6 +1,7 @@
 {
 	"name": "@rocketh/web",
 	"version": "0.17.16",
+	"license": "MIT",
 	"description": "rocketh for web",
 	"publishConfig": {
 		"access": "public"
@@ -27,7 +28,7 @@
 		"tsx": "^4.21.0"
 	},
 	"devDependencies": {
-		"as-soon": "^0.1.4",
+		"as-soon": "^0.1.5",
 		"rocketh": "workspace:*",
 		"typescript": "^5.9.3"
 	},
@@ -35,6 +36,7 @@
 		"rocketh": "workspace:*"
 	},
 	"scripts": {
+		"prepublishOnly": "cp ../../LICENSE LICENSE",
 		"build": "tsc --project tsconfig.json",
 		"dev": "as-soon -w src pnpm build"
 	}

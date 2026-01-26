@@ -1,6 +1,7 @@
 {
 	"name": "@rocketh/export",
 	"version": "0.17.19",
+	"license": "MIT",
 	"description": "export deployments",
 	"publishConfig": {
 		"access": "public"
@@ -37,7 +38,7 @@
 	"devDependencies": {
 		"@rocketh/node": "workspace:*",
 		"@types/node": "^25.0.10",
-		"as-soon": "^0.1.4",
+		"as-soon": "^0.1.5",
 		"rimraf": "^6.1.2",
 		"rocketh": "workspace:*",
 		"typescript": "^5.9.3"
@@ -47,6 +48,7 @@
 		"rocketh": "workspace:*"
 	},
 	"scripts": {
+		"prepublishOnly": "cp ../../LICENSE LICENSE",
 		"build": "tsc --project tsconfig.json",
 		"dev": "as-soon -w src pnpm build"
 	}

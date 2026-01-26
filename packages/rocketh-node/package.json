@@ -1,6 +1,7 @@
 {
 	"name": "@rocketh/node",
 	"version": "0.17.19",
+	"license": "MIT",
 	"description": "rocketh for server-side JS runtime like node, including a cli",
 	"publishConfig": {
 		"access": "public"
@@ -39,7 +40,7 @@
 	},
 	"devDependencies": {
 		"@types/node": "^25.0.10",
-		"as-soon": "^0.1.4",
+		"as-soon": "^0.1.5",
 		"ipfs-gateway-emulator": "4.2.1-ipfs.2",
 		"rimraf": "^6.1.2",
 		"rocketh": "workspace:*",
@@ -50,6 +51,7 @@
 		"rocketh": "workspace:*"
 	},
 	"scripts": {
+		"prepublishOnly": "cp ../../LICENSE LICENSE",
 		"build": "tsc --project tsconfig.json",
 		"dev": "as-soon -w src pnpm build",
 		"gen-docs": "typedoc --out docs src",

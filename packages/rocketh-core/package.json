@@ -1,6 +1,7 @@
 {
 	"name": "@rocketh/core",
 	"version": "0.17.10",
+	"license": "MIT",
 	"description": "utilities for other rocketh packages",
 	"publishConfig": {
 		"access": "public"
@@ -64,11 +65,12 @@
 		"viem": "^2.45.0"
 	},
 	"devDependencies": {
-		"as-soon": "^0.1.4",
+		"as-soon": "^0.1.5",
 		"typescript": "^5.9.3",
 		"vitest": "^4.0.18"
 	},
 	"scripts": {
+		"prepublishOnly": "cp ../../LICENSE LICENSE",
 		"build": "tsc --project tsconfig.json",
 		"dev": "as-soon -w src pnpm build",
 		"test": "vitest"

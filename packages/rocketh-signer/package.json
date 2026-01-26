@@ -1,6 +1,7 @@
 {
 	"name": "@rocketh/signer",
 	"version": "0.17.7",
+	"license": "MIT",
 	"description": "add signer to rocketh",
 	"publishConfig": {
 		"access": "public"
@@ -27,11 +28,12 @@
 		"eip-1193-signer": "^0.1.1"
 	},
 	"devDependencies": {
-		"as-soon": "^0.1.4",
+		"as-soon": "^0.1.5",
 		"rimraf": "^6.1.2",
 		"typescript": "^5.9.3"
 	},
 	"scripts": {
+		"prepublishOnly": "cp ../../LICENSE LICENSE",
 		"build": "tsc --project tsconfig.json",
 		"dev": "as-soon -w src pnpm build"
 	}

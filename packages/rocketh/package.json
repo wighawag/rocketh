@@ -1,6 +1,7 @@
 {
 	"name": "rocketh",
 	"version": "0.17.16",
+	"license": "MIT",
 	"description": "core functionality of rocketh",
 	"publishConfig": {
 		"access": "public"
@@ -41,11 +42,11 @@
 		"viem": "^2.45.0"
 	},
 	"devDependencies": {
-		"as-soon": "^0.1.4",
+		"as-soon": "^0.1.5",
 		"typescript": "^5.9.3"
 	},
 	"scripts": {
-		"prepublishOnly": "cp ../../README.md README.md",
+		"prepublishOnly": "cp ../../README.md README.md && cp ../../LICENSE LICENSE",
 		"show-chains-with-same-chainId": "tsx show-chains-with-same-chainId.ts",
 		"build": "tsc --project tsconfig.json",
 		"dev": "as-soon -w src pnpm build"

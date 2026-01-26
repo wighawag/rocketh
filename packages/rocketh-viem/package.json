@@ -1,6 +1,7 @@
 {
 	"name": "@rocketh/viem",
 	"version": "0.17.7",
+	"license": "MIT",
 	"description": "provide viem functionality for rocketh",
 	"publishConfig": {
 		"access": "public"
@@ -28,7 +29,7 @@
 		"named-logs": "^0.4.1"
 	},
 	"devDependencies": {
-		"as-soon": "^0.1.4",
+		"as-soon": "^0.1.5",
 		"rimraf": "^6.1.2",
 		"typescript": "^5.9.3",
 		"viem": "^2.45.0"
@@ -37,6 +38,7 @@
 		"viem": "^2.45.0"
 	},
 	"scripts": {
+		"prepublishOnly": "cp ../../LICENSE LICENSE",
 		"build": "tsc --project tsconfig.json",
 		"dev": "as-soon -w src pnpm build"
 	}

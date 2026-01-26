@@ -1,6 +1,7 @@
 {
 	"name": "@rocketh/router",
 	"version": "0.17.12",
+	"license": "MIT",
 	"description": "provide router based proxy deployment for rocketh",
 	"publishConfig": {
 		"access": "public"
@@ -31,11 +32,12 @@
 		"viem": "^2.45.0"
 	},
 	"devDependencies": {
-		"as-soon": "^0.1.4",
+		"as-soon": "^0.1.5",
 		"rimraf": "^6.1.2",
 		"typescript": "^5.9.3"
 	},
 	"scripts": {
+		"prepublishOnly": "cp ../../LICENSE LICENSE",
 		"build": "tsc --project tsconfig.json",
 		"dev": "as-soon -w src pnpm build"
 	}

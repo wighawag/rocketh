@@ -1,6 +1,7 @@
 {
 	"name": "@rocketh/read-execute",
 	"version": "0.17.10",
+	"license": "MIT",
 	"description": "provide read abd execute functions for rocketh",
 	"publishConfig": {
 		"access": "public"
@@ -29,11 +30,12 @@
 		"viem": "^2.45.0"
 	},
 	"devDependencies": {
-		"as-soon": "^0.1.4",
+		"as-soon": "^0.1.5",
 		"rimraf": "^6.1.2",
 		"typescript": "^5.9.3"
 	},
 	"scripts": {
+		"prepublishOnly": "cp ../../LICENSE LICENSE",
 		"build": "tsc --project tsconfig.json",
 		"dev": "as-soon -w src pnpm build"
 	}

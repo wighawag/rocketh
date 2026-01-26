@@ -1,6 +1,7 @@
 {
 	"name": "@rocketh/diamond",
 	"version": "0.17.13",
+	"license": "MIT",
 	"description": "provide diamond support for rocketh/hardhat-deploy",
 	"publishConfig": {
 		"access": "public"
@@ -36,12 +37,13 @@
 	},
 	"devDependencies": {
 		"@rocketh/test-utils": "workspace:*",
-		"as-soon": "^0.1.4",
+		"as-soon": "^0.1.5",
 		"rimraf": "^6.1.2",
 		"typescript": "^5.9.3",
 		"vitest": "^4.0.18"
 	},
 	"scripts": {
+		"prepublishOnly": "cp ../../LICENSE LICENSE",
 		"build": "tsc --project tsconfig.json",
 		"dev": "as-soon -w src pnpm build",
 		"test": "vitest"
