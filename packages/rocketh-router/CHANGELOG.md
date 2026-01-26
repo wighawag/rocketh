@@ -1,5 +1,14 @@
 # @rocketh/router
 
+## 0.17.14
+
+### Patch Changes
+
+- add metadata to packages
+- Updated dependencies
+  - @rocketh/core@0.17.12
+  - @rocketh/deploy@0.17.12
+
 ## 0.17.13
 
 ### Patch Changes

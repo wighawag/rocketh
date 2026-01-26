@@ -1,5 +1,13 @@
 # @rocketh/signer
 
+## 0.17.9
+
+### Patch Changes
+
+- add metadata to packages
+- Updated dependencies
+  - @rocketh/core@0.17.12
+
 ## 0.17.8
 
 ### Patch Changes

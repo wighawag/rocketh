@@ -1,5 +1,15 @@
 # @rocketh/export
 
+## 0.17.21
+
+### Patch Changes
+
+- add metadata to packages
+- Updated dependencies
+  - rocketh@0.17.18
+  - @rocketh/core@0.17.12
+  - @rocketh/node@0.17.21
+
 ## 0.17.20
 
 ### Patch Changes

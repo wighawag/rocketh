@@ -1,5 +1,13 @@
 # @rocketh/test-utils
 
+## 0.0.5
+
+### Patch Changes
+
+- add metadata to packages
+- Updated dependencies
+  - @rocketh/core@0.17.12
+
 ## 0.0.4
 
 ### Patch Changes

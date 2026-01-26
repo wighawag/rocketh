@@ -1,5 +1,13 @@
 # rocketh
 
+## 0.17.18
+
+### Patch Changes
+
+- add metadata to packages
+- Updated dependencies
+  - @rocketh/core@0.17.12
+
 ## 0.17.17
 
 ### Patch Changes
