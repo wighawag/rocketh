@@ -3,17 +3,18 @@
   <a href="https://rocketh.dev">Rocketh</a>
 <hr/>
 
-<img alt="Version" src="https://img.shields.io/npm/v/rocketh" />
-<img alt="License" src="https://img.shields.io/github/license/wighawag/rocketh" />
-<img src="https://img.shields.io/npm/dw/rocketh" alt="weekly downloads" />
-<img alt="Dependents" src="https://img.shields.io/librariesio/dependents/npm/rocketh" />
-<img alt="Github Stars" src="https://img.shields.io/github/stars/wighawag/rocketh" />
-<img alt="Node Version" src="https://img.shields.io/node/v/rocketh">
-<img alt="Issues and PRs" src="https://img.shields.io/github/issues-pr/wighawag/rocketh" />
-<img alt="Tests Status" src="https://img.shields.io/github/actions/workflow/status/wighawag/rocketh/test.yml?label=test" />
-<img alt="Commit activity" src="https://img.shields.io/github/commit-activity/w/wighawag/rocketh" />
-<img alt="Last commit" src="https://img.shields.io/github/last-commit/wighawag/rocketh" />
-<!-- <img alt="dependencies status" src="https://img.shields.io/librariesio/release/npm/rocketh" />-->
+<a href="https://npmjs.com/package/rocketh"><img alt="Version" src="https://img.shields.io/npm/v/rocketh" /></a>
+<a href="https://github.com/wighawag/rocketh/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/wighawag/rocketh" /></a>
+<a href="https://npmjs.com/package/rocketh"><img src="https://img.shields.io/npm/dw/rocketh" alt="weekly downloads" /></a>
+<a href="https://npmjs.com/package/rocketh"><img alt="Dependents" src="https://img.shields.io/librariesio/dependents/npm/rocketh" /></a>
+<a href="https://github.com/wighawag/rocketh/stargazers"><img alt="Github Stars" src="https://img.shields.io/github/stars/wighawag/rocketh" /></a>
+<a href="https://npmjs.com/package/rocketh"><img alt="Node Version" src="https://img.shields.io/node/v/rocketh"></a>
+<a href="https://github.com/wighawag/rocketh/issues"><img alt="Issues and PRs" src="https://img.shields.io/github/issues-pr/wighawag/rocketh" /></a>
+<a href="https://github.com/wighawag/rocketh/actions"><img alt="Tests Status" src="https://img.shields.io/github/actions/workflow/status/wighawag/rocketh/test.yml?label=test" /></a>
+<a href="https://github.com/wighawag/rocketh/commits/main/"><img alt="Commit activity" src="https://img.shields.io/github/commit-activity/w/wighawag/rocketh" /></a>
+<a href="https://github.com/wighawag/rocketh/commits/main/"><img alt="Last commit" src="https://img.shields.io/github/last-commit/wighawag/rocketh" /></a>
+
+<!-- <a href="https://npmjs.com/package/rocketh"><img alt="dependencies status" src="https://img.shields.io/librariesio/release/npm/rocketh" /></a>-->
 </div>
 
 # Rocketh
