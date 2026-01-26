@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/export",
-	"version": "0.17.19",
+	"version": "0.17.20",
 	"license": "MIT",
 	"description": "export deployments",
 	"publishConfig": {

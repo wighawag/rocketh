@@ -1,5 +1,14 @@
 # @rocketh/node
 
+## 0.17.20
+
+### Patch Changes
+
+- add licenses
+- Updated dependencies
+  - rocketh@0.17.17
+  - @rocketh/core@0.17.11
+
 ## 0.17.19
 
 ### Patch Changes

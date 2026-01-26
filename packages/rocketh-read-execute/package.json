@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/read-execute",
-	"version": "0.17.10",
+	"version": "0.17.11",
 	"license": "MIT",
 	"description": "provide read abd execute functions for rocketh",
 	"publishConfig": {

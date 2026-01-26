@@ -1,5 +1,14 @@
 # @rocketh/verifier
 
+## 0.17.20
+
+### Patch Changes
+
+- add licenses
+- Updated dependencies
+  - @rocketh/core@0.17.11
+  - @rocketh/node@0.17.20
+
 ## 0.17.19
 
 ### Patch Changes

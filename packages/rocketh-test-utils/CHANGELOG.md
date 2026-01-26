@@ -1,5 +1,13 @@
 # @rocketh/test-utils
 
+## 0.0.4
+
+### Patch Changes
+
+- add licenses
+- Updated dependencies
+  - @rocketh/core@0.17.11
+
 ## 0.0.3
 
 ### Patch Changes

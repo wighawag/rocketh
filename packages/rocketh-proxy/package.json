@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/proxy",
-	"version": "0.17.14",
+	"version": "0.17.15",
 	"license": "MIT",
 	"description": "provide proxy-enabled deploy function for rocketh",
 	"publishConfig": {

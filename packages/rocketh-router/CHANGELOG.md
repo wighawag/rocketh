@@ -1,5 +1,14 @@
 # @rocketh/router
 
+## 0.17.13
+
+### Patch Changes
+
+- add licenses
+- Updated dependencies
+  - @rocketh/core@0.17.11
+  - @rocketh/deploy@0.17.11
+
 ## 0.17.12
 
 ### Patch Changes

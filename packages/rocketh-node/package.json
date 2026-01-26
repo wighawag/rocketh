@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/node",
-	"version": "0.17.19",
+	"version": "0.17.20",
 	"license": "MIT",
 	"description": "rocketh for server-side JS runtime like node, including a cli",
 	"publishConfig": {

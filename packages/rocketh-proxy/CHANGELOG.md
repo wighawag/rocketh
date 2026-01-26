@@ -1,5 +1,15 @@
 # @rocketh/proxy
 
+## 0.17.15
+
+### Patch Changes
+
+- add licenses
+- Updated dependencies
+  - @rocketh/core@0.17.11
+  - @rocketh/deploy@0.17.11
+  - @rocketh/read-execute@0.17.11
+
 ## 0.17.14
 
 ### Patch Changes

@@ -1,5 +1,14 @@
 # @rocketh/web
 
+## 0.17.17
+
+### Patch Changes
+
+- add licenses
+- Updated dependencies
+  - rocketh@0.17.17
+  - @rocketh/core@0.17.11
+
 ## 0.17.16
 
 ### Patch Changes

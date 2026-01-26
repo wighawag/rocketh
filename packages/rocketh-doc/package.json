@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/doc",
-	"version": "0.17.19",
+	"version": "0.17.20",
 	"license": "MIT",
 	"description": "can generate doc from rocketh deployments and provided template",
 	"publishConfig": {

@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/signer",
-	"version": "0.17.7",
+	"version": "0.17.8",
 	"license": "MIT",
 	"description": "add signer to rocketh",
 	"publishConfig": {

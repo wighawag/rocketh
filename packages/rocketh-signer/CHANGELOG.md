@@ -1,5 +1,13 @@
 # @rocketh/signer
 
+## 0.17.8
+
+### Patch Changes
+
+- add licenses
+- Updated dependencies
+  - @rocketh/core@0.17.11
+
 ## 0.17.7
 
 ### Patch Changes

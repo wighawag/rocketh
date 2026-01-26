@@ -1,5 +1,11 @@
 # @rocketh/core
 
+## 0.17.11
+
+### Patch Changes
+
+- add licenses
+
 ## 0.17.10
 
 ### Patch Changes

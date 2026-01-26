@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/deploy",
-	"version": "0.17.10",
+	"version": "0.17.11",
 	"license": "MIT",
 	"description": "provide deploy function for rocketh",
 	"publishConfig": {
