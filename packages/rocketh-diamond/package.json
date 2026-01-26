@@ -1,8 +1,24 @@
 {
 	"name": "@rocketh/diamond",
 	"version": "0.17.14",
-	"license": "MIT",
 	"description": "provide diamond support for rocketh/hardhat-deploy",
+	"keywords": [
+		"rocketh",
+		"ethereum",
+		"deployment",
+		"test"
+	],
+	"author": "Ronan Sandford",
+	"license": "MIT",
+	"homepage": "https://github.com/wighawag/rocketh/blob/main/packages/rocketh-diamond/README.md",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/wighawag/rocketh.git",
+		"directory": "packages/rocketh-diamond"
+	},
+	"bugs": {
+		"url": "https://github.com/wighawag/rocketh/issues"
+	},
 	"publishConfig": {
 		"access": "public"
 	},

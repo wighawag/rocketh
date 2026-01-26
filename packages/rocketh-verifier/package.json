@@ -1,8 +1,24 @@
 {
 	"name": "@rocketh/verifier",
 	"version": "0.17.20",
-	"license": "MIT",
 	"description": "submit verification proof to verifier services (blockchain explorer, sourcify...",
+	"keywords": [
+		"rocketh",
+		"ethereum",
+		"deployment",
+		"test"
+	],
+	"author": "Ronan Sandford",
+	"license": "MIT",
+	"homepage": "https://github.com/wighawag/rocketh/blob/main/packages/rocketh-verifier/README.md",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/wighawag/rocketh.git",
+		"directory": "packages/rocketh-verifier"
+	},
+	"bugs": {
+		"url": "https://github.com/wighawag/rocketh/issues"
+	},
 	"publishConfig": {
 		"access": "public"
 	},

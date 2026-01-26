@@ -1,8 +1,24 @@
 {
 	"name": "@rocketh/test-utils",
 	"version": "0.0.4",
-	"license": "MIT",
 	"description": "Test utilities for rocketh packages",
+	"keywords": [
+		"rocketh",
+		"ethereum",
+		"deployment",
+		"test"
+	],
+	"author": "Ronan Sandford",
+	"license": "MIT",
+	"homepage": "https://github.com/wighawag/rocketh/blob/main/packages/rocketh-test-utils/README.md",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/wighawag/rocketh.git",
+		"directory": "packages/rocketh-test-utils"
+	},
+	"bugs": {
+		"url": "https://github.com/wighawag/rocketh/issues"
+	},
 	"publishConfig": {
 		"access": "public"
 	},

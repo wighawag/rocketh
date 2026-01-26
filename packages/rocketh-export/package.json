@@ -1,8 +1,24 @@
 {
 	"name": "@rocketh/export",
 	"version": "0.17.20",
-	"license": "MIT",
 	"description": "export deployments",
+	"keywords": [
+		"rocketh",
+		"ethereum",
+		"deployment",
+		"test"
+	],
+	"author": "Ronan Sandford",
+	"license": "MIT",
+	"homepage": "https://github.com/wighawag/rocketh/blob/main/packages/rocketh-export/README.md",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/wighawag/rocketh.git",
+		"directory": "packages/rocketh-export"
+	},
+	"bugs": {
+		"url": "https://github.com/wighawag/rocketh/issues"
+	},
 	"publishConfig": {
 		"access": "public"
 	},

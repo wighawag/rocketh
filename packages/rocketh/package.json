@@ -1,8 +1,23 @@
 {
 	"name": "rocketh",
 	"version": "0.17.17",
+	"description": "A framework-agnostic smart contract deployment system for Ethereum-compatible networks.",
+	"keywords": [
+		"rocketh",
+		"ethereum",
+		"deployment",
+		"test"
+	],
+	"author": "Ronan Sandford",
 	"license": "MIT",
-	"description": "core functionality of rocketh",
+	"homepage": "https://github.com/wighawag/rocketh#readme",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/wighawag/rocketh.git"
+	},
+	"bugs": {
+		"url": "https://github.com/wighawag/rocketh/issues"
+	},
 	"publishConfig": {
 		"access": "public"
 	},
