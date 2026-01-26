@@ -5,6 +5,7 @@
 
 <img src="https://img.shields.io/npm/v/rocketh" alt="npm version">
 <img src="https://img.shields.io/github/license/wighawag/rocketh" alt="License">
+<img src="https://img.shields.io/npm/dw/rocketh" alt="weekly downloads">
 
 </div>
 
