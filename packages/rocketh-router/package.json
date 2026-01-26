@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/router",
-	"version": "0.17.11",
+	"version": "0.17.12",
 	"description": "provide router based proxy deployment for rocketh",
 	"publishConfig": {
 		"access": "public"
@@ -28,7 +28,7 @@
 		"eip-1193": "^0.6.5",
 		"named-logs": "^0.4.1",
 		"solidity-proxy": "^0.4.2",
-		"viem": "^2.44.4"
+		"viem": "^2.45.0"
 	},
 	"devDependencies": {
 		"as-soon": "^0.1.4",

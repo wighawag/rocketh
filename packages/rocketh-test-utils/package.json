@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/test-utils",
-	"version": "0.0.2",
+	"version": "0.0.3",
 	"description": "Test utilities for rocketh packages",
 	"publishConfig": {
 		"access": "public"
@@ -24,7 +24,7 @@
 	"dependencies": {
 		"@rocketh/core": "workspace:*",
 		"eip-1193": "^0.6.5",
-		"viem": "^2.44.4"
+		"viem": "^2.45.0"
 	},
 	"devDependencies": {
 		"as-soon": "^0.1.4",

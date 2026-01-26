@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/diamond",
-	"version": "0.17.12",
+	"version": "0.17.13",
 	"description": "provide diamond support for rocketh/hardhat-deploy",
 	"publishConfig": {
 		"access": "public"
@@ -32,7 +32,7 @@
 		"abitype": "^1.2.3",
 		"eip-1193": "^0.6.5",
 		"named-logs": "^0.4.1",
-		"viem": "^2.44.4"
+		"viem": "^2.45.0"
 	},
 	"devDependencies": {
 		"@rocketh/test-utils": "workspace:*",

@@ -1,6 +1,6 @@
 {
 	"name": "rocketh",
-	"version": "0.17.15",
+	"version": "0.17.16",
 	"description": "core functionality of rocketh",
 	"publishConfig": {
 		"access": "public"
@@ -27,6 +27,9 @@
 		"dist",
 		"src"
 	],
+	"engines": {
+		"node": ">=22.0.0"
+	},
 	"dependencies": {
 		"@rocketh/core": "workspace:*",
 		"abitype": "^1.2.3",
@@ -35,7 +38,7 @@
 		"eip-1193-jsonrpc-provider": "^0.4.3",
 		"ldenv": "^0.3.16",
 		"named-logs": "^0.4.1",
-		"viem": "^2.44.4"
+		"viem": "^2.45.0"
 	},
 	"devDependencies": {
 		"as-soon": "^0.1.4",

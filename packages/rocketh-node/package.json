@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/node",
-	"version": "0.17.18",
+	"version": "0.17.19",
 	"description": "rocketh for server-side JS runtime like node, including a cli",
 	"publishConfig": {
 		"access": "public"
@@ -35,7 +35,7 @@
 		"named-logs-console": "^0.5.1",
 		"prompts": "^2.4.2",
 		"tsx": "^4.21.0",
-		"viem": "^2.44.4"
+		"viem": "^2.45.0"
 	},
 	"devDependencies": {
 		"@types/node": "^25.0.10",
