@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/test-utils",
-	"version": "0.0.6",
+	"version": "0.0.7",
 	"description": "Test utilities for rocketh packages",
 	"keywords": [
 		"rocketh",
@@ -41,7 +41,7 @@
 	"dependencies": {
 		"@rocketh/core": "workspace:*",
 		"eip-1193": "^0.6.5",
-		"viem": "^2.45.0"
+		"viem": "^2.45.1"
 	},
 	"devDependencies": {
 		"as-soon": "^0.1.5",

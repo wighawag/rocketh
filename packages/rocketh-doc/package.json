@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/doc",
-	"version": "0.17.22",
+	"version": "0.17.23",
 	"description": "can generate doc from rocketh deployments and provided template",
 	"keywords": [
 		"rocketh",
@@ -46,14 +46,14 @@
 		"@rocketh/core": "workspace:*",
 		"@types/fs-extra": "^11.0.4",
 		"abitype": "^1.2.3",
-		"commander": "^14.0.2",
+		"commander": "^14.0.3",
 		"fs-extra": "^11.3.3",
 		"handlebars": "^4.7.8",
-		"viem": "^2.45.0"
+		"viem": "^2.45.1"
 	},
 	"devDependencies": {
 		"@rocketh/node": "workspace:*",
-		"@types/node": "^25.0.10",
+		"@types/node": "^25.1.0",
 		"as-soon": "^0.1.5",
 		"rimraf": "^6.1.2",
 		"typescript": "^5.9.3"

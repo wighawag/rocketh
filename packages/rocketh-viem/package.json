@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/viem",
-	"version": "0.17.10",
+	"version": "0.17.11",
 	"description": "provide viem functionality for rocketh",
 	"keywords": [
 		"rocketh",
@@ -48,7 +48,7 @@
 		"as-soon": "^0.1.5",
 		"rimraf": "^6.1.2",
 		"typescript": "^5.9.3",
-		"viem": "^2.45.0"
+		"viem": "^2.45.1"
 	},
 	"peerDependencies": {
 		"viem": "^2.45.0"

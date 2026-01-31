@@ -13,10 +13,10 @@
   "type": "module",
   "devDependencies": {
     "@changesets/cli": "^2.29.8",
-    "@nx/js": "^22.4.1",
-    "@types/node": "^25.0.10",
+    "@nx/js": "^22.4.4",
+    "@types/node": "^25.1.0",
     "ezx": "^0.0.18",
-    "nx": "^22.4.1",
+    "nx": "^22.4.4",
     "prettier": "^3.8.1",
     "set-defaults": "^0.0.5",
     "syncpack": "^13.0.4",

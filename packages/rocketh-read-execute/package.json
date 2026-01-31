@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/read-execute",
-	"version": "0.17.13",
+	"version": "0.17.14",
 	"description": "provide read abd execute functions for rocketh",
 	"keywords": [
 		"rocketh",
@@ -43,7 +43,7 @@
 		"abitype": "^1.2.3",
 		"eip-1193": "^0.6.5",
 		"named-logs": "^0.4.1",
-		"viem": "^2.45.0"
+		"viem": "^2.45.1"
 	},
 	"devDependencies": {
 		"as-soon": "^0.1.5",
