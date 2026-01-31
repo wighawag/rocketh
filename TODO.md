@@ -1,3 +1,3 @@
 - [ ] support zksync (once hardhat v3 supports it)
-- [ ] rename @rocketh/proxy ?
-- [ ] named accounts auto impersonnation, so you can perform tx as if you had their private key.
+- [ ] ability to access deployment from "companion" networks ?
+- [ ] improve auto-mining and confirmations to speed up on test env
