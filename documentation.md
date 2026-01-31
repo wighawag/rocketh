@@ -64,10 +64,10 @@ hardhat-deploy integrates rocketh with Hardhat through:
 
 ```bash
 # Using npm
-npm install -D hardhat-deploy@next rocketh @rocketh/node @rocketh/deploy @rocketh/read-execute
+npm install -D hardhat-deploy rocketh @rocketh/node @rocketh/deploy @rocketh/read-execute
 
 # Using pnpm
-pnpm add -D hardhat-deploy@next rocketh @rocketh/node @rocketh/deploy @rocketh/read-execute
+pnpm add -D hardhat-deploy rocketh @rocketh/node @rocketh/deploy @rocketh/read-execute
 ```
 
 Note that `@rocketh/node` is required for hardhat-deploy to function. this is a package that let rocketh read file and folders
@@ -99,15 +99,15 @@ import type {UserConfig} from 'rocketh/types';
 
 // we define our config and export it as "config"
 export const config = {
-    accounts: {
-        deployer: {
-            default: 0,
-        },
-        admin: {
-            default: 1,
-        },
-    },
-    data: {}
+	accounts: {
+		deployer: {
+			default: 0,
+		},
+		admin: {
+			default: 1,
+		},
+	},
+	data: {},
 } as const satisfies UserConfig;
 
 // then we import each extensions we are interested in using in our deploy script or elsewhere
@@ -159,10 +159,9 @@ export {artifacts};
 // we create the rocketh functions we need by passing the extensions to the
 //  setup function
 import {setupDeployScripts} from 'rocketh';
-const {deployScript} = setupDeployScripts<Extensions,Accounts,Data>(extensions);
+const {deployScript} = setupDeployScripts<Extensions, Accounts, Data>(extensions);
 
 export {deployScript};
-
 ```
 
 ```typescript
@@ -172,11 +171,10 @@ import {setupEnvironmentFromFiles} from '@rocketh/node';
 import {setupHardhatDeploy} from 'hardhat-deploy/helpers';
 
 // useful for test and scripts, uses file-system
-const {loadAndExecuteDeploymentsFromFiles} = setupEnvironmentFromFiles<Extensions,Accounts,Data>(extensions);
-const {loadEnvironmentFromHardhat} = setupHardhatDeploy<Extensions,Accounts,Data>(extensions)
+const {loadAndExecuteDeploymentsFromFiles} = setupEnvironmentFromFiles<Extensions, Accounts, Data>(extensions);
+const {loadEnvironmentFromHardhat} = setupHardhatDeploy<Extensions, Accounts, Data>(extensions);
 
 export {loadEnvironmentFromHardhat, loadAndExecuteDeploymentsFromFiles};
-
 ```
 
 3. **Create a `deploy` folder** for your deployment scripts.
@@ -265,7 +263,7 @@ export default deployScript(
 			args: [''],
 		});
 	},
-	{tags: ['GreetingsRegistry', 'GreetingsRegistry_deploy']}
+	{tags: ['GreetingsRegistry', 'GreetingsRegistry_deploy']},
 );
 ```
 
@@ -280,7 +278,7 @@ export default deployScript(
 	async (env) => {
 		const {deployer, admin} = env.namedAccounts;
 
-		console.log({deployer, admin})
+		console.log({deployer, admin});
 
 		const prefix = 'proxy:';
 		const deployment = await env.deployViaProxy(
@@ -302,7 +300,6 @@ export default deployScript(
 	// execute takes as a second argument an options object where you can specify tags and dependencies
 	{tags: ['GreetingsRegistry', 'GreetingsRegistry_deploy']},
 );
-
 ```
 
 ### Deploying Diamonds
@@ -337,10 +334,10 @@ export default deployScript(
 			},
 			{
 				owner: admin,
-			}
+			},
 		);
 	},
-	{tags: ['MyDiamond', 'MyDiamond_deploy']}
+	{tags: ['MyDiamond', 'MyDiamond_deploy']},
 );
 ```
 
@@ -373,10 +370,10 @@ export default deployScript(
 				libraries: {
 					ExampleLibrary: exampleLibrary.address,
 				},
-			}
+			},
 		);
 	},
-	{tags: ['Example', 'Example_deploy']}
+	{tags: ['Example', 'Example_deploy']},
 );
 ```
 
@@ -400,10 +397,10 @@ export default deployScript(
 			},
 			{
 				deterministic: true, // or a specific salt: "0x123..."
-			}
+			},
 		);
 	},
-	{tags: ['GreetingsRegistry', 'GreetingsRegistry_deploy']}
+	{tags: ['GreetingsRegistry', 'GreetingsRegistry_deploy']},
 );
 ```
 
@@ -474,7 +471,7 @@ export default deployScript(
 			args: [''],
 		});
 	},
-	{tags: ['GreetingsRegistry']}
+	{tags: ['GreetingsRegistry']},
 );
 ```
 
@@ -496,10 +493,10 @@ export default deployScript(
 			},
 			{
 				owner: admin,
-			}
+			},
 		);
 	},
-	{tags: ['GreetingsRegistry']}
+	{tags: ['GreetingsRegistry']},
 );
 ```
 
@@ -533,10 +530,10 @@ export default deployScript(
 			},
 			{
 				owner: admin,
-			}
+			},
 		);
 	},
-	{tags: ['MyDiamond']}
+	{tags: ['MyDiamond']},
 );
 ```
 
@@ -555,7 +552,7 @@ export default deployScript(
 			args: ['My Token', 'MTK'],
 		});
 	},
-	{tags: ['Token']}
+	{tags: ['Token']},
 );
 
 // In another file
@@ -572,7 +569,7 @@ export default deployScript(
 			args: [token.address],
 		});
 	},
-	{tags: ['TokenSale'], dependencies: ['Token']}
+	{tags: ['TokenSale'], dependencies: ['Token']},
 );
 ```
 
@@ -612,7 +609,7 @@ export default deployScript(
 			args: ['Hello'],
 		});
 	},
-	{tags: ['MyContract']}
+	{tags: ['MyContract']},
 );
 ```
 
