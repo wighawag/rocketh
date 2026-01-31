@@ -1,5 +1,11 @@
 # @rocketh/core
 
+## 0.17.13
+
+### Patch Changes
+
+- add auto impersonation
+
 ## 0.17.12
 
 ### Patch Changes

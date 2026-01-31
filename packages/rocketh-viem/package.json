@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/viem",
-	"version": "0.17.9",
+	"version": "0.17.10",
 	"description": "provide viem functionality for rocketh",
 	"keywords": [
 		"rocketh",

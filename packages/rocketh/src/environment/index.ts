@@ -28,6 +28,7 @@ import {
 	EIP1193Block,
 	EIP1193BlockWithTransactions,
 	EIP1193DATA,
+	EIP1193ProviderWithoutEvents,
 	EIP1193Transaction,
 	EIP1193TransactionReceipt,
 } from 'eip-1193';
@@ -53,6 +54,47 @@ function displayTransaction(transaction: EIP1193Transaction) {
 	} else {
 		return `(tx with no gas pricing, type: ${Number((transaction as any).type)})`;
 	}
+}
+
+/**
+ * Impersonate accounts that are not available in the provider's accounts list.
+ * This is useful for testing with named accounts that don't have private keys available.
+ *
+ * @param provider - The EIP1193 provider
+ * @param unknownAccounts - List of addresses to impersonate
+ * @param autoImpersonate - Whether auto-impersonation is enabled
+ */
+async function impersonateAccounts(
+	provider: EIP1193ProviderWithoutEvents,
+	unknownAccounts: string[],
+	autoImpersonate?: boolean,
+): Promise<string[]> {
+	// Check if auto-impersonation is enabled
+	if (!autoImpersonate) {
+		return [];
+	}
+
+	const impersonatedAccounts: string[] = [];
+
+	// Attempt to impersonate each unknown account
+	for (const address of unknownAccounts) {
+		try {
+			// Use type assertion since hardhat_impersonateAccount is not part of standard EIP1193
+			await (provider as any).request({
+				method: 'hardhat_impersonateAccount',
+				params: [address],
+			});
+			impersonatedAccounts.push(address);
+		} catch (error: any) {
+			// Silently fail if the provider doesn't support impersonation
+			// This allows the feature to work gracefully with non-hardhat/anvil providers
+			if (!error.message?.includes('method not supported') && !error.message?.includes('Method not found')) {
+				logger.debug(`Failed to impersonate account ${address}: ${error.message}`);
+			}
+		}
+	}
+
+	return impersonatedAccounts;
 }
 
 export async function loadDeployments(
@@ -353,6 +395,23 @@ export async function createEnvironment<
 			type: 'remote',
 			signer: provider,
 		};
+	}
+
+	// Identify unknown accounts (addresses in namedAccounts not in allRemoteAccounts)
+	const unknownAccounts = Object.values(namedAccounts).filter(
+		(address) => !allRemoteAccounts.map((a) => a.toLowerCase()).includes(address.toLowerCase()),
+	);
+
+	// Impersonate unknown accounts if enabled
+	if (unknownAccounts.length > 0) {
+		const impersonatedAccounts = await impersonateAccounts(
+			rawProvider,
+			unknownAccounts,
+			resolvedExecutionParams.environment.autoImpersonate,
+		);
+		if (impersonatedAccounts.length > 0) {
+			logger.debug(`Auto-impersonated ${impersonatedAccounts.length} account(s): ${impersonatedAccounts.join(', ')}`);
+		}
 	}
 
 	const perliminaryEnvironment = {

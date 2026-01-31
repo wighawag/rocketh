@@ -273,6 +273,12 @@ export function resolveExecutionParams<Extra extends Record<string, unknown> = R
 		}
 	}
 
+	// Resolve auto-impersonation flag (priority: params > environment config > global config)
+	let autoImpersonate = executionParameters.autoImpersonate;
+	if (autoImpersonate === undefined && environmentConfig?.autoImpersonate !== undefined) {
+		autoImpersonate = environmentConfig.autoImpersonate;
+	}
+
 	return {
 		askBeforeProceeding: executionParameters.askBeforeProceeding || false,
 		chain: chainInfo,
@@ -285,6 +291,7 @@ export function resolveExecutionParams<Extra extends Record<string, unknown> = R
 			tags: environmentTags,
 			fork,
 			deterministicDeployment: actualChainConfig.deterministicDeployment,
+			autoImpersonate,
 		},
 		extra: executionParameters.extra,
 		provider,

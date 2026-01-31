@@ -1,5 +1,13 @@
 # rocketh
 
+## 0.17.19
+
+### Patch Changes
+
+- add auto impersonation
+- Updated dependencies
+  - @rocketh/core@0.17.13
+
 ## 0.17.18
 
 ### Patch Changes

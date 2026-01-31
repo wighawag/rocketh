@@ -246,6 +246,7 @@ export type DeploymentEnvironmentConfig = {
 	readonly chain?: string | number;
 	readonly scripts?: string | readonly string[];
 	readonly overrides?: Omit<ChainUserConfig, 'info'>;
+	readonly autoImpersonate?: boolean;
 };
 
 export type Chains = {
@@ -291,6 +292,7 @@ export type ExecutionParams<Extra extends Record<string, unknown> = Record<strin
 	extra?: Extra;
 	provider?: EIP1193ProviderWithoutEvents;
 	config?: ConfigOverrides;
+	autoImpersonate?: boolean;
 };
 
 export type {Abi, AbiConstructor, AbiError, AbiEvent, AbiFallback, AbiFunction, AbiReceive};
@@ -514,6 +516,7 @@ export type ResolvedExecutionParams<Extra extends Record<string, unknown> = Reco
 		readonly tags: readonly string[];
 		readonly fork?: boolean;
 		readonly deterministicDeployment: DeterministicDeploymentInfo;
+		readonly autoImpersonate?: boolean;
 	};
 	readonly chain: ChainInfo;
 	readonly tags: readonly string[];
