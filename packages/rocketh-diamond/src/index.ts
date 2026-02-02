@@ -111,7 +111,7 @@ export function diamond(
 		// will be populated
 		let abi: TAbi = artifactPureDiamond.abi.concat([]) as unknown as TAbi;
 		const facetCuts: FacetCut[] = [];
-		let executionFacetFound: `0x${string}` | undefined;
+		let executionFacetFound: {address: `0x${string}`; artifact: Artifact} | undefined;
 		const excludeSelectors: Record<string, `0x${string}`[]> = options?.excludeSelectors || {};
 		let i = 0;
 		for (const facet of facetsSet) {
@@ -200,7 +200,7 @@ export function diamond(
 						if (executionFacetFound) {
 							throw new Error(`multiple facet with method named "${options.execute.functionName}"`);
 						} else {
-							executionFacetFound = facetAddress;
+							executionFacetFound = {address: facetAddress, artifact: facet.artifact};
 						}
 					}
 				}
@@ -272,7 +272,6 @@ export function diamond(
 		let executeAddress: `0x${string}` = '0x0000000000000000000000000000000000000000';
 
 		if (options.execute) {
-			let addressSpecified: `0x${string}` | undefined;
 			if (options.execute.type === 'artifact') {
 				const executionDeployment = await _deploy(
 					'', // we do not save it as it is deterministic anyway
@@ -287,15 +286,25 @@ export function diamond(
 					},
 				);
 
-				addressSpecified = executionDeployment.address;
+				executeAddress = executionDeployment.address;
 
 				executeData = encodeFunctionData({
 					abi: executionDeployment.abi,
 					functionName: options.execute.functionName,
 					args: options.execute.args,
 				});
+			} else if (options.execute.type === 'facet') {
+				if (!executionFacetFound) {
+					throw new Error('Facet not found for execute');
+				} else {
+					executeData = encodeFunctionData({
+						abi: executionFacetFound.artifact.abi,
+						functionName: options.execute.functionName,
+						args: options.execute.args,
+					});
+					executeAddress = executionFacetFound.address;
+				}
 			}
-			executeAddress = addressSpecified || executionFacetFound || '0x0000000000000000000000000000000000000000';
 		}
 
 		if (changesDetected) {

@@ -1,5 +1,11 @@
 # @rocketh/diamond
 
+## 0.17.22
+
+### Patch Changes
+
+- fix diamond execute facet init
+
 ## 0.17.21
 
 ### Patch Changes
