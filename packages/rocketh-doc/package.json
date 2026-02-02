@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/doc",
-	"version": "0.17.25",
+	"version": "0.17.26",
 	"description": "can generate doc from rocketh deployments and provided template",
 	"keywords": [
 		"rocketh",

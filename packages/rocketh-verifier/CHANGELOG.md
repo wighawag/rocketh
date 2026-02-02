@@ -1,5 +1,13 @@
 # @rocketh/verifier
 
+## 0.17.26
+
+### Patch Changes
+
+- Updated dependencies
+  - @rocketh/core@0.17.17
+  - @rocketh/node@0.17.26
+
 ## 0.17.25
 
 ### Patch Changes

@@ -1,5 +1,11 @@
 # @rocketh/core
 
+## 0.17.17
+
+### Patch Changes
+
+- fix address resolution
+
 ## 0.17.16
 
 ### Patch Changes

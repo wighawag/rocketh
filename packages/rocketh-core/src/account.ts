@@ -26,7 +26,7 @@ export function resolveAccount(
 	env: Pick<Environment, 'namedAccounts'>,
 ): `0x${string}` {
 	if (account.startsWith('0x')) {
-		return account as `0x${string}`;
+		return account.toLowerCase() as `0x${string}`;
 	}
 
 	if (env.namedAccounts) {
@@ -34,7 +34,7 @@ export function resolveAccount(
 		if (!address) {
 			throw new Error(`no address for ${account}`);
 		}
-		return address;
+		return address.toLowerCase() as `0x${string}`;
 	}
 
 	throw new Error(`no accounts setup, cannot get address for ${account}`);

@@ -375,6 +375,10 @@ export function deploy(env: Environment): <TAbi extends Abi>(
 
 		const signer = env.addressSigners[address];
 
+		if (!signer) {
+			throw new Error(`cannot get signer for ${address}`);
+		}
+
 		const chainId = `0x${env.network.chain.id.toString(16)}` as `0x${string}`;
 		const maxFeePerGas = viemArgs.maxFeePerGas && (`0x${viemArgs.maxFeePerGas.toString(16)}` as `0x${string}`);
 		const maxPriorityFeePerGas =
