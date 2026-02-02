@@ -10,6 +10,9 @@ import type {
 } from '@rocketh/core/types';
 import type {ContractFunctionArgs, ContractFunctionName, WriteContractParameters} from 'viem';
 
+export type {Artifact, Deployment, DeploymentConstruction, Libraries, Abi, LinkedDataProvided};
+export type {ContractFunctionArgs, ContractFunctionName, WriteContractParameters};
+
 export type Facet = {
 	facetAddress: `0x${string}`;
 	functionSelectors: readonly `0x${string}`[];

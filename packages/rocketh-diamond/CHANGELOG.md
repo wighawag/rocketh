@@ -1,5 +1,11 @@
 # @rocketh/diamond
 
+## 0.17.20
+
+### Patch Changes
+
+- fix diamond types
+
 ## 0.17.19
 
 ### Patch Changes
