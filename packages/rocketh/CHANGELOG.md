@@ -1,5 +1,12 @@
 # rocketh
 
+## 0.17.22
+
+### Patch Changes
+
+- Updated dependencies
+  - @rocketh/core@0.17.16
+
 ## 0.17.21
 
 ### Patch Changes

@@ -49,13 +49,14 @@ function mergeDoc(values: any, mergedDevDocs: any, field: string) {
 	}
 }
 
-export function mergeABIs(
-	list: {name: string; abi: Abi}[],
-	options?: {doNotCheckForConflicts?: boolean; ignoreList?: string[]},
-) {
+export function mergeABIs(list: {name: string; abi: Abi}[], options?: {checkForConflicts?: boolean | string[]}) {
 	const added: Map<string, ArrayElement<Abi>> = new Map();
 	const mergedABI: CreateMutable<Abi> = [];
 	const sigJSMap: Map<`0x${string}`, {index: number; routeName: string; functionName: string}> = new Map();
+
+	// we default to check for conflict unless it is explicity set to false
+	const checkForConflicts = options?.checkForConflicts !== undefined ? !!options.checkForConflicts : true;
+	const ignoreList = typeof options?.checkForConflicts === 'object' ? options.checkForConflicts : [];
 	for (let i = 0; i < list.length; i++) {
 		const listElem = list[i];
 		for (const element of listElem.abi) {
@@ -63,7 +64,7 @@ export function mergeABIs(
 				// const selector = getFunctionSelector(element);
 				const selector = toFunctionSelector(element);
 				if (sigJSMap.has(selector)) {
-					if (!options?.doNotCheckForConflicts && !options?.ignoreList?.includes(element.name)) {
+					if (checkForConflicts && !ignoreList.includes(element.name)) {
 						const existing = sigJSMap.get(selector);
 						throw new Error(
 							`ABI conflict: ${existing!.routeName} has function "${existing!.functionName}" which conflict with ${
@@ -126,7 +127,7 @@ export function mergeABIs(
 
 export function mergeArtifacts(
 	list: {name: string; artifact: Partial<Artifact<Abi>> & {abi: Abi}}[],
-	options?: {doNotCheckForConflicts?: boolean},
+	options?: {checkForConflicts?: boolean | string[]},
 ) {
 	const {mergedABI, added, sigJSMap} = mergeABIs(
 		list.map((v) => ({name: v.name, abi: v.artifact.abi})),

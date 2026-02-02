@@ -174,7 +174,7 @@ describe('Artifact Utilities', () => {
 						{name: 'Contract1', abi: abi1},
 						{name: 'Contract2', abi: abi2},
 					],
-					{doNotCheckForConflicts: true},
+					{checkForConflicts: false},
 				);
 
 				// Both functions should be included since they have different names
@@ -754,7 +754,7 @@ describe('Artifact Utilities', () => {
 						{name: 'Contract1', artifact: artifact1},
 						{name: 'Contract2', artifact: artifact2},
 					],
-					{doNotCheckForConflicts: true},
+					{checkForConflicts: false},
 				);
 
 				// Both should be included since they have different names

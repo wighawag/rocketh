@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/verifier",
-	"version": "0.17.24",
+	"version": "0.17.25",
 	"description": "submit verification proof to verifier services (blockchain explorer, sourcify...",
 	"keywords": [
 		"rocketh",
