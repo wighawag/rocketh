@@ -49,7 +49,10 @@ function mergeDoc(values: any, mergedDevDocs: any, field: string) {
 	}
 }
 
-export function mergeABIs(list: {name: string; abi: Abi}[], options?: {doNotCheckForConflicts?: boolean}) {
+export function mergeABIs(
+	list: {name: string; abi: Abi}[],
+	options?: {doNotCheckForConflicts?: boolean; ignoreList?: string[]},
+) {
 	const added: Map<string, ArrayElement<Abi>> = new Map();
 	const mergedABI: CreateMutable<Abi> = [];
 	const sigJSMap: Map<`0x${string}`, {index: number; routeName: string; functionName: string}> = new Map();
@@ -60,7 +63,7 @@ export function mergeABIs(list: {name: string; abi: Abi}[], options?: {doNotChec
 				// const selector = getFunctionSelector(element);
 				const selector = toFunctionSelector(element);
 				if (sigJSMap.has(selector)) {
-					if (!options?.doNotCheckForConflicts) {
+					if (!options?.doNotCheckForConflicts && !options?.ignoreList?.includes(element.name)) {
 						const existing = sigJSMap.get(selector);
 						throw new Error(
 							`ABI conflict: ${existing!.routeName} has function "${existing!.functionName}" which conflict with ${

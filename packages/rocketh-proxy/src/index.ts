@@ -163,6 +163,7 @@ export function deployViaProxy(
 
 		let proxyArgsTemplate = ['{implementation}', '{admin}', '{data}'];
 		let proxyArtifact: Artifact = ERC173Proxy;
+		let ignoreList: undefined | string[];
 		let checkABIConflict = true;
 		let checkProxyAdmin = true;
 		if (options?.proxyContract) {
@@ -177,10 +178,12 @@ export function deployViaProxy(
 					case 'ERC173Proxy':
 						proxyArtifact = ERC173Proxy;
 						proxyArgsTemplate = ['{implementation}', '{admin}', '{data}'];
+						ignoreList = ['supportsInterface'];
 						break;
 					case 'ERC173ProxyWithReceive':
 						proxyArtifact = ERC173ProxyWithReceive;
 						proxyArgsTemplate = ['{implementation}', '{admin}', '{data}'];
+						ignoreList = ['supportsInterface'];
 						break;
 					case 'UUPS':
 						checkABIConflict = false;
@@ -250,7 +253,7 @@ export function deployViaProxy(
 				{name: implementationName, abi: artifactFromImplementationDeployment.abi},
 				{name: proxyName, abi: proxyArtifact.abi},
 			],
-			{doNotCheckForConflicts: !checkABIConflict},
+			{doNotCheckForConflicts: !checkABIConflict, ignoreList},
 		);
 
 		logger.info(`existingDeployment at ${existingDeployment?.address}`);

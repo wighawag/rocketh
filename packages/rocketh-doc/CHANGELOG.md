@@ -1,5 +1,13 @@
 # @rocketh/doc
 
+## 0.17.24
+
+### Patch Changes
+
+- Updated dependencies
+  - @rocketh/core@0.17.15
+  - @rocketh/node@0.17.24
+
 ## 0.17.23
 
 ### Patch Changes

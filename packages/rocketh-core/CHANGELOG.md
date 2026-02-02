@@ -1,5 +1,11 @@
 # @rocketh/core
 
+## 0.17.15
+
+### Patch Changes
+
+- ignore supportsInterface conflit for ERC173Proxy
+
 ## 0.17.14
 
 ### Patch Changes
