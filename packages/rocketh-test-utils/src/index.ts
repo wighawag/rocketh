@@ -418,7 +418,7 @@ export function createMockEnvironment(options: MockEnvironmentOptions = {}): Moc
 
 	const addressSigners: Record<string, {type: 'remote'; signer: MockProvider}> = {};
 	for (const address of Object.values(namedAccounts)) {
-		addressSigners[address] = {
+		addressSigners[address.toLowerCase()] = {
 			type: 'remote',
 			signer: provider,
 		};

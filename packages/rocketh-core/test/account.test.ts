@@ -30,7 +30,7 @@ describe('Account Resolution', () => {
 				};
 				const account = '0x1234567890ABCDEF1234567890ABCDEF12345678' as EIP1193Account;
 				const result = resolveAccount(account, env);
-				expect(result).toBe('0x1234567890ABCDEF1234567890ABCDEF12345678');
+				expect(result).toBe('0x1234567890abcdef1234567890abcdef12345678');
 			});
 
 			it('should handle mixed case hex addresses', () => {
@@ -39,7 +39,7 @@ describe('Account Resolution', () => {
 				};
 				const account = '0x1234567890AbCdEf1234567890aBcDeF12345678' as EIP1193Account;
 				const result = resolveAccount(account, env);
-				expect(result).toBe('0x1234567890AbCdEf1234567890aBcDeF12345678');
+				expect(result).toBe('0x1234567890abcdef1234567890abcdef12345678');
 			});
 
 			it('should handle 20-byte hex addresses (40 chars + 0x)', () => {
@@ -48,7 +48,7 @@ describe('Account Resolution', () => {
 				};
 				const account = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266' as EIP1193Account;
 				const result = resolveAccount(account, env);
-				expect(result).toBe('0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266');
+				expect(result).toBe('0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266');
 			});
 
 			it('should not lookup namedAccounts when account is hex address', () => {
@@ -99,9 +99,9 @@ describe('Account Resolution', () => {
 					},
 				};
 
-				expect(resolveAccount('deployer', env)).toBe('0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266');
-				expect(resolveAccount('alice', env)).toBe('0x70997970C51812dc3A010C7d01b50e0d17dc79C8');
-				expect(resolveAccount('bob', env)).toBe('0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC');
+				expect(resolveAccount('deployer', env)).toBe('0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266');
+				expect(resolveAccount('alice', env)).toBe('0x70997970c51812dc3a010c7d01b50e0d17dc79c8');
+				expect(resolveAccount('bob', env)).toBe('0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc');
 			});
 
 			it('should throw error when named account does not exist', () => {
