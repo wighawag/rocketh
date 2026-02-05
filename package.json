@@ -30,7 +30,8 @@
   "packageManager": "pnpm@10.28.1",
   "scripts": {
     "prepare": "set-defaults .vscode",
-    "prepublish": "pnpm build",
+    "prepublishOnly": "pnpm format:check && pnpm build",
+		"release": "pnpm prepublishOnly && git push --all && pnpm changeset publish && git push --tags",
     "reset": "git clean -fdX; pnpm i",
     "sync-deps": "syncpack fix-mismatches",
     "docs:dev": "vitepress dev",
