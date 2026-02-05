@@ -1,5 +1,12 @@
 # @rocketh/diamond
 
+## 0.17.23
+
+### Patch Changes
+
+- Updated dependencies
+  - @rocketh/deploy@0.17.18
+
 ## 0.17.22
 
 ### Patch Changes

@@ -1,5 +1,11 @@
 # @rocketh/deploy
 
+## 0.17.18
+
+### Patch Changes
+
+- fix auto-mine
+
 ## 0.17.17
 
 ### Patch Changes
