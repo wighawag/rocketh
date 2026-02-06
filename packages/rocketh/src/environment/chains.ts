@@ -1,104 +1,27 @@
 import {
 	ChainConfig,
 	ChainInfo,
-	ChainUserConfig,
 	Create2DeterministicDeploymentInfo,
 	Create3DeterministicDeploymentInfo,
+	EIP1193ProviderWithoutEvents,
 	ResolvedUserConfig,
 } from '../types.js';
 
-export function getChainConfigFromUserConfigAndDefaultChainInfo(
+export function getChainConfigFromUserConfig(
 	config: ResolvedUserConfig,
-	chainDetails: {
-		id: number;
-		chainInfo?: ChainInfo;
-		canonicalName?: string;
-		doNotRequireRpcURL?: boolean;
-	},
+	id: number,
+	provider?: EIP1193ProviderWithoutEvents,
 ): ChainConfig {
-	const canonicalName = chainDetails?.canonicalName;
-	let chainInfo = chainDetails?.chainInfo ? {...chainDetails.chainInfo} : undefined;
-	if (chainInfo?.id && chainDetails.id != chainInfo.id) {
-		console.warn(
-			`default chainInfo  has a different chainId (${chainInfo.id}) != ${chainDetails.id}, we thus assign it`,
-		);
-		// we ensure the chainInfo has the correct id
-		chainInfo.id = chainDetails.id;
-	}
-	if (canonicalName) {
-		if (config.chains?.[chainDetails.id] && config.chains?.[canonicalName]) {
-			throw new Error(
-				`chain should be configured by chainId or name but not both, remove either ${chainDetails.id} or ${canonicalName}`,
-			);
-		}
-	}
+	const chainConfig = config.chains?.[id];
 
-	let chainConfig: ChainUserConfig | undefined = canonicalName ? config.chains?.[canonicalName] : undefined;
-	if (!chainConfig) {
-		chainConfig = config.chains?.[chainDetails.id];
-	}
-	if (!chainConfig) {
-		chainConfig = {info: chainInfo};
-	}
-
-	chainInfo = chainConfig?.info || chainInfo;
-
-	// let rpcUrl = process.env['ETH_NODE_URI_' + id];
-	// if (canonicalName) {
-	// 	const fromEnv = process.env['ETH_NODE_URI_' + canonicalName];
-	// 	if (fromEnv) {
-	// 		rpcUrl = fromEnv;
-	// 	}
-	// }
-	// if (!rpcUrl) {
-	// 	rpcUrl = chainConfig.rpcUrl;
-	// }
-
-	let rpcUrl = chainConfig.rpcUrl;
-
-	if (!rpcUrl) {
-		rpcUrl = chainConfig.info?.rpcUrls.default.http[0];
-	}
-
-	// TODO remove ?
-	if (!rpcUrl) {
-		if (chainDetails.id === 31337 || chainDetails.id === 1337) {
-			rpcUrl = 'http://127.0.0.1:8545';
-		}
-	}
-
-	if (!chainInfo) {
-		if (!rpcUrl && !chainDetails.doNotRequireRpcURL) {
-			throw new Error(`chain with id ${chainDetails.id} has no public info and no rpc url known to fallback on`);
-		} else {
-			console.error(`chain with id ${chainDetails.id} has no public info`);
-		}
-
-		chainInfo = {
-			id: chainDetails.id,
-			name: 'unknown',
-			nativeCurrency: {
-				name: 'Unknown Currency',
-				symbol: 'UNKNOWN',
-				decimals: 18,
-			},
-			rpcUrls: {
-				default: {
-					http: rpcUrl ? [rpcUrl] : [],
-				},
-			},
-			chainType: 'default',
-		};
-	}
-
-	const create2Info = {
+	const defaultCreate2Info = {
 		factory: '0x4e59b44847b379578588920ca78fbf26c0b4956c',
 		deployer: '0x3fab184622dc19b6109349b94811493bf2a45362',
 		funding: '10000000000000000',
 		signedTx:
 			'0xf8a58085174876e800830186a08080b853604580600e600039806000f350fe7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe03601600081602082378035828234f58015156039578182fd5b8082525050506014600cf31ba02222222222222222222222222222222222222222222222222222222222222222a02222222222222222222222222222222222222222222222222222222222222222',
 	} as const;
-	const create3Info = {
+	const defaultCreate3Info = {
 		factory: '0x000000000004d4f168daE7DB3C610F408eE22F57',
 		salt: '0x5361109ca02853ca8e22046b7125306d9ec4ae4cdecc393c567b6be861df3db6',
 		bytecode:
@@ -106,45 +29,82 @@ export function getChainConfigFromUserConfigAndDefaultChainInfo(
 		proxyBytecode: '0x67363d3d37363d34f03d5260086018f3',
 	} as const;
 
-	const pollingInterval = chainConfig.pollingInterval || config.defaultPollingInterval;
+	const pollingInterval = chainConfig?.pollingInterval || config.defaultPollingInterval;
 
 	let deterministicDeployment: {
 		create2: Create2DeterministicDeploymentInfo;
 		create3: Create3DeterministicDeploymentInfo;
 	} = {
 		create2: (() => {
-			const deterministicDeployment = chainConfig.deterministicDeployment;
+			const deterministicDeployment = chainConfig?.deterministicDeployment;
 			if (!deterministicDeployment) {
-				return create2Info;
+				return defaultCreate2Info;
 			}
 
 			return 'create2' in deterministicDeployment && deterministicDeployment.create2
 				? deterministicDeployment.create2
 				: !('create2' in deterministicDeployment) && !('create3' in deterministicDeployment)
 					? (deterministicDeployment as Create2DeterministicDeploymentInfo)
-					: create2Info;
+					: defaultCreate2Info;
 		})(),
 		create3:
-			chainConfig.deterministicDeployment &&
+			chainConfig?.deterministicDeployment &&
 			'create3' in chainConfig.deterministicDeployment &&
 			chainConfig.deterministicDeployment.create3
 				? chainConfig.deterministicDeployment.create3
-				: create3Info,
+				: defaultCreate3Info,
 	};
 
 	const defaultTags: string[] = [];
-	if (chainInfo.testnet) {
+	if (chainConfig?.info?.testnet) {
 		defaultTags.push('testnet');
 	}
 
-	const properties = chainConfig.properties || config.defaultChainProperties || {};
+	const properties = chainConfig?.properties || config.defaultChainProperties || {};
 
-	return {
-		info: {...chainInfo},
-		deterministicDeployment,
-		pollingInterval,
-		properties,
-		rpcUrl: rpcUrl || chainInfo.rpcUrls.default.http[0],
-		tags: chainConfig.tags || [...defaultTags],
+	if (!chainConfig?.info) {
+		console.error(`chain with id ${id} has no public info`);
+	}
+
+	const rpcUrl = chainConfig?.rpcUrl || chainConfig?.info?.rpcUrls.default.http[0];
+
+	const defaultChainInfo: ChainInfo = {
+		id: id,
+		name: 'unknown',
+		nativeCurrency: {
+			name: 'Unknown Currency',
+			symbol: 'UNKNOWN',
+			decimals: 18,
+		},
+		rpcUrls: {
+			default: {
+				http: rpcUrl ? [rpcUrl] : [],
+			},
+		},
+		chainType: 'default',
 	};
+
+	if (!rpcUrl && provider !== undefined) {
+		return {
+			info: chainConfig?.info || defaultChainInfo,
+			deterministicDeployment,
+			pollingInterval,
+			properties,
+			provider,
+			tags: chainConfig?.tags || [...defaultTags],
+			autoImpersonate: chainConfig?.autoImpersonate || false,
+		};
+	} else if (rpcUrl) {
+		return {
+			info: chainConfig?.info || defaultChainInfo,
+			deterministicDeployment,
+			pollingInterval,
+			properties,
+			rpcUrl: rpcUrl,
+			tags: chainConfig?.tags || [...defaultTags],
+			autoImpersonate: chainConfig?.autoImpersonate || false,
+		};
+	} else {
+		throw new Error(`chain with id ${id} has no rpc url provided nor any provider to use`);
+	}
 }

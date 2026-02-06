@@ -231,26 +231,33 @@ export type ChainUserConfig = {
 	readonly info?: ChainInfo;
 	readonly pollingInterval?: number;
 	readonly properties?: Record<string, JSONTypePlusBigInt>;
+	readonly autoImpersonate?: boolean;
 };
 
 export type ChainConfig = {
-	readonly rpcUrl?: string;
 	readonly tags: readonly string[];
 	readonly deterministicDeployment: DeterministicDeploymentInfo;
 	readonly info: ChainInfo;
 	readonly pollingInterval: number;
 	readonly properties: Record<string, JSONTypePlusBigInt>;
-};
+	readonly autoImpersonate: boolean;
+} & (
+	| {
+			readonly rpcUrl: string;
+	  }
+	| {
+			readonly provider: EIP1193ProviderWithoutEvents;
+	  }
+);
 
 export type DeploymentEnvironmentConfig = {
-	readonly chain?: string | number;
+	readonly chain: number;
 	readonly scripts?: string | readonly string[];
 	readonly overrides?: Omit<ChainUserConfig, 'info'>;
-	readonly autoImpersonate?: boolean;
 };
 
 export type Chains = {
-	readonly [idOrName: number | string]: ChainUserConfig;
+	readonly [id: number]: ChainUserConfig;
 };
 
 export type SignerProtocolFunction = (protocolString: string) => Promise<Signer>;
@@ -293,21 +300,6 @@ export type ExecutionParams<Extra extends Record<string, unknown> = Record<strin
 	provider?: EIP1193ProviderWithoutEvents;
 	config?: ConfigOverrides;
 	autoImpersonate?: boolean;
-	defaultChains?: {
-		getDefaultChainInfoByName(name: string): ChainInfo | undefined;
-		getDefaultChainInfoFromChainId(
-			id: string | number,
-		): {success: true; chainInfo: ChainInfo} | {success: false; error?: string};
-		getChainConfigFromUserConfigAndDefaultChainInfo(
-			config: ResolvedUserConfig,
-			chainDetails: {
-				id: number;
-				chainInfo?: ChainInfo;
-				canonicalName?: string;
-				doNotRequireRpcURL?: boolean;
-			},
-		): ChainConfig;
-	};
 };
 
 export type {Abi, AbiConstructor, AbiError, AbiEvent, AbiFallback, AbiFunction, AbiReceive};

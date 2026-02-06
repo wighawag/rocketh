@@ -25,7 +25,7 @@ import {createEnvironment} from '../environment/index.js';
 import {getRoughGasPriceEstimate} from '../utils/eth.js';
 import {formatEther} from 'viem';
 import {logger, spin} from '../internal/logging.js';
-import {getChainConfigFromUserConfigAndDefaultChainInfo} from '../environment/chains.js';
+import {getChainConfigFromUserConfig} from '../environment/chains.js';
 
 /**
  * Setup function that creates the execute function for deploy scripts. It allow to specify a set of functions that will be available in the environment.
@@ -133,36 +133,16 @@ export async function getChainIdForEnvironment(
 	executionParams: ExecutionParams,
 ) {
 	const provider = executionParams.provider;
-	const defaultChains = executionParams.defaultChains;
+
 	let chainId: number;
-	const chainIdFromProvider = provider ? Number(await provider.request({method: 'eth_chainId'})) : undefined;
+
 	if (config?.environments?.[environmentName]?.chain) {
-		const chainAsNumber =
-			typeof config.environments[environmentName].chain === 'number'
-				? config.environments[environmentName].chain
-				: parseInt(config.environments[environmentName].chain);
-		if (!isNaN(chainAsNumber)) {
-			chainId = chainAsNumber;
-		} else {
-			const chainFound = defaultChains?.getDefaultChainInfoByName(config.environments[environmentName].chain as string);
-			if (chainFound) {
-				chainId = chainFound.id;
-			} else {
-				throw new Error(`environment ${environmentName} chain id cannot be found, specify it in the rocketh config`);
-			}
-		}
+		chainId = config.environments[environmentName].chain;
 	} else {
-		const chainFound = defaultChains?.getDefaultChainInfoByName(environmentName);
-		if (chainFound) {
-			chainId = chainFound.id;
-		} else {
-			if (chainIdFromProvider) {
-				chainId = chainIdFromProvider;
-			} else {
-				throw new Error(`environment ${environmentName} chain id cannot be found, specify it in the rocketh config`);
-			}
-		}
+		throw new Error(`environment ${environmentName} chain id cannot be found, specify it in the rocketh config`);
 	}
+
+	const chainIdFromProvider = provider ? Number(await provider.request({method: 'eth_chainId'})) : undefined;
 	if (chainIdFromProvider && chainIdFromProvider != chainId) {
 		console.warn(
 			`provider give a different chainId (${chainIdFromProvider}) than the one expected for environment named "${environmentName}" (${chainId})`,
@@ -194,28 +174,8 @@ export function resolveExecutionParams<Extra extends Record<string, unknown> = R
 
 	// TODO fork chainId resolution option to keep the network being used
 	const idToFetch = fork ? 31337 : chainId;
-	const defaultChains = executionParameters.defaultChains;
-	let defaultChainInfo: ChainInfo | undefined;
-	if (defaultChains) {
-		let chainInfoFound = defaultChains.getDefaultChainInfoByName(environmentName);
-		if (!chainInfoFound) {
-			const result = defaultChains.getDefaultChainInfoFromChainId(idToFetch);
-			chainInfoFound = result.success ? result.chainInfo : undefined;
-			if (!result.success && result.error) {
-				// logger.warn(`could not find chainInfo by name = "${environmentName}"\n ${result.error}`);
-			}
-			if (!chainInfoFound) {
-				// console.log(`could not find chainInfo by chainId = "${idToFetch}"`);
-			}
-		}
-		defaultChainInfo = chainInfoFound;
-	}
-	const chainConfig = getChainConfigFromUserConfigAndDefaultChainInfo(config, {
-		id: idToFetch,
-		chainInfo: defaultChainInfo,
-		canonicalName: environmentName,
-		doNotRequireRpcURL: !!executionParameters.provider,
-	});
+
+	const chainConfig = getChainConfigFromUserConfig(config, idToFetch, executionParameters.provider);
 
 	let chainInfo = chainConfig.info;
 	const environmentConfig = config?.environments?.[environmentName];
@@ -254,12 +214,10 @@ export function resolveExecutionParams<Extra extends Record<string, unknown> = R
 		}
 	}
 
-	// here we force type actualChainConfig.rpcUrl! as string
-	// as if provider was not available
-	// getChainConfigFromUserConfigAndDefaultChainInfo would throw
 	const provider =
-		executionParameters.provider ||
-		(new JSONRPCHTTPProvider(actualChainConfig.rpcUrl!) as EIP1193ProviderWithoutEvents);
+		'provider' in actualChainConfig
+			? actualChainConfig.provider
+			: (new JSONRPCHTTPProvider(actualChainConfig.rpcUrl) as EIP1193ProviderWithoutEvents);
 
 	let saveDeployments = executionParameters.saveDeployments;
 
@@ -278,8 +236,8 @@ export function resolveExecutionParams<Extra extends Record<string, unknown> = R
 
 	// Resolve auto-impersonation flag (priority: params > environment config > global config)
 	let autoImpersonate = executionParameters.autoImpersonate;
-	if (autoImpersonate === undefined && environmentConfig?.autoImpersonate !== undefined) {
-		autoImpersonate = environmentConfig.autoImpersonate;
+	if (autoImpersonate === undefined && actualChainConfig.autoImpersonate !== undefined) {
+		autoImpersonate = actualChainConfig.autoImpersonate;
 	}
 
 	return {

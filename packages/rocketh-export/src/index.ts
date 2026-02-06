@@ -7,7 +7,8 @@ import type {ChainInfo, Deployment, LinkedData, ResolvedUserConfig} from '@rocke
 import {getDefaultChainInfoByName, getDefaultChainInfoFromChainId} from '@rocketh/chains';
 import {loadDeploymentsFromFiles} from '@rocketh/node';
 import {bigIntToStringReplacer} from '@rocketh/core/json';
-import {getChainConfigFromUserConfigAndDefaultChainInfo} from 'rocketh';
+import {getChainConfigFromUserConfig} from 'rocketh';
+import {EIP1193ProviderWithoutEvents} from 'eip-1193';
 
 export const logger = logs('@rocketh/export');
 
@@ -72,25 +73,7 @@ export async function run(
 	}
 
 	const idToFetch = parseInt(chainId);
-	let chainInfoFound = getDefaultChainInfoByName(environmentName);
-	if (!chainInfoFound) {
-		const result = getDefaultChainInfoFromChainId(idToFetch);
-		chainInfoFound = result.success ? result.chainInfo : undefined;
-		if (!result.success && result.error) {
-			// logger.warn(`could not find chainInfo by name = "${environmentName}"\n ${result.error}`);
-		}
-		if (!chainInfoFound) {
-			// console.log(`could not find chainInfo by chainId = "${idToFetch}"`);
-		}
-	}
-
-	const defaultChainInfo = chainInfoFound;
-	const chainConfig = getChainConfigFromUserConfigAndDefaultChainInfo(config, {
-		id: idToFetch,
-		chainInfo: defaultChainInfo,
-		canonicalName: environmentName,
-		doNotRequireRpcURL: true,
-	});
+	const chainConfig = getChainConfigFromUserConfig(config, idToFetch, {} as EIP1193ProviderWithoutEvents);
 	const chainInfo = {...chainConfig.info, genesisHash, properties: chainConfig.properties};
 
 	const exportData: ExportedDeployments = {
