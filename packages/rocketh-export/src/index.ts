@@ -1,10 +1,9 @@
-import {Abi, Address} from 'abitype';
+import {Abi} from 'abitype';
 import fs from 'node:fs';
 import path from 'node:path';
 import {logs} from 'named-logs';
 
 import type {ChainInfo, Deployment, LinkedData, ResolvedUserConfig} from '@rocketh/core/types';
-import {getDefaultChainInfoByName, getDefaultChainInfoFromChainId} from '@rocketh/chains';
 import {loadDeploymentsFromFiles} from '@rocketh/node';
 import {bigIntToStringReplacer} from '@rocketh/core/json';
 import {getChainConfigFromUserConfig} from 'rocketh';

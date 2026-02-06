@@ -52,7 +52,6 @@
 		"named-logs": "^0.4.1"
 	},
 	"devDependencies": {
-		"@rocketh/chains": "workspace:*",
 		"@rocketh/node": "workspace:*",
 		"@types/node": "^25.1.0",
 		"as-soon": "^0.1.5",

@@ -15,6 +15,8 @@ import {
 	type ConfigOverrides,
 	type UserConfig,
 	type PromptExecutor,
+	Chains,
+	Environments,
 } from '@rocketh/core/types';
 import {
 	resolveConfig,
@@ -29,6 +31,7 @@ import {enhanceEnvIfNeeded} from '@rocketh/core/environment';
 import {traverseMultipleDirectory} from '../utils/fs.js';
 import {createFSDeploymentStore} from '../environment/deployment-store.js';
 import {logs} from 'named-logs';
+import {chainByCanonicalName, chainById} from '../environment/chains.js';
 
 const logger = logs('@rocketh/node');
 
@@ -64,6 +67,10 @@ export function setupEnvironmentFromFiles<
 		loadEnvironmentFromFiles: loadEnvironmentWithExtensions,
 	};
 }
+
+type Mutable<T> = {
+	-readonly [K in keyof T]: T[K];
+};
 
 export async function readConfig<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
@@ -121,7 +128,37 @@ export async function readConfig<
 		configFile = moduleLoaded.config;
 	}
 
-	return configFile || {};
+	const newChainConfigs: Mutable<Chains> = {};
+
+	const chainIds = Object.keys(chainById).map((v) => parseInt(v));
+	for (const chainId of chainIds) {
+		const existingConfig = configFile?.chains?.[chainId];
+		// TODO what do we do about further info?
+		//  for now, we just take the first one
+		const defaultConfig = chainById[chainId][0];
+		newChainConfigs[chainId] = {
+			...defaultConfig,
+			...existingConfig,
+		};
+	}
+
+	const newEnvironments: Mutable<Environments> = {};
+	const canonicalNames = Object.keys(chainByCanonicalName);
+	for (const canonicalName of canonicalNames) {
+		const existingConfig = configFile?.environments?.[canonicalName];
+
+		const defaultConfig = chainByCanonicalName[canonicalName];
+		newEnvironments[canonicalName] = {
+			chain: defaultConfig.id,
+			...existingConfig,
+		};
+	}
+
+	const config: UserConfig<NamedAccounts, Data> = configFile
+		? {...configFile, chains: newChainConfigs}
+		: {chains: newChainConfigs};
+
+	return config;
 }
 
 export async function readAndResolveConfig<

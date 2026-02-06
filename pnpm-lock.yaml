@@ -76,43 +76,6 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
-  packages/rocketh-chains:
-    dependencies:
-      '@rocketh/core':
-        specifier: workspace:*
-        version: link:../rocketh-core
-      abitype:
-        specifier: ^1.2.3
-        version: 1.2.3(typescript@5.9.3)(zod@3.25.76)
-      change-case:
-        specifier: ^5.4.4
-        version: 5.4.4
-      eip-1193:
-        specifier: ^0.6.5
-        version: 0.6.5
-      named-logs:
-        specifier: ^0.4.1
-        version: 0.4.1
-      viem:
-        specifier: ^2.45.1
-        version: 2.45.1(typescript@5.9.3)(zod@3.25.76)
-    devDependencies:
-      '@rocketh/test-utils':
-        specifier: workspace:*
-        version: link:../rocketh-test-utils
-      as-soon:
-        specifier: ^0.1.5
-        version: 0.1.5
-      rimraf:
-        specifier: ^6.1.2
-        version: 6.1.2
-      typescript:
-        specifier: ^5.9.3
-        version: 5.9.3
-      vitest:
-        specifier: ^4.0.18
-        version: 4.0.18(@types/node@25.1.0)(tsx@4.21.0)(yaml@2.8.2)
-
   packages/rocketh-core:
     dependencies:
       abitype:
@@ -279,9 +242,6 @@ importers:
         specifier: ^0.4.1
         version: 0.4.1
     devDependencies:
-      '@rocketh/chains':
-        specifier: workspace:*
-        version: link:../rocketh-chains
       '@rocketh/node':
         specifier: workspace:*
         version: link:../rocketh-node

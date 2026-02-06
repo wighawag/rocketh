@@ -260,6 +260,10 @@ export type Chains = {
 	readonly [id: number]: ChainUserConfig;
 };
 
+export type Environments = {
+	readonly [name: string]: DeploymentEnvironmentConfig;
+};
+
 export type SignerProtocolFunction = (protocolString: string) => Promise<Signer>;
 export type SignerProtocol = {
 	getSigner: SignerProtocolFunction;
@@ -269,7 +273,7 @@ export type UserConfig<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 > = {
-	readonly environments?: {readonly [name: string]: DeploymentEnvironmentConfig};
+	readonly environments?: Environments;
 	readonly chains?: Chains;
 	readonly defaultChainProperties?: Record<string, JSONTypePlusBigInt>;
 	readonly deployments?: string;
