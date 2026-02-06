@@ -134,21 +134,36 @@ export async function getChainIdForEnvironment(
 ) {
 	const provider = executionParams.provider;
 
-	let chainId: number;
+	let chainId: number | undefined;
 
 	if (config?.environments?.[environmentName]?.chain) {
 		chainId = config.environments[environmentName].chain;
-	} else {
-		throw new Error(`environment ${environmentName} chain id cannot be found, specify it in the rocketh config`);
 	}
 
 	const chainIdFromProvider = provider ? Number(await provider.request({method: 'eth_chainId'})) : undefined;
-	if (chainIdFromProvider && chainIdFromProvider != chainId) {
+	if (chainId && chainIdFromProvider && chainIdFromProvider != chainId) {
 		console.warn(
 			`provider give a different chainId (${chainIdFromProvider}) than the one expected for environment named "${environmentName}" (${chainId})`,
 		);
 	}
-	return chainIdFromProvider || chainId;
+	const chainIdToReturn = chainIdFromProvider || chainId;
+
+	if (chainIdToReturn === undefined) {
+		throw new Error(
+			`Could not find chainId for environment named "${environmentName}" ${provider ? `` : '(no provider)'}`,
+		);
+	}
+
+	return chainIdToReturn;
+}
+
+export async function getChainIdForExecutionParams(
+	config: ResolvedUserConfig,
+	executionParams: ExecutionParams,
+): Promise<number> {
+	const {name: environmentName} = getEnvironmentName(executionParams);
+
+	return getChainIdForEnvironment(config, environmentName, executionParams);
 }
 
 export function getEnvironmentName(executionParams: ExecutionParams): {name: string; fork: boolean} {

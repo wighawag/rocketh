@@ -18,6 +18,8 @@ import {toJSONCompatibleLinkedData} from '@rocketh/core/json';
 
 const logger = logs('@rocketh/proxy');
 
+export type {Abi, AbiFunction, Artifact, DeploymentConstruction, Deployment, Environment};
+
 export type PredefinedProxyContract =
 	| 'ERC173Proxy'
 	| 'ERC173ProxyWithReceive'

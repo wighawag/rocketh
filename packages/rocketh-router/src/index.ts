@@ -1,5 +1,5 @@
 import {Abi} from 'abitype';
-import type {Artifact, DeploymentConstruction, Deployment, Environment, DevDoc, UserDoc} from '@rocketh/core/types';
+import type {Artifact, DeploymentConstruction, Deployment, Environment} from '@rocketh/core/types';
 import '@rocketh/deploy';
 import {mergeArtifacts} from '@rocketh/core/artifacts';
 import {DeployContractParameters} from 'viem';
@@ -8,6 +8,8 @@ import {Router10X60} from 'solidity-proxy/artifacts/index.js';
 import {deploy, DeployOptions, DeployResult} from '@rocketh/deploy';
 
 const logger = logs('@rocketh/router');
+
+export type {Abi, Artifact, DeploymentConstruction, Deployment, Environment};
 
 export type Route<TAbi extends Abi = Abi> = Omit<
 	DeployContractParameters<TAbi>,

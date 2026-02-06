@@ -135,10 +135,13 @@ export async function readConfig<
 		const existingConfig = configFile?.chains?.[chainId];
 		// TODO what do we do about further info?
 		//  for now, we just take the first one
-		const defaultConfig = chainById[chainId][0];
+		const defaultInfo = chainById[chainId][0];
 		newChainConfigs[chainId] = {
-			...defaultConfig,
 			...existingConfig,
+			info: {
+				...defaultInfo,
+				...existingConfig?.info,
+			},
 		};
 	}
 

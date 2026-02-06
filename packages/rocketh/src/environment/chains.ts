@@ -63,7 +63,7 @@ export function getChainConfigFromUserConfig(
 	const properties = chainConfig?.properties || config.defaultChainProperties || {};
 
 	if (!chainConfig?.info) {
-		console.error(`chain with id ${id} has no public info`);
+		console.error(`chain with id ${id} ${chainConfig ? 'has a chain config but' : ''} has no public info`);
 	}
 
 	const rpcUrl = chainConfig?.rpcUrl || chainConfig?.info?.rpcUrls.default.http[0];

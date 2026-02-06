@@ -22,6 +22,8 @@ export type {
 import {decodeFunctionResult, encodeFunctionData} from 'viem';
 import {logs} from 'named-logs';
 
+export type {Abi, Artifact, Environment, MinimalDeployment, PendingExecution};
+
 const logger = logs('@rocketh/read-execute');
 
 type TransactionData = Omit<TransactionRequestEIP1559, 'from' | 'nonce'> & {account: string};

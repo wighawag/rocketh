@@ -23,6 +23,8 @@ import {
 	zeroHash,
 } from 'viem';
 
+export type {Abi, Chain};
+
 const logger = logs('@rocketh/deploy');
 
 export type DeployResult<TAbi extends Abi> = Deployment<TAbi> & {newlyDeployed: boolean};

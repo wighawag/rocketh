@@ -17,6 +17,8 @@ import {toJSONCompatibleLinkedData} from '@rocketh/core/json';
 
 const logger = logs('@rocketh/diamond');
 
+export type {Abi, Artifact, Deployment, Environment};
+
 type OwnershipFacetABI = typeof artifactOwnershipFacet.abi;
 type DiamondLoupeABI = typeof artifactDiamondLoupeFact.abi;
 type DiamondCutABI = typeof artifactDiamondCutFact.abi;
