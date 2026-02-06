@@ -342,7 +342,7 @@ pnpm hardhat compile
 And finally we can deploy our contracts in a in-memory hardhat network using the following command:
 
 ```bash
-pnpm hardhat deploy
+pnpm hardhat --network default deploy
 ```
 
 ## License
