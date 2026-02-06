@@ -1,5 +1,16 @@
 # @rocketh/test-utils
 
+## 0.1.0
+
+### Minor Changes
+
+- inject default chains instead of getting it at runtime
+
+### Patch Changes
+
+- Updated dependencies
+  - @rocketh/core@0.18.0
+
 ## 0.0.10
 
 ### Patch Changes

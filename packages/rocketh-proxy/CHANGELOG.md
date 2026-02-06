@@ -1,5 +1,18 @@
 # @rocketh/proxy
 
+## 0.18.0
+
+### Minor Changes
+
+- inject default chains instead of getting it at runtime
+
+### Patch Changes
+
+- Updated dependencies
+  - @rocketh/core@0.18.0
+  - @rocketh/deploy@0.18.0
+  - @rocketh/read-execute@0.18.0
+
 ## 0.17.22
 
 ### Patch Changes

@@ -1,5 +1,17 @@
 # @rocketh/node
 
+## 0.18.0
+
+### Minor Changes
+
+- inject default chains instead of getting it at runtime
+
+### Patch Changes
+
+- Updated dependencies
+  - rocketh@0.18.0
+  - @rocketh/core@0.18.0
+
 ## 0.17.26
 
 ### Patch Changes

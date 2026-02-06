@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/export",
-	"version": "0.17.26",
+	"version": "0.18.0",
 	"description": "export deployments",
 	"keywords": [
 		"rocketh",

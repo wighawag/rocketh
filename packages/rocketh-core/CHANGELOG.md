@@ -1,5 +1,11 @@
 # @rocketh/core
 
+## 0.18.0
+
+### Minor Changes
+
+- inject default chains instead of getting it at runtime
+
 ## 0.17.17
 
 ### Patch Changes
