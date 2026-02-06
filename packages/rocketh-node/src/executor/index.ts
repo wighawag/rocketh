@@ -180,7 +180,7 @@ export async function loadAndExecuteDeploymentsFromFiles<
 ): Promise<Environment<NamedAccounts, Data, UnknownDeployments>> {
 	const userConfig = await readAndResolveConfig<NamedAccounts, Data>(executionParams.config);
 	const {name: environmentName, fork} = getEnvironmentName(executionParams);
-	const chainId = await getChainIdForEnvironment(userConfig, environmentName, executionParams.provider);
+	const chainId = await getChainIdForEnvironment(userConfig, environmentName, executionParams);
 	const resolvedExecutionParams = resolveExecutionParams(userConfig, executionParams, chainId);
 	// console.log(JSON.stringify(options, null, 2));
 	// console.log(JSON.stringify(resolvedConfig, null, 2));
@@ -201,7 +201,7 @@ export async function executeDeployScriptsFromFiles<
 	executionParams = executionParams || {};
 	const resolveduserConfig = resolveConfig<NamedAccounts, Data>(userConfig, executionParams.config);
 	const {name: environmentName, fork} = getEnvironmentName(executionParams);
-	const chainId = await getChainIdForEnvironment(resolveduserConfig, environmentName, executionParams.provider);
+	const chainId = await getChainIdForEnvironment(resolveduserConfig, environmentName, executionParams);
 	const resolvedExecutionParams = resolveExecutionParams(resolveduserConfig, executionParams, chainId);
 	return _executeDeployScriptsFromFiles<NamedAccounts, Data, ArgumentsType>(
 		resolveduserConfig,

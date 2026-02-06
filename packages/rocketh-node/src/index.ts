@@ -7,4 +7,4 @@ export {
 	loadDeploymentsFromFiles,
 } from './executor/index.js';
 
-export {setupDeployScripts, chainByCanonicalName} from 'rocketh';
+export {setupDeployScripts} from 'rocketh';

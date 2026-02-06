@@ -16,18 +16,16 @@ import type {
 	PromptExecutor,
 	DeploymentStore,
 	ModuleObject,
+	ChainInfo,
 } from '@rocketh/core/types';
 import {withEnvironment} from '@rocketh/core/environment';
-import {
-	getChainConfigFromUserConfigAndDefaultChainInfo,
-	getDefaultChainInfoByName,
-	getDefaultChainInfoFromChainId,
-} from '../environment/chains.js';
+
 import {JSONRPCHTTPProvider} from 'eip-1193-jsonrpc-provider';
 import {createEnvironment} from '../environment/index.js';
 import {getRoughGasPriceEstimate} from '../utils/eth.js';
 import {formatEther} from 'viem';
 import {logger, spin} from '../internal/logging.js';
+import {getChainConfigFromUserConfigAndDefaultChainInfo} from '../environment/chains.js';
 
 /**
  * Setup function that creates the execute function for deploy scripts. It allow to specify a set of functions that will be available in the environment.
@@ -132,8 +130,10 @@ export function resolveConfig<
 export async function getChainIdForEnvironment(
 	config: ResolvedUserConfig,
 	environmentName: string,
-	provider?: EIP1193ProviderWithoutEvents,
+	executionParams: ExecutionParams,
 ) {
+	const provider = executionParams.provider;
+	const defaultChains = executionParams.defaultChains;
 	let chainId: number;
 	const chainIdFromProvider = provider ? Number(await provider.request({method: 'eth_chainId'})) : undefined;
 	if (config?.environments?.[environmentName]?.chain) {
@@ -144,7 +144,7 @@ export async function getChainIdForEnvironment(
 		if (!isNaN(chainAsNumber)) {
 			chainId = chainAsNumber;
 		} else {
-			const chainFound = getDefaultChainInfoByName(config.environments[environmentName].chain as string);
+			const chainFound = defaultChains?.getDefaultChainInfoByName(config.environments[environmentName].chain as string);
 			if (chainFound) {
 				chainId = chainFound.id;
 			} else {
@@ -152,7 +152,7 @@ export async function getChainIdForEnvironment(
 			}
 		}
 	} else {
-		const chainFound = getDefaultChainInfoByName(environmentName);
+		const chainFound = defaultChains?.getDefaultChainInfoByName(environmentName);
 		if (chainFound) {
 			chainId = chainFound.id;
 		} else {
@@ -194,19 +194,22 @@ export function resolveExecutionParams<Extra extends Record<string, unknown> = R
 
 	// TODO fork chainId resolution option to keep the network being used
 	const idToFetch = fork ? 31337 : chainId;
-	let chainInfoFound = getDefaultChainInfoByName(environmentName);
-	if (!chainInfoFound) {
-		const result = getDefaultChainInfoFromChainId(idToFetch);
-		chainInfoFound = result.success ? result.chainInfo : undefined;
-		if (!result.success && result.error) {
-			// logger.warn(`could not find chainInfo by name = "${environmentName}"\n ${result.error}`);
-		}
+	const defaultChains = executionParameters.defaultChains;
+	let defaultChainInfo: ChainInfo | undefined;
+	if (defaultChains) {
+		let chainInfoFound = defaultChains.getDefaultChainInfoByName(environmentName);
 		if (!chainInfoFound) {
-			// console.log(`could not find chainInfo by chainId = "${idToFetch}"`);
+			const result = defaultChains.getDefaultChainInfoFromChainId(idToFetch);
+			chainInfoFound = result.success ? result.chainInfo : undefined;
+			if (!result.success && result.error) {
+				// logger.warn(`could not find chainInfo by name = "${environmentName}"\n ${result.error}`);
+			}
+			if (!chainInfoFound) {
+				// console.log(`could not find chainInfo by chainId = "${idToFetch}"`);
+			}
 		}
+		defaultChainInfo = chainInfoFound;
 	}
-
-	const defaultChainInfo = chainInfoFound;
 	const chainConfig = getChainConfigFromUserConfigAndDefaultChainInfo(config, {
 		id: idToFetch,
 		chainInfo: defaultChainInfo,
@@ -310,7 +313,7 @@ export async function loadEnvironment<
 ): Promise<Environment<NamedAccounts, Data, UnknownDeployments>> {
 	const userConfig = resolveConfig<NamedAccounts, Data>(config, executionParams.config);
 	const {name: environmentName, fork} = getEnvironmentName(executionParams);
-	const chainId = await getChainIdForEnvironment(userConfig, environmentName, executionParams.provider);
+	const chainId = await getChainIdForEnvironment(userConfig, environmentName, executionParams);
 	const resolvedExecutionParams = resolveExecutionParams(userConfig, executionParams, chainId);
 	// console.log(JSON.stringify(resolvedConfig, null, 2));
 	const {external, internal} = await createEnvironment<NamedAccounts, Data, UnknownDeployments>(
@@ -336,7 +339,7 @@ export function createExecutor(deploymentStore: DeploymentStore, promptExecutor:
 		executionParams = executionParams || {};
 		const resolveduserConfig = resolveConfig<NamedAccounts, Data>(userConfig, executionParams.config);
 		const {name: environmentName, fork} = getEnvironmentName(executionParams);
-		const chainId = await getChainIdForEnvironment(resolveduserConfig, environmentName, executionParams.provider);
+		const chainId = await getChainIdForEnvironment(resolveduserConfig, environmentName, executionParams);
 		const resolvedExecutionParams = resolveExecutionParams(resolveduserConfig, executionParams, chainId);
 		return executeDeployScriptModules<NamedAccounts, Data, ArgumentsType>(
 			moduleObjects,

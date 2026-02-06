@@ -4,13 +4,10 @@ import path from 'node:path';
 import {logs} from 'named-logs';
 
 import type {ChainInfo, Deployment, LinkedData, ResolvedUserConfig} from '@rocketh/core/types';
-import {
-	getChainConfigFromUserConfigAndDefaultChainInfo,
-	getDefaultChainInfoByName,
-	getDefaultChainInfoFromChainId,
-} from 'rocketh';
+import {getDefaultChainInfoByName, getDefaultChainInfoFromChainId} from '@rocketh/chains';
 import {loadDeploymentsFromFiles} from '@rocketh/node';
 import {bigIntToStringReplacer} from '@rocketh/core/json';
+import {getChainConfigFromUserConfigAndDefaultChainInfo} from 'rocketh';
 
 export const logger = logs('@rocketh/export');
 

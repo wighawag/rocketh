@@ -64,7 +64,7 @@ async function loadAndExecuteDeployments<
 ): Promise<Environment<NamedAccounts, Data, UnknownDeployments>> {
 	const userConfig = await resolveConfig<NamedAccounts, Data>(config, executionParams.config);
 	const {name: environmentName, fork} = getEnvironmentName(executionParams);
-	const chainId = await getChainIdForEnvironment(userConfig, environmentName, executionParams.provider);
+	const chainId = await getChainIdForEnvironment(userConfig, environmentName, executionParams);
 	const resolvedExecutionParams = resolveExecutionParams(userConfig, executionParams, chainId);
 	// console.log(JSON.stringify(options, null, 2));
 	// console.log(JSON.stringify(resolvedConfig, null, 2));

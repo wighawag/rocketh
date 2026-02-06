@@ -1,7 +1,7 @@
 {
-	"name": "@rocketh/export",
-	"version": "0.17.26",
-	"description": "export deployments",
+	"name": "@rocketh/chains",
+	"version": "0.17.0",
+	"description": "provide chains details",
 	"keywords": [
 		"rocketh",
 		"ethereum",
@@ -10,11 +10,11 @@
 	],
 	"author": "Ronan Sandford",
 	"license": "MIT",
-	"homepage": "https://github.com/wighawag/rocketh/blob/main/packages/rocketh-export/README.md",
+	"homepage": "https://github.com/wighawag/rocketh/blob/main/packages/rocketh-chains/README.md",
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/wighawag/rocketh.git",
-		"directory": "packages/rocketh-export"
+		"directory": "packages/rocketh-chains"
 	},
 	"bugs": {
 		"url": "https://github.com/wighawag/rocketh/issues"
@@ -34,39 +34,29 @@
 			}
 		}
 	},
-	"bin": {
-		"rocketh-export": "dist/cli.js"
-	},
 	"files": [
 		"dist",
 		"src"
 	],
 	"dependencies": {
 		"@rocketh/core": "workspace:*",
-		"@types/fs-extra": "^11.0.4",
 		"abitype": "^1.2.3",
-		"chalk": "5.6.2",
-		"commander": "^14.0.3",
+		"change-case": "^5.4.4",
 		"eip-1193": "^0.6.5",
-		"fs-extra": "^11.3.3",
-		"named-logs": "^0.4.1"
+		"named-logs": "^0.4.1",
+		"viem": "^2.45.1"
 	},
 	"devDependencies": {
-		"@rocketh/chains": "workspace:*",
-		"@rocketh/node": "workspace:*",
-		"@types/node": "^25.1.0",
+		"@rocketh/test-utils": "workspace:*",
 		"as-soon": "^0.1.5",
 		"rimraf": "^6.1.2",
-		"rocketh": "workspace:*",
-		"typescript": "^5.9.3"
-	},
-	"peerDependencies": {
-		"@rocketh/node": "workspace:*",
-		"rocketh": "workspace:*"
+		"typescript": "^5.9.3",
+		"vitest": "^4.0.18"
 	},
 	"scripts": {
 		"prepublishOnly": "cp ../../LICENSE LICENSE",
 		"build": "tsc --project tsconfig.json",
-		"dev": "as-soon -w src pnpm build"
+		"dev": "as-soon -w src pnpm build",
+		"test": "vitest"
 	}
 }

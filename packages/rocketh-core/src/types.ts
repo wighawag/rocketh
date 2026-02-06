@@ -293,6 +293,21 @@ export type ExecutionParams<Extra extends Record<string, unknown> = Record<strin
 	provider?: EIP1193ProviderWithoutEvents;
 	config?: ConfigOverrides;
 	autoImpersonate?: boolean;
+	defaultChains?: {
+		getDefaultChainInfoByName(name: string): ChainInfo | undefined;
+		getDefaultChainInfoFromChainId(
+			id: string | number,
+		): {success: true; chainInfo: ChainInfo} | {success: false; error?: string};
+		getChainConfigFromUserConfigAndDefaultChainInfo(
+			config: ResolvedUserConfig,
+			chainDetails: {
+				id: number;
+				chainInfo?: ChainInfo;
+				canonicalName?: string;
+				doNotRequireRpcURL?: boolean;
+			},
+		): ChainConfig;
+	};
 };
 
 export type {Abi, AbiConstructor, AbiError, AbiEvent, AbiFallback, AbiFunction, AbiReceive};
