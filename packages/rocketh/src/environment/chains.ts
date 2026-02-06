@@ -84,7 +84,7 @@ export function getChainConfigFromUserConfig(
 		chainType: 'default',
 	};
 
-	if (!rpcUrl && provider !== undefined) {
+	if (provider) {
 		return {
 			info: chainConfig?.info || defaultChainInfo,
 			deterministicDeployment,
