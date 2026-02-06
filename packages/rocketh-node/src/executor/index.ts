@@ -35,6 +35,7 @@ import {chainByCanonicalName, chainById} from '../environment/chains.js';
 
 const logger = logs('@rocketh/node');
 
+// used by users
 export function setupEnvironmentFromFiles<
 	Extensions extends Record<string, (env: Environment<any, any, any>) => any> = {},
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
@@ -55,6 +56,22 @@ export function setupEnvironmentFromFiles<
 		return enhanceEnvIfNeeded(env, extensions);
 	}
 
+	async function loadAndExecuteDeploymentsWithExtensionsWithConfig<
+		Extra extends Record<string, unknown> = Record<string, unknown>,
+		ArgumentsType = undefined,
+	>(
+		executionParams: ExecutionParams<Extra>,
+		config: UserConfig<NamedAccounts, Data>,
+		args?: ArgumentsType,
+	): Promise<EnhancedEnvironment<NamedAccounts, Data, UnknownDeployments, Extensions>> {
+		const env = await loadAndExecuteDeploymentsFromFilesWithSpecificConfig<NamedAccounts, Data, ArgumentsType, Extra>(
+			executionParams,
+			config,
+			args,
+		);
+		return enhanceEnvIfNeeded(env, extensions);
+	}
+
 	async function loadEnvironmentWithExtensions(
 		executionParams: ExecutionParams<Extra>,
 	): Promise<EnhancedEnvironment<NamedAccounts, Data, UnknownDeployments, Extensions>> {
@@ -62,9 +79,19 @@ export function setupEnvironmentFromFiles<
 		return enhanceEnvIfNeeded(env, extensions);
 	}
 
+	async function loadEnvironmentWithExtensionsWithConfig(
+		executionParams: ExecutionParams<Extra>,
+		config: UserConfig<NamedAccounts, Data>,
+	): Promise<EnhancedEnvironment<NamedAccounts, Data, UnknownDeployments, Extensions>> {
+		const env = await loadEnvironmentFromFilesWithSpecificConfig<NamedAccounts, Data, Extra>(executionParams, config);
+		return enhanceEnvIfNeeded(env, extensions);
+	}
+
 	return {
 		loadAndExecuteDeploymentsFromFiles: loadAndExecuteDeploymentsWithExtensions,
 		loadEnvironmentFromFiles: loadEnvironmentWithExtensions,
+		loadEnvironmentFromFilesWithConfig: loadEnvironmentWithExtensionsWithConfig,
+		loadAndExecuteDeploymentsFromFilesWithConfig: loadAndExecuteDeploymentsWithExtensionsWithConfig,
 	};
 }
 
@@ -72,7 +99,7 @@ type Mutable<T> = {
 	-readonly [K in keyof T]: T[K];
 };
 
-export async function readConfig<
+async function readConfig<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 >(): Promise<UserConfig<NamedAccounts, Data>> {
@@ -164,6 +191,7 @@ export async function readConfig<
 	return config;
 }
 
+// used by @rocketh/export, @rocketh/verifier, @rocketh/doc
 export async function readAndResolveConfig<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
@@ -186,6 +214,7 @@ const promptExecutor: PromptExecutor = {
 };
 const executor = createExecutor(deploymentStore, promptExecutor);
 
+// used by @rocketh/export, @rocketh/verifier, @rocketh/doc
 export function loadDeploymentsFromFiles(
 	deploymentsPath: string,
 	networkName: string,
@@ -200,15 +229,28 @@ export function loadDeploymentsFromFiles(
 	return loadDeployments(deploymentStore, deploymentsPath, networkName, onlyABIAndAddress, expectedChain);
 }
 
+// used by hardhat-deploy
 export async function loadEnvironmentFromFiles<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 	Extra extends Record<string, unknown> = Record<string, unknown>,
 >(executionParams: ExecutionParams<Extra>): Promise<Environment<NamedAccounts, Data, UnknownDeployments>> {
 	const config = await readConfig<NamedAccounts, Data>();
+	return loadEnvironmentFromFilesWithSpecificConfig(executionParams, config);
+}
+
+async function loadEnvironmentFromFilesWithSpecificConfig<
+	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
+	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
+	Extra extends Record<string, unknown> = Record<string, unknown>,
+>(
+	executionParams: ExecutionParams<Extra>,
+	config: UserConfig<NamedAccounts, Data>,
+): Promise<Environment<NamedAccounts, Data, UnknownDeployments>> {
 	return loadEnvironment(config, executionParams, deploymentStore);
 }
 
+// used by hardhat-deploy
 export async function loadAndExecuteDeploymentsFromFiles<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
@@ -218,7 +260,26 @@ export async function loadAndExecuteDeploymentsFromFiles<
 	executionParams: ExecutionParams<Extra>,
 	args?: ArgumentsType,
 ): Promise<Environment<NamedAccounts, Data, UnknownDeployments>> {
-	const userConfig = await readAndResolveConfig<NamedAccounts, Data>(executionParams.config);
+	const config = await readConfig<NamedAccounts, Data>();
+
+	return loadAndExecuteDeploymentsFromFilesWithSpecificConfig<NamedAccounts, Data, ArgumentsType, Extra>(
+		executionParams,
+		config,
+		args,
+	);
+}
+
+async function loadAndExecuteDeploymentsFromFilesWithSpecificConfig<
+	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
+	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
+	ArgumentsType = undefined,
+	Extra extends Record<string, unknown> = Record<string, unknown>,
+>(
+	executionParams: ExecutionParams<Extra>,
+	config: UserConfig<NamedAccounts, Data>,
+	args?: ArgumentsType,
+): Promise<Environment<NamedAccounts, Data, UnknownDeployments>> {
+	const userConfig = await resolveConfig<NamedAccounts, Data>(config, executionParams.config);
 	const {name: environmentName, fork} = getEnvironmentName(executionParams);
 	const chainId = await getChainIdForEnvironment(userConfig, environmentName, executionParams);
 	const resolvedExecutionParams = resolveExecutionParams(userConfig, executionParams, chainId);
@@ -228,7 +289,8 @@ export async function loadAndExecuteDeploymentsFromFiles<
 	return _executeDeployScriptsFromFiles<NamedAccounts, Data, ArgumentsType>(userConfig, resolvedExecutionParams, args);
 }
 
-export async function executeDeployScriptsFromFiles<
+// TODO: remove this function or export it in index.ts
+async function executeDeployScriptsFromFiles<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 	ArgumentsType = undefined,

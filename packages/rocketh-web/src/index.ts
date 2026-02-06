@@ -22,6 +22,8 @@ import {
 import {enhanceEnvIfNeeded} from '@rocketh/core/environment';
 import {createEmptyDeploymentStore} from './deployment-store.js';
 
+export type * from '@rocketh/core';
+
 const deploymentStore: DeploymentStore = createEmptyDeploymentStore();
 
 const promptExecutor: PromptExecutor = {

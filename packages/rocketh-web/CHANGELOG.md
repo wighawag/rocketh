@@ -1,5 +1,11 @@
 # @rocketh/web
 
+## 0.18.1
+
+### Patch Changes
+
+- @rocketh/node add option to pass config in
+
 ## 0.18.0
 
 ### Minor Changes
