@@ -473,13 +473,14 @@ export function deployViaProxy(
 						});
 					}
 				}
+				existingDeployment = await env.save<TAbi>(name, {
+					...proxyDeployment,
+					...artifactToUse,
+					abi: mergedABI as unknown as TAbi,
+					linkedData: toJSONCompatibleLinkedData(options?.linkedData),
+				});
+				logger.info(`saving as ${name}`);
 			}
-			existingDeployment = await env.save(name, {
-				...proxyDeployment,
-				...artifactToUse,
-				linkedData: toJSONCompatibleLinkedData(options?.linkedData),
-			});
-			logger.info(`saving as ${name}`);
 		}
 		return existingDeployment;
 	};

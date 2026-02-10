@@ -1,5 +1,11 @@
 # @rocketh/proxy
 
+## 0.18.2
+
+### Patch Changes
+
+- fix, it was resaving + removed abi
+
 ## 0.18.1
 
 ### Patch Changes
