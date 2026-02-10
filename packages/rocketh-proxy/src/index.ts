@@ -109,7 +109,7 @@ export function deployViaProxy(
 	) => {
 		let optionsForImplementation = options
 			? {
-					alwaysOverride: true,
+					alwaysOverride: false,
 					deterministic: options.deterministic || options.deterministicImplementation,
 					libraries: options.libraries,
 				}
