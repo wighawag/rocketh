@@ -1,5 +1,12 @@
 # @rocketh/test-utils
 
+## 0.1.2
+
+### Patch Changes
+
+- Updated dependencies
+  - @rocketh/core@0.18.2
+
 ## 0.1.1
 
 ### Patch Changes

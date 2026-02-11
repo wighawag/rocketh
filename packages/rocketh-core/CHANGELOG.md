@@ -1,5 +1,11 @@
 # @rocketh/core
 
+## 0.18.2
+
+### Patch Changes
+
+- fix package version
+
 ## 0.18.1
 
 ### Patch Changes
