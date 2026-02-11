@@ -1,5 +1,11 @@
 # @rocketh/core
 
+## 0.18.1
+
+### Patch Changes
+
+- revert mistake
+
 ## 0.18.0
 
 ### Minor Changes
