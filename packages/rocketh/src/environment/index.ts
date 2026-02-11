@@ -311,8 +311,16 @@ export async function createEnvironment<
 			}
 		} else {
 			// TODO allow for canonical chain name ?
-			const accountForNetwork = accountDef[environmentName] || accountDef[chainId] || accountDef['default'];
-			if (typeof accountForNetwork !== undefined) {
+			// Check for field existence using 'in' operator to support falsy values including explicit undefined
+			const accountForNetwork =
+				environmentName in accountDef
+					? accountDef[environmentName]
+					: chainId in accountDef
+						? accountDef[chainId]
+						: 'default' in accountDef
+							? accountDef['default']
+							: undefined;
+			if (accountForNetwork !== undefined) {
 				const accountFetched = await getAccount(name, accounts, accountForNetwork);
 				if (accountFetched) {
 					accountCache[name] = account = accountFetched;
@@ -342,7 +350,15 @@ export async function createEnvironment<
 
 	const resolvedData: ResolvedNetworkSpecificData<Data> = {} as ResolvedNetworkSpecificData<Data>;
 	async function getData<T = unknown>(name: string, dataDef: DataType<T>): Promise<T | undefined> {
-		const dataForNetwork = dataDef[environmentName] || dataDef[chainId] || dataDef['default'];
+		// Check for field existence using 'in' operator to support falsy values including explicit undefined
+		const dataForNetwork =
+			environmentName in dataDef
+				? dataDef[environmentName]
+				: chainId in dataDef
+					? dataDef[chainId]
+					: 'default' in dataDef
+						? dataDef['default']
+						: undefined;
 		return dataForNetwork;
 	}
 

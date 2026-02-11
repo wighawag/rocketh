@@ -1,6 +1,6 @@
 {
 	"name": "rocketh",
-	"version": "0.18.3",
+	"version": "0.18.4",
 	"description": "A framework-agnostic smart contract deployment system for Ethereum-compatible networks.",
 	"keywords": [
 		"rocketh",

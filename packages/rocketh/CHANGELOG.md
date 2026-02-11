@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.18.4
+
+### Patch Changes
+
+- fix(rocketh): use 'in' operator for field existence checks to support falsy values
+
 ## 0.18.3
 
 ### Patch Changes
