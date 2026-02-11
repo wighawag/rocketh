@@ -1,11 +1,5 @@
 # @rocketh/core
 
-## 0.18.1
-
-### Patch Changes
-
-- fix type for Data
-
 ## 0.18.0
 
 ### Minor Changes

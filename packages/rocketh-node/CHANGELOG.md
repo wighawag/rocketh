@@ -1,13 +1,5 @@
 # @rocketh/node
 
-## 0.18.3
-
-### Patch Changes
-
-- Updated dependencies
-  - @rocketh/core@0.18.1
-  - rocketh@0.18.2
-
 ## 0.18.2
 
 ### Patch Changes

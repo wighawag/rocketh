@@ -1,12 +1,5 @@
 # rocketh
 
-## 0.18.2
-
-### Patch Changes
-
-- Updated dependencies
-  - @rocketh/core@0.18.1
-
 ## 0.18.1
 
 ### Patch Changes

@@ -506,7 +506,9 @@ export type UnresolvedNetworkSpecificData = {
 	[name: string]: DataType<unknown>;
 };
 
-export type ResolvedNetworkSpecificData<T extends Record<string, Record<string, unknown>>> = T[keyof T];
+export type ResolvedNetworkSpecificData<T extends UnresolvedNetworkSpecificData> = {
+	[Property in keyof T]: T[Property] extends DataType<infer U> ? U : never;
+};
 
 export type Signer =
 	| {type: 'signerOnly'; signer: EIP1193SignerProvider}
