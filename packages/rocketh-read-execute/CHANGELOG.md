@@ -1,5 +1,11 @@
 # @rocketh/deploy
 
+## 0.18.3
+
+### Patch Changes
+
+- fix(read-execute): add missing block tag to eth_call
+
 ## 0.18.2
 
 ### Patch Changes
