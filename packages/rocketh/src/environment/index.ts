@@ -668,7 +668,7 @@ export async function createEnvironment<
 			if (latestBlockStr) {
 				const latestBlockNumber = Number(latestBlockStr);
 				const receiptBlockNumber = Number(receipt.blockNumber);
-				if (params.confirmations > latestBlockNumber - receiptBlockNumber) {
+				if (latestBlockNumber - receiptBlockNumber > params.confirmations - 1) {
 					confirmed = true;
 				}
 			}
