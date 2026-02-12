@@ -273,9 +273,9 @@ export function read(
 			functionName: viemArgs.functionName,
 			args: viemArgs.args,
 		} as any);
-		
+
 		const callObject: Record<string, string> = {
-  			to: deployment.address,
+			to: deployment.address,
 			data: calldata,
 		};
 		if (address) {
@@ -284,10 +284,7 @@ export function read(
 
 		const result: `0x${string}` = (await env.network.provider.request({
 			method: 'eth_call',
-			params: [
-				callObject,
-				'latest'
-			] as any,
+			params: [callObject, 'latest'] as any, // TODO fix eip-1193 package
 		})) as `0x${string}`;
 
 		const parsed = decodeFunctionResult<TAbi, TFunctionName>({
