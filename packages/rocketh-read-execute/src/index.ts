@@ -90,7 +90,7 @@ export type ExecutionArgs<
 		'nonpayable' | 'payable',
 		TFunctionName
 	>,
-> = Omit<WriteContractParameters<TAbi, TFunctionName, TArgs>, 'address' | 'abi' | 'account' | 'nonce' | 'chain'> & {
+> = Omit<WriteContractParameters<TAbi, TFunctionName, TArgs>, 'address' | 'abi' | 'account' | 'chain'> & {
 	account: string;
 	message?: string;
 };
@@ -103,7 +103,10 @@ export type ReadingArgs<
 		'pure' | 'view',
 		TFunctionName
 	>,
-> = Omit<ReadContractParameters<TAbi, TFunctionName, TArgs>, 'address' | 'abi' | 'account' | 'nonce'> & {
+> = Omit<
+	ReadContractParameters<TAbi, TFunctionName, TArgs>,
+	'address' | 'abi' | 'account' | 'blockOverrides' | 'factory' | 'factoryData' | 'stateOverride'
+> & {
 	account?: string;
 };
 
@@ -157,13 +160,12 @@ export function execute(
 			chainId: `0x${env.network.chain.id.toString(16)}` as `0x${string}`,
 			data: calldata,
 			gas: viemArgs.gas && (`0x${viemArgs.gas.toString(16)}` as `0x${string}`),
-			// gasPrice: viemArgs.gasPrice && `0x${viemArgs.gasPrice.toString(16)}` as `0x${string}`,
 			maxFeePerGas: viemArgs.maxFeePerGas ? (`0x${viemArgs.maxFeePerGas.toString(16)}` as `0x${string}`) : undefined,
 			maxPriorityFeePerGas: viemArgs.maxPriorityFeePerGas
 				? (`0x${viemArgs.maxPriorityFeePerGas.toString(16)}` as `0x${string}`)
 				: undefined,
-			accessList: viemArgs.accessList as any, // TODO
-			// nonce: viemArgs.nonce ? (`0x${viemArgs.nonce.toString(16)}` as `0x${string}`) : undefined,
+			accessList: viemArgs.accessList as any, // TODO type
+			nonce: viemArgs.nonce ? (`0x${viemArgs.nonce.toString(16)}` as `0x${string}`) : undefined,
 		};
 		if (viemArgs.value) {
 			txParam.value = `0x${viemArgs.value?.toString(16)}` as `0x${string}`;
@@ -274,17 +276,22 @@ export function read(
 			args: viemArgs.args,
 		} as any);
 
-		const callObject: Record<string, string> = {
+		const callObject: Record<string, any> = {
 			to: deployment.address,
 			data: calldata,
 		};
 		if (address) {
 			callObject.from = address;
 		}
+		if (viemArgs.authorizationList) {
+			callObject.authorizationList = viemArgs.authorizationList;
+		}
+
+		const blockNumberOrTag = viemArgs.blockNumber || viemArgs.blockTag || 'latest';
 
 		const result: `0x${string}` = (await env.network.provider.request({
 			method: 'eth_call',
-			params: [callObject, 'latest'] as any, // TODO fix eip-1193 package
+			params: [callObject, blockNumberOrTag] as any, // TODO fix eip-1193 package
 		})) as `0x${string}`;
 
 		const parsed = decodeFunctionResult<TAbi, TFunctionName>({

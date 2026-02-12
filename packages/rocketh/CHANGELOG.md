@@ -1,5 +1,13 @@
 # rocketh
 
+## 0.18.5
+
+### Patch Changes
+
+- add confirmationsRequired option
+- Updated dependencies
+  - @rocketh/core@0.18.3
+
 ## 0.18.4
 
 ### Patch Changes

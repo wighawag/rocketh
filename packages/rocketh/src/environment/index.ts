@@ -642,7 +642,7 @@ export async function createEnvironment<
 
 	async function waitForTransactionReceipt(params: {
 		hash: EIP1193DATA;
-		// confirmations?: number; // TODO
+		confirmations?: number;
 		// timeout?: number; // TODO
 	}): Promise<EIP1193TransactionReceipt> {
 		const {hash, pollingInterval} = {pollingInterval: resolvedExecutionParams.pollingInterval, ...params};
@@ -658,6 +658,24 @@ export async function createEnvironment<
 		if (!receipt || !receipt.blockHash) {
 			await wait(pollingInterval);
 			return waitForTransactionReceipt(params);
+		}
+
+		if (params.confirmations && params.confirmations > 1) {
+			let confirmed = false;
+			const latestBlockStr = await provider.request({
+				method: 'eth_blockNumber',
+			});
+			if (latestBlockStr) {
+				const latestBlockNumber = Number(latestBlockStr);
+				const receiptBlockNumber = Number(receipt.blockNumber);
+				if (params.confirmations > latestBlockNumber - receiptBlockNumber) {
+					confirmed = true;
+				}
+			}
+			if (!confirmed) {
+				await wait(pollingInterval);
+				return waitForTransactionReceipt(params);
+			}
 		}
 		return receipt;
 	}
@@ -707,6 +725,7 @@ export async function createEnvironment<
 		try {
 			receipt = await waitForTransactionReceipt({
 				hash,
+				confirmations: resolvedExecutionParams.environment.confirmationsRequired,
 			});
 		} catch (e) {
 			spinner.fail();

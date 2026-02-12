@@ -93,6 +93,7 @@ export function getChainConfigFromUserConfig(
 			provider,
 			tags: chainConfig?.tags || [...defaultTags],
 			autoImpersonate: chainConfig?.autoImpersonate || false,
+			confirmationsRequired: chainConfig?.confirmationsRequired,
 		};
 	} else if (rpcUrl) {
 		return {
@@ -103,6 +104,7 @@ export function getChainConfigFromUserConfig(
 			rpcUrl: rpcUrl,
 			tags: chainConfig?.tags || [...defaultTags],
 			autoImpersonate: chainConfig?.autoImpersonate || false,
+			confirmationsRequired: chainConfig?.confirmationsRequired,
 		};
 	} else {
 		throw new Error(`chain with id ${id} has no rpc url provided nor any provider to use`);

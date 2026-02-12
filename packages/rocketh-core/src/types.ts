@@ -232,6 +232,7 @@ export type ChainUserConfig = {
 	readonly pollingInterval?: number;
 	readonly properties?: Record<string, JSONTypePlusBigInt>;
 	readonly autoImpersonate?: boolean;
+	readonly confirmationsRequired?: number;
 };
 
 export type ChainConfig = {
@@ -241,6 +242,7 @@ export type ChainConfig = {
 	readonly pollingInterval: number;
 	readonly properties: Record<string, JSONTypePlusBigInt>;
 	readonly autoImpersonate: boolean;
+	readonly confirmationsRequired?: number;
 } & (
 	| {
 			readonly rpcUrl: string;
@@ -528,6 +530,7 @@ export type ResolvedExecutionParams<Extra extends Record<string, unknown> = Reco
 		readonly fork?: boolean;
 		readonly deterministicDeployment: DeterministicDeploymentInfo;
 		readonly autoImpersonate?: boolean;
+		readonly confirmationsRequired?: number;
 	};
 	readonly chain: ChainInfo;
 	readonly tags: readonly string[];

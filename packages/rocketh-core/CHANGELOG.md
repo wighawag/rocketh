@@ -1,5 +1,11 @@
 # @rocketh/core
 
+## 0.18.3
+
+### Patch Changes
+
+- add confirmationsRequired option
+
 ## 0.18.2
 
 ### Patch Changes

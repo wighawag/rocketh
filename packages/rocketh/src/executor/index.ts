@@ -268,6 +268,7 @@ export function resolveExecutionParams<Extra extends Record<string, unknown> = R
 			fork,
 			deterministicDeployment: actualChainConfig.deterministicDeployment,
 			autoImpersonate,
+			confirmationsRequired: actualChainConfig.confirmationsRequired,
 		},
 		extra: executionParameters.extra,
 		provider,
