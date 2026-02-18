@@ -462,7 +462,7 @@ export function diamond(
 					throw new Error('The Diamond belongs to no-one. It cannot be upgraded anymore');
 				}
 
-				const txHash = await _execute(proxy as unknown as Deployment<DiamondCutABI>, {
+				await _execute(proxy as unknown as Deployment<DiamondCutABI>, {
 					...params,
 					account: expectedOwner,
 					functionName: 'diamondCut',

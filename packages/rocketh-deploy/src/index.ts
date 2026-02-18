@@ -419,6 +419,7 @@ export function deploy(env: Environment): <TAbi extends Abi>(
 				message: `  - Deploying {name} ${
 					options?.deterministic ? '(deterministically)' : ''
 				} with tx:\n      {hash}\n      {transaction}`,
+				expectedAddress,
 			},
 		);
 
