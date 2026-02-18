@@ -93,6 +93,7 @@ export function getChainConfigFromUserConfig(
 			provider,
 			tags: chainConfig?.tags || [...defaultTags],
 			autoImpersonate: chainConfig?.autoImpersonate || false,
+			autoMine: chainConfig?.autoMine || false,
 			confirmationsRequired: chainConfig?.confirmationsRequired,
 		};
 	} else if (rpcUrl) {
@@ -104,6 +105,7 @@ export function getChainConfigFromUserConfig(
 			rpcUrl: rpcUrl,
 			tags: chainConfig?.tags || [...defaultTags],
 			autoImpersonate: chainConfig?.autoImpersonate || false,
+			autoMine: chainConfig?.autoMine || false,
 			confirmationsRequired: chainConfig?.confirmationsRequired,
 		};
 	} else {

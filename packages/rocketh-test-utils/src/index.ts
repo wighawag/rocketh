@@ -481,7 +481,6 @@ export function createMockEnvironment(options: MockEnvironmentOptions = {}): Moc
 		addressSigners,
 		tags: {
 			test: true,
-			'auto-mine': true,
 			...(options.tags || {}),
 		},
 		deployments: deployments as Environment['deployments'],

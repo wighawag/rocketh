@@ -233,6 +233,7 @@ export type ChainUserConfig = {
 	readonly pollingInterval?: number;
 	readonly properties?: Record<string, JSONTypePlusBigInt>;
 	readonly autoImpersonate?: boolean;
+	readonly autoMine?: boolean;
 	readonly confirmationsRequired?: number;
 };
 
@@ -243,6 +244,7 @@ export type ChainConfig = {
 	readonly pollingInterval: number;
 	readonly properties: Record<string, JSONTypePlusBigInt>;
 	readonly autoImpersonate: boolean;
+	readonly autoMine: boolean;
 	readonly confirmationsRequired?: number;
 } & (
 	| {
@@ -307,6 +309,7 @@ export type ExecutionParams<Extra extends Record<string, unknown> = Record<strin
 	provider?: EIP1193ProviderWithoutEvents;
 	config?: ConfigOverrides;
 	autoImpersonate?: boolean;
+	autoMine?: boolean;
 };
 
 export type {Abi, AbiConstructor, AbiError, AbiEvent, AbiFallback, AbiFunction, AbiReceive};
@@ -532,6 +535,7 @@ export type ResolvedExecutionParams<Extra extends Record<string, unknown> = Reco
 		readonly deterministicDeployment: DeterministicDeploymentInfo;
 		readonly autoImpersonate?: boolean;
 		readonly confirmationsRequired?: number;
+		readonly autoMine: boolean;
 	};
 	readonly chain: ChainInfo;
 	readonly tags: readonly string[];
@@ -557,6 +561,7 @@ export interface Environment<
 	readonly name: string;
 	readonly context: {
 		readonly saveDeployments: boolean;
+		readonly autoMine: boolean;
 	};
 	readonly tags: {readonly [tag: string]: boolean};
 	readonly network: {

@@ -380,6 +380,7 @@ export async function createEnvironment<
 		fork: resolvedExecutionParams.environment.fork,
 		saveDeployments,
 		tags: networkTags,
+		autoMine: resolvedExecutionParams.environment.autoMine,
 	};
 
 	const {deployments, migrations} = await loadDeployments(
@@ -436,6 +437,7 @@ export async function createEnvironment<
 	const perliminaryEnvironment = {
 		context: {
 			saveDeployments: context.saveDeployments,
+			autoMine: context.autoMine,
 		},
 		name: environmentName,
 		tags: context.tags,
@@ -837,8 +839,7 @@ export async function createEnvironment<
 				method: 'eth_sendRawTransaction',
 				params: [transaction.raw],
 			});
-			// TODO use config
-			if (env.tags['auto-mine']) {
+			if (env.context.autoMine) {
 				await (env.network.provider as any).request({method: 'evm_mine', params: []});
 			}
 			return txHash;

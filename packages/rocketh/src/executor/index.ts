@@ -254,6 +254,14 @@ export function resolveExecutionParams<Extra extends Record<string, unknown> = R
 		autoImpersonate = actualChainConfig.autoImpersonate;
 	}
 
+	let autoMine = executionParameters.autoMine;
+	if (autoMine === undefined && actualChainConfig.autoMine !== undefined) {
+		autoMine = actualChainConfig.autoMine;
+	}
+	if (autoMine === undefined) {
+		autoMine = false;
+	}
+
 	return {
 		askBeforeProceeding: executionParameters.askBeforeProceeding || false,
 		chain: chainInfo,
@@ -268,6 +276,7 @@ export function resolveExecutionParams<Extra extends Record<string, unknown> = R
 			deterministicDeployment: actualChainConfig.deterministicDeployment,
 			autoImpersonate,
 			confirmationsRequired: actualChainConfig.confirmationsRequired,
+			autoMine,
 		},
 		extra: executionParameters.extra,
 		provider,
