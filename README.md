@@ -114,7 +114,7 @@ Just create a new `package.json` file with the following content:
 ### install dependencies
 
 ```bash
-pnpm add -D hardhat @types/node typescript forge-std@github:foundry-rs/forge-std#v1.9.4 hardhat-deploy@next rocketh @rocketh/node @rocketh/deploy @rocketh/read-execute
+pnpm add -D hardhat @types/node typescript forge-std@github:foundry-rs/forge-std#v1.9.4 hardhat-deploy rocketh @rocketh/node @rocketh/deploy @rocketh/read-execute
 ```
 
 ### create a new solidity file
