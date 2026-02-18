@@ -511,15 +511,17 @@ Do you want to proceed (note that gas price can change for each tx)`,
 			const transactionHashes = provider.transactionHashes;
 
 			let totalGasUsed = 0;
+			let totalPrice = 0n;
 			for (const hash of transactionHashes) {
 				const transactionReceipt = await provider.request({method: 'eth_getTransactionReceipt', params: [hash]});
 				if (transactionReceipt) {
 					const gasUsed = Number(transactionReceipt.gasUsed);
 					totalGasUsed += gasUsed;
+					totalPrice += BigInt(transactionReceipt.effectiveGasPrice);
 				}
 			}
 
-			console.log({totalGasUsed});
+			console.log({totalGasUsed, totalPrice: formatEther(totalPrice)});
 		}
 
 		return external;
