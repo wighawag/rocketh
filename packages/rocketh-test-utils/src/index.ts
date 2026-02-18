@@ -5,7 +5,14 @@
  * and artifacts for testing deployment scenarios.
  */
 
-import type {Abi, Artifact, Environment, Deployment, PartialDeployment, TransactionToBroadcast} from '@rocketh/core/types';
+import type {
+	Abi,
+	Artifact,
+	Environment,
+	Deployment,
+	PartialDeployment,
+	TransactionToBroadcast,
+} from '@rocketh/core/types';
 import type {EIP1193Provider, EIP1193TransactionReceipt} from 'eip-1193';
 
 // ============================================================================
@@ -555,11 +562,12 @@ export function createMockEnvironment(options: MockEnvironmentOptions = {}): Moc
 				params: transaction.type === 'raw' ? [transaction.raw] : [transaction.data],
 			});
 			// Get receipt
-			const receipt = await (provider.request as (args: {method: string; params?: unknown[]}) => Promise<unknown>)({
+			const receipt = (await (provider.request as (args: {method: string; params?: unknown[]}) => Promise<unknown>)({
 				method: 'eth_getTransactionReceipt',
 				params: [txHash],
-			}) as EIP1193TransactionReceipt;
-			const address = _options?.expectedAddress || receipt.contractAddress || (('0x' + '2'.repeat(40)) as `0x${string}`);
+			})) as EIP1193TransactionReceipt;
+			const address =
+				_options?.expectedAddress || receipt.contractAddress || (('0x' + '2'.repeat(40)) as `0x${string}`);
 			const deployment: Deployment<TAbi> = {
 				address,
 				abi: partialDeployment.abi,
