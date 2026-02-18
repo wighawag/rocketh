@@ -853,32 +853,32 @@ export async function createEnvironment<
 			}
 
 			if (signer.type === 'wallet' || signer.type === 'remote') {
-				const tx = await signer.signer.request({
+				const txHash = await signer.signer.request({
 					method: 'eth_sendTransaction',
 					params: [transactionData],
 				});
 
-				if (env.tags['auto-mine']) {
+				if (env.context.autoMine) {
 					await (env.network.provider as any).request({method: 'evm_mine', params: []});
 				}
 
-				return tx;
+				return txHash;
 			} else {
 				const rawTx = await signer.signer.request({
 					method: 'eth_signTransaction',
 					params: [transactionData],
 				});
 
-				const tx = await env.network.provider.request({
+				const txHash = await env.network.provider.request({
 					method: 'eth_sendRawTransaction',
 					params: [rawTx],
 				});
 
-				if (env.tags['auto-mine']) {
+				if (env.context.autoMine) {
 					await (env.network.provider as any).request({method: 'evm_mine', params: []});
 				}
 
-				return tx;
+				return txHash;
 			}
 		}
 	}
