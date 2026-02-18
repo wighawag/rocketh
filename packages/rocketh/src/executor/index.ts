@@ -512,16 +512,22 @@ Do you want to proceed (note that gas price can change for each tx)`,
 
 			let totalGasUsed = 0;
 			let totalPrice = 0n;
+			let prices: bigint[] = [];
 			for (const hash of transactionHashes) {
 				const transactionReceipt = await provider.request({method: 'eth_getTransactionReceipt', params: [hash]});
 				if (transactionReceipt) {
 					const gasUsed = Number(transactionReceipt.gasUsed);
 					totalGasUsed += gasUsed;
-					totalPrice += BigInt(transactionReceipt.effectiveGasPrice);
+					const gasPrice = BigInt(transactionReceipt.effectiveGasPrice);
+					totalPrice += gasPrice * BigInt(gasUsed);
+					prices.push(gasPrice);
 				}
 			}
 
-			console.log({totalGasUsed, totalPrice: formatEther(totalPrice)});
+			const averageGasPrice =
+				prices.length > 0 ? prices.reduce((sum, price) => sum + price, 0n) / BigInt(prices.length) : 0n;
+
+			console.log({totalGasUsed, totalPrice: formatEther(totalPrice), averageGasPrice: formatEther(averageGasPrice)});
 		}
 
 		return external;

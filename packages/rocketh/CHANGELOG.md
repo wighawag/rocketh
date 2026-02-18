@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.19.3
+
+### Patch Changes
+
+- fix gas price report
+
 ## 0.19.2
 
 ### Patch Changes
