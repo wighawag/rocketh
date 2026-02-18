@@ -11,88 +11,10 @@
  */
 
 import {describe, it, expect, vi} from 'vitest';
-import {resolveAccount, resolveAccountOrUndefined} from '../src/account.js';
 import {mergeABIs, mergeArtifacts} from '../src/artifacts.js';
 import type {Environment, Deployment} from '../src/types.js';
 
 describe('@rocketh/core - Environment Integration Tests', () => {
-	describe('Account Resolution in Context', () => {
-		it('should demonstrate account resolution in deployment workflow', async () => {
-			/**
-			 * Example: Using account resolution in a deployment workflow
-			 *
-			 * This demonstrates how named accounts are used in practice
-			 * when deploying contracts. The environment provides a mapping
-			 * of account names to addresses, which allows you to write
-			 * deployment scripts that work across different networks.
-			 *
-			 * Usage in real scenario:
-			 * ```typescript
-			 * const env = {
-			 *   namedAccounts: {
-			 *     deployer: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266' as any,
-			 *     alice: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8' as any,
-			 *     bob: '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC' as any,
-			 *   },
-			 *   // ... other env properties
-			 * };
-			 *
-			 * const deployerAddress = resolveAccount('deployer', env);
-			 * const aliceAddress = resolveAccount('alice', env);
-			 * ```
-			 */
-			const env: Pick<Environment, 'namedAccounts'> = {
-				namedAccounts: {
-					deployer: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266' as any,
-					alice: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8' as any,
-					bob: '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC' as any,
-				},
-			};
-
-			const deployerAddress = resolveAccount('deployer', env);
-			const aliceAddress = resolveAccount('alice', env);
-			const bobAddress = resolveAccount('bob', env);
-
-			expect(deployerAddress).toBe('0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266');
-			expect(aliceAddress).toBe('0x70997970c51812dc3a010c7d01b50e0d17dc79c8');
-			expect(bobAddress).toBe('0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc');
-		});
-
-		it('should demonstrate mixing named accounts and hex addresses', async () => {
-			/**
-			 * Example: Mixing named accounts and hex addresses
-			 *
-			 * In practice, you might mix named accounts and direct
-			 * hex addresses in your deployment scripts. The resolution
-			 * system handles both seamlessly.
-			 *
-			 * Usage in real scenario:
-			 * ```typescript
-			 * // Named account
-			 * const deployer = resolveAccount('deployer', env);
-			 *
-			 * // Direct hex address
-			 * const direct = resolveAccount(
-			 *   '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266' as any,
-			 *   env
-			 * );
-			 * ```
-			 */
-			const env: Pick<Environment, 'namedAccounts'> = {
-				namedAccounts: {
-					deployer: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266' as any,
-				},
-			};
-
-			const named = resolveAccount('deployer', env);
-			const hexAddress = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266' as any;
-			const hex = resolveAccount(hexAddress, env);
-
-			expect(named).toBe('0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266'.toLowerCase());
-			expect(hex).toBe(hexAddress.toLowerCase());
-		});
-	});
-
 	describe('Environment Setup', () => {
 		describe('ABI Merging in Context', () => {
 			it('should demonstrate merging ABIs for proxy deployment', async () => {
@@ -272,43 +194,6 @@ describe('@rocketh/core - Environment Integration Tests', () => {
 				 * ```
 				 */
 				// TODO
-			});
-		});
-
-		describe('Account Resolution Edge Cases', () => {
-			it('should demonstrate handling missing named accounts gracefully', async () => {
-				/**
-				 * Example: Graceful handling of missing named accounts
-				 *
-				 * Use resolveAccountOrUndefined when you want to check
-				 * if an account exists without throwing an error.
-				 *
-				 * Usage in real scenario:
-				 * ```typescript
-				 * const env = {
-				 *   namedAccounts: {
-				 *     deployer: '0x...' as any,
-				 *   },
-				 * };
-				 *
-				 * // resolveAccount throws for missing accounts
-				 * expect(() => resolveAccount('nonexistent', env)).toThrow();
-				 *
-				 * // resolveAccountOrUndefined returns undefined
-				 * const result = resolveAccountOrUndefined('nonexistent', env);
-				 * expect(result).toBe(undefined);
-				 * ```
-				 */
-				const env: Pick<Environment, 'namedAccounts'> = {
-					namedAccounts: {
-						deployer: ('0x' + '0'.repeat(40)) as any,
-					},
-				};
-
-				expect(() => resolveAccount('nonexistent', env)).toThrow('no address');
-
-				const result = resolveAccountOrUndefined('nonexistent', env);
-				expect(result).toBe(undefined);
 			});
 		});
 	});

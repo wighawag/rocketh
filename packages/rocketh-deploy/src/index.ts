@@ -1,4 +1,4 @@
-import {toJSONCompatibleLinkedData, resolveAccount} from '@rocketh/core';
+import {toJSONCompatibleLinkedData} from '@rocketh/core';
 import {Abi} from 'abitype';
 import {EIP1193TransactionData} from 'eip-1193';
 import {logs} from 'named-logs';
@@ -7,7 +7,6 @@ import type {
 	Deployment,
 	Environment,
 	PartialDeployment,
-	PendingDeployment,
 	Signer,
 	LinkedDataProvided,
 } from '@rocketh/core/types';
@@ -53,41 +52,6 @@ export type DeployOptions = {
 			alwaysOverride?: boolean;
 	  }
 );
-
-async function broadcastTransaction(
-	env: Environment,
-	signer: Signer,
-	params: [EIP1193TransactionData],
-): Promise<`0x${string}`> {
-	if (signer.type === 'wallet' || signer.type === 'remote') {
-		const tx = await signer.signer.request({
-			method: 'eth_sendTransaction',
-			params: params as any, // TODO fix eip-1193 ?,
-		});
-
-		if (env.tags['auto-mine']) {
-			await (env.network.provider as any).request({method: 'evm_mine', params: []});
-		}
-
-		return tx;
-	} else {
-		const rawTx = await signer.signer.request({
-			method: 'eth_signTransaction',
-			params,
-		});
-
-		const tx = await env.network.provider.request({
-			method: 'eth_sendRawTransaction',
-			params: [rawTx],
-		});
-
-		if (env.tags['auto-mine']) {
-			await (env.network.provider as any).request({method: 'evm_mine', params: []});
-		}
-
-		return tx;
-	}
-}
 
 function linkRawLibrary(bytecode: string, libraryName: string, libraryAddress: string): string {
 	const address = libraryAddress.replace('0x', '');
@@ -184,40 +148,29 @@ async function getCreate2Factory(env: Environment, signer: Signer, params: Facto
 		if (balance < funding) {
 			const need = funding - balance;
 			const balanceToSend = `0x${need.toString(16)}` as `0x${string}`;
-			const txHash = await broadcastTransaction(env, signer, [
+			await env.broadcastExecution(
 				{
-					type: '0x2',
-					chainId: params.chainId,
-					from: params.address,
-					to: factoryDeployerAddress,
-					value: balanceToSend,
-					gas: `0x${BigInt(21000).toString(16)}`,
-					maxFeePerGas: params.maxFeePerGas,
-					maxPriorityFeePerGas: params.maxPriorityFeePerGas,
+					type: 'object',
+					data: {
+						type: '0x2',
+						chainId: params.chainId,
+						from: params.address,
+						to: factoryDeployerAddress,
+						value: balanceToSend,
+						gas: `0x${BigInt(21000).toString(16)}`,
+						maxFeePerGas: params.maxFeePerGas,
+						maxPriorityFeePerGas: params.maxPriorityFeePerGas,
+					},
 				},
-			]);
-			await env.savePendingExecution(
 				{
-					type: 'execution', // TODO different type ?
-					transaction: {hash: txHash, origin: params.address},
+					message: `  - Broadcasting Create 2 Factory Funding tx:\n      {hash}\n      {transaction}`,
 				},
-				`  - Broadcasting Create 2 Factory Funding tx:\n      {hash}\n      {transaction}`,
 			);
 		}
 
-		const txHash = await env.network.provider.request({
-			method: 'eth_sendRawTransaction',
-			params: [factoryDeploymentData],
-		});
-		if (env.tags['auto-mine']) {
-			await (env.network.provider as any).request({method: 'evm_mine', params: []});
-		}
-		await env.savePendingExecution(
-			{
-				type: 'execution', // TODO different type ?
-				transaction: {hash: txHash, origin: params.address},
-			},
-			`  - Deploying Create 2 Factory:\n      {hash}\n      {transaction}`,
+		await env.broadcastExecution(
+			{type: 'raw', from: factoryDeployerAddress, raw: factoryDeploymentData},
+			{message: `  - Deploying Create 2 Factory:\n      {hash}\n      {transaction}`},
 		);
 	}
 
@@ -253,23 +206,20 @@ async function getCreate3Factory(env: Environment, signer: Signer, params: Facto
 		if (expectedAddress.toLowerCase() !== factoryAddress.toLowerCase())
 			throw new Error(`create3 factory at ${factoryAddress} is not the expected address ${expectedAddress}`);
 
-		const txHash = await broadcastTransaction(env, signer, [
+		await env.broadcastExecution(
 			{
-				type: '0x2',
-				chainId: params.chainId,
-				from: params.address,
-				to: create2.factoryAddress,
-				data: create2.encodeData({salt, bytecode: factoryBytecode}),
-				maxFeePerGas: params.maxFeePerGas,
-				maxPriorityFeePerGas: params.maxPriorityFeePerGas,
+				type: 'object',
+				data: {
+					type: '0x2',
+					chainId: params.chainId,
+					from: params.address,
+					to: create2.factoryAddress,
+					data: create2.encodeData({salt, bytecode: factoryBytecode}),
+					maxFeePerGas: params.maxFeePerGas,
+					maxPriorityFeePerGas: params.maxPriorityFeePerGas,
+				},
 			},
-		]);
-		await env.savePendingExecution(
-			{
-				type: 'execution', // TODO different type ?
-				transaction: {hash: txHash, origin: params.address},
-			},
-			`  - Deploying Create 3 Factory:\n      {hash}\n      {transaction}`,
+			{message: `  - Deploying Create 3 Factory:\n      {hash}\n      {transaction}`},
 		);
 	}
 
@@ -326,7 +276,7 @@ export function deploy(env: Environment): <TAbi extends Abi>(
 		}
 
 		const {account, artifact, ...viemArgs} = args;
-		const address = resolveAccount(account, env);
+		const address = env.resolveAccount(account);
 
 		// TODO throw specific error if artifact not found
 		const artifactToUse = artifact;
@@ -389,20 +339,18 @@ export function deploy(env: Environment): <TAbi extends Abi>(
 		const maxPriorityFeePerGas =
 			viemArgs.maxPriorityFeePerGas && (`0x${viemArgs.maxPriorityFeePerGas.toString(16)}` as `0x${string}`);
 
-		const params: [EIP1193TransactionData] = [
-			{
-				type: '0x2',
-				from: address,
-				chainId,
-				data: calldata,
-				gas: viemArgs.gas && (`0x${viemArgs.gas.toString(16)}` as `0x${string}`),
-				maxFeePerGas,
-				maxPriorityFeePerGas,
-				// gasPrice: viemArgs.gasPrice && `0x${viemArgs.gasPrice.toString(16)}` as `0x${string}`,
-				// value: `0x${viemArgs.value?.toString(16)}` as `0x${string}`,
-				// nonce: viemArgs.nonce && (`0x${viemArgs.nonce.toString(16)}` as `0x${string}`),
-			},
-		];
+		const transactionData: EIP1193TransactionData = {
+			type: '0x2',
+			from: address,
+			chainId,
+			data: calldata,
+			gas: viemArgs.gas && (`0x${viemArgs.gas.toString(16)}` as `0x${string}`),
+			maxFeePerGas,
+			maxPriorityFeePerGas,
+			// gasPrice: viemArgs.gasPrice && `0x${viemArgs.gasPrice.toString(16)}` as `0x${string}`,
+			// value: `0x${viemArgs.value?.toString(16)}` as `0x${string}`,
+			// nonce: viemArgs.nonce && (`0x${viemArgs.nonce.toString(16)}` as `0x${string}`),
+		};
 
 		let expectedAddress: `0x${string}` | undefined = undefined;
 		if (options?.deterministic) {
@@ -418,7 +366,7 @@ export function deploy(env: Environment): <TAbi extends Abi>(
 				throw new Error(`unknown deterministic type: ${options.deterministic.type}`);
 			})();
 
-			const bytecode = params[0].data || '0x';
+			const bytecode = transactionData.data || '0x';
 
 			const factoryParams = {chainId, address, maxFeePerGas, maxPriorityFeePerGas};
 			const create =
@@ -456,26 +404,24 @@ export function deploy(env: Environment): <TAbi extends Abi>(
 				}
 			}
 
-			params[0].data = create.encodeData({salt, bytecode});
-			params[0].to = create.factoryAddress;
+			transactionData.data = create.encodeData({salt, bytecode});
+			transactionData.to = create.factoryAddress;
 		}
 
-		const txHash = await broadcastTransaction(env, signer, params);
-
-		const pendingDeployment: PendingDeployment<TAbi> = {
-			type: 'deployment',
-			expectedAddress,
-			partialDeployment,
-			transaction: {hash: txHash, origin: address},
+		const deployment = await env.broadcastDeployment(
 			name,
-			// TODO we should have the nonce, except for wallet like metamask where it is not sure you get the nonce you start with
-		};
-		const deployment = await env.savePendingDeployment(
-			pendingDeployment,
-			`  - Deploying {name} ${
-				options?.deterministic ? '(deterministically)' : ''
-			} with tx:\n      {hash}\n      {transaction}`,
+			{
+				type: 'object',
+				data: transactionData,
+			},
+			partialDeployment,
+			{
+				message: `  - Deploying {name} ${
+					options?.deterministic ? '(deterministically)' : ''
+				} with tx:\n      {hash}\n      {transaction}`,
+			},
 		);
+
 		return {...(deployment as Deployment<TAbi>), newlyDeployed: true};
 	};
 }

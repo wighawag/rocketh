@@ -22,8 +22,7 @@ import {withEnvironment} from '@rocketh/core/environment';
 
 import {JSONRPCHTTPProvider} from 'eip-1193-jsonrpc-provider';
 import {createEnvironment} from '../environment/index.js';
-import {getRoughGasPriceEstimate} from '../utils/eth.js';
-import {formatEther} from 'viem';
+import {formatEther, getRoughGasPriceEstimate} from '../utils/eth.js';
 import {logger, spin} from '../internal/logging.js';
 import {getChainConfigFromUserConfig} from '../environment/chains.js';
 

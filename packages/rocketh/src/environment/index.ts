@@ -19,6 +19,8 @@ import type {
 	PendingExecution,
 	DeploymentStore,
 	ProgressIndicator,
+	PartialDeployment,
+	TransactionToBroadcast,
 } from '@rocketh/core/types';
 import {Abi, Address} from 'abitype';
 import {InternalEnvironment} from '../internal/types.js';
@@ -30,6 +32,7 @@ import {
 	EIP1193DATA,
 	EIP1193ProviderWithoutEvents,
 	EIP1193Transaction,
+	EIP1193TransactionData,
 	EIP1193TransactionReceipt,
 } from 'eip-1193';
 import {logger, spin} from '../internal/logging.js';
@@ -828,7 +831,78 @@ export async function createEnvironment<
 		}
 	}
 
-	async function savePendingExecution(pendingExecution: PendingExecution, msg?: string) {
+	async function broadcastTransaction(transaction: TransactionToBroadcast): Promise<`0x${string}`> {
+		if (transaction.type === 'raw') {
+			const txHash = await env.network.provider.request({
+				method: 'eth_sendRawTransaction',
+				params: [transaction.raw],
+			});
+			// TODO use config
+			if (env.tags['auto-mine']) {
+				await (env.network.provider as any).request({method: 'evm_mine', params: []});
+			}
+			return txHash;
+		} else {
+			const transactionData = transaction.data;
+			const from = transactionData.from.toLowerCase() as `0x${string}`;
+			const signer = env.addressSigners[from];
+
+			if (!signer) {
+				throw new Error(`cannot get signer for ${from}`);
+			}
+
+			if (signer.type === 'wallet' || signer.type === 'remote') {
+				const tx = await signer.signer.request({
+					method: 'eth_sendTransaction',
+					params: [transactionData],
+				});
+
+				if (env.tags['auto-mine']) {
+					await (env.network.provider as any).request({method: 'evm_mine', params: []});
+				}
+
+				return tx;
+			} else {
+				const rawTx = await signer.signer.request({
+					method: 'eth_signTransaction',
+					params: [transactionData],
+				});
+
+				const tx = await env.network.provider.request({
+					method: 'eth_sendRawTransaction',
+					params: [rawTx],
+				});
+
+				if (env.tags['auto-mine']) {
+					await (env.network.provider as any).request({method: 'evm_mine', params: []});
+				}
+
+				return tx;
+			}
+		}
+	}
+
+	async function broadcastExecution(
+		transaction: TransactionToBroadcast,
+		options?: {message?: string},
+	): Promise<EIP1193TransactionReceipt> {
+		const txHash = await broadcastTransaction(transaction);
+
+		const from = transaction.type == 'raw' ? transaction.from : transaction.data.from;
+
+		const pendingExecution: PendingExecution = {
+			type: 'execution',
+			transaction: {hash: txHash, origin: from.toLowerCase() as `0x${string}`},
+			// description, // TODO
+			// TODO we should have the nonce, except for wallet like metamask where it is not sure you get the nonce you start with
+		};
+		return savePendingExecution(pendingExecution, options?.message);
+	}
+
+	async function savePendingExecution(
+		pendingExecution: PendingExecution,
+		msg?: string,
+	): Promise<EIP1193TransactionReceipt> {
 		await savePendingTransaction(pendingExecution);
 		let transaction: EIP1193Transaction | null = null;
 		const spinner = spin(); // TODO spin(`fetching tx from peers ${pendingDeployment.txHash}`);
@@ -850,7 +924,7 @@ export async function createEnvironment<
 
 		if (transaction) {
 			pendingExecution.transaction.nonce = transaction.nonce;
-			pendingExecution.transaction.origin = transaction.from;
+			pendingExecution.transaction.origin = transaction.from.toLowerCase() as `0x${string}`;
 		}
 
 		const receipt = await waitForTransaction(pendingExecution.transaction.hash, {transaction, message: msg});
@@ -859,10 +933,31 @@ export async function createEnvironment<
 		return receipt;
 	}
 
+	async function broadcastDeployment<TAbi extends Abi = Abi>(
+		name: string,
+		transaction: TransactionToBroadcast,
+		partialDeployment: PartialDeployment<TAbi>,
+		options?: {message?: string; expectedAddress?: `0x${string}`},
+	): Promise<Deployment<TAbi>> {
+		const txHash = await broadcastTransaction(transaction);
+
+		const from = transaction.type == 'raw' ? transaction.from : transaction.data.from;
+
+		const pendingDeployment: PendingDeployment<TAbi> = {
+			name,
+			type: 'deployment',
+			expectedAddress: options?.expectedAddress,
+			partialDeployment,
+			transaction: {hash: txHash, origin: from.toLowerCase() as `0x${string}`},
+			// TODO we should have the nonce, except for wallet like metamask where it is not sure you get the nonce you start with
+		};
+		return savePendingDeployment(pendingDeployment, options?.message);
+	}
+
 	async function savePendingDeployment<TAbi extends Abi = Abi>(
 		pendingDeployment: PendingDeployment<TAbi>,
 		msg?: string,
-	) {
+	): Promise<Deployment<TAbi>> {
 		await savePendingTransaction(pendingDeployment);
 		let transaction: EIP1193Transaction | null = null;
 		const spinner = spin(); // TODO spin(`fetching tx from peers ${pendingDeployment.txHash}`);
@@ -903,11 +998,39 @@ export async function createEnvironment<
 		return spin(message);
 	}
 
+	function resolveAccount(account: string | EIP1193Account): `0x${string}` {
+		if (account.startsWith('0x')) {
+			return account.toLowerCase() as `0x${string}`;
+		}
+
+		if (env.namedAccounts) {
+			const address = env.namedAccounts[account];
+			if (!address) {
+				throw new Error(`no address for ${account}`);
+			}
+			return address.toLowerCase() as `0x${string}`;
+		}
+
+		throw new Error(`no accounts setup, cannot get address for ${account}`);
+	}
+
+	function resolveAccountOrUndefined(account: string | EIP1193Account): `0x${string}` | undefined {
+		if (account.startsWith('0x')) {
+			return account as `0x${string}`;
+		}
+
+		if (env.namedAccounts) {
+			return env.namedAccounts[account];
+		}
+
+		return undefined;
+	}
+
 	let env: Environment<NamedAccounts, Data, Deployments> = {
 		...perliminaryEnvironment,
 		save,
-		savePendingDeployment,
-		savePendingExecution,
+		broadcastExecution,
+		broadcastDeployment,
 		get,
 		getOrNull,
 		fromAddressToNamedABI,
@@ -915,6 +1038,8 @@ export async function createEnvironment<
 		showMessage,
 		showProgress,
 		hasMigrationBeenDone,
+		resolveAccount,
+		resolveAccountOrUndefined,
 	};
 
 	return {

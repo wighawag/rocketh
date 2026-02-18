@@ -118,3 +118,50 @@ export async function getRoughGasPriceEstimate(
 		fast: result[2],
 	};
 }
+
+// ----------------------------------------------------------------------------
+// FROM VIEM: https://viem.sh
+// ----------------------------------------------------------------------------
+/**
+ *  Divides a number by a given exponent of base 10 (10exponent), and formats it into a string representation of the number..
+ *
+ * - Docs: https://viem.sh/docs/utilities/formatUnits
+ *
+ * @example
+ * import { formatUnits } from 'viem'
+ *
+ * formatUnits(420000000000n, 9)
+ * // '420'
+ */
+export function formatUnits(value: bigint, decimals: number) {
+	let display = value.toString();
+
+	const negative = display.startsWith('-');
+	if (negative) display = display.slice(1);
+
+	display = display.padStart(decimals, '0');
+
+	let [integer, fraction] = [display.slice(0, display.length - decimals), display.slice(display.length - decimals)];
+	fraction = fraction.replace(/(0+)$/, '');
+	return `${negative ? '-' : ''}${integer || '0'}${fraction ? `.${fraction}` : ''}`;
+}
+
+export const etherUnits = {
+	gwei: 9,
+	wei: 18,
+};
+
+/**
+ * Converts numerical wei to a string representation of ether.
+ *
+ * - Docs: https://viem.sh/docs/utilities/formatEther
+ *
+ * @example
+ * import { formatEther } from 'viem'
+ *
+ * formatEther(1000000000000000000n)
+ * // '1'
+ */
+export function formatEther(wei: bigint, unit: 'wei' | 'gwei' = 'wei') {
+	return formatUnits(wei, etherUnits[unit]);
+}

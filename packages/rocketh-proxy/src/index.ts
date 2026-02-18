@@ -1,8 +1,7 @@
 import {Abi, AbiFunction} from 'abitype';
 import type {Artifact, DeploymentConstruction, Deployment, Environment} from '@rocketh/core/types';
-import {resolveAccount} from '@rocketh/core/account';
 import type {EIP1193Account} from 'eip-1193';
-import {Chain, encodeFunctionData, zeroAddress} from 'viem';
+import {encodeFunctionData, zeroAddress} from 'viem';
 import {logs} from 'named-logs';
 import {deploy, DeployOptions} from '@rocketh/deploy';
 import {checkUpgradeIndex, replaceTemplateArgs} from './utils.js';
@@ -159,7 +158,7 @@ export function deployViaProxy(
 		if (!account) {
 			throw new Error(`no account specified`);
 		}
-		const address = resolveAccount(account, env);
+		const address = env.resolveAccount(account);
 
 		let viaAdminContract: {artifactName: 'DefaultProxyAdmin'; proxyAdminName: string} | undefined;
 

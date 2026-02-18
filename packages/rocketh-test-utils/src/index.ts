@@ -5,8 +5,8 @@
  * and artifacts for testing deployment scenarios.
  */
 
-import type {Abi, Artifact, Environment} from '@rocketh/core/types';
-import type {EIP1193Provider} from 'eip-1193';
+import type {Abi, Artifact, Environment, Deployment, PartialDeployment, TransactionToBroadcast} from '@rocketh/core/types';
+import type {EIP1193Provider, EIP1193TransactionReceipt} from 'eip-1193';
 
 // ============================================================================
 // Types
@@ -424,8 +424,30 @@ export function createMockEnvironment(options: MockEnvironmentOptions = {}): Moc
 		};
 	}
 
+	// Create named accounts record (address mapping)
+	const resolvedNamedAccounts: Record<string, `0x${string}`> = {};
+	for (const [name, address] of Object.entries(namedAccounts)) {
+		resolvedNamedAccounts[name] = address;
+	}
+
+	// Create named signers record
+	const namedSigners: Record<string, {type: 'remote'; signer: MockProvider}> = {};
+	for (const [name, address] of Object.entries(namedAccounts)) {
+		namedSigners[name] = {
+			type: 'remote',
+			signer: provider,
+		};
+	}
+
 	const env: Environment = {
-		namedAccounts: namedAccounts as Record<string, `0x${string}`>,
+		name: 'mock',
+		context: {
+			saveDeployments: true,
+		},
+		namedAccounts: resolvedNamedAccounts as Record<string, `0x${string}`>,
+		data: {},
+		namedSigners: namedSigners as Record<string, {type: 'remote'; signer: MockProvider}>,
+		unnamedAccounts: [],
 		network: {
 			chain: {
 				id: chainId,
@@ -455,8 +477,25 @@ export function createMockEnvironment(options: MockEnvironmentOptions = {}): Moc
 			'auto-mine': true,
 			...(options.tags || {}),
 		},
+		deployments: deployments as Environment['deployments'],
 		get: <T>(name: string) => deployments[name] as T,
 		getOrNull: <T>(name: string) => (deployments[name] as T) || null,
+		resolveAccount: (account: string | `0x${string}`): `0x${string}` => {
+			if (account.startsWith('0x')) {
+				return account.toLowerCase() as `0x${string}`;
+			}
+			const address = resolvedNamedAccounts[account];
+			if (!address) {
+				throw new Error(`no address for ${account}`);
+			}
+			return address.toLowerCase() as `0x${string}`;
+		},
+		resolveAccountOrUndefined: (account: string | `0x${string}`): `0x${string}` | undefined => {
+			if (account.startsWith('0x')) {
+				return account as `0x${string}`;
+			}
+			return resolvedNamedAccounts[account];
+		},
 		save: async <T>(name: string, deployment: T) => {
 			deployments[name] = deployment;
 			return deployment as T;
@@ -475,6 +514,82 @@ export function createMockEnvironment(options: MockEnvironmentOptions = {}): Moc
 		savePendingExecution: async () => {},
 		showMessage: (message: string) => {
 			// Could be configured to capture messages for testing
+		},
+		showProgress: (message?: string) => {
+			// Simple no-op progress indicator for tests
+			const progressIndicator = {
+				start: () => progressIndicator,
+				stop: () => progressIndicator,
+				succeed: () => progressIndicator,
+				fail: () => progressIndicator,
+			};
+			return progressIndicator;
+		},
+		broadcastExecution: async (
+			transaction: TransactionToBroadcast,
+			_options?: {message?: string},
+		): Promise<EIP1193TransactionReceipt> => {
+			// Mock implementation that uses the provider
+			const from = transaction.type === 'raw' ? transaction.from : transaction.data.from;
+			const txHash = await (provider.request as (args: {method: string; params?: unknown[]}) => Promise<unknown>)({
+				method: transaction.type === 'raw' ? 'eth_sendRawTransaction' : 'eth_sendTransaction',
+				params: transaction.type === 'raw' ? [transaction.raw] : [transaction.data],
+			});
+			// Get receipt
+			const receipt = await (provider.request as (args: {method: string; params?: unknown[]}) => Promise<unknown>)({
+				method: 'eth_getTransactionReceipt',
+				params: [txHash],
+			});
+			return receipt as EIP1193TransactionReceipt;
+		},
+		broadcastDeployment: async <TAbi extends Abi = Abi>(
+			name: string,
+			transaction: TransactionToBroadcast,
+			partialDeployment: PartialDeployment<TAbi>,
+			_options?: {message?: string; expectedAddress?: `0x${string}`},
+		): Promise<Deployment<TAbi>> => {
+			// Mock implementation
+			const from = transaction.type === 'raw' ? transaction.from : transaction.data.from;
+			const txHash = await (provider.request as (args: {method: string; params?: unknown[]}) => Promise<unknown>)({
+				method: transaction.type === 'raw' ? 'eth_sendRawTransaction' : 'eth_sendTransaction',
+				params: transaction.type === 'raw' ? [transaction.raw] : [transaction.data],
+			});
+			// Get receipt
+			const receipt = await (provider.request as (args: {method: string; params?: unknown[]}) => Promise<unknown>)({
+				method: 'eth_getTransactionReceipt',
+				params: [txHash],
+			}) as EIP1193TransactionReceipt;
+			const address = _options?.expectedAddress || receipt.contractAddress || (('0x' + '2'.repeat(40)) as `0x${string}`);
+			const deployment: Deployment<TAbi> = {
+				address,
+				abi: partialDeployment.abi,
+				bytecode: partialDeployment.bytecode,
+				argsData: partialDeployment.argsData,
+				metadata: partialDeployment.metadata,
+				linkedData: partialDeployment.linkedData,
+				transaction: {
+					hash: txHash as `0x${string}`,
+					origin: from as `0x${string}`,
+				},
+				receipt: {
+					blockHash: receipt.blockHash,
+					blockNumber: receipt.blockNumber,
+					transactionIndex: receipt.transactionIndex,
+				},
+			};
+			// Save the deployment
+			deployments[name] = deployment;
+			return deployment;
+		},
+		hasMigrationBeenDone: (_id: string): boolean => {
+			// No migrations in mock environment
+			return false;
+		},
+		fromAddressToNamedABI: <TAbi extends Abi>(_address: string): {mergedABI: TAbi; names: string[]} => {
+			throw new Error(`fromAddressToNamedABI not implemented in mock environment`);
+		},
+		fromAddressToNamedABIOrNull: <TAbi extends Abi>(_address: string): {mergedABI: TAbi; names: string[]} | null => {
+			return null;
 		},
 	} as unknown as Environment;
 

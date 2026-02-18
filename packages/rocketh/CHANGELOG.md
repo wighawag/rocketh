@@ -1,5 +1,13 @@
 # rocketh
 
+## 0.18.7
+
+### Patch Changes
+
+- environment refactor for simpler extensions
+- Updated dependencies
+  - @rocketh/core@0.18.4
+
 ## 0.18.6
 
 ### Patch Changes

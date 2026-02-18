@@ -19,6 +19,3 @@ export {withEnvironment, enhanceEnvIfNeeded} from './environment.js';
 
 // Re-export providers
 export {TransactionHashTrackerProvider, type TransactionHashTracker} from './providers/index.js';
-
-// Re-export account utilities
-export {resolveAccount, resolveAccountOrUndefined} from './account.js';

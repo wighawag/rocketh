@@ -1,6 +1,6 @@
 {
 	"name": "rocketh",
-	"version": "0.18.6",
+	"version": "0.18.7",
 	"description": "A framework-agnostic smart contract deployment system for Ethereum-compatible networks.",
 	"keywords": [
 		"rocketh",
@@ -53,8 +53,7 @@
 		"eip-1193": "^0.6.5",
 		"eip-1193-jsonrpc-provider": "^0.4.3",
 		"ldenv": "^0.3.16",
-		"named-logs": "^0.4.1",
-		"viem": "^2.45.1"
+		"named-logs": "^0.4.1"
 	},
 	"devDependencies": {
 		"as-soon": "^0.1.5",

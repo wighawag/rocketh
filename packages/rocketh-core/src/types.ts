@@ -5,6 +5,7 @@ import {
 	EIP1193ProviderWithoutEvents,
 	EIP1193QUANTITY,
 	EIP1193SignerProvider,
+	EIP1193TransactionData,
 	EIP1193TransactionReceipt,
 	EIP1193WalletProvider,
 } from 'eip-1193';
@@ -543,6 +544,10 @@ export type ResolvedExecutionParams<Extra extends Record<string, unknown> = Reco
 	readonly scripts: readonly string[];
 };
 
+export type TransactionToBroadcast =
+	| {type: 'object'; data: EIP1193TransactionData}
+	| {type: 'raw'; from: `0x${string}`; raw: `0x${string}`};
+
 export interface Environment<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
@@ -572,18 +577,24 @@ export interface Environment<
 		deployment: Deployment<TAbi>,
 		options?: {doNotCountAsNewDeployment?: boolean},
 	): Promise<Deployment<TAbi>>;
-	savePendingDeployment<TAbi extends Abi = Abi>(
-		pendingDeployment: PendingDeployment<TAbi>,
-		msg?: string,
+	broadcastExecution(
+		transaction: TransactionToBroadcast,
+		options?: {message?: string},
+	): Promise<EIP1193TransactionReceipt>;
+	broadcastDeployment<TAbi extends Abi = Abi>(
+		name: string,
+		transaction: TransactionToBroadcast,
+		partialDeployment: PartialDeployment<TAbi>,
+		options?: {message?: string; expectedAddress?: `0x${string}`},
 	): Promise<Deployment<TAbi>>;
-	savePendingExecution(pendingExecution: PendingExecution, msg?: string): Promise<EIP1193TransactionReceipt>;
 	get<TAbi extends Abi>(name: string): Deployment<TAbi>;
 	getOrNull<TAbi extends Abi>(name: string): Deployment<TAbi> | null;
 	fromAddressToNamedABI<TAbi extends Abi>(address: Address): {mergedABI: TAbi; names: string[]};
 	fromAddressToNamedABIOrNull<TAbi extends Abi>(address: Address): {mergedABI: TAbi; names: string[]} | null;
 	showMessage(message: string): void;
 	showProgress(message?: string): ProgressIndicator;
-
+	resolveAccountOrUndefined(account: string | EIP1193Account): `0x${string}` | undefined;
+	resolveAccount(account: string | EIP1193Account): `0x${string}`;
 	hasMigrationBeenDone(id: string): boolean;
 	readonly extra?: Extra;
 }
@@ -601,7 +612,7 @@ export type PartialDeployment<TAbi extends Abi = Abi> = Artifact<TAbi> & {
 
 export type PendingDeployment<TAbi extends Abi = Abi> = {
 	type: 'deployment';
-	name?: string;
+	name: string;
 	transaction: {
 		hash: `0x${string}`;
 		nonce?: `0x${string}`;

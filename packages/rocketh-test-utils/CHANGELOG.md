@@ -1,5 +1,13 @@
 # @rocketh/test-utils
 
+## 0.1.4
+
+### Patch Changes
+
+- environment refactor for simpler extensions
+- Updated dependencies
+  - @rocketh/core@0.18.4
+
 ## 0.1.3
 
 ### Patch Changes

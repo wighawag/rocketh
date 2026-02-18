@@ -1,5 +1,13 @@
 # @rocketh/deploy
 
+## 0.18.5
+
+### Patch Changes
+
+- environment refactor for simpler extensions
+- Updated dependencies
+  - @rocketh/core@0.18.4
+
 ## 0.18.4
 
 ### Patch Changes

@@ -1,7 +1,6 @@
 import {Abi} from 'abitype';
 import {EIP1193DATA, EIP1193TransactionData, EIP1193TransactionReceipt} from 'eip-1193';
 import type {Artifact, Environment, MinimalDeployment, PendingExecution} from '@rocketh/core/types';
-import {resolveAccount, resolveAccountOrUndefined} from '@rocketh/core';
 import type {
 	ContractFunctionArgs,
 	ContractFunctionName,
@@ -137,7 +136,7 @@ export function execute(
 		args: ExecutionArgs<TAbi, TFunctionName, TArgs>,
 	) => {
 		const {account, ...viemArgs} = args;
-		const address = resolveAccount(account, env);
+		const address = env.resolveAccount(account);
 
 		const artifactToUse = deployment as unknown as Artifact<TAbi>;
 		const abi = artifactToUse.abi;
@@ -146,12 +145,6 @@ export function execute(
 			functionName: viemArgs.functionName,
 			args: viemArgs.args,
 		} as any);
-
-		const signer = env.addressSigners[address];
-
-		if (!signer) {
-			throw new Error(`cannot get signer for ${address}`);
-		}
 
 		const txParam: EIP1193TransactionData = {
 			to: deployment.address,
@@ -171,35 +164,13 @@ export function execute(
 			txParam.value = `0x${viemArgs.value?.toString(16)}` as `0x${string}`;
 		}
 
-		let txHash: `0x${string}`;
-		if (signer.type === 'wallet' || signer.type === 'remote') {
-			txHash = await signer.signer.request({
-				method: 'eth_sendTransaction',
-				params: [txParam] as any, // TODO fix eip-1193 ?,,
-			});
-		} else {
-			const rawTx = await signer.signer.request({
-				method: 'eth_signTransaction',
-				params: [txParam],
-			});
-
-			txHash = await env.network.provider.request({
-				method: 'eth_sendRawTransaction',
-				params: [rawTx],
-			});
-		}
-
-		if (env.tags['auto-mine']) {
-			await (env.network.provider as any).request({method: 'evm_mine', params: []});
-		}
-
-		const pendingExecution: PendingExecution = {
-			type: 'execution',
-			transaction: {hash: txHash, origin: address},
-			// description, // TODO
-			// TODO we should have the nonce, except for wallet like metamask where it is not sure you get the nonce you start with
-		};
-		const receipt = await env.savePendingExecution(pendingExecution, args.message);
+		const receipt = await env.broadcastExecution(
+			{
+				type: 'object',
+				data: txParam,
+			},
+			{message: args.message},
+		);
 		return receipt;
 	};
 }
@@ -266,7 +237,7 @@ export function read(
 		args: ReadingArgs<TAbi, TFunctionName, TArgs>,
 	) => {
 		const {account, ...viemArgs} = args;
-		const address = account ? resolveAccountOrUndefined(account, env) : undefined;
+		const address = account ? env.resolveAccountOrUndefined(account) : undefined;
 
 		const artifactToUse = deployment as unknown as Artifact<TAbi>;
 		const abi = artifactToUse.abi;
@@ -340,12 +311,12 @@ export function readByName(
 	};
 }
 
-export function tx(env: Environment): (txData: TransactionData, options?: {message?: string}) => Promise<EIP1193DATA> {
+export function tx(
+	env: Environment,
+): (txData: TransactionData, options?: {message?: string}) => Promise<EIP1193TransactionReceipt> {
 	return async (txData: TransactionData, options?: {message?: string}) => {
 		const {account, ...viemArgs} = txData;
-		const address = resolveAccount(account, env);
-
-		const signer = env.addressSigners[address];
+		const address = env.resolveAccount(account);
 
 		const txParam: EIP1193TransactionData = {
 			type: '0x2',
@@ -365,31 +336,13 @@ export function tx(env: Environment): (txData: TransactionData, options?: {messa
 			txParam.value = `0x${viemArgs.value?.toString(16)}` as `0x${string}`;
 		}
 
-		let txHash: `0x${string}`;
-		if (signer.type === 'wallet' || signer.type === 'remote') {
-			txHash = await signer.signer.request({
-				method: 'eth_sendTransaction',
-				params: [txParam] as any, // TODO fix eip-1193 ?,,
-			});
-		} else {
-			const rawTx = await signer.signer.request({
-				method: 'eth_signTransaction',
-				params: [txParam],
-			});
-
-			txHash = await env.network.provider.request({
-				method: 'eth_sendRawTransaction',
-				params: [rawTx],
-			});
-		}
-
-		const pendingExecution: PendingExecution = {
-			type: 'execution',
-			transaction: {hash: txHash, origin: address},
-			// description, // TODO
-			// TODO we should have the nonce, except for wallet like metamask where it is not sure you get the nonce you start with
-		};
-		await env.savePendingExecution(pendingExecution, options?.message);
-		return txHash;
+		const receipt = await env.broadcastExecution(
+			{
+				type: 'object',
+				data: txParam,
+			},
+			options,
+		);
+		return receipt;
 	};
 }

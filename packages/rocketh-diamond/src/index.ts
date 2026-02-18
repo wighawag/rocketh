@@ -1,5 +1,4 @@
 import type {Abi, Artifact, Deployment, Environment} from '@rocketh/core/types';
-import {resolveAccount} from '@rocketh/core/account';
 
 import {encodeFunctionData, zeroAddress} from 'viem';
 import {logs} from 'named-logs';
@@ -66,7 +65,7 @@ export function diamond(
 		// }
 
 		const {account, ...viemArgs} = params;
-		const deployerAddress = resolveAccount(account, env);
+		const deployerAddress = env.resolveAccount(account);
 
 		// TODO
 		// if (options.diamondContract) {
