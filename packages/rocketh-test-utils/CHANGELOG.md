@@ -1,5 +1,16 @@
 # @rocketh/test-utils
 
+## 0.2.0
+
+### Minor Changes
+
+- autoMine
+
+### Patch Changes
+
+- Updated dependencies
+  - @rocketh/core@0.19.0
+
 ## 0.1.4
 
 ### Patch Changes

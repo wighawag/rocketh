@@ -1,5 +1,17 @@
 # @rocketh/web
 
+## 0.19.0
+
+### Minor Changes
+
+- autoMine
+
+### Patch Changes
+
+- Updated dependencies
+  - rocketh@0.19.0
+  - @rocketh/core@0.19.0
+
 ## 0.18.8
 
 ### Patch Changes

@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/read-execute",
-	"version": "0.18.5",
+	"version": "0.19.0",
 	"description": "provide read abd execute functions for rocketh",
 	"keywords": [
 		"rocketh",

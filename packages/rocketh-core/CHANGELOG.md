@@ -1,5 +1,11 @@
 # @rocketh/core
 
+## 0.19.0
+
+### Minor Changes
+
+- autoMine
+
 ## 0.18.4
 
 ### Patch Changes

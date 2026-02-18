@@ -1,5 +1,16 @@
 # @rocketh/signer
 
+## 0.19.0
+
+### Minor Changes
+
+- autoMine
+
+### Patch Changes
+
+- Updated dependencies
+  - @rocketh/core@0.19.0
+
 ## 0.18.4
 
 ### Patch Changes

@@ -1,5 +1,17 @@
 # @rocketh/verifier
 
+## 0.19.0
+
+### Minor Changes
+
+- autoMine
+
+### Patch Changes
+
+- Updated dependencies
+  - @rocketh/core@0.19.0
+  - @rocketh/node@0.19.0
+
 ## 0.18.8
 
 ### Patch Changes
