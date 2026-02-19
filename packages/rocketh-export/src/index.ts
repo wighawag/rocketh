@@ -77,14 +77,30 @@ export async function run(
 
 	const exportData: ExportedDeployments = {
 		chain: chainInfo,
-		contracts: objectMap<Deployment<Abi>, ContractExport>(deployments, (d) => ({
-			abi: d.abi,
-			address: d.address,
-			linkedData: d.linkedData,
-			bytecode: options.includeBytecode ? d.bytecode : undefined,
-			argsData: options.includeBytecode ? d.argsData : undefined,
-			startBlock: d.receipt?.blockNumber ? parseInt(d.receipt.blockNumber.slice(2), 16) : undefined,
-		})),
+		contracts: objectMap<Deployment<Abi>, ContractExport>(deployments, (d) => {
+			let startBlock: number | undefined;
+			const blockNumberFromDeployment = d.receipt?.blockNumber;
+			if (blockNumberFromDeployment !== undefined) {
+				if (typeof blockNumberFromDeployment == 'string') {
+					if (blockNumberFromDeployment.startsWith('0x')) {
+						startBlock = parseInt(blockNumberFromDeployment.slice(2), 16);
+					} else {
+						startBlock = parseInt(blockNumberFromDeployment);
+					}
+				} else {
+					// hardhat-deploy v1
+					startBlock = blockNumberFromDeployment as number;
+				}
+			}
+			return {
+				abi: d.abi,
+				address: d.address,
+				linkedData: d.linkedData,
+				bytecode: options.includeBytecode ? d.bytecode : undefined,
+				argsData: options.includeBytecode ? d.argsData : undefined,
+				startBlock,
+			};
+		}),
 		name: environmentName,
 	};
 

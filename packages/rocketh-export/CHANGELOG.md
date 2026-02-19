@@ -1,5 +1,11 @@
 # @rocketh/export
 
+## 0.19.4
+
+### Patch Changes
+
+- support hardhat-deploy v1 receipt format
+
 ## 0.19.3
 
 ### Patch Changes
