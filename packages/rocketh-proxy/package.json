@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/proxy",
-	"version": "0.19.2",
+	"version": "0.19.3",
 	"description": "provide proxy-enabled deploy function for rocketh",
 	"keywords": [
 		"rocketh",
@@ -33,6 +33,8 @@
 				"default": "./dist/index.js"
 			}
 		},
+		"./solc_0_6/*": "./solc_0_6/*",
+		"./solc_0_7/*": "./solc_0_7/*",
 		"./solc_0_8/*": "./solc_0_8/*"
 	},
 	"files": [
