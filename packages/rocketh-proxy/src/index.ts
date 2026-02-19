@@ -137,15 +137,18 @@ export function deployViaProxy(
 		let existingDeployment = env.getOrNull<TAbi>(name);
 
 		if (options?.proxyDisabled) {
-			if (existingDeployment) {
-				throw new Error(`cannot deploy ${name} with proxyDisabled, already deployed`);
+			if (typeof params.artifact === 'function') {
+				return params.artifact(name, params, {
+					...optionsForProxy,
+					skipIfAlreadyDeployed: true,
+					linkedData: options.linkedData,
+				});
 			} else {
-				if (typeof params.artifact === 'function') {
-					return params.artifact(name, params, {...optionsForProxy, linkedData: options.linkedData});
-				} else {
-					// TODO any ?
-					return _deploy<TAbi>(name, params as any, {...optionsForProxy, linkedData: options.linkedData});
-				}
+				return _deploy<TAbi>(name, params as DeploymentConstruction<TAbi>, {
+					...optionsForProxy,
+					skipIfAlreadyDeployed: true,
+					linkedData: options.linkedData,
+				});
 			}
 		}
 		const deployResult = checkUpgradeIndex(existingDeployment, options?.upgradeIndex);

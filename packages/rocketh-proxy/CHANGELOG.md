@@ -1,5 +1,11 @@
 # @rocketh/proxy
 
+## 0.19.4
+
+### Patch Changes
+
+- proxyDIsabled imply skipIfAlreadyDeployed: true
+
 ## 0.19.3
 
 ### Patch Changes
