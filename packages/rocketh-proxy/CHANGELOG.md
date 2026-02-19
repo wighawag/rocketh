@@ -1,5 +1,11 @@
 # @rocketh/proxy
 
+## 0.19.2
+
+### Patch Changes
+
+- add 0.6 and 0.7 Proxied solidity utils
+
 ## 0.19.1
 
 ### Patch Changes
