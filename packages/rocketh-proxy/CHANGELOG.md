@@ -1,5 +1,11 @@
 # @rocketh/proxy
 
+## 0.19.5
+
+### Patch Changes
+
+- export artifacts files
+
 ## 0.19.4
 
 ### Patch Changes

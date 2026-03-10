@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/diamond",
-	"version": "0.19.1",
+	"version": "0.19.2",
 	"description": "provide diamond support for rocketh/hardhat-deploy",
 	"keywords": [
 		"rocketh",
@@ -35,11 +35,13 @@
 			"types": "./dist/types.d.ts",
 			"default": "./dist/types.js"
 		},
+		"./artifacts/*": "./artifacts/*",
 		"./solc_0_8/*": "./solc_0_8/*"
 	},
 	"files": [
 		"dist",
 		"src",
+		"artifacts",
 		"solc_0_8"
 	],
 	"dependencies": {
@@ -55,12 +57,13 @@
 		"@rocketh/test-utils": "workspace:*",
 		"as-soon": "^0.1.5",
 		"rimraf": "^6.1.2",
+		"tsx": "^4.21.0",
 		"typescript": "^5.9.3",
 		"vitest": "^4.0.18"
 	},
 	"scripts": {
 		"prepublishOnly": "cp ../../LICENSE LICENSE",
-		"build": "tsc --project tsconfig.json",
+		"build": "tsc --project tsconfig.json && tsx ../../scripts/ts-to-json --dir ./src/hardhat-deploy-v1-artifacts --output-dir ./artifacts",
 		"dev": "as-soon -w src pnpm build",
 		"test": "vitest"
 	}

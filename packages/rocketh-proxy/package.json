@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/proxy",
-	"version": "0.19.4",
+	"version": "0.19.5",
 	"description": "provide proxy-enabled deploy function for rocketh",
 	"keywords": [
 		"rocketh",
@@ -33,6 +33,7 @@
 				"default": "./dist/index.js"
 			}
 		},
+		"./artifacts/*": "./artifacts/*",
 		"./solc_0_6/*": "./solc_0_6/*",
 		"./solc_0_7/*": "./solc_0_7/*",
 		"./solc_0_8/*": "./solc_0_8/*"
@@ -42,7 +43,8 @@
 		"src",
 		"solc_0_6",
 		"solc_0_7",
-		"solc_0_8"
+		"solc_0_8",
+		"artifacts"
 	],
 	"dependencies": {
 		"@rocketh/core": "workspace:*",
@@ -57,12 +59,13 @@
 		"@rocketh/test-utils": "workspace:*",
 		"as-soon": "^0.1.5",
 		"rimraf": "^6.1.2",
+		"tsx": "^4.21.0",
 		"typescript": "^5.9.3",
 		"vitest": "^4.0.18"
 	},
 	"scripts": {
 		"prepublishOnly": "cp ../../LICENSE LICENSE",
-		"build": "tsc --project tsconfig.json",
+		"build": "tsc --project tsconfig.json && tsx ../../scripts/ts-to-json --dir ./src/hardhat-deploy-v1-artifacts --output-dir ./artifacts",
 		"dev": "as-soon -w src pnpm build",
 		"test": "vitest"
 	}
