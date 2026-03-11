@@ -1,5 +1,11 @@
 # @rocketh/router
 
+## 0.19.2
+
+### Patch Changes
+
+- export router artifact
+
 ## 0.19.1
 
 ### Patch Changes

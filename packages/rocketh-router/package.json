@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/router",
-	"version": "0.19.1",
+	"version": "0.19.2",
 	"description": "provide router based proxy deployment for rocketh",
 	"keywords": [
 		"rocketh",
@@ -32,11 +32,13 @@
 				"types": "./dist/index.d.ts",
 				"default": "./dist/index.js"
 			}
-		}
+		},
+		"./artifacts/*": "./artifacts/*"
 	},
 	"files": [
 		"dist",
-		"src"
+		"src",
+		"artifacts"
 	],
 	"dependencies": {
 		"@rocketh/core": "workspace:*",

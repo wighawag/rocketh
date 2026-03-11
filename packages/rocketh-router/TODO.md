@@ -1,0 +1,1 @@
+- [ ] automate artifacts/\*.json export like in @rocketh/proxy
