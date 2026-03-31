@@ -1,5 +1,11 @@
 # @rocketh/proxy
 
+## 0.19.6
+
+### Patch Changes
+
+- better Proxied + allow init only execution
+
 ## 0.19.5
 
 ### Patch Changes

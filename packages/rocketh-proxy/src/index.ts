@@ -33,7 +33,21 @@ export type ProxyDeployOptions = Omit<DeployOptions, 'skipIfAlreadyDeployed' | '
 		| string
 		| {
 				methodName: string;
-				args: unknown[]; // TODO types
+				args?: any[];
+		  }
+		| {
+				init:
+					| string
+					| {
+							methodName: string;
+							args?: any[];
+					  };
+				onUpgrade?:
+					| string
+					| {
+							methodName: string;
+							args?: any[];
+					  };
 		  };
 	upgradeIndex?: number;
 	checkProxyAdmin?: boolean;
@@ -306,21 +320,65 @@ export function deployViaProxy(
 
 		let postUpgradeCalldata: `0x${string}` | undefined;
 		if (options?.execute) {
-			const methodName = typeof options.execute === 'string' ? options.execute : options.execute.methodName;
-			const argsToExecute = typeof options.execute === 'string' ? (args as unknown[]) : options.execute.args;
-			const method: AbiFunction | undefined = artifactToUse.abi.find(
-				(v) => v.type === 'function' && v.name === methodName,
-			) as AbiFunction;
-			if (method) {
-				postUpgradeCalldata = encodeFunctionData({
-					...viemArgs,
-					args: argsToExecute,
-					account: address,
-					abi: [method],
-					functionName: method.name,
-				});
+			let execution:
+				| {
+						methodName: string;
+						args: any[];
+				  }
+				| undefined;
+			if (typeof options.execute == 'string') {
+				execution = {
+					methodName: options.execute,
+					args: args as any[],
+				};
+			} else if ('methodName' in options.execute) {
+				execution = {
+					methodName: options.execute.methodName,
+					args: options.execute.args || (args as any[]),
+				};
 			} else {
-				throw new Error(`Method ${methodName} not found in artifact provided for ${name}`);
+				if (existingDeployment) {
+					if (typeof options.execute.onUpgrade === 'string') {
+						execution = {
+							methodName: options.execute.onUpgrade,
+							args: args as any[],
+						};
+					} else if (typeof options.execute.onUpgrade === 'object') {
+						execution = {
+							methodName: options.execute.onUpgrade.methodName,
+							args: options.execute.onUpgrade.args || (args as any[]),
+						};
+					}
+				} else {
+					if (typeof options.execute.init === 'string') {
+						execution = {
+							methodName: options.execute.init,
+							args: args as any[],
+						};
+					} else if (typeof options.execute.init === 'object') {
+						execution = {
+							methodName: options.execute.init.methodName,
+							args: options.execute.init.args || (args as any[]),
+						};
+					}
+				}
+			}
+
+			if (execution) {
+				const method: AbiFunction | undefined = artifactToUse.abi.find(
+					(v) => v.type === 'function' && v.name === execution.methodName,
+				) as AbiFunction;
+				if (method) {
+					postUpgradeCalldata = encodeFunctionData({
+						...viemArgs,
+						args: execution.args,
+						account: address,
+						abi: [method],
+						functionName: method.name,
+					});
+				} else {
+					throw new Error(`Method ${execution.methodName} not found in artifact provided for ${name}`);
+				}
 			}
 		}
 		// let preUpgradeCalldata: `0x${string}` | undefined;

@@ -1,7 +1,14 @@
 {
 	"useTabs": true,
 	"singleQuote": true,
-
 	"printWidth": 120,
-	"bracketSpacing": false
+	"bracketSpacing": false,
+	"overrides": [
+		{
+			"files": "*.sol",
+			"options": {
+				"singleQuote": false
+			}
+		}
+	]
 }
