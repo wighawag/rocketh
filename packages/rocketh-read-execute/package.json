@@ -40,15 +40,15 @@
 	],
 	"dependencies": {
 		"@rocketh/core": "workspace:*",
-		"abitype": "^1.2.3",
+		"abitype": "^1.2.4",
 		"eip-1193": "^0.6.5",
 		"named-logs": "^0.4.1",
-		"viem": "^2.45.1"
+		"viem": "^2.48.2"
 	},
 	"devDependencies": {
-		"as-soon": "^0.1.5",
-		"rimraf": "^6.1.2",
-		"typescript": "^5.9.3"
+		"as-soon": "^0.1.6",
+		"rimraf": "^6.1.3",
+		"typescript": "^6.0.3"
 	},
 	"scripts": {
 		"prepublishOnly": "cp ../../LICENSE LICENSE",

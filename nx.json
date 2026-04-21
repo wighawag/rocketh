@@ -16,5 +16,6 @@
 			"continuous": true
 		}
 	},
-	"plugins": ["@nx/js"]
+	"plugins": ["@nx/js"],
+	"analytics": false
 }

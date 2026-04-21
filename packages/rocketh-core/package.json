@@ -75,15 +75,15 @@
 		"src"
 	],
 	"dependencies": {
-		"abitype": "^1.2.3",
+		"abitype": "^1.2.4",
 		"eip-1193": "^0.6.5",
 		"named-logs": "^0.4.1",
-		"viem": "^2.45.1"
+		"viem": "^2.48.2"
 	},
 	"devDependencies": {
-		"as-soon": "^0.1.5",
-		"typescript": "^5.9.3",
-		"vitest": "^4.0.18"
+		"as-soon": "^0.1.6",
+		"typescript": "^6.0.3",
+		"vitest": "^4.1.5"
 	},
 	"scripts": {
 		"prepublishOnly": "cp ../../LICENSE LICENSE",

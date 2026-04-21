@@ -5,6 +5,7 @@ import {Command} from 'commander';
 import pkg from '../package.json' with {type: 'json'};
 import {loadAndExecuteDeploymentsFromFiles} from './executor/index.js';
 import {ExecutionParams} from 'rocketh/types';
+import {packagesWithLogsEnabled} from './index.js';
 
 hookup();
 loadEnv();
@@ -52,7 +53,7 @@ if (options.logLevel) {
 	}
 }
 
-setupLogger(['rocketh', '@rocketh/node'], {
+setupLogger(packagesWithLogsEnabled, {
 	enabled: true,
 	level: logLevelAsNumber,
 });

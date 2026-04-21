@@ -40,13 +40,13 @@
 	],
 	"dependencies": {
 		"@rocketh/core": "workspace:*",
-		"ldenv": "^0.3.16",
+		"ldenv": "^0.5.0",
 		"tsx": "^4.21.0"
 	},
 	"devDependencies": {
-		"as-soon": "^0.1.5",
+		"as-soon": "^0.1.6",
 		"rocketh": "workspace:*",
-		"typescript": "^5.9.3"
+		"typescript": "^6.0.3"
 	},
 	"peerDependencies": {
 		"rocketh": "workspace:*"

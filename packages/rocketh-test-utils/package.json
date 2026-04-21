@@ -41,11 +41,11 @@
 	"dependencies": {
 		"@rocketh/core": "workspace:*",
 		"eip-1193": "^0.6.5",
-		"viem": "^2.45.1"
+		"viem": "^2.48.2"
 	},
 	"devDependencies": {
-		"as-soon": "^0.1.5",
-		"typescript": "^5.9.3"
+		"as-soon": "^0.1.6",
+		"typescript": "^6.0.3"
 	},
 	"scripts": {
 		"prepublishOnly": "cp ../../LICENSE LICENSE",

@@ -12,16 +12,16 @@
   },
   "type": "module",
   "devDependencies": {
-    "@changesets/cli": "^2.29.8",
-    "@nx/js": "^22.4.4",
-    "@types/node": "^25.1.0",
+    "@changesets/cli": "^2.31.0",
+    "@nx/js": "^22.6.5",
+    "@types/node": "^25.6.0",
     "ezx": "^0.0.18",
-    "nx": "^22.4.4",
-    "prettier": "^3.8.1",
+    "nx": "^22.6.5",
+    "prettier": "^3.8.3",
     "set-defaults": "^0.0.5",
-    "syncpack": "^13.0.4",
+    "syncpack": "^14.3.0",
     "vitepress": "^1.6.4",
-    "vitest": "^4.0.18",
+    "vitest": "^4.1.5",
     "zellij-launcher": "^0.0.1"
   },
   "volta": {
@@ -31,7 +31,7 @@
   "scripts": {
     "prepare": "set-defaults .vscode",
     "prepublishOnly": "pnpm format:check && pnpm build",
-		"release": "pnpm prepublishOnly && git push --all && pnpm changeset publish && git push --tags",
+    "release": "pnpm prepublishOnly && git push --all && pnpm changeset publish && git push --tags",
     "reset": "git clean -fdX; pnpm i",
     "sync-deps": "syncpack fix-mismatches",
     "docs:dev": "vitepress dev",
