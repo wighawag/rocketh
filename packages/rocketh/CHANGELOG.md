@@ -1,5 +1,13 @@
 # rocketh
 
+## 0.19.4
+
+### Patch Changes
+
+- packagesWithLogsEnabled + latest deps
+- Updated dependencies
+  - @rocketh/core@0.19.1
+
 ## 0.19.3
 
 ### Patch Changes

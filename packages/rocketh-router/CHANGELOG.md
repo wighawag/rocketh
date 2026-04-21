@@ -1,5 +1,14 @@
 # @rocketh/router
 
+## 0.19.3
+
+### Patch Changes
+
+- packagesWithLogsEnabled + latest deps
+- Updated dependencies
+  - @rocketh/core@0.19.1
+  - @rocketh/deploy@0.19.2
+
 ## 0.19.2
 
 ### Patch Changes

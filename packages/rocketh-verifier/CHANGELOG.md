@@ -1,5 +1,14 @@
 # @rocketh/verifier
 
+## 0.19.4
+
+### Patch Changes
+
+- packagesWithLogsEnabled + latest deps
+- Updated dependencies
+  - @rocketh/core@0.19.1
+  - @rocketh/node@0.19.4
+
 ## 0.19.3
 
 ### Patch Changes

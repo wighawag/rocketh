@@ -1,5 +1,15 @@
 # @rocketh/export
 
+## 0.19.5
+
+### Patch Changes
+
+- packagesWithLogsEnabled + latest deps
+- Updated dependencies
+  - rocketh@0.19.4
+  - @rocketh/core@0.19.1
+  - @rocketh/node@0.19.4
+
 ## 0.19.4
 
 ### Patch Changes

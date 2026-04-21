@@ -1,5 +1,11 @@
 # @rocketh/core
 
+## 0.19.1
+
+### Patch Changes
+
+- packagesWithLogsEnabled + latest deps
+
 ## 0.19.0
 
 ### Minor Changes
