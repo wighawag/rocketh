@@ -1,5 +1,14 @@
 # @rocketh/node
 
+## 0.19.5
+
+### Patch Changes
+
+- c6fa24e: add reset + make loading deployment a separate step from createEnvionment
+- Updated dependencies [c6fa24e]
+  - @rocketh/core@0.19.2
+  - rocketh@0.19.5
+
 ## 0.19.4
 
 ### Patch Changes

@@ -1,5 +1,11 @@
 # @rocketh/core
 
+## 0.19.2
+
+### Patch Changes
+
+- c6fa24e: add reset + make loading deployment a separate step from createEnvionment
+
 ## 0.19.1
 
 ### Patch Changes
