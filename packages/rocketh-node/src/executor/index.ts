@@ -24,8 +24,8 @@ import {
 	getEnvironmentName,
 	getChainIdForEnvironment,
 	createExecutor,
-	loadDeployments,
-	loadEnvironment,
+	loadDeploymentsFromStore,
+	loadEnvironmentFromStore,
 } from 'rocketh';
 import {enhanceEnvIfNeeded} from '@rocketh/core/environment';
 import {traverseMultipleDirectory} from '../utils/fs.js';
@@ -226,7 +226,7 @@ export function loadDeploymentsFromFiles(
 	chainId?: string;
 	genesisHash?: `0x${string}`;
 }> {
-	return loadDeployments(deploymentStore, deploymentsPath, networkName, onlyABIAndAddress, expectedChain);
+	return loadDeploymentsFromStore(deploymentStore, deploymentsPath, networkName, onlyABIAndAddress, expectedChain);
 }
 
 // used by hardhat-deploy
@@ -247,7 +247,7 @@ async function loadEnvironmentFromFilesWithSpecificConfig<
 	executionParams: ExecutionParams<Extra>,
 	config: UserConfig<NamedAccounts, Data>,
 ): Promise<Environment<NamedAccounts, Data, UnknownDeployments>> {
-	return loadEnvironment(config, executionParams, deploymentStore);
+	return loadEnvironmentFromStore(config, executionParams, deploymentStore);
 }
 
 // used by hardhat-deploy

@@ -281,10 +281,11 @@ export function resolveExecutionParams<Extra extends Record<string, unknown> = R
 		extra: executionParameters.extra,
 		provider,
 		scripts,
+		reset: executionParameters.reset || false,
 	};
 }
 
-export async function loadEnvironment<
+export async function loadEnvironmentFromStore<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 	Extra extends Record<string, unknown> = Record<string, unknown>,
@@ -303,6 +304,8 @@ export async function loadEnvironment<
 		resolvedExecutionParams,
 		deploymentStore,
 	);
+
+	await internal.loadDeployments({reset: resolvedExecutionParams.reset});
 	return external;
 }
 
@@ -392,6 +395,53 @@ export function createExecutor(deploymentStore: DeploymentStore, promptExecutor:
 			deploymentStore,
 		);
 
+		// TODO store in the execution context
+		const gasPriceEstimate = await getRoughGasPriceEstimate(external.network.provider);
+		if (resolvedExecutionParams.askBeforeProceeding) {
+			console.log(
+				`Environment: ${external.name} \n \t Chain: ${external.network.chain.name} \n \t Tags: ${Object.keys(
+					external.tags,
+				).join(',')}`,
+			);
+
+			if (resolvedExecutionParams.reset) {
+				const message = `This will delete all deployments for env: ${external.name}, including any successful, failed or in-flight state.${Object.keys(external.tags).length > 0 ? `\n (Note that this applies to all deployments irrespective of the tags provided)` : ''}\nDo you want to proceed?`;
+
+				const prompt = await promptExecutor.prompt({
+					type: 'confirm',
+					name: 'proceed',
+					message,
+				});
+
+				if (!prompt.proceed) {
+					promptExecutor.exit();
+				}
+			}
+
+			const prompt = await promptExecutor.prompt({
+				type: 'confirm',
+				name: 'proceed',
+				message: `gas price is currently in this range:
+slow: ${formatEther(gasPriceEstimate.slow.maxFeePerGas)} (priority: ${formatEther(
+					gasPriceEstimate.slow.maxPriorityFeePerGas,
+				)})
+average: ${formatEther(gasPriceEstimate.average.maxFeePerGas)} (priority: ${formatEther(
+					gasPriceEstimate.average.maxPriorityFeePerGas,
+				)})
+fast: ${formatEther(gasPriceEstimate.fast.maxFeePerGas)} (priority: ${formatEther(
+					gasPriceEstimate.fast.maxPriorityFeePerGas,
+				)})
+
+Do you want to proceed (note that gas price can change for each tx)`,
+			});
+
+			if (!prompt.proceed) {
+				promptExecutor.exit();
+			}
+		}
+
+		await internal.loadDeployments({reset: resolvedExecutionParams.reset});
+
 		await internal.recoverTransactionsIfAny();
 
 		const scriptsRegisteredToRun: {[filename: string]: boolean} = {};
@@ -435,37 +485,6 @@ export function createExecutor(deploymentStore: DeploymentStore, promptExecutor:
 		}
 		for (const id of ids) {
 			recurseDependencies(id);
-		}
-
-		// TODO store in the execution context
-		const gasPriceEstimate = await getRoughGasPriceEstimate(external.network.provider);
-		if (resolvedExecutionParams.askBeforeProceeding) {
-			console.log(
-				`Network: ${external.name} \n \t Chain: ${external.network.chain.name} \n \t Tags: ${Object.keys(
-					external.tags,
-				).join(',')}`,
-			);
-
-			const prompt = await promptExecutor.prompt({
-				type: 'confirm',
-				name: 'proceed',
-				message: `gas price is currently in this range:
-slow: ${formatEther(gasPriceEstimate.slow.maxFeePerGas)} (priority: ${formatEther(
-					gasPriceEstimate.slow.maxPriorityFeePerGas,
-				)})
-average: ${formatEther(gasPriceEstimate.average.maxFeePerGas)} (priority: ${formatEther(
-					gasPriceEstimate.average.maxPriorityFeePerGas,
-				)})
-fast: ${formatEther(gasPriceEstimate.fast.maxFeePerGas)} (priority: ${formatEther(
-					gasPriceEstimate.fast.maxPriorityFeePerGas,
-				)})
-
-Do you want to proceed (note that gas price can change for each tx)`,
-			});
-
-			if (!prompt.proceed) {
-				promptExecutor.exit();
-			}
 		}
 
 		for (const deployScript of scriptsToRun.concat(scriptsToRunAtTheEnd)) {

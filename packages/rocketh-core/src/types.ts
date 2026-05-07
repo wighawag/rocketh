@@ -310,6 +310,7 @@ export type ExecutionParams<Extra extends Record<string, unknown> = Record<strin
 	config?: ConfigOverrides;
 	autoImpersonate?: boolean;
 	autoMine?: boolean;
+	reset?: boolean;
 };
 
 export type {Abi, AbiConstructor, AbiError, AbiEvent, AbiFallback, AbiFunction, AbiReceive};
@@ -540,6 +541,7 @@ export type ResolvedExecutionParams<Extra extends Record<string, unknown> = Reco
 	readonly chain: ChainInfo;
 	readonly tags: readonly string[];
 	readonly saveDeployments: boolean;
+	readonly reset: boolean;
 	readonly askBeforeProceeding: boolean;
 	readonly reportGasUse: boolean;
 	readonly pollingInterval: number;
@@ -577,6 +579,7 @@ export interface Environment<
 	readonly unnamedAccounts: EIP1193Account[];
 	// unnamedSigners: {type: 'remote'; signer: EIP1193ProviderWithoutEvents}[];
 	readonly addressSigners: {[name: `0x${string}`]: Signer};
+
 	save<TAbi extends Abi = Abi>(
 		name: string,
 		deployment: Deployment<TAbi>,

@@ -14,8 +14,8 @@ import {
 	createExecutor,
 	getChainIdForEnvironment,
 	getEnvironmentName,
-	loadDeployments,
-	loadEnvironment,
+	loadDeploymentsFromStore,
+	loadEnvironmentFromStore,
 	resolveConfig,
 	resolveExecutionParams,
 } from 'rocketh';
@@ -50,7 +50,7 @@ export function loadDeploymentsFromIndexedDB(
 	chainId?: string;
 	genesisHash?: `0x${string}`;
 }> {
-	return loadDeployments(deploymentStore, deploymentsPath, networkName, onlyABIAndAddress, expectedChain);
+	return loadDeploymentsFromStore(deploymentStore, deploymentsPath, networkName, onlyABIAndAddress, expectedChain);
 }
 
 async function loadAndExecuteDeployments<
@@ -100,7 +100,7 @@ export function setupEnvironment<
 	async function loadEnvironmentWithExtensions(
 		executionParams: ExecutionParams<Extra>,
 	): Promise<EnhancedEnvironment<NamedAccounts, Data, UnknownDeployments, Extensions>> {
-		const env = await loadEnvironment<NamedAccounts, Data, Extra>(config, executionParams, deploymentStore);
+		const env = await loadEnvironmentFromStore<NamedAccounts, Data, Extra>(config, executionParams, deploymentStore);
 		return enhanceEnvIfNeeded(env, extensions);
 	}
 

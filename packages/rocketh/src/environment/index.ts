@@ -100,7 +100,7 @@ async function impersonateAccounts(
 	return impersonatedAccounts;
 }
 
-export async function loadDeployments(
+export async function loadDeploymentsFromStore(
 	deploymentStore: DeploymentStore,
 	deploymentsPath: string,
 	networkName: string,
@@ -383,19 +383,8 @@ export async function createEnvironment<
 		autoMine: resolvedExecutionParams.environment.autoMine,
 	};
 
-	const {deployments, migrations} = await loadDeployments(
-		deploymentStore,
-		deploymentsFolder,
-		environmentName,
-		false,
-		context.fork
-			? undefined
-			: {
-					chainId,
-					genesisHash,
-					deleteDeploymentsIfDifferentGenesisHash: true,
-				},
-	);
+	const deployments: UnknownDeployments = {};
+	const migrations: Record<string, number> = {};
 
 	const namedAccounts: {[name: string]: EIP1193Account} = {};
 	const namedSigners: {[name: string]: Signer} = {};
@@ -1027,6 +1016,44 @@ export async function createEnvironment<
 		return undefined;
 	}
 
+	async function loadDeployments(options?: {reset?: boolean}) {
+		if (options?.reset) {
+			await deploymentStore.deleteAll(deploymentsFolder, environmentName);
+		}
+
+		const {deployments: deploymentsLoaded, migrations: migrationsLoaded} = await loadDeploymentsFromStore(
+			deploymentStore,
+			deploymentsFolder,
+			environmentName,
+			false,
+			context.fork
+				? undefined
+				: {
+						chainId,
+						genesisHash,
+						deleteDeploymentsIfDifferentGenesisHash: true,
+					},
+		);
+
+		const oldDeploymentNames = Object.keys(deployments);
+		for (const name of oldDeploymentNames) {
+			delete deployments[name];
+		}
+		const newDeploymentNames = Object.keys(deploymentsLoaded);
+		for (const name of newDeploymentNames) {
+			deployments[name] = deploymentsLoaded[name];
+		}
+
+		const oldMigrationIds = Object.keys(migrations);
+		for (const id of oldMigrationIds) {
+			delete migrations[id];
+		}
+		const newMigrationIds = Object.keys(migrationsLoaded);
+		for (const id of newMigrationIds) {
+			migrations[id] = migrationsLoaded[id];
+		}
+	}
+
 	let env: Environment<NamedAccounts, Data, Deployments> = {
 		...perliminaryEnvironment,
 		save,
@@ -1048,6 +1075,7 @@ export async function createEnvironment<
 		internal: {
 			recoverTransactionsIfAny,
 			recordMigration,
+			loadDeployments,
 		},
 	};
 }

@@ -24,6 +24,7 @@ program
 	.option('--log-level <value>', 'set the log level')
 	.option('--skip-prompts', 'if set skip any prompts')
 	.option('--save-deployments', 'if set, save deployments')
+	.option('--reset', 'if set, delete all deployments first')
 	.requiredOption('-e, --environment <value>', 'environment to use')
 	.parse(process.argv);
 
@@ -63,4 +64,5 @@ loadAndExecuteDeploymentsFromFiles({
 	askBeforeProceeding: options.skipPrompts ? false : true,
 	reportGasUse: options.skipGasReport ? false : true,
 	saveDeployments: options.saveDeployments,
+	reset: options.reset ? true : false,
 });
