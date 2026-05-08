@@ -1,5 +1,13 @@
 # @rocketh/router
 
+## 0.19.5
+
+### Patch Changes
+
+- e06b151: fix cbor logic for bytecode matching + remove unecessary logs
+- Updated dependencies [e06b151]
+  - @rocketh/deploy@0.19.4
+
 ## 0.19.4
 
 ### Patch Changes

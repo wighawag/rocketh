@@ -1,5 +1,13 @@
 # @rocketh/proxy
 
+## 0.19.9
+
+### Patch Changes
+
+- e06b151: fix cbor logic for bytecode matching + remove unecessary logs
+- Updated dependencies [e06b151]
+  - @rocketh/deploy@0.19.4
+
 ## 0.19.8
 
 ### Patch Changes

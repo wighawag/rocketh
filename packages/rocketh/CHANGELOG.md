@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.19.6
+
+### Patch Changes
+
+- e06b151: fix cbor logic for bytecode matching + remove unecessary logs
+
 ## 0.19.5
 
 ### Patch Changes
