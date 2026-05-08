@@ -757,7 +757,7 @@ export async function createEnvironment<
 
 		showMessage(`    => ${contractAddress}`);
 
-		const {abi, ...artifactObjectWithoutABI} = pendingDeployment.partialDeployment;
+		const {abi, ...partialDeploymentWithoutABI} = pendingDeployment.partialDeployment;
 
 		if (!pendingDeployment.transaction.nonce) {
 			// const spinner = spin(`fetching nonce for ${pendingDeployment.transaction.hash}`);
@@ -788,15 +788,15 @@ export async function createEnvironment<
 		}
 
 		// TODO options
-		for (const key of Object.keys(artifactObjectWithoutABI)) {
+		for (const key of Object.keys(partialDeploymentWithoutABI)) {
 			if (key.startsWith('_')) {
-				delete (artifactObjectWithoutABI as any)[key];
+				delete (partialDeploymentWithoutABI as any)[key];
 			}
 			if (key === 'evm') {
-				if (artifactObjectWithoutABI.evm) {
-					if ('gasEstimates' in artifactObjectWithoutABI['evm']) {
-						const {gasEstimates} = artifactObjectWithoutABI.evm;
-						artifactObjectWithoutABI.evm = {
+				if (partialDeploymentWithoutABI.evm) {
+					if ('gasEstimates' in partialDeploymentWithoutABI['evm']) {
+						const {gasEstimates} = partialDeploymentWithoutABI.evm;
+						partialDeploymentWithoutABI.evm = {
 							gasEstimates,
 						};
 					}
@@ -807,7 +807,7 @@ export async function createEnvironment<
 		const deployment = {
 			address: contractAddress,
 			abi,
-			...artifactObjectWithoutABI,
+			...partialDeploymentWithoutABI,
 			transaction: pendingDeployment.transaction,
 			receipt: {
 				blockHash: receipt.blockHash,

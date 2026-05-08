@@ -111,7 +111,7 @@ export function deployViaRouter(
 			sigMap,
 		};
 
-		logger.info(`routes`, routeParams);
+		// logger.info(`routes`, routeParams);
 
 		const router = await _deploy(
 			`${name}_Router`,
@@ -123,7 +123,7 @@ export function deployViaRouter(
 			optionsForRouter,
 		);
 
-		logger.info(`router deployed at ${router.address}`);
+		// logger.info(`router deployed at ${router.address}`);
 
 		if (!existingDeployment || router.newlyDeployed) {
 			const {newlyDeployed, ...routerWithoutDeployedFlag} = router;
@@ -134,7 +134,7 @@ export function deployViaRouter(
 				userdoc: mergedUserDocs,
 			});
 
-			logger.info(`save with merged ABI: ${name}`);
+			// logger.info(`save with merged ABI: ${name}`);
 
 			return {...existingDeployment, newlyDeployed: true};
 		}

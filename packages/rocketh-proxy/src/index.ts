@@ -251,7 +251,7 @@ export function deployViaProxy(
 						optionsForImplementation,
 					);
 
-		logger.info(`implementation at ${implementationDeployment.address}`, `${implementationName}`);
+		// logger.info(`implementation at ${implementationDeployment.address}`, `${implementationName}`);
 
 		const {
 			address: implementationAddress,
@@ -271,7 +271,7 @@ export function deployViaProxy(
 			{checkForConflicts: checkABIConflict},
 		);
 
-		logger.info(`existingDeployment at ${existingDeployment?.address}`);
+		// logger.info(`existingDeployment at ${existingDeployment?.address}`);
 
 		const expectedOwner = options?.owner || address;
 		let proxyAdmin = expectedOwner;
@@ -409,7 +409,7 @@ export function deployViaProxy(
 				},
 			);
 
-			logger.info(`proxy deployed at ${proxy.address}`);
+			// logger.info(`proxy deployed at ${proxy.address}`);
 
 			existingDeployment = await env.save<TAbi>(name, {
 				...proxy,
@@ -418,7 +418,7 @@ export function deployViaProxy(
 				linkedData: toJSONCompatibleLinkedData(options?.linkedData),
 			});
 
-			logger.info(`saving as ${name}`);
+			// logger.info(`saving as ${name}`);
 		} else {
 			const proxyDeployment = env.getOrNull<typeof proxyArtifact.abi>(proxyName);
 			if (!proxyDeployment) {
@@ -436,9 +436,9 @@ export function deployViaProxy(
 			const currentImplementationAddress = `0x${implementationSlotData.substr(-40)}`;
 
 			if (currentImplementationAddress.toLowerCase() !== implementationDeployment.address.toLowerCase()) {
-				logger.info(
-					`different implementation old: ${currentImplementationAddress} new: ${implementationDeployment.address}, upgrade...`,
-				);
+				// logger.info(
+				// 	`different implementation old: ${currentImplementationAddress} new: ${implementationDeployment.address}, upgrade...`,
+				// );
 
 				// let currentOwner: `0x${string}` | undefined;
 				// try {
@@ -539,7 +539,7 @@ export function deployViaProxy(
 					abi: mergedABI as unknown as TAbi,
 					linkedData: toJSONCompatibleLinkedData(options?.linkedData),
 				});
-				logger.info(`saving as ${name}`);
+				// logger.info(`saving as ${name}`);
 			}
 		}
 		return existingDeployment;

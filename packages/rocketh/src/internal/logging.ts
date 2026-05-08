@@ -7,7 +7,7 @@ export const logger = logs('rocketh');
 const loggerProgressIndicator: ProgressIndicator = {
 	start(msg?: string) {
 		if (msg) {
-			logger.log(msg);
+			logger.info(msg);
 		}
 		return this;
 	},
@@ -16,7 +16,7 @@ const loggerProgressIndicator: ProgressIndicator = {
 	},
 	succeed(msg?: string) {
 		if (msg) {
-			logger.log(msg);
+			logger.info(msg);
 		}
 		return this;
 	},

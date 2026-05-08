@@ -479,6 +479,7 @@ export function diamond(
 				const diamondDeployment: Deployment<TAbi> = {
 					...oldDeployment,
 					linkedData: toJSONCompatibleLinkedData(options.linkedData),
+					libraries: options.libraries,
 					address: proxy.address,
 					abi,
 					facets: facetSnapshot,

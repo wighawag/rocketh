@@ -9,6 +9,7 @@ import type {
 	PartialDeployment,
 	Signer,
 	LinkedDataProvided,
+	Libraries,
 } from '@rocketh/core/types';
 import {
 	Address,
@@ -253,6 +254,26 @@ async function getCreate3Factory(env: Environment, signer: Signer, params: Facto
 	};
 }
 
+function areLibrariesIdentical(oldLibs: Libraries, newLibs: Libraries) {
+	const oldKeys = Object.keys(oldLibs || {});
+	const newKeys = Object.keys(newLibs || {});
+
+	if (oldKeys.length !== newKeys.length) {
+		return false;
+	}
+
+	for (const key of newKeys) {
+		const oldAddress = oldLibs[key]?.toLowerCase();
+		const newAddress = newLibs[key]?.toLowerCase();
+
+		if (oldAddress !== newAddress) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
 export function deploy(env: Environment): <TAbi extends Abi>(
 	name: string, // '' allow to not save it
 	args: DeploymentConstruction<TAbi>,
@@ -269,9 +290,9 @@ export function deploy(env: Environment): <TAbi extends Abi>(
 
 		const existingDeployment = name && env.getOrNull(name);
 		if (existingDeployment && skipIfAlreadyDeployed) {
-			logger.info(
-				`deployment for ${nameToDisplay} at ${existingDeployment.address}, skipIfAlreadyDeployed: true => we skip`,
-			);
+			// logger.info(
+			// 	`deployment for ${nameToDisplay} at ${existingDeployment.address}, skipIfAlreadyDeployed: true => we skip`,
+			// );
 			return {...(existingDeployment as Deployment<TAbi>), newlyDeployed: false};
 		}
 
@@ -282,6 +303,11 @@ export function deploy(env: Environment): <TAbi extends Abi>(
 		const artifactToUse = artifact;
 
 		const bytecode = linkLibraries(artifactToUse, options?.libraries);
+
+		if (bytecode.indexOf('$') != -1) {
+			// TODO identify which library are missing using linkReferences (if provided)
+			throw new Error(`${nameToDisplay} requires library linking`);
+		}
 
 		const abi = artifactToUse.abi;
 
@@ -295,30 +321,36 @@ export function deploy(env: Environment): <TAbi extends Abi>(
 		const calldata = encodeDeployData(argsToUse as any); // TODO any
 		const argsData = `0x${calldata.replace(bytecode, '')}` as `0x${string}`;
 
-		if (existingDeployment) {
-			logger.info(`existing deployment for ${nameToDisplay} at ${existingDeployment.address}`);
-		}
+		// if (existingDeployment) {
+		// 	logger.info(`existing deployment for ${nameToDisplay} at ${existingDeployment.address}`);
+		// }
 
 		if (existingDeployment && !alwaysOverride) {
-			const previousBytecode = existingDeployment.bytecode;
+			const previousDeployedBytecode = existingDeployment.deployedBytecode;
 			const previousArgsData = existingDeployment.argsData;
-			// we assume cbor encoding of hash at the end
-			// TODO option to remove it, can parse metadata but would rather avoid this here
-			const last2Bytes = previousBytecode.slice(-4);
-			const cborLength = parseInt(last2Bytes, 16);
-			const previousBytecodeWithoutCBOR = previousBytecode.slice(0, -cborLength * 2);
-			const newBytecodeWithoutCBOR = bytecode.slice(0, -cborLength * 2);
-			if (previousBytecodeWithoutCBOR === newBytecodeWithoutCBOR && previousArgsData === argsData) {
-				return {...(existingDeployment as Deployment<TAbi>), newlyDeployed: false};
+			const newlyDeployedBytecode = artifactToUse.deployedBytecode;
+			let bytecodeMatches: boolean;
+			if (previousDeployedBytecode && newlyDeployedBytecode) {
+				// CBOR metadata is appended to deployed bytecode (runtime code), not creation bytecode (where CBOR can be at different places).
+				const last2Bytes = previousDeployedBytecode.slice(-4);
+				const cborLength = parseInt(last2Bytes, 16);
+
+				const previousDeployedBytecodeWithoutCBOR = previousDeployedBytecode.slice(0, -cborLength * 2);
+				const newlyDeployedBytecodeWithoutCBOR = newlyDeployedBytecode.slice(0, -cborLength * 2);
+
+				bytecodeMatches =
+					areLibrariesIdentical(existingDeployment.libraries || {}, options?.libraries || {}) &&
+					previousDeployedBytecodeWithoutCBOR === newlyDeployedBytecodeWithoutCBOR;
 			} else {
-				// logger.info(`-------------- WITHOUT CBOR---------------------`);
-				// logger.info(previousBytecodeWithoutCBOR);
-				// logger.info(newBytecodeWithoutCBOR);
-				// logger.info(`-----------------------------------`);
-				// logger.info(`-------------- ARGS DATA ---------------------`);
-				// logger.info(previousArgsData);
-				// logger.info(argsData);
-				// logger.info(`-----------------------------------`);
+				const linkedPreviousBytecode = linkLibraries(
+					{bytecode: existingDeployment.bytecode, linkReferences: existingDeployment.linkReferences},
+					existingDeployment.libraries,
+				);
+				bytecodeMatches = linkedPreviousBytecode === bytecode;
+			}
+
+			if (bytecodeMatches && previousArgsData === argsData) {
+				return {...(existingDeployment as Deployment<TAbi>), newlyDeployed: false};
 			}
 		}
 
@@ -326,6 +358,7 @@ export function deploy(env: Environment): <TAbi extends Abi>(
 			...artifactToUse,
 			argsData,
 			linkedData: toJSONCompatibleLinkedData(options?.linkedData),
+			libraries: options?.libraries,
 		};
 
 		const signer = env.addressSigners[address];
