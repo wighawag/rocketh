@@ -52,6 +52,9 @@ export type DeployOptions = {
 	| {
 			alwaysOverride?: boolean;
 	  }
+	| {
+			strictBytecodeMatch?: boolean;
+	  }
 );
 
 function linkRawLibrary(bytecode: string, libraryName: string, libraryAddress: string): string {
@@ -283,6 +286,7 @@ export function deploy(env: Environment): <TAbi extends Abi>(
 		const nameToDisplay = name || '<no name>';
 		const skipIfAlreadyDeployed = options && 'skipIfAlreadyDeployed' in options && options.skipIfAlreadyDeployed;
 		const alwaysOverride = options && 'alwaysOverride' in options && options.alwaysOverride;
+		const strictBytecodeMatch = options && 'strictBytecodeMatch' in options && options.strictBytecodeMatch;
 
 		if (alwaysOverride && skipIfAlreadyDeployed) {
 			throw new Error(`conflicting options: "alwaysOverride" and "skipIfAlreadyDeployed"`);
@@ -330,17 +334,24 @@ export function deploy(env: Environment): <TAbi extends Abi>(
 			const previousArgsData = existingDeployment.argsData;
 			const newlyDeployedBytecode = artifactToUse.deployedBytecode;
 			let bytecodeMatches: boolean;
-			if (previousDeployedBytecode && newlyDeployedBytecode) {
+			if (previousDeployedBytecode && newlyDeployedBytecode && !strictBytecodeMatch) {
 				// CBOR metadata is appended to deployed bytecode (runtime code), not creation bytecode (where CBOR can be at different places).
 				const last2Bytes = previousDeployedBytecode.slice(-4);
 				const cborLength = parseInt(last2Bytes, 16);
+				if (isNaN(cborLength) || cborLength < 0) {
+					const linkedPreviousBytecode = linkLibraries(
+						{bytecode: existingDeployment.bytecode, linkReferences: existingDeployment.linkReferences},
+						existingDeployment.libraries,
+					);
+					bytecodeMatches = linkedPreviousBytecode === bytecode;
+				} else {
+					const previousDeployedBytecodeWithoutCBOR = previousDeployedBytecode.slice(0, -cborLength * 2);
+					const newlyDeployedBytecodeWithoutCBOR = newlyDeployedBytecode.slice(0, -cborLength * 2);
 
-				const previousDeployedBytecodeWithoutCBOR = previousDeployedBytecode.slice(0, -cborLength * 2);
-				const newlyDeployedBytecodeWithoutCBOR = newlyDeployedBytecode.slice(0, -cborLength * 2);
-
-				bytecodeMatches =
-					areLibrariesIdentical(existingDeployment.libraries || {}, options?.libraries || {}) &&
-					previousDeployedBytecodeWithoutCBOR === newlyDeployedBytecodeWithoutCBOR;
+					bytecodeMatches =
+						areLibrariesIdentical(existingDeployment.libraries || {}, options?.libraries || {}) &&
+						previousDeployedBytecodeWithoutCBOR === newlyDeployedBytecodeWithoutCBOR;
+				}
 			} else {
 				const linkedPreviousBytecode = linkLibraries(
 					{bytecode: existingDeployment.bytecode, linkReferences: existingDeployment.linkReferences},

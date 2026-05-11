@@ -26,60 +26,66 @@ export type PredefinedProxyContract =
 	| 'SharedAdminOpenZeppelinTransparentProxy'
 	| 'SharedAdminOptimizedTransparentProxy';
 
-export type ProxyDeployOptions = Omit<DeployOptions, 'skipIfAlreadyDeployed' | 'alwaysOverride'> & {
-	proxyDisabled?: boolean;
-	owner?: EIP1193Account;
-	execute?:
-		| string
-		| {
-				methodName: string;
-				args?: any[];
-		  }
-		| {
-				init:
-					| string
-					| {
-							methodName: string;
-							args?: any[];
-					  };
-				onUpgrade?:
-					| string
-					| {
-							methodName: string;
-							args?: any[];
-					  };
-		  };
-	upgradeIndex?: number;
-	checkProxyAdmin?: boolean;
-	checkABIConflict?: boolean;
-	deterministicImplementation?: boolean;
-	proxyContract?:
-		| PredefinedProxyContract
-		| ({type: PredefinedProxyContract} & {
-				type: 'SharedAdminOpenZeppelinTransparentProxy' | 'SharedAdminOptimizedTransparentProxy';
-				proxyAdminName?: string;
-				// TODO allow custom proxyAdmin artifact?
-		  })
-		| {
-				type: 'custom';
-				artifact: Artifact;
-				args?: ('{implementation}' | '{admin}' | '{data}')[]; // default to  ['{implementation}', '{admin}', '{data}']
-				// TODO allow viaAdminContract for custom proxy artifacts
-				// We could just use boolean | {proxyAdminName: string}
-				// viaAdminContract?:
-				// 	| string
-				// 	| {
-				// 			name: string;
-				// 			artifact?: string | ArtifactData;
-				// 	  };
-				// viaAdminContract = {
-				// 			artifactName: 'DefaultProxyAdmin',
-				// 			proxyAdminName:
-				// 				(typeof options.proxyContract === 'object' && options.proxyContract.proxyAdminName) ||
-				// 				'DefaultProxyAdmin',
-				// 		};
-		  };
-};
+type DeployMutuallyExclusiveOptions = {alwaysOverride?: boolean} | {strictBytecodeMatch?: boolean};
+
+export type ProxyDeployOptions = Omit<
+	DeployOptions,
+	'skipIfAlreadyDeployed' | 'alwaysOverride' | 'strictBytecodeMatch'
+> &
+	DeployMutuallyExclusiveOptions & {
+		proxyDisabled?: boolean;
+		owner?: EIP1193Account;
+		execute?:
+			| string
+			| {
+					methodName: string;
+					args?: any[];
+			  }
+			| {
+					init:
+						| string
+						| {
+								methodName: string;
+								args?: any[];
+						  };
+					onUpgrade?:
+						| string
+						| {
+								methodName: string;
+								args?: any[];
+						  };
+			  };
+		upgradeIndex?: number;
+		checkProxyAdmin?: boolean;
+		checkABIConflict?: boolean;
+		deterministicImplementation?: boolean;
+		proxyContract?:
+			| PredefinedProxyContract
+			| ({type: PredefinedProxyContract} & {
+					type: 'SharedAdminOpenZeppelinTransparentProxy' | 'SharedAdminOptimizedTransparentProxy';
+					proxyAdminName?: string;
+					// TODO allow custom proxyAdmin artifact?
+			  })
+			| {
+					type: 'custom';
+					artifact: Artifact;
+					args?: ('{implementation}' | '{admin}' | '{data}')[]; // default to  ['{implementation}', '{admin}', '{data}']
+					// TODO allow viaAdminContract for custom proxy artifacts
+					// We could just use boolean | {proxyAdminName: string}
+					// viaAdminContract?:
+					// 	| string
+					// 	| {
+					// 			name: string;
+					// 			artifact?: string | ArtifactData;
+					// 	  };
+					// viaAdminContract = {
+					// 			artifactName: 'DefaultProxyAdmin',
+					// 			proxyAdminName:
+					// 				(typeof options.proxyContract === 'object' && options.proxyContract.proxyAdminName) ||
+					// 				'DefaultProxyAdmin',
+					// 		};
+			  };
+	};
 
 export type ImplementationDeployer<TAbi extends Abi> = (
 	name: string,
@@ -120,9 +126,15 @@ export function deployViaProxy(
 		params: ProxyEnhancedDeploymentConstruction<TAbi>,
 		options?: ProxyDeployOptions,
 	) => {
+		const alwaysOverride = options && 'alwaysOverride' in options && options.alwaysOverride;
+		const strictBytecodeMatch =
+			!alwaysOverride && options && 'strictBytecodeMatch' in options && options.strictBytecodeMatch;
+		const skipIfAlreadyDeployed = alwaysOverride ? false : true;
+
 		let optionsForImplementation = options
 			? {
-					alwaysOverride: false,
+					strictBytecodeMatch: strictBytecodeMatch,
+					alwaysOverride: alwaysOverride,
 					deterministic: options.deterministic || options.deterministicImplementation,
 					libraries: options.libraries,
 				}
@@ -139,9 +151,9 @@ export function deployViaProxy(
 						proxyDisabled,
 						upgradeIndex,
 						linkedData,
-						...optionsForProxy
+						...rest
 					} = options;
-					return optionsForProxy;
+					return {...rest, strictBytecodeMatch: false}; // strictBytecodeMatch is never applied to proxy
 				})(options)
 			: undefined;
 
@@ -154,13 +166,13 @@ export function deployViaProxy(
 			if (typeof params.artifact === 'function') {
 				return params.artifact(name, params, {
 					...optionsForProxy,
-					skipIfAlreadyDeployed: true,
+					skipIfAlreadyDeployed,
 					linkedData: options.linkedData,
 				});
 			} else {
 				return _deploy<TAbi>(name, params as DeploymentConstruction<TAbi>, {
 					...optionsForProxy,
-					skipIfAlreadyDeployed: true,
+					skipIfAlreadyDeployed,
 					linkedData: options.linkedData,
 				});
 			}
@@ -403,10 +415,7 @@ export function deployViaProxy(
 						data: postUpgradeCalldata ? postUpgradeCalldata : '0x',
 					}),
 				},
-				{
-					skipIfAlreadyDeployed: true,
-					deterministic: options?.deterministic,
-				},
+				optionsForProxy,
 			);
 
 			// logger.info(`proxy deployed at ${proxy.address}`);
