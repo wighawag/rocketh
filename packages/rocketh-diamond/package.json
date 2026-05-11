@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/diamond",
-	"version": "0.19.5",
+	"version": "0.19.6",
 	"description": "provide diamond support for rocketh/hardhat-deploy",
 	"keywords": [
 		"rocketh",

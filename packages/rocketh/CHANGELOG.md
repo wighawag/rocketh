@@ -1,5 +1,13 @@
 # rocketh
 
+## 0.19.7
+
+### Patch Changes
+
+- 034b3a7: retry config + read-execute use it for AbiDecodingZeroDataError errors on existing deployments
+- Updated dependencies [034b3a7]
+  - @rocketh/core@0.19.3
+
 ## 0.19.6
 
 ### Patch Changes
