@@ -77,17 +77,17 @@ export type DiamondDeployOptions<
 > = Omit<DeployOptions, 'skipIfAlreadyDeployed' | 'alwaysOverride' | 'deterministic' | 'strictBytecodeMatch'> &
 	DeployMutuallyExclusiveOptions & {
 		facets: DiamondFacets;
-	owner?: EIP1193Account;
-	execute?: ExecuteOptions<TAbi, TFunctionName, TArgs> | {type: 'facet'; functionName: string; args: any[]};
-	defaultCutFacet?: boolean;
-	defaultOwnershipFacet?: boolean;
-	diamondContractArgs?: any[];
-	excludeSelectors?: {
-		[facetName: string]: `0x${string}`[];
+		owner?: EIP1193Account;
+		execute?: ExecuteOptions<TAbi, TFunctionName, TArgs> | {type: 'facet'; functionName: string; args: any[]};
+		defaultCutFacet?: boolean;
+		defaultOwnershipFacet?: boolean;
+		diamondContractArgs?: any[];
+		excludeSelectors?: {
+			[facetName: string]: `0x${string}`[];
+		};
+		facetsArgs?: any[];
+		deterministicSalt?: `0x${string}`;
 	};
-	facetsArgs?: any[];
-	deterministicSalt?: `0x${string}`;
-};
 
 // TODO omit nonce ? // TODO omit chain ? same for rocketh-deploy
 export type DiamondDeploymentConstruction<TAbi extends Abi> = Omit<
