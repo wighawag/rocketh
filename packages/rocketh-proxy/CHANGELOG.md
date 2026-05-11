@@ -1,5 +1,13 @@
 # @rocketh/proxy
 
+## 0.19.11
+
+### Patch Changes
+
+- 56bcf8d: strictBytecodeMatch + alwaysOverride for proxies
+- Updated dependencies [56bcf8d]
+  - @rocketh/deploy@0.19.6
+
 ## 0.19.10
 
 ### Patch Changes
