@@ -1,5 +1,11 @@
 # @rocketh/proxy
 
+## 0.19.12
+
+### Patch Changes
+
+- 72df1c8: strictBytecodeMatch and alwaysOverride for diamond/router/proxies
+
 ## 0.19.11
 
 ### Patch Changes
