@@ -24,13 +24,19 @@ export type RouterEnhancedDeploymentConstruction = Omit<
 	'artifact' | 'args'
 >;
 
-export type RouterDeployOptions = DeployOptions & {
-	extraABIs?: Abi[];
-	routerContract?: {
-		type: 'custom';
-		artifact: Artifact<typeof Router10X60.abi>;
+type DeployMutuallyExclusiveOptions = {alwaysOverride?: boolean} | {strictBytecodeMatch?: boolean};
+
+export type RouterDeployOptions = Omit<
+	DeployOptions,
+	'skipIfAlreadyDeployed' | 'alwaysOverride' | 'strictBytecodeMatch'
+> &
+	DeployMutuallyExclusiveOptions & {
+		extraABIs?: Abi[];
+		routerContract?: {
+			type: 'custom';
+			artifact: Artifact<typeof Router10X60.abi>;
+		};
 	};
-};
 
 export type DeployViaRouterFunction = <TAbi extends Abi>(
 	name: string,
@@ -53,13 +59,27 @@ export function deployViaRouter(
 		routes: Route<Abi>[],
 		options?: RouterDeployOptions,
 	) => {
-		let optionsForRoutes = options ? {deterministic: options.deterministic, libraries: options.libraries} : undefined;
+		const alwaysOverride = options && 'alwaysOverride' in options && options.alwaysOverride;
+		const strictBytecodeMatch =
+			!alwaysOverride && options && 'strictBytecodeMatch' in options && options.strictBytecodeMatch;
+		const skipIfAlreadyDeployed = alwaysOverride ? false : true;
+
+		let optionsForRoutes = options
+			? {
+					alwaysOverride,
+					strictBytecodeMatch,
+					deterministic: options.deterministic,
+					libraries: options.libraries,
+				}
+			: undefined;
+
 		let optionsForRouter = options
 			? ((options) => {
-					const {extraABIs, routerContract, ...optionsForRouter} = options;
-					return optionsForRouter;
+					const {extraABIs, routerContract, ...rest} = options;
+					return {...rest, alwaysOverride, strictBytecodeMatch: false, skipIfAlreadyDeployed};
 				})(options)
 			: undefined;
+
 		const _deploy = deploy(env);
 		const implementations: `0x${string}`[] = [];
 

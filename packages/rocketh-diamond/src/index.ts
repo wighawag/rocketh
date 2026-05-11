@@ -67,6 +67,11 @@ export function diamond(
 		const {account, ...viemArgs} = params;
 		const deployerAddress = env.resolveAccount(account);
 
+		const alwaysOverride = options && 'alwaysOverride' in options && options.alwaysOverride;
+		const strictBytecodeMatch =
+			!alwaysOverride && options && 'strictBytecodeMatch' in options && options.strictBytecodeMatch;
+		const skipIfAlreadyDeployed = alwaysOverride ? false : true;
+
 		// TODO
 		// if (options.diamondContract) {
 		// 	diamondArtifact = options.diamondContract;
@@ -167,7 +172,13 @@ export function diamond(
 					artifact,
 					args: facetArgs,
 				},
-				{libraries, linkedData, deterministic: deterministicFacet},
+				{
+					libraries,
+					linkedData,
+					deterministic: deterministicFacet,
+					alwaysOverride: deterministicFacet ? false : alwaysOverride,
+					strictBytecodeMatch,
+				},
 			);
 
 			let facetAddress: `0x${string}`;
@@ -431,7 +442,9 @@ export function diamond(
 					},
 					{
 						deterministic: options.deterministicSalt,
-						skipIfAlreadyDeployed: true,
+						alwaysOverride,
+						strictBytecodeMatch: false,
+						skipIfAlreadyDeployed,
 					},
 				);
 

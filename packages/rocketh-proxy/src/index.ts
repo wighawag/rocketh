@@ -308,7 +308,10 @@ export function deployViaProxy(
 						args: [proxyAdminOwner],
 					},
 					{
+						// TODO use optionsForProxy instead ?
+						alwaysOverride,
 						deterministic: options?.deterministic,
+						skipIfAlreadyDeployed,
 					},
 				);
 				proxyAdminDeployed = proxyAdminDeployment;

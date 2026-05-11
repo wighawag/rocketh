@@ -13,6 +13,8 @@ import type {ContractFunctionArgs, ContractFunctionName, WriteContractParameters
 export type {Artifact, Deployment, DeploymentConstruction, Libraries, Abi, LinkedDataProvided};
 export type {ContractFunctionArgs, ContractFunctionName, WriteContractParameters};
 
+type DeployMutuallyExclusiveOptions = {alwaysOverride?: boolean} | {strictBytecodeMatch?: boolean};
+
 export type Facet = {
 	facetAddress: `0x${string}`;
 	functionSelectors: readonly `0x${string}`[];
@@ -72,8 +74,9 @@ export type DiamondDeployOptions<
 		'nonpayable' | 'payable',
 		TFunctionName
 	>,
-> = Omit<DeployOptions, 'skipIfAlreadyDeployed' | 'alwaysOverride' | 'deterministic'> & {
-	facets: DiamondFacets;
+> = Omit<DeployOptions, 'skipIfAlreadyDeployed' | 'alwaysOverride' | 'deterministic' | 'strictBytecodeMatch'> &
+	DeployMutuallyExclusiveOptions & {
+		facets: DiamondFacets;
 	owner?: EIP1193Account;
 	execute?: ExecuteOptions<TAbi, TFunctionName, TArgs> | {type: 'facet'; functionName: string; args: any[]};
 	defaultCutFacet?: boolean;
