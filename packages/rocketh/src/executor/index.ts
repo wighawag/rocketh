@@ -17,6 +17,7 @@ import type {
 	DeploymentStore,
 	ModuleObject,
 	ChainInfo,
+	ResolvedRetryConfig,
 } from '@rocketh/core/types';
 import {withEnvironment} from '@rocketh/core/environment';
 
@@ -102,10 +103,12 @@ export function resolveConfig<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 >(configFile: UserConfig, overrides?: ConfigOverrides): ResolvedUserConfig<NamedAccounts, Data> {
-	const config = {
+	const {retry: _retry, ...configWithoutRetry} = configFile as UserConfig<NamedAccounts, Data>;
+	const config: ResolvedUserConfig<NamedAccounts, Data> = {
 		deployments: 'deployments',
 		defaultPollingInterval: 1,
-		...configFile,
+		retry: {...{maxRetries: 3, delay: 1000}, ...(_retry || {})} as ResolvedRetryConfig,
+		...configWithoutRetry,
 		scripts: configFile?.scripts
 			? typeof configFile.scripts === 'string'
 				? [configFile.scripts]

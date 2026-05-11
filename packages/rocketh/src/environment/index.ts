@@ -427,6 +427,7 @@ export async function createEnvironment<
 		context: {
 			saveDeployments: context.saveDeployments,
 			autoMine: context.autoMine,
+			retry: userConfig.retry,
 		},
 		name: environmentName,
 		tags: context.tags,

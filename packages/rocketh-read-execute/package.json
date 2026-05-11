@@ -46,13 +46,16 @@
 		"viem": "^2.48.2"
 	},
 	"devDependencies": {
+		"@rocketh/test-utils": "workspace:^",
 		"as-soon": "^0.1.6",
 		"rimraf": "^6.1.3",
-		"typescript": "^6.0.3"
+		"typescript": "^6.0.3",
+		"vitest": "^4.1.5"
 	},
 	"scripts": {
 		"prepublishOnly": "cp ../../LICENSE LICENSE",
 		"build": "tsc --project tsconfig.json",
-		"dev": "as-soon -w src pnpm build"
+		"dev": "as-soon -w src pnpm build",
+		"test": "vitest"
 	}
 }

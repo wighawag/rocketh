@@ -18,7 +18,7 @@ export type {
 	TransactionRequestEIP1559,
 	WriteContractParameters,
 };
-import {decodeFunctionResult, encodeFunctionData} from 'viem';
+import {decodeFunctionResult, encodeFunctionData, AbiDecodingZeroDataError} from 'viem';
 import {logs} from 'named-logs';
 
 export type {Abi, Artifact, Environment, MinimalDeployment, PendingExecution};
@@ -260,19 +260,45 @@ export function read(
 
 		const blockNumberOrTag = viemArgs.blockNumber || viemArgs.blockTag || 'latest';
 
-		const result: `0x${string}` = (await env.network.provider.request({
+		const retryConfig = env.context.retry;
+		let currentResult: `0x${string}` = (await env.network.provider.request({
 			method: 'eth_call',
 			params: [callObject, blockNumberOrTag] as any, // TODO fix eip-1193 package
 		})) as `0x${string}`;
 
-		const parsed = decodeFunctionResult<TAbi, TFunctionName>({
-			abi,
-			functionName: viemArgs.functionName,
-			data: result,
-			args: viemArgs.args,
-		} as any);
+		for (let attempt = 0; attempt <= retryConfig.maxRetries; attempt++) {
+			try {
+				const parsed = decodeFunctionResult<TAbi, TFunctionName>({
+					abi,
+					functionName: viemArgs.functionName,
+					data: currentResult,
+					args: viemArgs.args,
+				} as any);
 
-		return parsed as DecodeFunctionResultReturnType<TAbi, TFunctionName>;
+				return parsed as DecodeFunctionResultReturnType<TAbi, TFunctionName>;
+			} catch (error: any) {
+				if (!(error instanceof AbiDecodingZeroDataError)) {
+					throw error;
+				}
+
+				const deploymentInfo = env.fromAddressToNamedABIOrNull(deployment.address);
+				if (!deploymentInfo) {
+					throw error;
+				}
+
+				if (attempt === retryConfig.maxRetries) {
+					throw error;
+				}
+
+				await new Promise((resolve) => setTimeout(resolve, retryConfig.delay));
+
+				currentResult = (await env.network.provider.request({
+					method: 'eth_call',
+					params: [callObject, blockNumberOrTag] as any,
+				})) as `0x${string}`;
+			}
+		}
+		throw new Error('unreachable');
 	};
 }
 

@@ -450,6 +450,7 @@ export function createMockEnvironment(options: MockEnvironmentOptions = {}): Moc
 		name: 'mock',
 		context: {
 			saveDeployments: true,
+			retry: {maxRetries: 3, delay: 1000} as const,
 		},
 		namedAccounts: resolvedNamedAccounts as Record<string, `0x${string}`>,
 		data: {},
@@ -592,10 +593,25 @@ export function createMockEnvironment(options: MockEnvironmentOptions = {}): Moc
 			// No migrations in mock environment
 			return false;
 		},
-		fromAddressToNamedABI: <TAbi extends Abi>(_address: string): {mergedABI: TAbi; names: string[]} => {
-			throw new Error(`fromAddressToNamedABI not implemented in mock environment`);
+		fromAddressToNamedABI: <TAbi extends Abi>(address: `0x${string}`): {mergedABI: TAbi; names: string[]} => {
+			const result = env.fromAddressToNamedABIOrNull<TAbi>(address);
+			if (!result) {
+				throw new Error(`could not find artifact for address ${address}`);
+			}
+			return result;
 		},
-		fromAddressToNamedABIOrNull: <TAbi extends Abi>(_address: string): {mergedABI: TAbi; names: string[]} | null => {
+		fromAddressToNamedABIOrNull: <TAbi extends Abi>(
+			address: `0x${string}`,
+		): {mergedABI: TAbi; names: string[]} | null => {
+			for (const name of Object.keys(deployments)) {
+				const deployment = deployments[name] as Deployment<TAbi>;
+				if (deployment.address.toLowerCase() === address.toLowerCase()) {
+					return {
+						mergedABI: deployment.abi as unknown as TAbi,
+						names: [name],
+					};
+				}
+			}
 			return null;
 		},
 	} as unknown as Environment;

@@ -199,6 +199,13 @@ export type UntypedEIP1193Provider = {
 	request(requestArguments: UntypedRequestArguments): Promise<unknown>;
 };
 
+export type RetryConfig = {
+	readonly maxRetries?: number;
+	readonly delay?: number;
+};
+
+export type ResolvedRetryConfig = Required<Pick<RetryConfig, 'maxRetries' | 'delay'>>;
+
 export type ConfigOverrides = {
 	deployments?: string;
 	scripts?: string | string[];
@@ -287,12 +294,14 @@ export type UserConfig<
 	readonly data?: Data;
 	readonly signerProtocols?: Record<string, SignerProtocolFunction>;
 	readonly defaultPollingInterval?: number;
+	readonly retry?: RetryConfig;
 };
 
 export type ResolvedUserConfig<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
-> = UserConfig & {
+> = Omit<UserConfig<NamedAccounts, Data>, 'retry'> & {
+	readonly retry: ResolvedRetryConfig;
 	readonly deployments: string;
 	readonly scripts: readonly string[];
 	readonly defaultPollingInterval: number;
@@ -564,6 +573,7 @@ export interface Environment<
 	readonly context: {
 		readonly saveDeployments: boolean;
 		readonly autoMine: boolean;
+		readonly retry: ResolvedRetryConfig;
 	};
 	readonly tags: {readonly [tag: string]: boolean};
 	readonly network: {
