@@ -1,5 +1,11 @@
 # @rocketh/deploy
 
+## 0.19.7
+
+### Patch Changes
+
+- log when reusing an unchanged deployment
+
 ## 0.19.6
 
 ### Patch Changes
