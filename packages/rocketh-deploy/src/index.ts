@@ -361,6 +361,7 @@ export function deploy(env: Environment): <TAbi extends Abi>(
 			}
 
 			if (bytecodeMatches && previousArgsData === argsData) {
+				logger.info(`reusing "${nameToDisplay}" at ${existingDeployment.address}`);
 				return {...(existingDeployment as Deployment<TAbi>), newlyDeployed: false};
 			}
 		}
