@@ -393,7 +393,9 @@ export function deploy(env: Environment): <TAbi extends Abi>(
 			maxFeePerGas,
 			maxPriorityFeePerGas,
 			// gasPrice: viemArgs.gasPrice && `0x${viemArgs.gasPrice.toString(16)}` as `0x${string}`,
-			// value: `0x${viemArgs.value?.toString(16)}` as `0x${string}`,
+			...(viemArgs.value !== undefined && {
+				value: `0x${viemArgs.value.toString(16)}` as `0x${string}`,
+			}),
 			// nonce: viemArgs.nonce && (`0x${viemArgs.nonce.toString(16)}` as `0x${string}`),
 		};
 
