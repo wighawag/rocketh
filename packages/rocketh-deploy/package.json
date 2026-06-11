@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/deploy",
-	"version": "0.19.7",
+	"version": "0.19.8",
 	"description": "provide deploy function for rocketh",
 	"keywords": [
 		"rocketh",

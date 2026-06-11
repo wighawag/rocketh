@@ -1,5 +1,12 @@
 # @rocketh/proxy
 
+## 0.19.14
+
+### Patch Changes
+
+- Updated dependencies
+  - @rocketh/deploy@0.19.8
+
 ## 0.19.13
 
 ### Patch Changes

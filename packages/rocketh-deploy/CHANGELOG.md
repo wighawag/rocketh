@@ -1,5 +1,11 @@
 # @rocketh/deploy
 
+## 0.19.8
+
+### Patch Changes
+
+- Wire up value on the deployment transaction so payable constructors receive msg.value
+
 ## 0.19.7
 
 ### Patch Changes
