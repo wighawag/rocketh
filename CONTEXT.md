@@ -31,6 +31,23 @@ Rocketh is a framework-agnostic smart-contract deployment system for Ethereum-co
 - `work/findings/` — reserved for verified **external** ground truth (third-party APIs, EIPs, wire formats), each with a `source:`. (Our own architecture lives here in `CONTEXT.md`, not in `findings/`.)
 - `docs/adr/` — decisions WE made and why (the folder is the index; e.g. the curried API, browser-capable core, vendored v1 proxy artifacts, non-strict matching, and modular-packages decisions all live here).
 
+## Conventions
+
+Standing per-change rules agents must follow in this repo.
+
+- **Every change requires a changeset.** Do **not** run `pnpm changeset` (it is interactive and will hang an unattended agent). Instead, **write the file directly**: create `.changeset/<short-slug>.md` with YAML frontmatter listing each changed package and its semver bump, followed by a one-line summary:
+
+  ```md
+  ---
+  "rocketh": patch
+  "@rocketh/deploy": minor
+  ---
+
+  Summary of the change.
+  ```
+
+  Use `patch` for fixes, `minor` for backwards-compatible features, `major` for breaking changes (flag a breaking change for human confirmation rather than deciding it alone). If the change touches a package but should **not** trigger a release (docs, internal refactor), write an **empty changeset** — the same file with empty frontmatter (`---` then `---`) and a summary. This is enforced by the `verify` gate (`changeset status --since=main` fails when packages changed but no changeset was added).
+
 ## Skills this repo uses
 
 - Required: `setup` (onboarding/migration), `to-prd`, `to-slices`.
