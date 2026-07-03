@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/test-utils",
-	"version": "0.2.3",
+	"version": "0.2.4",
 	"description": "Test utilities for rocketh packages",
 	"keywords": [
 		"rocketh",
