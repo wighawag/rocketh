@@ -1,0 +1,63 @@
+name: release
+
+# Changesets release flow:
+#   1. Land PRs that include a changeset (`.changeset/*.md`) on main.
+#   2. This workflow opens/updates a "Version Packages" PR that bumps versions
+#      and updates changelogs from the pending changesets.
+#   3. Merging that PR (which removes the changesets) makes this workflow run
+#      `changeset publish`, publishing the changed packages to npm.
+#
+# Auth is npm Trusted Publishing (OIDC): NO NPM_TOKEN secret. npm trusts this
+# repo + workflow (release.yml) once you register it as a trusted publisher on
+# each package's npmjs.com settings. The OIDC handshake needs `id-token: write`,
+# Node >= 22, and a recent pnpm; publishes are stamped with provenance.
+# NOTE: npm ties a trusted publisher to an existing package. All rocketh
+# packages are already published, so registering this repo + workflow as a
+# trusted publisher once (per package) is the only manual step; every release
+# after that goes through this tokenless OIDC flow.
+on:
+  push:
+    branches: [main]
+
+concurrency: ${{ github.workflow }}-${{ github.ref }}
+
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write # npm provenance
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24 # >= 22 required for npm OIDC trusted publishing
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - name: Install
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Create Release PR or Publish
+        uses: changesets/action@v1
+        with:
+          # release:ci builds + format-checks then runs `changeset publish`
+          # (the action itself handles git commits/tags, so no git push here).
+          # No NPM_TOKEN: npm detects the OIDC environment and authenticates via
+          # the registered trusted publisher.
+          publish: pnpm release:ci
+          # changeset:version force-patches pending changesets (pre-1.0 policy,
+          # see scripts/force-patch-changesets.ts) before `changeset version`.
+          version: pnpm changeset:version
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

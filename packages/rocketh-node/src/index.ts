@@ -2,6 +2,7 @@ export {
 	setupEnvironmentFromFiles,
 	loadEnvironmentFromFiles,
 	readAndResolveConfig,
+	mergeChainConfig,
 	loadAndExecuteDeploymentsFromFiles,
 	loadDeploymentsFromFiles,
 } from './executor/index.js';

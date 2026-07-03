@@ -287,6 +287,16 @@ export type UserConfig<
 > = {
 	readonly environments?: Environments;
 	readonly chains?: Chains;
+	/**
+	 * When true, viem's default public RPC endpoint for a chain (e.g.
+	 * `https://<id>.rpc.thirdweb.com`) is merged into that chain's
+	 * `info.rpcUrls`. Defaults to false: only an RPC url set explicitly in the
+	 * config appears in `info.rpcUrls`, so a default/public endpoint is never
+	 * baked into serialized chain info (e.g. a frontend export or wallet
+	 * "add network" data). Deploying still falls back to viem's default RPC
+	 * regardless of this flag (it is provided separately, not via `info`).
+	 */
+	readonly includeDefaultRPCUrlsInChainInfos?: boolean;
 	readonly defaultChainProperties?: Record<string, JSONTypePlusBigInt>;
 	readonly deployments?: string;
 	readonly scripts?: string | readonly string[];

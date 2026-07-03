@@ -20,6 +20,7 @@
     "prettier": "^3.8.3",
     "set-defaults": "^0.0.5",
     "syncpack": "^14.3.0",
+    "tsx": "^4.21.0",
     "vitepress": "^1.6.4",
     "vitest": "^4.1.5",
     "zellij-launcher": "^0.0.1"
@@ -32,6 +33,9 @@
     "prepare": "set-defaults .vscode",
     "prepublishOnly": "pnpm format:check && pnpm build",
     "release": "pnpm prepublishOnly && git push --all && pnpm changeset publish && git push --tags",
+    "release:ci": "pnpm prepublishOnly && pnpm changeset publish",
+    "changeset:force-patch": "tsx scripts/force-patch-changesets.ts",
+    "changeset:version": "pnpm changeset:force-patch && pnpm changeset version",
     "reset": "git clean -fdX; pnpm i",
     "sync-deps": "syncpack fix-mismatches",
     "docs:dev": "vitepress dev",

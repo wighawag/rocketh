@@ -15,6 +15,8 @@ import {
 	type ConfigOverrides,
 	type UserConfig,
 	type PromptExecutor,
+	type ChainInfo,
+	type ChainUserConfig,
 	Chains,
 	Environments,
 } from '@rocketh/core/types';
@@ -157,19 +159,17 @@ async function readConfig<
 
 	const newChainConfigs: Mutable<Chains> = {};
 
+	const includeDefaultRPCUrlsInChainInfos = configFile?.includeDefaultRPCUrlsInChainInfos === true;
+
 	const chainIds = Object.keys(chainById).map((v) => parseInt(v));
 	for (const chainId of chainIds) {
-		const existingConfig = configFile?.chains?.[chainId];
-		// TODO what do we do about further info?
-		//  for now, we just take the first one
-		const defaultInfo = chainById[chainId][0];
-		newChainConfigs[chainId] = {
-			...existingConfig,
-			info: {
-				...defaultInfo,
-				...existingConfig?.info,
-			},
-		};
+		newChainConfigs[chainId] = mergeChainConfig(
+			// TODO what do we do about further info?
+			//  for now, we just take the first one
+			chainById[chainId][0],
+			configFile?.chains?.[chainId],
+			includeDefaultRPCUrlsInChainInfos,
+		);
 	}
 
 	const newEnvironments: Mutable<Environments> = {};
@@ -189,6 +189,48 @@ async function readConfig<
 		: {chains: newChainConfigs};
 
 	return config;
+}
+
+/**
+ * Merge viem's default chain info with the user's chain config for one chain.
+ *
+ * Chain metadata (name, nativeCurrency, multicall3, explorers, ...) is always
+ * taken from viem, with the user's `info` layered on top.
+ *
+ * By default, viem's public default RPC (e.g. https://<id>.rpc.thirdweb.com) is
+ * NOT included in the resulting `info.rpcUrls`: such an endpoint is
+ * rate-limited, can disappear, and would get baked into serialized chain info
+ * (frontend exports, wallet "add network" data). Only an rpc url set explicitly
+ * in the config ends up in `info.rpcUrls`; the required `default` entry is kept
+ * (empty) to preserve the shape. Pass `includeDefaultRPCUrls = true` to restore
+ * the old behavior of including viem's default there.
+ *
+ * Regardless of that flag, viem's default rpc is still exposed to the deploy
+ * path via the top-level `rpcUrl` (unless the user set one), so deploying keeps
+ * working with zero config while the default is never serialized into `info`.
+ */
+export function mergeChainConfig(
+	defaultInfo: ChainInfo,
+	existingConfig: ChainUserConfig | undefined,
+	includeDefaultRPCUrls: boolean,
+): ChainUserConfig {
+	const mergedInfo: ChainInfo = {
+		...defaultInfo,
+		...existingConfig?.info,
+	};
+
+	if (!includeDefaultRPCUrls) {
+		mergedInfo.rpcUrls = existingConfig?.info?.rpcUrls ?? {default: {http: []}};
+	}
+
+	const viemDefaultRpc = defaultInfo?.rpcUrls?.default?.http?.[0];
+	const rpcUrl = existingConfig?.rpcUrl ?? viemDefaultRpc;
+
+	return {
+		...existingConfig,
+		...(rpcUrl ? {rpcUrl} : {}),
+		info: mergedInfo,
+	};
 }
 
 // used by @rocketh/export, @rocketh/verifier, @rocketh/doc
