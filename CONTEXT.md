@@ -1,6 +1,6 @@
 # CONTEXT — rocketh domain language
 
-The domain glossary for `rocketh`. Agents and skills use THIS vocabulary when naming modules, tests, and discussing the system. Architectural rationale lives in `docs/adr/` (decisions); product framing lives in `work/prd/`.
+The domain glossary for `rocketh`. Agents and skills use THIS vocabulary when naming modules, tests, and discussing the system. Architectural rationale lives in `docs/adr/` (decisions); product framing lives in `work/specs/`.
 
 ## What rocketh is
 
@@ -16,7 +16,7 @@ Rocketh is a framework-agnostic smart-contract deployment system for Ethereum-co
 - **artifact** — compiled-contract metadata (ABI + bytecode) a deployment is built from; merged/typed via `@rocketh/core` utilities and `abitype`.
 - **executor adapter** — a runtime that supplies environment capabilities: `@rocketh/node` (filesystem) vs `@rocketh/web` (browser). Deployment logic stays adapter-agnostic.
 - **proxy / diamond** — upgradeable-contract patterns: ERC1967/UUPS/Transparent/ERC173 proxies (`@rocketh/proxy`) and EIP-2535 Diamonds (`@rocketh/diamond`).
-- **work/ contract** — the on-disk system this repo uses, defined by the reference docs in **`work/protocol/`** (copied here by `setup`): `WORK-CONTRACT.md` (the contract), `CLAIM-PROTOCOL.md`, `slice-template.md`, `prd-template.md`, `ADR-FORMAT.md`. One markdown file per item, status = the folder it lives in (never a field). Capture buckets: `ideas/` (proposed), `observations/` (spotted, unverified, append-only), `findings/` (verified external/domain ground truth, each with a `source:`). ADRs (`docs/adr/`, format in `work/protocol/ADR-FORMAT.md`) record what WE decided and why.
+- **work/ contract** — the on-disk system this repo uses, defined by the reference docs in **`work/protocol/`** (copied here by `setup`): `WORK-CONTRACT.md` (the contract), `CLAIM-PROTOCOL.md`, `REVIEW-PROTOCOL.md`, `SURFACE-PROTOCOL.md`, `TASKING-PROTOCOL.md`, `task-template.md`, `spec-template.md`, `ADR-FORMAT.md`. Three REGIME umbrellas — `notes/` (capture buckets), `tasks/` (the build board: `backlog` staging, `ready` pool, `done`, `cancelled`), `specs/` (spec lifecycle: `proposed`, `ready`, `tasked`, `dropped`) — plus top-level `questions/` and `protocol/`. One markdown file per item, status = the folder it lives in (never a field). Capture buckets: `notes/ideas/` (proposed), `notes/observations/` (spotted, unverified, append-only), `notes/findings/` (verified external/domain ground truth, each with a `source:`). ADRs (`docs/adr/`, format in `work/protocol/ADR-FORMAT.md`) record what WE decided and why.
 
 ## Architecture shape
 
@@ -25,10 +25,10 @@ Rocketh is a framework-agnostic smart-contract deployment system for Ethereum-co
 
 ## Buckets this repo uses
 
-- `work/prd/` — product framing for coherent multi-slice efforts (e.g. tag-tracking + selective-reset).
-- `work/ideas/` — proposed wishes / sketches, including ones blocked on external tooling.
-- `work/observations/` — spotted-but-unverified concerns (e.g. from code reviews) about *our own* code.
-- `work/findings/` — reserved for verified **external** ground truth (third-party APIs, EIPs, wire formats), each with a `source:`. (Our own architecture lives here in `CONTEXT.md`, not in `findings/`.)
+- `work/specs/` — product framing for coherent multi-task efforts (e.g. tag-tracking + selective-reset).
+- `work/notes/ideas/` — proposed wishes / sketches, including ones blocked on external tooling.
+- `work/notes/observations/` — spotted-but-unverified concerns (e.g. from code reviews) about *our own* code.
+- `work/notes/findings/` — reserved for verified **external** ground truth (third-party APIs, EIPs, wire formats), each with a `source:`. (Our own architecture lives here in `CONTEXT.md`, not in `findings/`.)
 - `docs/adr/` — decisions WE made and why (the folder is the index; e.g. the curried API, browser-capable core, vendored v1 proxy artifacts, non-strict matching, and modular-packages decisions all live here).
 
 ## Conventions
@@ -50,5 +50,5 @@ Standing per-change rules agents must follow in this repo.
 
 ## Skills this repo uses
 
-- Required: `setup` (onboarding/migration), `to-prd`, `to-slices`.
+- Required: `setup` (onboarding/migration), `to-spec`, `to-task`.
 - Recommended: `review`, `grill-me`.
