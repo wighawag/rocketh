@@ -11,7 +11,7 @@ When a deploy script runs, the **tags it declares** and the **dependency tags it
 
 - You cannot tell which tags were responsible for a given deployment.
 - You cannot understand script dependencies after the fact.
-- You cannot safely reset *only some* deployments: `--reset` deletes ALL deployments for an environment, and there is no way to reset a subset without risking a broken state.
+- You cannot safely reset _only some_ deployments: `--reset` deletes ALL deployments for an environment, and there is no way to reset a subset without risking a broken state.
 
 Concretely, a user who wants to re-run just one feature's deployments has no safe path. If `feature1` and `feature2` both depend on `core`, resetting `feature1` (and therefore `core`) would leave `feature2` pointing at a stale `core` — an orphaned, broken deployment.
 
@@ -27,17 +27,17 @@ Two related capabilities:
 
 1. As a deployer, I want each deployment to record the tags of the script that produced it, so that I can tell which tags drove which deployments.
 2. As a deployer, I want each deployment to record the dependency tags its script declared, so that I can understand the dependency graph after the fact.
-3. As a deployer, I want a deployment created by a *dependency* script to carry *its own* tags (not the triggering tag), so that deployment content is independent of how it was triggered.
+3. As a deployer, I want a deployment created by a _dependency_ script to carry _its own_ tags (not the triggering tag), so that deployment content is independent of how it was triggered.
 4. As a deployer, I want `--reset --tags X` to delete only the deployments related to tag `X` (plus its dependencies and dependents), so that I can re-run a subset without nuking everything.
 5. As a deployer, I want selective reset to also remove dependents of the reset scripts, so that I never end up with orphaned deployments pointing at stale dependencies.
 6. As a deployer, I want `--reset` without `--tags` to still delete all deployments, so that existing workflows are unchanged.
 7. As a deployer, I want `--tags X` without `--reset` to still just execute matching scripts, so that existing workflows are unchanged.
 8. As a deployer, I want selective reset to clean up `.migrations.json` and `.pending_transactions.json` entries for the deleted deployments, so that no stale bookkeeping remains.
-9. As a deployer with pre-existing deployments lacking the `tags` field, I want them to be safely *not* matched by selective reset, so that I am never surprised by an over-broad delete.
+9. As a deployer with pre-existing deployments lacking the `tags` field, I want them to be safely _not_ matched by selective reset, so that I am never surprised by an over-broad delete.
 
 ### Autonomy notes (the two gate axes)
 
-- **`humanOnly`** — omitted: this PRD can be sliced by an agent (the design is concrete and the open questions are resolved). The human may still choose to drive slicing.
+- **`humanOnly`** — omitted: this Spec can be sliced by an agent (the design is concrete and the open questions are resolved). The human may still choose to drive slicing.
 - **`needsAnswers`** — omitted: the source plan's open questions are all resolved (see Implementation Decisions). The spec is complete enough to slice.
 
 ## Implementation Decisions
@@ -64,7 +64,7 @@ Modules involved (from the plan): `rocketh-core` types (`Deployment`, `Environme
 
 ## Out of Scope
 
-- Tracking runtime deployment *accesses* (vs declared dependency tags).
+- Tracking runtime deployment _accesses_ (vs declared dependency tags).
 - Any CLI surface change beyond reusing `--tags` (the option already exists).
 
 ## Further Notes
