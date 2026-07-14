@@ -1,5 +1,13 @@
 # hardhat-deploy
 
+## 2.0.9
+
+### Patch Changes
+
+- 02455dc: Move the `hardhat-deploy` package source into the rocketh monorepo (`packages/hardhat-deploy`). It is now built, versioned, and published from here via changesets, with `rocketh` and `@rocketh/node` consumed as workspace dependencies. No API changes for consumers.
+- Updated dependencies [b624ef0]
+  - @rocketh/node@0.19.9
+
 ## 2.0.8
 
 ### Patch Changes
