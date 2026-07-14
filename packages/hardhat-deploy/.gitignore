@@ -1,0 +1,7 @@
+dist/
+node_modules/
+
+# the license is copied from the monorepo root at publish time
+LICENSE
+
+test-project
