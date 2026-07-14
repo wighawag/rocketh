@@ -1,5 +1,11 @@
 # @rocketh/node
 
+## 0.19.9
+
+### Patch Changes
+
+- b624ef0: Fix the `repository.directory` field in package.json (was `packages/rocketh-ode`, now `packages/rocketh-node`).
+
 ## 0.19.8
 
 ### Patch Changes
