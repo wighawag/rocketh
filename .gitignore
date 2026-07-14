@@ -9,10 +9,6 @@ tmp
 .vitepress/cache
 .vitepress/dist
 
-hardhat-deploy/
-# the hardhat-deploy package now lives in the monorepo and must be tracked
-!packages/hardhat-deploy/
-
 .nx
 
 .ezx*
