@@ -1,0 +1,425 @@
+# dorfl — the ADVANCE LIFECYCLE loop in CI (capability C: auto-triage
+# observations + surface declared blockers + apply committed answers, spec
+# runner-in-ci). EMITTED by `dorfl install-ci` by PARAMETERISING the seed
+# `docs/ci/advance-loop.yml.template` (the advance-loop capability's output) — the
+# human commits it. DO NOT hand-edit a copy — re-run install-ci to upgrade the
+# shell, and edit the workflow SHAPE in the seed template, not here.
+#
+# THIS is the "human is the clock" loop: CI drains the populated work/ tree toward
+# done while the human only answers committed question sidecars (work/questions/**)
+# on their own time.
+#
+# CI ALWAYS invokes `advance` (NEVER a user-chosen verb): `advance` is a strict
+# superset of `do`, and with the lifecycle gates at their calm defaults (below) it
+# degrades to exactly `do`'s build/task behaviour (ADR
+# ci-config-policy-and-gate-family §1). The triage/surface/apply rungs + the
+# on-answer-committed trigger are EXACTLY what `advance` adds over the build/task
+# tick. There is NO `autoAdvance` gate — the lifecycle decomposes into the gate
+# family in the env block.
+#
+# ONE WORD, ONE MEANING — `integrationMode` drives BOTH the job SHAPE AND the
+# `--propose`/`--merge` flag the legs pass, so they can NEVER desync:
+#   * propose ⇒ a DYNAMIC matrix (one leg per eligible id, enumerated via
+#               `dorfl scan --json | jq`), each leg `advance --propose`
+#               opening its OWN PR — a leg can NEVER merge to main.
+#   * merge   ⇒ ALSO a MATRIX (one leg per item; build/gate/review fan out, the
+#               LAND tail — rebase + CAS push to `main` — is serialised by the
+#               engine's `mergeRetries` CAS-retry loop, NOT by the workflow shape.
+#               SPEC `land-time-reverify-and-parallel-merge-ceiling`: a
+#               non-fast-forward push triggers re-rebase + re-gate + retry, never
+#               a `--force`. The cross-job serialiser is the CAS-retry FLOOR;
+#               there is NO host-specific `concurrency:` group on the merge job).
+# This is integration-mode behaviour, IDENTICAL to the build/task tick
+# (integration mode is verb-independent). The CLAIM CAS, not the matrix, is the
+# real cross-run serialiser: a leg that loses the claim race exits clean.
+#
+# CI runs IN-PLACE (the CI container IS the isolation): NO --isolated/--remote/
+# registry (laptop-only affordances). The concurrency group below stops
+# overlapping ticks of the same ref from colliding.
+#
+# SAFETY (US #9): the running job is FORBIDDEN from editing the workflows tree
+# under .github. It requests NO `workflows` permission, so it can never rewrite
+# its own triggers.
+
+name: advance-lifecycle
+
+on:
+  schedule:
+    # Cron tick: drain whatever the human has answered/produced since the last run
+    # (triage / surface / apply + build / task). Adjust the cadence to taste
+    # (here: hourly).
+    - cron: '0 * * * *'
+  push:
+    # On-answer-committed: a push that touches an answered question sidecar
+    # (`work/questions/**`) re-runs the loop so the human's answer is applied
+    # promptly. This is the lifecycle-specific trigger `do` cannot provide.
+    paths:
+      - 'work/questions/**'
+  workflow_dispatch:
+    inputs:
+      integrationMode:
+        description: "Integration mode (drives BOTH the integration flag passed to `advance` AND the job shape): propose ⇒ a matrix, each leg `advance --propose` (one PR per item); merge ⇒ a matrix, each leg `advance --merge` (one item — build/gate/review fan out in parallel; the LAND tail is serialised by the engine's `mergeRetries` CAS-retry loop, not by the workflow shape)."
+        required: false
+        default: 'propose'
+        type: choice
+        options:
+          - propose
+          - merge
+      sweepMergedBranches:
+        description: 'Reap merged remote work/* branches on the scheduled tick (gc --remote-branches): delete only branches PROVABLY MERGED into <arbiter>/main, so out-of-band human/UI PR merges stop leaving their work/<slug> branches lingering on the arbiter. ON by default; set false to opt out. An in-flight (un-merged) branch is NEVER touched.'
+        required: false
+        default: true
+        type: boolean
+      # ── GATE-FAMILY one-shot overrides (dispatch only) ──────────────────────
+      # Override an engine gate for THIS manual run only, riding the env layer of
+      # flag > env > per-repo > global > default. Modelled as `type: choice` with a
+      # BLANK first option (not `type: boolean`, which cannot represent "unset"):
+      # blank ⇒ emit NOTHING (the committed dorfl.json wins, today's
+      # behaviour); a non-blank choice ⇒ export the matching DORFL_* for this
+      # run. The blank is load-bearing: env-config coercion THROWS on an empty
+      # string, so the per-job step below only writes when the input is non-blank.
+      autoBuild:
+        description: 'One-shot override of the autoBuild gate (DORFL_AUTO_BUILD) for THIS dispatch run only. Blank ⇒ no override (config wins).'
+        required: false
+        default: ''
+        type: choice
+        options:
+          - ''
+          - 'true'
+          - 'false'
+      autoTask:
+        description: 'One-shot override of the autoTask gate (DORFL_AUTO_TASK) for THIS dispatch run only. Blank ⇒ no override (config wins).'
+        required: false
+        default: ''
+        type: choice
+        options:
+          - ''
+          - 'true'
+          - 'false'
+      observationTriage:
+        description: 'One-shot override of the observationTriage gate (DORFL_OBSERVATION_TRIAGE) for THIS dispatch run only. Blank ⇒ no override (config wins).'
+        required: false
+        default: ''
+        type: choice
+        options:
+          - ''
+          - 'off'
+          - 'ask'
+          - 'auto'
+      surfaceBlockers:
+        description: 'One-shot override of the surfaceBlockers gate (DORFL_SURFACE_BLOCKERS) for THIS dispatch run only. Blank ⇒ no override (config wins).'
+        required: false
+        default: ''
+        type: choice
+        options:
+          - ''
+          - 'true'
+          - 'false'
+
+# Serialise overlapping ticks of the same ref; the claim CAS is the real
+# cross-run serialiser, this just avoids redundant concurrent ticks.
+concurrency:
+  group: advance-lifecycle-${{ github.ref }}
+  cancel-in-progress: false
+
+# NO `workflows` permission: the running job can NEVER edit the workflows tree
+# under .github (US #9). `contents: write` + `pull-requests: write` are all this
+# tick needs (commit work, open PRs); it never rewrites its triggers.
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  # The resolved integration mode: the dispatch input when present, else `propose`
+  # (the conservative default — one PR per item, a human merges). This single value
+  # selects BOTH the job shape (via the `if:` guards below) AND the integration flag
+  # the `advance` legs pass (`--propose`/`--merge`), so they can never desync.
+  INTEGRATION_MODE: ${{ github.event.inputs.integrationMode || 'propose' }}
+  # Reap merged remote work/* branches on the scheduled tick (capability F). ON by
+  # default (the empty dispatch input on a `schedule`/`push` trigger reads as the
+  # default); set the `sweepMergedBranches` dispatch input to `false` to opt out.
+  # This is the provider-agnostic hygiene sweep (`gc --remote-branches`) for
+  # out-of-band human/UI PR merges, whose work/<slug> branch nothing else deletes.
+  SWEEP_MERGED_BRANCHES: ${{ github.event.inputs.sweepMergedBranches || 'true' }}
+
+  # ── The engine GATE FAMILY is resolved FROM CONFIG, not carried here ─────────
+  # CI is NOT a special policy surface (ADR ci-config-policy-and-gate-family §5):
+  # it runs the SAME engine gates, resolved through flag > env > per-repo > global
+  # > default. The SAME dorfl.json the laptop uses applies here. This
+  # workflow emits NO DORFL_AUTO_BUILD / DORFL_AUTO_TASK /
+  # DORFL_OBSERVATION_TRIAGE / DORFL_SURFACE_BLOCKERS line on a
+  # SCHEDULE/PUSH tick, so the env layer carries NO defaults there — your committed
+  # dorfl.json wins (then the global config, then the strict built-in
+  # defaults autoBuild:false / autoTask:false / observationTriage:'off' /
+  # surfaceBlockers:false). The ONE exception is a manual `workflow_dispatch` where
+  # you fill a gate override input (above): the per-job step then exports that ONE
+  # DORFL_* for that run only (blank input ⇒ still nothing). The override
+  # MUST be wired into every job that resolves the gate family — including the
+  # `enumerate` scan (it gates the matrix pools via observationTriage/surfaceBlockers
+  # /autoTask/autoBuild), not just the agent-running jobs — or the override is inert
+  # for the very pools it targets. To enable CI autonomy durably, set the gate(s) in
+  # dorfl.json (applies everywhere) — NOT by re-running install-ci (ADR §6:
+  # install-ci is one-time).
+
+jobs:
+  # ── ENUMERATE (propose only) ────────────────────────────────────────────────
+  # Build the DYNAMIC matrix from the eligible-pool scan. `scan --json` reports
+  # BOTH the registry/hub-mirror pool (`repos[].items[]`, `repos[].specs[]`,
+  # `repos[].lifecycle`) AND the in-place working checkout (`cwd.repo.items[]`,
+  # `cwd.repo.specs[]`, `cwd.repo.lifecycle`); CI runs IN-PLACE so the items live
+  # in the latter (a fresh runner has no registered mirror). `jq` unions + dedups
+  # the build/task pools AND the LIFECYCLE pools into a deduplicated GitHub
+  # Actions matrix list of explicit `task:<slug>` / `spec:<slug>` / `obs:<slug>`
+  # ids (CI MUST use explicit prefixes). The lifecycle legs run the WHOLE
+  # answer-loop in propose mode (not only merge): `obs:` (triage untriaged
+  # observations), surface `task:`/`spec:` (`needsAnswers`, no answered sidecar)
+  # AND apply `task:`/`spec:` (`needsAnswers`, answered sidecar — consume the
+  # committed answer, closing the on-answer `push: work/questions/**` loop). Each
+  # becomes one matrix leg → one independent `advance --propose`. Skipped in merge
+  # mode. Inert with calm-default gates (empty triage/surface pools).
+  enumerate:
+    runs-on: ubuntu-latest
+    outputs:
+      items: ${{ steps.scan.outputs.items }}
+      any: ${{ steps.scan.outputs.any }}
+      # Dynamic GitHub-backstop cap (spec
+      # `graceful-pre-timeout-wip-checkpoint`): the agent-leg jobs
+      # (advance-propose / advance-merge) read this as their
+      # `timeout-minutes` — replacing the retired static
+      # `legTimeoutMinutes`. Computed at run time from the committed
+      # `dorfl.json` (via `dorfl config --json`) as
+      # `agentDeadlineMinutes + checkpointHeadroomMinutes`, so an edit to
+      # `dorfl.json` reflects EVERYWHERE (the internal deadline the legs
+      # honour AND this GitHub cap) on the NEXT tick — no `install-ci`
+      # re-run, no baked-in YAML number.
+      githubTimeout: ${{ steps.timeout.outputs.githubTimeout }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/dorfl-setup
+      - name: apply dispatch gate overrides (one-shot, this run only)
+        # MUST run BEFORE `scan`: scan's matrix pools are gated by the SAME engine
+        # gate family (autoTask/autoBuild + lifecycle observationTriage/
+        # surfaceBlockers), so an override that does not reach this job produces an
+        # empty matrix and is silently inert. `if:` + the inner `[ -n ... ]` guard
+        # keep schedule/push (and a blank dispatch field) exporting NOTHING — an
+        # empty DORFL_* would make env-config coercion throw.
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        run: |
+          [ -n "${{ github.event.inputs.autoBuild }}" ] && echo "DORFL_AUTO_BUILD=${{ github.event.inputs.autoBuild }}" >> "$GITHUB_ENV"
+          [ -n "${{ github.event.inputs.autoTask }}" ] && echo "DORFL_AUTO_TASK=${{ github.event.inputs.autoTask }}" >> "$GITHUB_ENV"
+          [ -n "${{ github.event.inputs.observationTriage }}" ] && echo "DORFL_OBSERVATION_TRIAGE=${{ github.event.inputs.observationTriage }}" >> "$GITHUB_ENV"
+          [ -n "${{ github.event.inputs.surfaceBlockers }}" ] && echo "DORFL_SURFACE_BLOCKERS=${{ github.event.inputs.surfaceBlockers }}" >> "$GITHUB_ENV"
+          true
+      - id: scan
+        # Enumerate eligible items as namespaced ids, one matrix leg per id. CI
+        # uses explicit `task:` / `spec:` / `obs:` prefixes, never bare (ADR
+        # command-surface §3a). Eligible TASKS ⇒ `task:<slug>` legs (`advance`
+        # builds them); TASKABLE SPECS ⇒ `spec:<slug>` legs (`advance` auto-tasks
+        # them, capability B — `DORFL_AUTO_TASK` above). LIFECYCLE pools:
+        # `lifecycle.triage[]` ⇒ `obs:<slug>` (the `obs:` prefix is fixed here),
+        # `lifecycle.surface[]` + `lifecycle.apply[]` ⇒ `.namespace + ":" + .slug`
+        # (surface: `task:`/`spec:` blocker-question legs; apply: `task:`/`spec:`
+        # AND `observation:` legs — an answered observation sidecar is consumed by
+        # the apply rung too, so it MUST carry through here). CI runs IN-PLACE, so we use
+        # `scan --here`: it reports ONLY the cwd checkout (`cwd.repo.*`) and SKIPS
+        # the cross-repo registry loop (no N-mirror fetches; a fresh runner has no
+        # registered mirror anyway). The `cwd` arbiter is the checkout's own clone,
+        # so the fetch-first is a near-noop. `jq` still reads the (now-empty)
+        # `repos[]` branches harmlessly; we union + dedup so the matrix has one
+        # leg per item.
+        run: |
+          items="$(dorfl scan --json --here \
+            | jq -c '[(.repos[].items[]?, .cwd.repo.items[]?) | select(.eligibility.eligible == true) | "task:" + .slug] + [(.repos[].specs[]?, .cwd.repo.specs[]?) | select(.eligibility.eligible == true) | "spec:" + .slug] + [(.repos[].lifecycle.triage[]?, .cwd.repo.lifecycle.triage[]?) | "obs:" + .slug] + [(.repos[].lifecycle.surface[]?, .cwd.repo.lifecycle.surface[]?, .repos[].lifecycle.apply[]?, .cwd.repo.lifecycle.apply[]?) | .namespace + ":" + .slug] | unique')"
+          echo "items=${items}" >> "$GITHUB_OUTPUT"
+          if [ "$(echo "${items}" | jq 'length')" -gt 0 ]; then
+            echo "any=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "any=false" >> "$GITHUB_OUTPUT"
+          fi
+      - id: timeout
+        # Dynamic GitHub-backstop cap (spec
+        # `graceful-pre-timeout-wip-checkpoint` — step 5): read the committed
+        # `dorfl.json` via `dorfl config --json` (in-place, so the resolution
+        # chain reads THIS repo's file exactly like `scan --here`), and emit
+        # `githubTimeout = agentDeadlineMinutes + checkpointHeadroomMinutes` as
+        # a job OUTPUT the agent-leg jobs consume via
+        # `timeout-minutes: ${{ needs.enumerate.outputs.githubTimeout }}`. So
+        # the SAME committed config drives BOTH the legs' internal deadline AND
+        # this GitHub cap — edit + commit, next tick uses it for both, no
+        # `install-ci` re-run, no baked YAML number. `dorfl.json` is the
+        # single source read at run time by BOTH consumers.
+        run: |
+          cap="$(dorfl config --json \
+            | jq '.agentDeadlineMinutes + .checkpointHeadroomMinutes')"
+          echo "githubTimeout=${cap}" >> "$GITHUB_OUTPUT"
+
+  # ── PROPOSE: a MATRIX of independent jobs (one PR per item) ──────────────────
+  # True parallelism — each item is an independent PR, so a matrix is the right
+  # parallel shape and `-n` is NOT needed. Each leg passes `--propose`, tying the
+  # integration mode to THIS shape: it sits at the top of the precedence chain, so
+  # the workflow mode always wins over the repo config default and a leg can NEVER
+  # merge to main. Explicit `task:`/`spec:` prefixes only, never bare.
+  advance-propose:
+    needs: enumerate
+    if: ${{ (github.event.inputs.integrationMode || 'propose') == 'propose' && needs.enumerate.outputs.any == 'true' }}
+    runs-on: ubuntu-latest
+    # Per-leg wall-clock cap: the DYNAMIC GitHub backstop the enumerate job
+    # emits (spec `graceful-pre-timeout-wip-checkpoint`), computed at run
+    # time from the committed `dorfl.json` as
+    # `agentDeadlineMinutes + checkpointHeadroomMinutes`. It is a STRICTLY
+    # LARGER backstop than the dorfl-internal deadline the leg self-stops at
+    # (which SAVES its WIP + auto-continues on the next tick), so the GitHub
+    # SIGKILL only fires if the graceful save itself wedges. Editing
+    # `dorfl.json` flips BOTH the internal deadline AND this cap on the
+    # next tick — no `install-ci` re-run, no baked-in YAML number.
+    # A job output is always a STRING; `timeout-minutes` needs an INTEGER, so
+    # coerce it with `fromJson(...)` (the same pattern the `item` matrix uses).
+    # A raw `${{ ... }}` substitution makes GitHub reject it ("Unexpected
+    # value '45'").
+    timeout-minutes: ${{ fromJson(needs.enumerate.outputs.githubTimeout) }}
+    strategy:
+      # Independent PRs: one failing item must NOT cancel the others.
+      fail-fast: false
+      # Cap concurrent legs (config `maxParallel`, install-ci --max-parallel):
+      # each leg spawns a FULL agent session (build + Gate-2 review), so an
+      # unbounded fan-out over a large item set exhausts the model-provider API
+      # rate limit (429s that strand legs as transient-infra stuck) AND thrashes
+      # the arbiter-main CAS. A bounded fan-out drains steadily instead.
+      max-parallel: 2
+      matrix:
+        item: ${{ fromJson(needs.enumerate.outputs.items) }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/dorfl-setup
+        with:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      - name: apply dispatch gate overrides (one-shot, this run only)
+        # Mirror of the enumerate-job override (see there): export each gate's
+        # DORFL_* ONLY on a workflow_dispatch with a non-blank input, so the
+        # one-shot override also reaches the `advance` leg that builds the item.
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        run: |
+          [ -n "${{ github.event.inputs.autoBuild }}" ] && echo "DORFL_AUTO_BUILD=${{ github.event.inputs.autoBuild }}" >> "$GITHUB_ENV"
+          [ -n "${{ github.event.inputs.autoTask }}" ] && echo "DORFL_AUTO_TASK=${{ github.event.inputs.autoTask }}" >> "$GITHUB_ENV"
+          [ -n "${{ github.event.inputs.observationTriage }}" ] && echo "DORFL_OBSERVATION_TRIAGE=${{ github.event.inputs.observationTriage }}" >> "$GITHUB_ENV"
+          [ -n "${{ github.event.inputs.surfaceBlockers }}" ] && echo "DORFL_SURFACE_BLOCKERS=${{ github.event.inputs.surfaceBlockers }}" >> "$GITHUB_ENV"
+          true
+      - name: advance one item in-place (propose ⇒ opens a PR)
+        # In-place in this checkout (no --isolated/--remote): the CI container IS
+        # the isolation. `--propose` can ONLY ride a matrix leg, never the merge
+        # job, so a parallel merge-to-main is structurally impossible.
+        # `--propose` shells `gh` to open the PR, which reads `GH_TOKEN` from the
+        # env (a workflow PERMISSION is not a credential). Prefer a dedicated
+        # `DORFL_GH_TOKEN` secret (a PAT / App token) so PRs carry YOUR
+        # identity AND trigger downstream workflows (PRs opened with the built-in
+        # `GITHUB_TOKEN` are `github-actions[bot]` and do NOT trigger further
+        # `on: pull_request` runs). Falls back to the auto `GITHUB_TOKEN` so it
+        # works zero-config; the job's `pull-requests: write` scopes that token.
+        env:
+          GH_TOKEN: ${{ secrets.DORFL_GH_TOKEN || secrets.GITHUB_TOKEN }}
+        # `--watch` streams the build agent's high-signal turns (assistant text,
+        # tool calls, finish) into THIS job log live, so the run shows the agent
+        # working instead of freezing after "Start work". A read-only observer (no
+        # outcome/gate/git effect). It fits because each matrix leg names ONE item
+        # (one pi session to tail) — the merge job is now a per-item matrix too
+        # (see below) and streams the same way.
+        run: dorfl advance "${{ matrix.item }}" --propose --watch --arbiter origin
+
+  # ── MERGE: a MATRIX of independent jobs (parallel build/gate/review, serialised land) ──
+  # SPEC `land-time-reverify-and-parallel-merge-ceiling` (stories 4 + 6): each item
+  # gets its own leg; build/gate/review run concurrently across siblings; the LAND
+  # TAIL is serialised by the engine's `mergeRetries` CAS-retry loop — the
+  # git-alone floor — NOT by the workflow shape. A non-fast-forward push triggers
+  # re-rebase + re-gate + retry up to the resolved `mergeRetries` cap; never a
+  # `--force`. NO host-specific `concurrency:` group on this job (it would be
+  # load-bearing for cross-job safety, breaking the floor framing).
+  # The fully-autonomous-to-main path (this job + all gates on) is still a LOUD,
+  # NON-DEFAULT opt-in: the default integrationMode is `propose`, so reaching
+  # merge-to-main requires deliberately dispatching/pinning `merge`.
+  advance-merge:
+    needs: enumerate
+    if: ${{ (github.event.inputs.integrationMode || 'propose') == 'merge' && needs.enumerate.outputs.any == 'true' }}
+    runs-on: ubuntu-latest
+    # Per-leg wall-clock cap: the DYNAMIC GitHub backstop the enumerate job
+    # emits (see advance-propose for the rationale). `fromJson(...)` coerces the
+    # string job output to the INTEGER `timeout-minutes` requires.
+    timeout-minutes: ${{ fromJson(needs.enumerate.outputs.githubTimeout) }}
+    strategy:
+      # Independent landings: one failing item must NOT cancel the others; a
+      # loser of the CAS race re-rebases + re-gates + retries.
+      fail-fast: false
+      # Cap concurrent legs (config `maxParallel`, see advance-propose): a FULL
+      # agent session per leg, so bound the fan-out to avoid API-429s + CAS thrash.
+      max-parallel: 2
+      matrix:
+        item: ${{ fromJson(needs.enumerate.outputs.items) }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/dorfl-setup
+        with:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      - name: apply dispatch gate overrides (one-shot, this run only)
+        # Mirror of the enumerate-job override (see there): export each gate's
+        # DORFL_* ONLY on a workflow_dispatch with a non-blank input. The
+        # merge job re-scans the pool inside `advance -n`, so it needs the override
+        # too for the lifecycle/task pools to reflect it.
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        run: |
+          [ -n "${{ github.event.inputs.autoBuild }}" ] && echo "DORFL_AUTO_BUILD=${{ github.event.inputs.autoBuild }}" >> "$GITHUB_ENV"
+          [ -n "${{ github.event.inputs.autoTask }}" ] && echo "DORFL_AUTO_TASK=${{ github.event.inputs.autoTask }}" >> "$GITHUB_ENV"
+          [ -n "${{ github.event.inputs.observationTriage }}" ] && echo "DORFL_OBSERVATION_TRIAGE=${{ github.event.inputs.observationTriage }}" >> "$GITHUB_ENV"
+          [ -n "${{ github.event.inputs.surfaceBlockers }}" ] && echo "DORFL_SURFACE_BLOCKERS=${{ github.event.inputs.surfaceBlockers }}" >> "$GITHUB_ENV"
+          true
+      - name: advance one item in-place (merge ⇒ rebase + CAS land on main)
+        # In-place (no --isolated/--remote). `--merge` ties the integration mode
+        # to THIS (matrix) shape: it sits at the top of the precedence chain, so
+        # the workflow mode always wins over the repo's `dorfl.json` default.
+        # Cross-job land safety comes from the engine's CAS-retry loop, not from
+        # this workflow's job shape. `gh` (merge / PR housekeeping) reads
+        # `GH_TOKEN` from the env.
+        env:
+          GH_TOKEN: ${{ secrets.DORFL_GH_TOKEN || secrets.GITHUB_TOKEN }}
+        # `--watch` streams the build agent's high-signal turns into THIS job
+        # log live; each leg names ONE item, so it fits the same way it does on
+        # the propose legs.
+        run: dorfl advance "${{ matrix.item }}" --merge --watch --arbiter origin
+
+  # ── REAP merged remote work/* branches (capability F, the hygiene sweep) ─────
+  # PRESERVED from the seed (NOT a separate gc-sweep workflow): the provider-
+  # agnostic counterpart of the worktree reaper. Deletes remote `work/<slug>`
+  # branches that are PROVABLY MERGED into `origin/main`, so an out-of-band
+  # human/UI PR merge stops leaving its branch lingering on the arbiter.
+  # Independent of the integration mode (both propose- and merge-mode repos
+  # accumulate out-of-band-merged branches), so it runs on EVERY tick regardless
+  # of `integrationMode` — gated ONLY by the `sweepMergedBranches` opt-out (ON by
+  # default). It NEVER touches an un-merged/in-flight branch and NEVER `--force`s.
+  # Plain git, so it works against any provider (incl. a `--bare` arbiter).
+  #
+  # OPTIONAL belt-and-suspenders for a GitHub arbiter: enable the repo-level
+  # "Automatically delete head branches" setting (`delete_branch_on_merge`), owned
+  # by the install-ci wizard — an ADDITIVE GitHub-only convenience, NOT a
+  # replacement for this sweep (the only thing that reaps on a `--bare`/non-GitHub
+  # arbiter).
+  reap-merged-branches:
+    if: ${{ (github.event.inputs.sweepMergedBranches || 'true') == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/dorfl-setup
+      - name: reap merged remote work/* branches + orphan sidecars (gc --remote-branches)
+        # Deletes ONLY branches provably merged into origin/main; reports
+        # deleted-vs-retained-with-reason. Safe to run every tick (idempotent).
+        # This invocation ALSO reaps ORPHAN question sidecars: a
+        # sidecar under the questions queue (<type>-<slug>.md) whose source item
+        # was deleted out-of-band (git rm; the sidecar's working-tree source no
+        # longer exists). The orphan sweep rides THIS scheduled invocation
+        # precisely so it is never "in the code but never invoked in CI".
+        run: dorfl gc --remote-branches --arbiter origin

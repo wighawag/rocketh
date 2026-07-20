@@ -1,0 +1,184 @@
+# dorfl — the ISSUE INTAKE trigger in CI (capability D: consider incoming
+# issues → task/spec, PLUS insertion point E: surface the review verdict into the
+# issue thread, spec runner-in-ci). EMITTED by `dorfl install-ci`; the human
+# commits it. DO NOT hand-edit a copy — re-run install-ci to upgrade the shell.
+#
+# WHAT IT DOES — `dorfl intake <N>` reads issue #N + its comment thread,
+# runs a prompt→verdict decision (ask / task / SPEC / bounce), and dispatches it.
+# CI owns ONLY the trigger + the merge-vs-propose POLICY + the delivery surface;
+# the TRANSFORM is the engine's (the Out-of-Scope fence — CI re-implements none of
+# it). The lone-task review/edit loop `intake` already runs ALSO surfaces its
+# findings as questions back into THIS issue thread via the issue-comment seam (insertion
+# point E) — REUSED, not a new review mechanism.
+#
+# TRIGGERS (capability D): an OPENED issue, a CREATED issue comment, and the
+# `dorfl:intake` label. A CREATED comment is the (re-)evaluation
+# trigger; an EDITED comment is deliberately NOT a trigger (the ID-based
+# `seen=<ids>` watermark catches new comments; editing a prior comment never
+# re-triggers). CONVENTION: if you edit a previous comment to answer intake's
+# question, ALSO post a NEW comment noting the edit — the new comment is what drives
+# re-evaluation (a fresh id the watermark catches). There is NO edit-detection /
+# `updated_at` / body-hash tracking.
+#
+# AUTHOR-TRUST → per-outcome FLAGS (the merge-vs-propose POLICY): because ANYBODY
+# can file an issue, the merge decision composes with WHO authored it. An UNTRUSTED
+# author (`author_association` not OWNER/MEMBER/COLLABORATOR) forces
+# `--propose-task` REGARDLESS of the `autoBuild` gate — a task from a public
+# front-door issue can never auto-merge — while `--merge-spec` stays allowed (a
+# human must still task a spec before anything autonomous acts on it, so the human
+# checkpoint is intact). A TRUSTED author gets the plain gate-derived mode. The
+# fully-gateless "merge everything" path (both gates off + a trusted author) is a
+# LOUD, NON-DEFAULT opt-in; the default is conservative (propose).
+#
+# CI runs IN-PLACE (the CI container IS the isolation): NO --isolated/--remote/
+# registry (laptop-only affordances). The PER-ISSUE concurrency group below
+# serialises overlapping ticks on the SAME issue; the `processing` lock / claim
+# CAS is the real cross-run serialiser.
+#
+# SAFETY (US #9): the running job is FORBIDDEN from editing the workflows tree
+# under .github. It requests NO `workflows` permission, so it can never rewrite
+# its own triggers.
+
+name: intake
+
+on:
+  issues:
+    # An OPENED issue triggers a first intake pass. NOT `edited` — a body edit's
+    # re-evaluation is the engine's event-model concern (issue-intake); the CI
+    # trigger relies on a CREATED comment to drive (re-)evaluation.
+    types:
+      - opened
+      - labeled
+  issue_comment:
+    # A CREATED comment is the (re-)evaluation trigger (Decision 2). An EDITED
+    # comment is NOT listed — editing a prior comment never re-triggers; post a NEW
+    # comment to signal an edit (the ID-based seen=<ids> watermark catches it).
+    types:
+      - created
+
+# PER-ISSUE concurrency group: serialise overlapping ticks on the SAME issue (two
+# triggers landing close together must not run intake on one issue twice at once).
+# The `processing` lock / claim CAS is the real cross-run serialiser; this just
+# avoids redundant concurrent ticks. Keyed by the issue number so DIFFERENT issues
+# still run in parallel.
+concurrency:
+  group: intake-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+# NO `workflows` permission: the running job can NEVER edit the workflows tree
+# under .github (US #9). `contents: write` + `pull-requests: write` emit/propose
+# the artifact; `issues: write` posts the clarifying/review comment back into the
+# thread (insertion point E). It never rewrites its triggers.
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+env:
+  # ── The engine GATE FAMILY, surfaced as the DORFL_* env block ─────────
+  # CI is NOT a special policy surface (ADR ci-config-policy-and-gate-family §5):
+  # it runs the SAME engine gates, resolved through flag > env > per-repo > global
+  # > default. The SAME dorfl.json the laptop uses applies here; this env
+  # block is the optional CI-only override. Change behaviour by editing these
+  # values (or a GitHub repo variable / dorfl.json key) — NOT by re-running
+  # install-ci (ADR §6: install-ci is one-time).
+  #
+  # `intake` itself is GATE-FREE (the explicit invocation is its own
+  # authorization), so these gates do NOT block it — CI READS them to DERIVE the
+  # per-outcome merge-vs-propose flags below (the merge-vs-propose POLICY). CALM
+  # DEFAULTS: both off ⇒ the next step is a HUMAN, so the gate-derived mode is the
+  # permissive merge side; author-trust then forces propose for a task from an
+  # untrusted author.
+  DORFL_AUTO_BUILD: 'false' # gate: will an agent auto-build the emitted task next?
+  DORFL_AUTO_TASK: 'false' # gate: will an agent auto-task the emitted spec next?
+
+jobs:
+  intake:
+    # Only run for an issue/comment that actually carries an issue number (a
+    # comment on a PR also fires `issue_comment`; skip those — there is no issue to
+    # intake). `pull_request` is absent on a real issue comment.
+    if: ${{ github.event.issue.number && !github.event.issue.pull_request }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/dorfl-setup
+        with:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+      - name: derive the per-outcome merge-vs-propose flags (gate × author-trust)
+        id: policy
+        # The merge-vs-propose POLICY, executed at runtime — the SAME rule
+        # `deriveIntakeFlags` unit-tests (they cannot desync; the test asserts this
+        # shell matches the function):
+        #   * SPEC — gate-derived ONLY: --merge-spec iff autoTask OFF (a human
+        #            tasks it before anything autonomous acts — the checkpoint
+        #            stays ahead even for an UNTRUSTED author), else --propose-spec.
+        #   * TASK  — --propose-task iff (autoBuild ON) OR (author UNTRUSTED);
+        #            --merge-task ONLY iff (autoBuild OFF AND author TRUSTED).
+        # author_association comes from the COMMENT on an `issue_comment` event,
+        # else the ISSUE on an `issues` event — read straight off the payload, no
+        # extra API call.
+        env:
+          AUTHOR_ASSOCIATION: ${{ github.event.comment.author_association || github.event.issue.author_association }}
+        run: |
+          set -euo pipefail
+
+          # SPEC flag: gate-derived only (author-trust does NOT bite a spec).
+          if [ "${DORFL_AUTO_TASK}" = "true" ]; then
+            spec_flag="--propose-spec"
+          else
+            spec_flag="--merge-spec"
+          fi
+
+          # Author-trust: TRUSTED iff OWNER/MEMBER/COLLABORATOR (admin / write-
+          # collaborator — the whole signal). Anything else (incl. empty) is
+          # UNTRUSTED → the conservative, human-in-the-loop path.
+          trusted="false"
+          case "${AUTHOR_ASSOCIATION:-}" in
+            OWNER|MEMBER|COLLABORATOR) trusted="true" ;;
+          esac
+
+          # TASK flag: propose if the agent will auto-build it (gate ON) OR the
+          # author is untrusted; merge ONLY when both are safe.
+          if [ "${DORFL_AUTO_BUILD}" = "true" ] || [ "${trusted}" != "true" ]; then
+            task_flag="--propose-task"
+          else
+            task_flag="--merge-task"
+          fi
+
+          # ORIGIN-TRUST stamp (task untrusted-origin-forces-build-propose):
+          # derived from the SAME ${trusted} case above (one author-trust read,
+          # two consumers — the task/spec modes AND the stamp — so they cannot
+          # desync). `intake` STAMPS this onto the emitted spec/task frontmatter
+          # (origin: issue + originTrust: <value>); it does NOT re-resolve trust
+          # (that is CI's policy, passed IN). The stamp SURVIVES the merge boundary
+          # so a later auto-task/auto-build of an untrusted-origin artifact still
+          # forces a human becomes-code checkpoint (the laundering gap is closed).
+          if [ "${trusted}" = "true" ]; then
+            origin_trust_flag="--origin-trust=trusted"
+          else
+            origin_trust_flag="--origin-trust=untrusted"
+          fi
+
+          echo "spec_flag=${spec_flag}" >> "$GITHUB_OUTPUT"
+          echo "task_flag=${task_flag}" >> "$GITHUB_OUTPUT"
+          echo "origin_trust_flag=${origin_trust_flag}" >> "$GITHUB_OUTPUT"
+          echo "intake policy: author_association='${AUTHOR_ASSOCIATION:-}' trusted=${trusted} → ${spec_flag} ${task_flag} ${origin_trust_flag}"
+
+      - name: intake the issue (four-outcome dispatch; surfaces the review verdict into the thread)
+        # In-place in this checkout (no --isolated/--remote): the CI container IS
+        # the isolation. EXPLICIT `intake <N>`, never a bare slug. The per-outcome
+        # flags carry the merge-vs-propose POLICY derived above. `intake` runs the
+        # lone-task review/edit loop and posts its findings as questions back into
+        # THIS issue thread (insertion point E) through the issue-comment seam —
+        # CI surfaces E by invoking intake; it adds no new review mechanism.
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          dorfl intake "${{ github.event.issue.number }}" \
+            "${{ steps.policy.outputs.spec_flag }}" \
+            "${{ steps.policy.outputs.task_flag }}" \
+            "${{ steps.policy.outputs.origin_trust_flag }}" \
+            --arbiter origin

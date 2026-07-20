@@ -1,0 +1,57 @@
+# dorfl — the VERIFY workflow (Tier-1 GitHub ceiling; spec
+# land-time-reverify-and-parallel-merge-ceiling, task
+# install-ci-tier1-branch-protection). EMITTED by `dorfl install-ci`; the
+# human commits it. DO NOT hand-edit a copy — re-run install-ci to upgrade.
+#
+# This workflow exists SOLELY to produce a GitHub check named `verify`
+# on every pull request, which install-ci's branch-protection step requires
+# (`required_status_checks.strict: true` + a required `verify` context)
+# so a PR cannot be merged stale. The merge button is disabled until `verify`
+# reports success on the rebased PR head — closing the PR-merge-time drift window
+# story 7 names.
+#
+# `merge_group` is listed so a follow-on Tier-2 task (GitHub Merge Queue) can
+# enable speculative-rebase merging by flipping the ruleset, WITHOUT changing
+# this workflow's trigger surface (the Applied Answer q3 forward seam).
+#
+# CONTEXT NAMING — the job is named EXACTLY `verify`. install-ci
+# names the same string as the required-context, so they cannot drift. If you
+# rename the job here you MUST re-run install-ci (or the protection's required
+# context will not match this workflow and every PR will block forever).
+#
+# SAFETY (US #9): the running job requests NO `workflows` permission and runs
+# only `dorfl verify` (a deterministic shell gate; `pnpm format:check && pnpm
+# build && pnpm test` for the dorfl repo). It cannot edit `.github/workflows/**`
+# or mutate `work/`.
+
+name: verify
+
+on:
+  pull_request:
+  # Tier-2 forward seam: a follow-on task enables GitHub Merge Queue and the
+  # same job re-runs on the speculative-rebase merge-group head, no template edit.
+  merge_group:
+
+# Serialise overlapping verify runs on the same ref (the latest commit wins —
+# stale runs are cancelled, since `verify` is a pure pass/fail gate).
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
+# NO `workflows` permission (US #9). `contents: read` is all the gate needs.
+permissions:
+  contents: read
+
+jobs:
+  # The job name IS the GitHub check context — it must equal VERIFY_CHECK_CONTEXT
+  # (`verify`) or install-ci's branch protection will require a
+  # context this workflow does not produce.
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/dorfl-setup
+      - name: run the repo verify gate
+        run: dorfl verify
