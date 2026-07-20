@@ -1,6 +1,7 @@
 ---
 title: Magic storage-slot addresses and CBOR constants undocumented
 slug: magic-storage-slots-and-cbor-constants
+needsAnswers: true
 ---
 
 # Magic storage-slot addresses and CBOR constants undocumented
