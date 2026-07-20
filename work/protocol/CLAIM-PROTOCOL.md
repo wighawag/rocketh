@@ -183,6 +183,16 @@ transition (the durable main-moves AND the per-item lock acquire/release/amend).
 (Your TESTS may freely create and operate on their OWN throwaway git repos — that
 is expected.)
 
+If this task produces a DURABLE, REUSABLE artifact — a patch, a build/measurement
+script, a captured measurement, a diagram — write it to docs/spikes/<slug>/ (a
+STABLE path that does NOT move when the task lands) and REFERENCE it from the task
+record / finding / ADR. Do NOT create a <slug>/ sidecar folder next to a task or
+spec (work/tasks/<slug>/, work/specs/<slug>/): only notes/* items may carry a
+co-located sidecar, because tasks and specs FLOW through status folders and a
+co-located sidecar gets STRANDED on the ready→done move (one item split across two
+folders — WORK-CONTRACT rule 8). Transient BUILD SCRATCH (source trees, GBs of
+objects) belongs OUTSIDE the repo entirely.
+
 Leave a CLEAN working tree — only the changes this task intends. The runner
 commits everything untracked (`git add -A`), so any scratch, debug, or
 runtime-artifact file you or your tools created would otherwise be swept into the
@@ -190,6 +200,16 @@ commit. Before you stop, delete such stray untracked files, or add them to
 .gitignore if they legitimately belong ignored. This is NOT git work: deleting an
 untracked file or editing .gitignore is producing clean WORK, like writing source
 — the "no git" rule above (no stage/commit/push/move) still holds.
+
+This repo may declare STANDING per-change conventions — things EVERY change must do
+regardless of the task (e.g. add a release/changelog entry, regenerate a file,
+update a manifest). They live in the repo's conventions doc: read CONTEXT.md (its
+`## Conventions` section) and, if present, AGENTS.md, and satisfy any that apply to
+your change. Several are ENFORCED by the `verify` gate, so skipping one makes the
+gate go red at LAND time — a bounce — even though your task's own code is correct.
+The classic case: a change that touched a package but added no changeset entry
+(the gate reports the changed package has no changeset). When in doubt, follow the
+conventions doc; it is the repo's source of truth for these standing rules.
 
 When the acceptance criteria are met and the repo's build/test/format checks are
 green, STOP and report what you did. The runner handles the durable `git mv` of the
