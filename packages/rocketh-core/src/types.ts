@@ -385,6 +385,9 @@ export type DevMethodDoc = {
 	readonly returns?: {
 		readonly [key: string | `_${number}`]: string; // description
 	};
+	// Allow arbitrary `@custom:*` natspec tags (e.g. `@custom:oz-upgrades-unsafe-allow`).
+	// See issue #44.
+	readonly [key: `@custom:${string}`]: string;
 };
 
 export type NoticeUserDoc = {
