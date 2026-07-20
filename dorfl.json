@@ -2,7 +2,12 @@
 	"prepare": "pnpm install",
 	"verify": "pnpm format:check && pnpm changeset status --since=main && pnpm build && pnpm test && pnpm test:getting-started",
 	"harness": "pi",
-	"autoBuild": false,
-	"autoTask": false,
-	"promptGuidance": {"testFirst": true}
+	"autoBuild": true,
+	"autoTask": true,
+	"promptGuidance": {"testFirst": true},
+	"observationTriage": "auto",
+	"surfaceBlockers": true,
+	"review": true,
+	"integration": "merge",
+	"agentDeadlineMinutes": 90
 }
