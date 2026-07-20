@@ -1,6 +1,7 @@
 ---
 title: Silent empty catch blocks in deploy/proxy
 slug: silent-empty-catch-blocks
+needsAnswers: true
 ---
 
 # Silent empty catch blocks in deploy/proxy
