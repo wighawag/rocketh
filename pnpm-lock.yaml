@@ -17,6 +17,9 @@ importers:
       '@types/node':
         specifier: ^25.6.0
         version: 25.6.0
+      dorfl:
+        specifier: 0.8.0
+        version: 0.8.0
       ezx:
         specifier: ^0.0.18
         version: 0.0.18
@@ -3062,6 +3065,11 @@ packages:
   dir-glob@3.0.1:
     resolution: {integrity: sha512-WkrWp9GR4KXfKGYzOLmTuGVi1UWFfws377n9cc55/tb6DuqyF6pcQ5AbiHEshaDpY9v6oaSr2XCDidGmMwdzIA==}
     engines: {node: '>=8'}
+
+  dorfl@0.8.0:
+    resolution: {integrity: sha512-hFuvm3XCloAAAIjUeaXurt6sW6zoMUtvDG1Rt5u3GuxdHIcKJx3E3oEvpin4MCTYyd1asgqNpyj4Eg7sFBnEPw==}
+    engines: {node: '>=18'}
+    hasBin: true
 
   dotenv-expand@10.0.0:
     resolution: {integrity: sha512-GopVGCpVS1UKH75VKHGuQFqS1Gusej0z4FyQkPdwjil2gNIv+LNsqBlboOzpJFZKVT95GkCyWJbBSdFEFUWI2A==}
@@ -7360,6 +7368,10 @@ snapshots:
   dir-glob@3.0.1:
     dependencies:
       path-type: 4.0.0
+
+  dorfl@0.8.0:
+    dependencies:
+      commander: 14.0.3
 
   dotenv-expand@10.0.0: {}
 

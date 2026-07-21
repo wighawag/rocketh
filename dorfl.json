@@ -1,4 +1,5 @@
 {
+	"dorflCmd": "node_modules/.bin/dorfl",
 	"prepare": "pnpm install",
 	"verify": "pnpm format:check && pnpm changeset status --since=main && pnpm build && pnpm test && pnpm test:getting-started",
 	"harness": "pi",
