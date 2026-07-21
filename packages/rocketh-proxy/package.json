@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/proxy",
-	"version": "0.19.15",
+	"version": "0.19.16",
 	"description": "provide proxy-enabled deploy function for rocketh",
 	"keywords": [
 		"rocketh",
