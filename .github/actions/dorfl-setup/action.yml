@@ -49,6 +49,22 @@ runs:
       shell: bash
       run: pnpm install --frozen-lockfile
 
+    # `pnpm changeset status --since=main` (part of this repo's verify gate) needs a
+    # LOCAL `main` branch to diff HEAD against — but a PR checkout is a detached head
+    # with only `origin/main`, so changesets fails with "Failed to find where HEAD
+    # diverged from main". Create the local branch (idempotent; harmless on a main
+    # build where it already exists). Requires the checkout's `fetch-depth: 0`.
+    - name: Ensure a local main branch for changeset --since=main
+      shell: bash
+      run: |
+        git fetch origin main --quiet || true
+        # Create/point a local `main` at origin/main, but only when it is not the
+        # currently checked-out branch (a main-branch build already has it and
+        # `--force` would refuse the checked-out ref).
+        if [ "$(git rev-parse --abbrev-ref HEAD)" != "main" ]; then
+          git branch --force main origin/main
+        fi
+
     - name: Configure git identity
       shell: bash
       run: |
