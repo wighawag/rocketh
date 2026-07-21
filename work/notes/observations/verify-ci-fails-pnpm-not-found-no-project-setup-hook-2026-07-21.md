@@ -58,3 +58,13 @@ rocketh's OWN workflows (`release.yml`, `test.yml`, `deploy.yml`) all DO provisi
 - `.github/workflows/verify.yml`; `.github/actions/dorfl-setup/action.yml` (toolchain-boundary header).
 - Working precedent: `.github/workflows/release.yml` L36-37 / `test.yml` L22-23 (`pnpm/action-setup`).
 - PR #47 verify run 29779384832 (`pnpm: command not found`, exit 127).
+
+## Update (2026-07-21, resolved + a follow-on exposed)
+
+FIXED in `dorfl-setup/action.yml` (commits `59552d0` + `84abbf4`):
+1. `pnpm/action-setup@v4` + `setup-node(cache:pnpm)` + `pnpm install --frozen-lockfile` spliced FIRST (the project-setup hook shape) → `pnpm` is on PATH and deps are installed for the pure `dorfl verify` gate.
+2. A guarded `git branch --force main origin/main` step → `changeset status --since=main` finds a local `main` on a detached PR checkout (was "Failed to find where HEAD diverged from main").
+
+PROVEN on PR #48's verify run (29835270418): `format:check` PASSED and `changeset status` RAN (both previously-failing steps now clear).
+
+FOLLOW-ON (separate, pre-existing — NOT this fix): on the **Version PR** (`changeset-release/main`), `changeset status --since=main` correctly reports "packages changed but no changesets" (the Version PR consumed them). rocketh's `verify` gate runs `changeset status` on EVERY PR incl. the release PR, where it can never pass. This was always true; it was previously masked by the earlier `pnpm`/`main` failures. See the sibling finding `verify-gate-changeset-status-fails-on-the-version-pr`.
