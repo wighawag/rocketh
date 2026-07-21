@@ -20,17 +20,34 @@ inputs:
 runs:
   using: composite
   steps:
+    # PROJECT-SETUP HOOK (install-ci-project-setup-hook): provision the project's
+    # own toolchain BEFORE dorfl's runtime + the verify gate. `dorfl verify` is the
+    # PURE acceptance gate (it deliberately does NOT run `prepare`), and this repo's
+    # gate is all `pnpm ...`, so the job needs BOTH pnpm on PATH AND deps installed;
+    # otherwise the gate dies at `pnpm: command not found` (exit 127) or on missing
+    # deps. Splice FIRST, before setup-node. To preserve this across a future
+    # `dorfl install-ci` re-run, set it in the install-ci config as:
+    #   projectSetup.github: |
+    #     - name: Setup pnpm
+    #       uses: pnpm/action-setup@v4
+    #       with: { version: 10.28.1 }
+    #     - name: Install project dependencies
+    #       shell: bash
+    #       run: pnpm install --frozen-lockfile
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: 10.28.1
+
     - name: Setup Node.js
       uses: actions/setup-node@v5
       with:
         node-version: '22'
-        # setup-node@v5 auto-enables package-manager caching, which probes the
-        # project package manager DURING its own run when a lockfile is present,
-        # before that manager is on PATH, so the probe crashes ("Unable to
-        # locate executable file"). dorfl provisions ONLY its own runtime and
-        # leaves the project package-manager cache to the project (toolchain
-        # boundary), so disable it explicitly.
-        package-manager-cache: false
+        cache: pnpm
+
+    - name: Install project dependencies (so the pnpm-based verify gate has deps)
+      shell: bash
+      run: pnpm install --frozen-lockfile
 
     - name: Configure git identity
       shell: bash
