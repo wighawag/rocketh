@@ -1,5 +1,12 @@
 # hardhat-deploy
 
+## 2.0.10
+
+### Patch Changes
+
+- rocketh@0.19.9
+- @rocketh/node@0.19.10
+
 ## 2.0.9
 
 ### Patch Changes

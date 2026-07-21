@@ -1,5 +1,11 @@
 # @rocketh/core
 
+## 0.19.5
+
+### Patch Changes
+
+- 7249888: Allow arbitrary `@custom:*` natspec keys (e.g. `@custom:oz-upgrades-unsafe-allow`) on `DevMethodDoc` so OpenZeppelin upgradeable-contract natspec type-checks without casting — issue #44
+
 ## 0.19.4
 
 ### Patch Changes

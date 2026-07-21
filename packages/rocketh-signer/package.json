@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/signer",
-	"version": "0.19.4",
+	"version": "0.19.5",
 	"description": "add signer to rocketh",
 	"keywords": [
 		"rocketh",
