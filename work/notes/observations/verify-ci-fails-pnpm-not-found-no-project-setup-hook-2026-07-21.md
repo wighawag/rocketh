@@ -3,6 +3,7 @@ title: dorfl `verify` CI job fails with `pnpm: command not found` — the dorfl-
 type: observation
 status: spotted
 spotted: 2026-07-21
+needsAnswers: true
 ---
 
 ## What was seen
