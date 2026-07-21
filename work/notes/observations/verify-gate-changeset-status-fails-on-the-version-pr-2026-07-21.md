@@ -3,6 +3,7 @@ title: The verify gate's `changeset status --since=main` can never pass on the V
 type: observation
 status: spotted
 spotted: 2026-07-21
+needsAnswers: true
 ---
 
 ## What was seen
