@@ -37,14 +37,6 @@ jobs:
         with:
           fetch-depth: 0 # Not needed if lastUpdated is not enabled
 
-      - name: Checkout hardhat-deploy
-        uses: actions/checkout@v4
-        with:
-          repository: wighawag/hardhat-deploy
-          ref: ${{ github.event.client_payload.ref || 'main' }}
-          fetch-depth: 0 # Not needed if lastUpdated is not enabled
-          path: hardhat-deploy
-
       - name: Setup pnpm
         uses: pnpm/action-setup@v3
         with:
@@ -65,11 +57,12 @@ jobs:
       - name: VitePress rocketh
         run: pnpm run docs:build
 
-      - name: Install dependencies for hardhat-deploy
-        run: cd hardhat-deploy && pnpm i --ignore-scripts
-
+      # The hardhat-deploy docs were migrated into this repo under
+      # website-legacy/hardhat-deploy (with their own .vitepress/config.mts).
+      # Build that sub-site directly with the workspace vitepress binary and
+      # copy it under the /hardhat-deploy/ path of the main site.
       - name: VitePress hardhat-deploy
-        run: cd hardhat-deploy && pnpm run docs:build && mkdir -p ../.vitepress/dist/hardhat-deploy && cp -r .vitepress/dist/* ../.vitepress/dist/hardhat-deploy/
+        run: pnpm exec vitepress build website-legacy/hardhat-deploy && mkdir -p .vitepress/dist/hardhat-deploy && cp -r website-legacy/hardhat-deploy/.vitepress/dist/* .vitepress/dist/hardhat-deploy/
         env:
           VITEPRESS_BASE: '/hardhat-deploy/'
 
