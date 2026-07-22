@@ -50,17 +50,10 @@ jobs:
       - name: Install dependencies
         run: pnpm i --ignore-scripts
 
-      - name: VitePress rocketh
+      # Single unified VitePress site: rocketh docs plus the hardhat-deploy
+      # section (under hardhat-deploy/) are one build, one config.
+      - name: VitePress build
         run: pnpm run docs:build
-
-      # The hardhat-deploy docs were migrated into this repo under
-      # website-legacy/hardhat-deploy (with their own .vitepress/config.mts).
-      # Build that sub-site directly with the workspace vitepress binary and
-      # copy it under the /hardhat-deploy/ path of the main site.
-      - name: VitePress hardhat-deploy
-        run: pnpm exec vitepress build website-legacy/hardhat-deploy && mkdir -p .vitepress/dist/hardhat-deploy && cp -r website-legacy/hardhat-deploy/.vitepress/dist/* .vitepress/dist/hardhat-deploy/
-        env:
-          VITEPRESS_BASE: '/hardhat-deploy/'
 
       - name: ls
         run: ls .vitepress/dist

@@ -13,7 +13,7 @@ hero:
   actions:
     - theme: brand
       text: Documentation
-      link: /documentation/introduction
+      link: /hardhat-deploy/documentation/introduction
     - theme: alt
       text: github
       link: https://github.com/wighawag/hardhat-deploy#readme
