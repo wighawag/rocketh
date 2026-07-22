@@ -3,7 +3,7 @@ import fs from 'fs';
 import * as qs from 'neoqs';
 import chalk from 'chalk';
 import {matchAll} from './utils/match-all.js';
-import {findLibrarySourcePath} from './library-source.js';
+import {findLibrarySourcePath, findLibrarySourcePathFromLinkReferences} from './library-source.js';
 import {UnknownDeployments} from '@rocketh/core/types';
 import {EtherscanOptions} from './index.js';
 
@@ -249,11 +249,23 @@ export async function submitSourcesToEtherscan(
 		// is DEFINED, not by the consuming contract's source path. Etherscan rejects the
 		// latter shape, which breaks verification of any contract linking to a library.
 		// See: https://github.com/wighawag/rocketh/issues/49
+		//
+		// Resolution order for that defining source path:
+		//   1. The compiler `linkReferences` / `deployedLinkReferences` persisted on the
+		//      deployment. These are already keyed by the defining source path, so this is
+		//      the authoritative, heuristic-free lookup.
+		//   2. Fallback: scan `metadata.sources` (AST, then a `library <Name>` content
+		//      match) for deployments that carry no usable linkReferences.
 		if (deployment.libraries) {
 			const settings = solcInput.settings;
 			settings.libraries = settings.libraries || {};
 			for (const libraryName of Object.keys(deployment.libraries)) {
-				const librarySourcePath = findLibrarySourcePath(libraryName, metadata.sources);
+				const librarySourcePath =
+					findLibrarySourcePathFromLinkReferences(
+						libraryName,
+						deployment.linkReferences,
+						deployment.deployedLinkReferences,
+					) ?? findLibrarySourcePath(libraryName, metadata.sources);
 				if (!librarySourcePath) {
 					return logError(
 						`Failed to resolve the defining source path for linked library "${libraryName}" while verifying ${name} (${contractNamePath}). ` +

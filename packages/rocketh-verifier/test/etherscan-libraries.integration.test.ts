@@ -16,7 +16,7 @@
 
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {submitSourcesToEtherscan} from '../src/etherscan.js';
-import {findLibrarySourcePath} from '../src/library-source.js';
+import {findLibrarySourcePath, findLibrarySourcePathFromLinkReferences} from '../src/library-source.js';
 
 type FetchCall = {url: string; init?: RequestInit};
 
@@ -127,6 +127,35 @@ describe('@rocketh/verifier - Etherscan linked-library payload (issue #49)', () 
 				'contracts/Greeter.sol': {content: 'contract Greeter {}'},
 			};
 			expect(findLibrarySourcePath('Math', sources)).toBeUndefined();
+		});
+	});
+
+	describe('findLibrarySourcePathFromLinkReferences', () => {
+		it('resolves the defining source directly from a linkReferences map', () => {
+			const linkReferences = {
+				'contracts/Util.sol': {Util: [{start: 10, length: 20}]},
+				'contracts/Math.sol': {Math: [{start: 30, length: 20}]},
+			};
+			expect(findLibrarySourcePathFromLinkReferences('Math', linkReferences)).toBe('contracts/Math.sol');
+			expect(findLibrarySourcePathFromLinkReferences('Util', linkReferences)).toBe('contracts/Util.sol');
+		});
+
+		it('checks each provided map in order and returns the first match', () => {
+			const creation = {'contracts/A.sol': {A: []}};
+			const runtime = {'contracts/B.sol': {B: []}};
+			// Present only in the runtime map -> found via the second argument.
+			expect(findLibrarySourcePathFromLinkReferences('B', creation, runtime)).toBe('contracts/B.sol');
+		});
+
+		it('ignores nullish / non-object maps without throwing', () => {
+			expect(findLibrarySourcePathFromLinkReferences('Math', undefined, null)).toBeUndefined();
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			expect(findLibrarySourcePathFromLinkReferences('Math', 'nope' as any)).toBeUndefined();
+		});
+
+		it('returns undefined when no map references the library', () => {
+			const linkReferences = {'contracts/Other.sol': {Other: []}};
+			expect(findLibrarySourcePathFromLinkReferences('Math', linkReferences)).toBeUndefined();
 		});
 	});
 
@@ -317,6 +346,110 @@ describe('@rocketh/verifier - Etherscan linked-library payload (issue #49)', () 
 				expect(loggedMessage, 'expected a clear error mentioning the unresolved library').toBeDefined();
 				expect(loggedMessage).toMatch(/Util/);
 				expect(loggedMessage).toMatch(/source path|metadata\.sources/);
+			} finally {
+				restore();
+			}
+		});
+
+		it('prefers linkReferences over the metadata.sources heuristic (authoritative key)', async () => {
+			/**
+			 * The compiler `linkReferences` map is already keyed by the defining
+			 * source path, so the verifier must use it verbatim. To prove it is
+			 * preferred over the `metadata.sources` scan, we deliberately provide
+			 * a linkReferences path that DIFFERS from where the `library <Name>`
+			 * declaration lives in the sources. The payload must follow
+			 * linkReferences.
+			 */
+			const {calls, restore} = mockFetch();
+			try {
+				const metadata = makeMetadata({
+					contractFilepath: 'contracts/Greeter.sol',
+					contractName: 'Greeter',
+					sources: {
+						// Heuristic scan would resolve `Util` to THIS path...
+						'contracts/Util.sol': {content: 'library Util { }'},
+						'contracts/Greeter.sol': {
+							content: '// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\ncontract Greeter { }\n',
+						},
+					},
+				});
+
+				await submitSourcesToEtherscan(
+					{
+						chainId: '1',
+						networkName: 'mainnet',
+						deployments: {
+							Greeter: {
+								address: '0x000000000000000000000000000000000000dEaD',
+								metadata,
+								libraries: {
+									Util: '0x1111111111111111111111111111111111111111',
+								},
+								// ...but linkReferences says the canonical path is this one.
+								linkReferences: {
+									'contracts/libs/Util.sol': {Util: [{start: 0, length: 20}]},
+								},
+								// eslint-disable-next-line @typescript-eslint/no-explicit-any
+							} as any,
+						},
+					},
+					{type: 'etherscan', apiKey: 'STUB', endpoint: 'https://api.example.invalid/api'},
+				);
+
+				const postCall = calls.find((c) => c.init?.method === 'POST');
+				const solcInput = decodePostedSolcInput(postCall!);
+				expect(solcInput.settings.libraries).toEqual({
+					'contracts/libs/Util.sol': {Util: '0x1111111111111111111111111111111111111111'},
+				});
+				expect(solcInput.settings.libraries).not.toHaveProperty('contracts/Util.sol');
+			} finally {
+				restore();
+			}
+		});
+
+		it('falls back to metadata.sources when the deployment has no linkReferences', async () => {
+			/**
+			 * Older deployments may not carry a `linkReferences` map. The
+			 * verifier must still resolve the defining source via the
+			 * `metadata.sources` heuristic so those deployments keep verifying.
+			 */
+			const {calls, restore} = mockFetch();
+			try {
+				const metadata = makeMetadata({
+					contractFilepath: 'contracts/Greeter.sol',
+					contractName: 'Greeter',
+					sources: {
+						'contracts/Util.sol': {content: 'library Util { }'},
+						'contracts/Greeter.sol': {
+							content: '// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\ncontract Greeter { }\n',
+						},
+					},
+				});
+
+				await submitSourcesToEtherscan(
+					{
+						chainId: '1',
+						networkName: 'mainnet',
+						deployments: {
+							Greeter: {
+								address: '0x000000000000000000000000000000000000dEaD',
+								metadata,
+								libraries: {
+									Util: '0x1111111111111111111111111111111111111111',
+								},
+								// No linkReferences on purpose.
+								// eslint-disable-next-line @typescript-eslint/no-explicit-any
+							} as any,
+						},
+					},
+					{type: 'etherscan', apiKey: 'STUB', endpoint: 'https://api.example.invalid/api'},
+				);
+
+				const postCall = calls.find((c) => c.init?.method === 'POST');
+				const solcInput = decodePostedSolcInput(postCall!);
+				expect(solcInput.settings.libraries).toEqual({
+					'contracts/Util.sol': {Util: '0x1111111111111111111111111111111111111111'},
+				});
 			} finally {
 				restore();
 			}
