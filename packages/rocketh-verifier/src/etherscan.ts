@@ -3,6 +3,7 @@ import fs from 'fs';
 import * as qs from 'neoqs';
 import chalk from 'chalk';
 import {matchAll} from './utils/match-all.js';
+import {findLibrarySourcePath} from './library-source.js';
 import {UnknownDeployments} from '@rocketh/core/types';
 import {EtherscanOptions} from './index.js';
 
@@ -243,14 +244,26 @@ export async function submitSourcesToEtherscan(
 		}
 
 		// Adding Libraries ....
+		// Per the Solidity standard-json input spec (and what @nomicfoundation/hardhat-verify
+		// emits), `settings.libraries` must be keyed by the source file where each library
+		// is DEFINED, not by the consuming contract's source path. Etherscan rejects the
+		// latter shape, which breaks verification of any contract linking to a library.
+		// See: https://github.com/wighawag/rocketh/issues/49
 		if (deployment.libraries) {
 			const settings = solcInput.settings;
 			settings.libraries = settings.libraries || {};
 			for (const libraryName of Object.keys(deployment.libraries)) {
-				if (!settings.libraries[contractNamePath]) {
-					settings.libraries[contractNamePath] = {};
+				const librarySourcePath = findLibrarySourcePath(libraryName, metadata.sources);
+				if (!librarySourcePath) {
+					return logError(
+						`Failed to resolve the defining source path for linked library "${libraryName}" while verifying ${name} (${contractNamePath}). ` +
+							`The library must be present in the deployment's compilation metadata (metadata.sources) so it can be keyed correctly in the standard-json input sent to Etherscan. Skipping.`,
+					);
 				}
-				settings.libraries[contractNamePath][libraryName] = deployment.libraries[libraryName];
+				if (!settings.libraries[librarySourcePath]) {
+					settings.libraries[librarySourcePath] = {};
+				}
+				settings.libraries[librarySourcePath][libraryName] = deployment.libraries[libraryName];
 			}
 		}
 		const solcInputString = JSON.stringify(solcInput);
