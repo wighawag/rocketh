@@ -53,7 +53,31 @@ export default defineConfig({
 		],
 	},
 
-	srcExclude: ['hardhat-deploy', 'packages/*', 'demoes/*'],
+	// Only a handful of root Markdown files make up the published site
+	// (index.md, README.md -> introduction.md, documentation.md). Everything
+	// else tracked in the repo (internal notes, ADRs, protocol docs, changesets,
+	// legacy sites, per-package READMEs, ...) must be excluded so VitePress does
+	// not try to parse it as a page. Use a blocklist of every non-docs location
+	// rather than listing pages, so new incidental Markdown never breaks the build.
+	srcExclude: [
+		'hardhat-deploy',
+		'hardhat-deploy/**',
+		'packages/**',
+		'demoes/**',
+		'website-legacy/**',
+		'work/**',
+		'plans/**',
+		'reviews/**',
+		'scripts/**',
+		'skills/**',
+		'tmp/**',
+		'docs/**',
+		'.changeset/**',
+		'.kilo/**',
+		'AGENTS.md',
+		'CONTEXT.md',
+		'TESTING.md',
+	],
 
 	rewrites(id) {
 		// console.log({ id });
