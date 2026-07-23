@@ -20,15 +20,22 @@
 # re-evaluation (a fresh id the watermark catches). There is NO edit-detection /
 # `updated_at` / body-hash tracking.
 #
-# AUTHOR-TRUST → per-outcome FLAGS (the merge-vs-propose POLICY): because ANYBODY
-# can file an issue, the merge decision composes with WHO authored it. An UNTRUSTED
-# author (`author_association` not OWNER/MEMBER/COLLABORATOR) forces
-# `--propose-task` REGARDLESS of the `autoBuild` gate — a task from a public
-# front-door issue can never auto-merge — while `--merge-spec` stays allowed (a
-# human must still task a spec before anything autonomous acts on it, so the human
-# checkpoint is intact). A TRUSTED author gets the plain gate-derived mode. The
-# fully-gateless "merge everything" path (both gates off + a trusted author) is a
-# LOUD, NON-DEFAULT opt-in; the default is conservative (propose).
+# THE DOCUMENT MODE is `intakeIntegration`; AUTHOR-TRUST → PLACEMENT + the STAMP:
+# the intake DOCUMENT merge-vs-propose mode is the resolved `intakeIntegration ??
+# integration` (an operator/config choice, a SINGLE value applied to BOTH the task
+# and spec document), DECOUPLED from the autonomy gates (spec
+# intake-integration-knob-and-specs-land-in-proposed-rename; ADR
+# untrusted-origin-carries-via-stamp-not-forced-staging). `autoBuild`/`autoTask`
+# no longer decide the document mode (they mean only "may an agent act
+# autonomously"). Because ANYBODY can file an issue, WHO authored it still matters —
+# but author-trust drives only (1) the `--origin-trust` STAMP on the emitted
+# document and (2), via that stamp read by `intake`'s dispatch, which PLACEMENT
+# default the document lands in. So an untrusted author's task DOCUMENT MERGES to
+# `main` just like a trusted one when `intakeIntegration` is `merge`; the
+# untrusted safety is the CARRIED stamp (it forces the later BUILD to a code PR)
+# plus the placement default, not a forced document PR. "Merge everything" is
+# `intakeIntegration: merge` (or `integration: merge`), independent of the gates
+# AND of who filed the issue — so a repo can have autonomy AND merged documents.
 #
 # CI runs IN-PLACE (the CI container IS the isolation): NO --isolated/--remote/
 # registry (laptop-only affordances). The PER-ISSUE concurrency group below
@@ -74,23 +81,25 @@ permissions:
   pull-requests: write
   issues: write
 
-env:
-  # ── The engine GATE FAMILY, surfaced as the DORFL_* env block ─────────
-  # CI is NOT a special policy surface (ADR ci-config-policy-and-gate-family §5):
-  # it runs the SAME engine gates, resolved through flag > env > per-repo > global
-  # > default. The SAME dorfl.json the laptop uses applies here; this env
-  # block is the optional CI-only override. Change behaviour by editing these
-  # values (or a GitHub repo variable / dorfl.json key) — NOT by re-running
-  # install-ci (ADR §6: install-ci is one-time).
-  #
-  # `intake` itself is GATE-FREE (the explicit invocation is its own
-  # authorization), so these gates do NOT block it — CI READS them to DERIVE the
-  # per-outcome merge-vs-propose flags below (the merge-vs-propose POLICY). CALM
-  # DEFAULTS: both off ⇒ the next step is a HUMAN, so the gate-derived mode is the
-  # permissive merge side; author-trust then forces propose for a task from an
-  # untrusted author.
-  DORFL_AUTO_BUILD: 'false' # gate: will an agent auto-build the emitted task next?
-  DORFL_AUTO_TASK: 'false' # gate: will an agent auto-task the emitted spec next?
+# ── The intake DOCUMENT mode is resolved FROM CONFIG, not carried here ───────
+# CI is NOT a special policy surface (ADR ci-config-policy-and-gate-family §5):
+# it runs the SAME engine config, resolved through flag > env > per-repo > global
+# > default. The SAME dorfl.json the laptop uses applies here. This workflow emits
+# NO DORFL_AUTO_BUILD / DORFL_AUTO_TASK line (ADR
+# untrusted-origin-carries-via-stamp-not-forced-staging: hardcoding them here made
+# the env layer OUTRANK the committed dorfl.json — the shadowing bug). So the env
+# layer carries NO config default; the policy step below READS the resolved intake
+# DOCUMENT mode `intakeIntegration ?? integration` via `dorfl config --json` (the
+# mechanism `advance` already uses), so your committed dorfl.json wins (then the
+# global config, then the built-in default `propose`). To land intake documents on
+# main, set `intakeIntegration: merge` (or `integration: merge`) in dorfl.json
+# (applies everywhere) — NOT by re-running install-ci (ADR §6: install-ci is
+# one-time). The autonomy gates `autoBuild`/`autoTask` are DECOUPLED from the
+# document mode (spec intake-integration-knob-and-specs-land-in-proposed-rename):
+# they gate autonomy only and are NOT read here. `intake` itself is GATE-FREE (the
+# explicit invocation is its own authorization); CI READS only the resolved
+# `intakeIntegration`/`integration` to DERIVE the merge-vs-propose document flags
+# below (the merge-vs-propose POLICY).
 
 jobs:
   intake:
@@ -107,16 +116,23 @@ jobs:
         with:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
 
-      - name: derive the per-outcome merge-vs-propose flags (gate × author-trust)
+      - name: derive the intake DOCUMENT mode (intakeIntegration) + the origin-trust stamp (author-trust)
         id: policy
-        # The merge-vs-propose POLICY, executed at runtime — the SAME rule
+        # The intake POLICY, executed at runtime — the SAME rule
         # `deriveIntakeFlags` unit-tests (they cannot desync; the test asserts this
-        # shell matches the function):
-        #   * SPEC — gate-derived ONLY: --merge-spec iff autoTask OFF (a human
-        #            tasks it before anything autonomous acts — the checkpoint
-        #            stays ahead even for an UNTRUSTED author), else --propose-spec.
-        #   * TASK  — --propose-task iff (autoBuild ON) OR (author UNTRUSTED);
-        #            --merge-task ONLY iff (autoBuild OFF AND author TRUSTED).
+        # shell matches the function). The DOCUMENT mode is the resolved
+        # `intakeIntegration ?? integration` (operator/config), DECOUPLED from the
+        # autonomy gates; author-trust drives ONLY the stamp + placement (ADR
+        # untrusted-origin-carries-via-stamp-not-forced-staging; spec
+        # intake-integration-knob-and-specs-land-in-proposed-rename):
+        #   * DOCUMENT mode (spec = task) — config-derived: --merge-* iff the
+        #            resolved intakeIntegration is merge, else --propose-*. A SINGLE
+        #            value applied to BOTH the spec and task document. autoBuild/
+        #            autoTask are NOT read (they gate autonomy only).
+        #   * ORIGIN-TRUST stamp — the ONLY thing author-trust drives: --origin-trust
+        #            untrusted iff the author is not OWNER/MEMBER/COLLABORATOR, which
+        #            `intake`'s dispatch reads to select the untrusted PLACEMENT
+        #            default and to force the later BUILD to a code PR.
         # author_association comes from the COMMENT on an `issue_comment` event,
         # else the ISSUE on an `issues` event — read straight off the payload, no
         # extra API call.
@@ -125,37 +141,53 @@ jobs:
         run: |
           set -euo pipefail
 
-          # SPEC flag: gate-derived only (author-trust does NOT bite a spec).
-          if [ "${DORFL_AUTO_TASK}" = "true" ]; then
-            spec_flag="--propose-spec"
-          else
+          # Read the RESOLVED intake DOCUMENT mode from the committed config via
+          # `dorfl config --json` (the mechanism `advance` already uses), NOT a
+          # hardcoded DORFL_* env (ADR
+          # untrusted-origin-carries-via-stamp-not-forced-staging: an env default
+          # would OUTRANK dorfl.json — the shadowing bug). In-place, so the
+          # resolution chain reads THIS repo's dorfl.json exactly like the laptop.
+          # `intakeIntegration` is OPTIONAL (unset ⇒ falls back to `integration`),
+          # so read `.intakeIntegration // .integration` in ONE jq expression — the
+          # shell twin of the `intakeIntegration ?? integration` the CLI applies.
+          # The autonomy gates (autoBuild/autoTask) are DECOUPLED from the document
+          # mode (spec intake-integration-knob-and-specs-land-in-proposed-rename):
+          # they gate autonomy only and are NOT read here.
+          config_json="$(dorfl config --json)"
+          intake_integration="$(echo "${config_json}" | jq -r '.intakeIntegration // .integration')"
+
+          # DOCUMENT mode: config-derived from the single `intakeIntegration ??
+          # integration` value, applied to BOTH the spec and task document (US #1
+          # chose one intake knob, not a per-type split). merge ⇒ --merge-*,
+          # else --propose-*. Author-trust does NOT bite the mode (ADR
+          # untrusted-origin-carries-via-stamp-not-forced-staging): an untrusted
+          # author's DOCUMENT merges just like a trusted one; the untrusted safety
+          # is the stamp + placement below, not a document PR.
+          if [ "${intake_integration}" = "merge" ]; then
             spec_flag="--merge-spec"
+            task_flag="--merge-task"
+          else
+            spec_flag="--propose-spec"
+            task_flag="--propose-task"
           fi
 
           # Author-trust: TRUSTED iff OWNER/MEMBER/COLLABORATOR (admin / write-
           # collaborator — the whole signal). Anything else (incl. empty) is
-          # UNTRUSTED → the conservative, human-in-the-loop path.
+          # UNTRUSTED. It drives ONLY the origin-trust stamp below (NOT the modes).
           trusted="false"
           case "${AUTHOR_ASSOCIATION:-}" in
             OWNER|MEMBER|COLLABORATOR) trusted="true" ;;
           esac
 
-          # TASK flag: propose if the agent will auto-build it (gate ON) OR the
-          # author is untrusted; merge ONLY when both are safe.
-          if [ "${DORFL_AUTO_BUILD}" = "true" ] || [ "${trusted}" != "true" ]; then
-            task_flag="--propose-task"
-          else
-            task_flag="--merge-task"
-          fi
-
-          # ORIGIN-TRUST stamp (task untrusted-origin-forces-build-propose):
-          # derived from the SAME ${trusted} case above (one author-trust read,
-          # two consumers — the task/spec modes AND the stamp — so they cannot
-          # desync). `intake` STAMPS this onto the emitted spec/task frontmatter
-          # (origin: issue + originTrust: <value>); it does NOT re-resolve trust
-          # (that is CI's policy, passed IN). The stamp SURVIVES the merge boundary
-          # so a later auto-task/auto-build of an untrusted-origin artifact still
-          # forces a human becomes-code checkpoint (the laundering gap is closed).
+          # ORIGIN-TRUST stamp — the SOLE thing author-trust drives on the wire
+          # (task untrusted-origin-forces-build-propose). `intake` STAMPS this
+          # onto the emitted spec/task frontmatter (origin: issue + originTrust:
+          # <value>); its dispatch reads the stamp to (1) select the untrusted-side
+          # PLACEMENT default (`untrusted*LandIn`) and (2) force the later BUILD of
+          # an untrusted task to a code PR. It does NOT re-resolve trust (that is
+          # CI's policy, passed IN). The stamp SURVIVES the merge boundary so a
+          # later auto-task/auto-build of an untrusted-origin artifact still forces
+          # a human becomes-code checkpoint (the laundering gap is closed).
           if [ "${trusted}" = "true" ]; then
             origin_trust_flag="--origin-trust=trusted"
           else
@@ -165,12 +197,15 @@ jobs:
           echo "spec_flag=${spec_flag}" >> "$GITHUB_OUTPUT"
           echo "task_flag=${task_flag}" >> "$GITHUB_OUTPUT"
           echo "origin_trust_flag=${origin_trust_flag}" >> "$GITHUB_OUTPUT"
-          echo "intake policy: author_association='${AUTHOR_ASSOCIATION:-}' trusted=${trusted} → ${spec_flag} ${task_flag} ${origin_trust_flag}"
+          echo "intake policy: intakeIntegration='${intake_integration}' author_association='${AUTHOR_ASSOCIATION:-}' trusted=${trusted} → ${spec_flag} ${task_flag} ${origin_trust_flag}"
 
       - name: intake the issue (four-outcome dispatch; surfaces the review verdict into the thread)
         # In-place in this checkout (no --isolated/--remote): the CI container IS
         # the isolation. EXPLICIT `intake <N>`, never a bare slug. The per-outcome
-        # flags carry the merge-vs-propose POLICY derived above. `intake` runs the
+        # flags carry the (intakeIntegration-derived) document modes + the
+        # origin-trust stamp derived above (author-trust drives only the stamp +
+        # placement, not the document merge-vs-propose; the autonomy gates drive
+        # neither). `intake` runs the
         # lone-task review/edit loop and posts its findings as questions back into
         # THIS issue thread (insertion point E) through the issue-comment seam —
         # CI surfaces E by invoking intake; it adds no new review mechanism.
