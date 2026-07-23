@@ -1,5 +1,12 @@
 # @rocketh/verifier
 
+## 0.19.11
+
+### Patch Changes
+
+- 7ca78b4: Resolve each linked library's defining source path from the compiler `linkReferences` (and `deployedLinkReferences`) that rocketh already persists on the deployment, before falling back to the `metadata.sources` heuristic. These maps are keyed by the defining source file, so the standard-json `settings.libraries` key sent to Etherscan now comes straight from the compiler rather than being reconstructed by AST-walking or regex-scanning source content. This makes verification of contracts that link to libraries more robust (no ambiguity when a `library <Name>` token also appears in a comment or an unrelated file); the previous `metadata.sources` scan remains as a fallback for older deployments that carry no usable `linkReferences`.
+- 094844b: Fix Etherscan verification for contracts that link to libraries (issue #49). The `libraries` block of the `solidity-standard-json-input` payload is now keyed by each library's defining source file (matching the Solidity standard-json spec and `@nomicfoundation/hardhat-verify`), instead of by the consuming contract's `<file>:<name>` path. The defining source is resolved by scanning `metadata.sources` (preferring structured AST data when available, falling back to a `library <Name>` declaration in the source content). Verification fails with a clear error when a linked library cannot be resolved, rather than silently sending a malformed payload.
+
 ## 0.19.10
 
 ### Patch Changes
