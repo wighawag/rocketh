@@ -20,6 +20,19 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Enable pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: 10
+    - name: Setup Node for pnpm
+      uses: actions/setup-node@v5
+      with:
+        node-version: '22'
+        cache: pnpm
+    - name: Install project deps
+      shell: bash
+      run: pnpm install --frozen-lockfile
+
     - name: Setup Node.js
       uses: actions/setup-node@v5
       with:
