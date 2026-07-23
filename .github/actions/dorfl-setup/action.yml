@@ -22,8 +22,6 @@ runs:
   steps:
     - name: Enable pnpm
       uses: pnpm/action-setup@v4
-      with:
-        version: 10
     - name: Setup Node for pnpm
       uses: actions/setup-node@v5
       with:
@@ -32,6 +30,13 @@ runs:
     - name: Install project deps
       shell: bash
       run: pnpm install --frozen-lockfile
+    - name: Ensure a local main branch for changeset --since=main
+      shell: bash
+      run: |
+        git fetch origin main --quiet || true
+        if [ "$(git rev-parse --abbrev-ref HEAD)" != "main" ]; then
+          git branch --force main origin/main
+        fi
 
     - name: Setup Node.js
       uses: actions/setup-node@v5
