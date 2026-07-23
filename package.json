@@ -22,7 +22,7 @@
     "set-defaults": "^0.0.5",
     "syncpack": "^14.3.0",
     "tsx": "^4.21.0",
-    "vitepress": "^1.6.4",
+    "vitepress": "2.0.0-alpha.18",
     "vitest": "^4.1.10",
     "zellij-launcher": "^0.0.1"
   },
@@ -31,10 +31,9 @@
   },
   "packageManager": "pnpm@10.28.1",
   "pnpm": {
-    "comment": "Security floor for transitive DEV/TEST/DOCS tooling deps flagged by Dependabot. None are runtime deps of the published @rocketh/* packages; they arrive via vitepress, hardhat and lws. Only the entries that still regress to a vulnerable version WITHOUT the override are kept here (the rest are already satisfied by the resolved lockfile). vitepress 1.6.4 and vitest 4.1.10 are already the newest releases, so these floors cannot be removed by upgrading; revisit when those tools ship patched dep trees.",
+    "comment": "Security floor for transitive DEV/TEST/DOCS tooling deps flagged by Dependabot. None are runtime deps of the published @rocketh/* packages; they arrive via vitepress, hardhat and lws. Only the entries that still regress to a vulnerable version WITHOUT the override are kept here (the rest are already satisfied by the resolved lockfile). The vite advisories were resolved structurally by moving to vitepress 2.x (vite 8), so no vite override is needed. The remaining floors come from hardhat/lws (ws, adm-zip, @koa/cors, @tootallnate/once) and vitepress peers (axios, esbuild); revisit when those ship patched dep trees.",
     "overrides": {
       "axios@>=1.0.0 <1.18.0": "^1.18.0",
-      "vite@>=7.0.0 <7.3.5": "^7.3.5",
       "esbuild@<0.25.0": "^0.25.0",
       "esbuild@>=0.27.3 <0.28.1": "^0.28.1",
       "ws@>=8.0.0 <8.21.0": "^8.21.0",
