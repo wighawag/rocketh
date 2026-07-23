@@ -10,5 +10,9 @@
 	"surfaceBlockers": true,
 	"review": true,
 	"integration": "merge",
+	"tasksLandIn": "ready",
+	"specsLandIn": "ready",
+	"untrustedTasksLandIn": "ready",
+	"untrustedSpecsLandIn": "ready",
 	"agentDeadlineMinutes": 90
 }
