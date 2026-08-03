@@ -18,7 +18,7 @@
     "@vitest/coverage-v8": "^4.1.10",
     "dorfl": "0.10.0",
     "ezx": "^0.0.18",
-    "nx": "^22.6.5",
+    "nx": "^22.7.2",
     "prettier": "^3.8.3",
     "set-defaults": "^0.0.5",
     "syncpack": "^14.3.0",
