@@ -226,11 +226,28 @@ export async function createEnvironment<
 	const chainId = '' + Number(chainIdHex);
 	let genesisHash: `0x${string}` | undefined;
 	try {
-		let genesisBlock: EIP1193Block | EIP1193BlockWithTransactions | null;
-		try {
+		// `eth_getBlockByNumber("earliest")` is node-relative, not chain-canonical:
+		// a pruned node returns the oldest block it retained, not block 0. Behind a
+		// load-balanced RPC endpoint this makes the genesis fingerprint
+		// non-deterministic, which can wrongly flag the deployment folder as
+		// belonging to a different chain. Ask for block 0x0 explicitly (validating
+		// the response really is block 0, and retrying in case a balancer rotates
+		// through a pruned backend), and only fall back to "earliest" when no
+		// backend can serve block 0 at all.
+		let genesisBlock: EIP1193Block | EIP1193BlockWithTransactions | null = null;
+		for (let attempt = 0; attempt < 10 && !genesisBlock; attempt++) {
+			try {
+				genesisBlock = await provider.request({method: 'eth_getBlockByNumber', params: ['0x0', false]});
+				if (genesisBlock && genesisBlock.number != null && Number(genesisBlock.number) !== 0) {
+					genesisBlock = null;
+				}
+			} catch {}
+			if (!genesisBlock && attempt < 9) {
+				await wait(0.5);
+			}
+		}
+		if (!genesisBlock) {
 			genesisBlock = await provider.request({method: 'eth_getBlockByNumber', params: ['earliest', false]});
-		} catch {
-			genesisBlock = await provider.request({method: 'eth_getBlockByNumber', params: ['0x0', false]});
 		}
 
 		if (!genesisBlock) {
@@ -1032,7 +1049,12 @@ export async function createEnvironment<
 				: {
 						chainId,
 						genesisHash,
-						deleteDeploymentsIfDifferentGenesisHash: true,
+						// Auto-deleting on a genesis mismatch is only safe for throwaway
+						// dev chains whose genesis rotates on every restart. On live
+						// networks a transient RPC glitch (e.g. a pruned node behind a
+						// load balancer misreporting the genesis) must fail loudly
+						// instead of silently wiping the deployment history.
+						deleteDeploymentsIfDifferentGenesisHash: chainId === '31337' || chainId === '1337',
 					},
 		);
 
