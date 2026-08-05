@@ -1,5 +1,11 @@
 # hardhat-deploy
 
+## 2.0.15
+
+### Patch Changes
+
+- ea8117b: fix export again
+
 ## 2.0.14
 
 ### Patch Changes
