@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/router",
-	"version": "0.19.12",
+	"version": "0.19.13",
 	"description": "provide router based proxy deployment for rocketh",
 	"keywords": [
 		"rocketh",
