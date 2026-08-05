@@ -1,5 +1,11 @@
 # hardhat-deploy
 
+## 2.0.14
+
+### Patch Changes
+
+- aeb3389: fix export
+
 ## 2.0.13
 
 ### Patch Changes
