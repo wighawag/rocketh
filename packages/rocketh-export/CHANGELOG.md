@@ -1,5 +1,14 @@
 # @rocketh/export
 
+## 0.19.12
+
+### Patch Changes
+
+- Updated dependencies [6456996]
+  - @rocketh/core@0.19.6
+  - rocketh@0.19.10
+  - @rocketh/node@0.19.11
+
 ## 0.19.11
 
 ### Patch Changes

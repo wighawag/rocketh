@@ -1,5 +1,13 @@
 # hardhat-deploy
 
+## 2.0.12
+
+### Patch Changes
+
+- Updated dependencies [6456996]
+  - rocketh@0.19.10
+  - @rocketh/node@0.19.11
+
 ## 2.0.11
 
 ### Patch Changes

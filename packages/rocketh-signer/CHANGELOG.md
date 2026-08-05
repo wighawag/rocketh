@@ -1,5 +1,12 @@
 # @rocketh/signer
 
+## 0.19.6
+
+### Patch Changes
+
+- Updated dependencies [6456996]
+  - @rocketh/core@0.19.6
+
 ## 0.19.5
 
 ### Patch Changes

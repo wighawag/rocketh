@@ -1,5 +1,13 @@
 # @rocketh/web
 
+## 0.19.10
+
+### Patch Changes
+
+- Updated dependencies [6456996]
+  - @rocketh/core@0.19.6
+  - rocketh@0.19.10
+
 ## 0.19.9
 
 ### Patch Changes
