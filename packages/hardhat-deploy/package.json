@@ -50,7 +50,8 @@
 		"dist",
 		"src",
 		"bin",
-		"templates"
+		"templates",
+		"v1"
 	],
 	"bin": {
 		"hardhat-deploy": "./dist/cli.js"
