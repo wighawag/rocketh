@@ -1,5 +1,11 @@
 # hardhat-deploy
 
+## 2.0.13
+
+### Patch Changes
+
+- 7c6a434: provide hardhat-deploy v1 solidity utils
+
 ## 2.0.12
 
 ### Patch Changes
