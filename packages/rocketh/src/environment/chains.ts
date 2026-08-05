@@ -7,6 +7,9 @@ import {
 	ResolvedUserConfig,
 } from '../types.js';
 
+/** Chain ids that are considered ephemeral/dev (resettable) by convention. */
+const KNOWN_DEV_CHAIN_IDS = new Set([1337, 31337]);
+
 export function getChainConfigFromUserConfig(
 	config: ResolvedUserConfig,
 	id: number,
@@ -95,6 +98,8 @@ export function getChainConfigFromUserConfig(
 			autoImpersonate: chainConfig?.autoImpersonate || false,
 			autoMine: chainConfig?.autoMine || false,
 			confirmationsRequired: chainConfig?.confirmationsRequired,
+			deleteDeploymentsIfDifferentGenesisHash:
+				chainConfig?.deleteDeploymentsIfDifferentGenesisHash ?? KNOWN_DEV_CHAIN_IDS.has(id),
 		};
 	} else if (rpcUrl) {
 		return {
@@ -107,6 +112,8 @@ export function getChainConfigFromUserConfig(
 			autoImpersonate: chainConfig?.autoImpersonate || false,
 			autoMine: chainConfig?.autoMine || false,
 			confirmationsRequired: chainConfig?.confirmationsRequired,
+			deleteDeploymentsIfDifferentGenesisHash:
+				chainConfig?.deleteDeploymentsIfDifferentGenesisHash ?? KNOWN_DEV_CHAIN_IDS.has(id),
 		};
 	} else {
 		throw new Error(`chain with id ${id} has no rpc url provided nor any provider to use`);

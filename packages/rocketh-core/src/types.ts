@@ -242,6 +242,14 @@ export type ChainUserConfig = {
 	readonly autoImpersonate?: boolean;
 	readonly autoMine?: boolean;
 	readonly confirmationsRequired?: number;
+	/**
+	 * If true, rocketh auto-deletes the deployments folder when the recorded
+	 * genesisHash no longer matches the chain's genesis. Intended for
+	 * ephemeral/dev chains that get reset. Defaults to true for the recognised
+	 * dev chain ids (1337, 31337); override with `false` to opt out, or `true`
+	 * to enable on a custom dev chain.
+	 */
+	readonly deleteDeploymentsIfDifferentGenesisHash?: boolean;
 };
 
 export type ChainConfig = {
@@ -253,6 +261,7 @@ export type ChainConfig = {
 	readonly autoImpersonate: boolean;
 	readonly autoMine: boolean;
 	readonly confirmationsRequired?: number;
+	readonly deleteDeploymentsIfDifferentGenesisHash: boolean;
 } & (
 	| {
 			readonly rpcUrl: string;
@@ -559,6 +568,7 @@ export type ResolvedExecutionParams<Extra extends Record<string, unknown> = Reco
 		readonly autoImpersonate?: boolean;
 		readonly confirmationsRequired?: number;
 		readonly autoMine: boolean;
+		readonly deleteDeploymentsIfDifferentGenesisHash: boolean;
 	};
 	readonly chain: ChainInfo;
 	readonly tags: readonly string[];
