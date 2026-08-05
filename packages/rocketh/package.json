@@ -63,6 +63,7 @@
 		"prepublishOnly": "cp ../../README.md README.md && cp ../../LICENSE LICENSE",
 		"show-chains-with-same-chainId": "tsx show-chains-with-same-chainId.ts",
 		"build": "tsc --project tsconfig.json",
-		"dev": "as-soon -w src pnpm build"
+		"dev": "as-soon -w src pnpm build",
+		"test": "vitest"
 	}
 }

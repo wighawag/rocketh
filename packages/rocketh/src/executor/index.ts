@@ -280,6 +280,7 @@ export function resolveExecutionParams<Extra extends Record<string, unknown> = R
 			autoImpersonate,
 			confirmationsRequired: actualChainConfig.confirmationsRequired,
 			autoMine,
+			deleteDeploymentsIfDifferentGenesisHash: actualChainConfig.deleteDeploymentsIfDifferentGenesisHash,
 		},
 		extra: executionParameters.extra,
 		provider,

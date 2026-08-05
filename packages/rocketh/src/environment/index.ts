@@ -27,8 +27,6 @@ import {InternalEnvironment} from '../internal/types.js';
 import {JSONToString, stringToJSON} from '@rocketh/core/json';
 import {
 	EIP1193Account,
-	EIP1193Block,
-	EIP1193BlockWithTransactions,
 	EIP1193DATA,
 	EIP1193ProviderWithoutEvents,
 	EIP1193Transaction,
@@ -157,7 +155,13 @@ export async function loadDeploymentsFromStore(
 						return {deployments: {}, migrations: {}};
 					} else {
 						throw new Error(
-							`Loading deployment from environment '${networkName}' (with genesisHash: ${genesisHash}) for a different genesisHash (${expectedChain.genesisHash})`,
+							`Deployment folder for environment '${networkName}' was recorded with genesisHash ${genesisHash}, ` +
+								`but the current chain's genesisHash is ${expectedChain.genesisHash}.\n` +
+								`This usually means the chain was reset. If '${networkName}' is an ephemeral/dev chain ` +
+								`(resettable), set deleteDeploymentsIfDifferentGenesisHash: true on its chain config ` +
+								`so rocketh auto-deletes the stale deployments. If this is a real chain and the ` +
+								`stored value is stale (e.g. from an older rocketh version that used the ` +
+								`"earliest" block), remove the "genesisHash" field from the .chain file.`,
 						);
 					}
 				}
@@ -226,20 +230,23 @@ export async function createEnvironment<
 	const chainId = '' + Number(chainIdHex);
 	let genesisHash: `0x${string}` | undefined;
 	try {
-		let genesisBlock: EIP1193Block | EIP1193BlockWithTransactions | null;
-		try {
-			genesisBlock = await provider.request({method: 'eth_getBlockByNumber', params: ['earliest', false]});
-		} catch {
-			genesisBlock = await provider.request({method: 'eth_getBlockByNumber', params: ['0x0', false]});
+		// Fetch genesis explicitly via block number 0. We deliberately do NOT use
+		// the "earliest" tag: on pruned nodes "earliest" returns the prune-cutoff
+		// block (whose hash is not the genesis hash and is unstable across
+		// nodes/prune operations), which would cause spurious genesis-mismatch
+		// detection. On a pruned node `0x0` throws (geth PrunedHistoryError /
+		// reth PrunedHistoryUnavailable) or returns null; in that case we leave
+		// genesisHash undefined and the mismatch check is skipped entirely.
+		const genesisBlock = await provider.request({method: 'eth_getBlockByNumber', params: ['0x0', false]});
+		if (genesisBlock && Number(genesisBlock.number) === 0) {
+			genesisHash = genesisBlock.hash as `0x${string}`;
+		} else if (genesisBlock) {
+			console.warn(
+				`Block fetched for '0x0' is not genesis (number: ${Number(genesisBlock.number)}); ignoring as genesis fingerprint.`,
+			);
 		}
-
-		if (!genesisBlock) {
-			console.error(`failed to get genesis block, returned null`);
-		}
-
-		genesisHash = genesisBlock?.hash;
-	} catch (err) {
-		console.error(`failed to get genesis block`);
+	} catch {
+		// genesis unavailable (e.g. pruned node) — no genesis fingerprint
 	}
 
 	const deploymentsFolder = userConfig.deployments;
@@ -381,6 +388,8 @@ export async function createEnvironment<
 		saveDeployments,
 		tags: networkTags,
 		autoMine: resolvedExecutionParams.environment.autoMine,
+		deleteDeploymentsIfDifferentGenesisHash:
+			resolvedExecutionParams.environment.deleteDeploymentsIfDifferentGenesisHash,
 	};
 
 	const deployments: UnknownDeployments = {};
@@ -1032,7 +1041,7 @@ export async function createEnvironment<
 				: {
 						chainId,
 						genesisHash,
-						deleteDeploymentsIfDifferentGenesisHash: true,
+						deleteDeploymentsIfDifferentGenesisHash: context.deleteDeploymentsIfDifferentGenesisHash,
 					},
 		);
 
