@@ -41,7 +41,10 @@
 				"types": "./dist/helpers.d.ts",
 				"default": "./dist/helpers.js"
 			}
-		}
+		},
+		"./v1/solc_0_6/*": "./v1/solc_0_6/*",
+		"./v1/solc_0_7/*": "./v1/solc_0_7/*",
+		"./v1/solc_0_8/*": "./v1/solc_0_8/*"
 	},
 	"files": [
 		"dist",
