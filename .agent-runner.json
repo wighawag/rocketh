@@ -1,6 +1,0 @@
-{
-	"verify": "pnpm changeset status --since=main && pnpm format:check && pnpm build && pnpm test",
-	"harness": "pi",
-	"allowAgents": false,
-	"autoSlice": false
-}
