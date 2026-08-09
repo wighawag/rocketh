@@ -11,7 +11,7 @@ covers: []
 This is split out of the seam task precisely because it spans packages the seam task must not touch:
 
 - `packages/rocketh-read-execute/src/index.ts` — the `execute` (and `tx`) call sites that know the method and args.
-- `packages/rocketh-core/src/types.ts` — the `broadcastExecution` options type on the `Environment` interface.
+- `packages/rocketh-core/src/types.ts` — the `broadcastExecution` options type on the `Environment` interface. Additive and PRE-AUTHORISED by this task: do not stall on `AGENTS.md`'s ask-first rule for core types, and do not work around it with a cast.
 - `packages/rocketh/src/environment/` — carrying the metadata from `broadcastExecution` to the throw site and resolving the name.
 - `packages/rocketh-test-utils/` — ONLY if the legacy `createMockEnvironment` still exists when you start, since it carries its own copy of the `broadcastExecution` signature. Check rather than assuming. `remove-legacy-mock-environment` is `blockedBy` THIS task, specifically so the two cannot edit and delete the same code concurrently, so in practice the legacy copy will still be there.
 

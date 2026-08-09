@@ -24,6 +24,8 @@ Scenarios:
 
 5. **`autoImpersonate: false` routes to the seam (story 8).** With `autoImpersonate: false` at run/chain level and a named account with no local signer, assert BOTH that an unwrapped call throws `UnknownSignerError` and that a wrapped call returns the expected tx. This is the supported way to exercise the unknown-signer path on a fork or dev node; it is deliberately NOT done by making `catchUnknownSigner` override impersonation (ADR 0006).
 
+Workspace devDependencies for the new package are PRE-AUTHORISED by this task, so do not stall on `AGENTS.md`'s ask-first rule: these scenarios need `@rocketh/deploy`, `@rocketh/proxy`, `@rocketh/read-execute` and `@rocketh/test-utils` as devDependencies of `@rocketh/unknown-signer`. They are test-only, so the package's RUNTIME dependency stays `@rocketh/core` alone, as `unknown-signer-package` specifies.
+
 Each test carries a short JSDoc explaining the real-world scenario, per the repo's integration-tests-as-documentation convention. Use `createTestEnvironment` (the real-environment harness, not the legacy `createMockEnvironment`) and `createMockArtifact` from `@rocketh/test-utils`.
 
 Note on overlap: stories 5 and 6 are also covered by `unknown-signer-broadcast-seam`. Deliberate, not duplication — there they are seam-level tests driven through the choke point, here they are user-facing scenarios driven through `catchUnknownSigner`.

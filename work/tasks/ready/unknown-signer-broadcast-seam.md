@@ -12,8 +12,11 @@ Scope fence, stated explicitly because an earlier draft of this task contradicte
 
 - `packages/rocketh/src/environment/` — the seam, the policy resolution, the frame stack.
 - `packages/rocketh/src/executor/` and `packages/rocketh/src/environment/chains.ts` — the `onUnknownSigner` precedence chain, mirroring how `autoImpersonate` is already threaded.
-- `packages/rocketh-core/src/types.ts` — the config/env type additions for `onUnknownSigner` (it sits beside `autoImpersonate`, which appears in several places in this file).
-  NOT owned here: `packages/rocketh-deploy` (its own signer guard is `deploy-unsignable-deployer-reaches-seam`'s), and the `contract` enrichment on the execute path (`unknown-signer-contract-enrichment`'s).
+- `packages/rocketh-core/src/types.ts` — two additions: the config/env types for `onUnknownSigner` (it sits beside `autoImpersonate`, which appears in several places in this file), AND the policy-frame push/pop helpers on the `Environment` interface. The helpers MUST be declared in core, not left as an untyped internal: `@rocketh/unknown-signer` depends on `@rocketh/core` only, so if they are not on the interface the wrapper package cannot call them without either a cast or a dependency it is not supposed to have.
+
+Both `@rocketh/core` edits above are additive and PRE-AUTHORISED by this task, so do not stall on `AGENTS.md`'s ask-first rule for core types, and do not work around them with a cast.
+
+NOT owned here: `packages/rocketh-deploy` (its own signer guard belongs to `deploy-unsignable-deployer-reaches-seam`), and the `contract` enrichment on the execute path (`unknown-signer-contract-enrichment`).
 
 ## What to build
 
@@ -31,7 +34,7 @@ Pieces of the vertical:
 
 4. **Throw at the seam.** When the effective policy is `throw`, construct and throw `UnknownSignerError` populated from the tx (`from`, `to`, `data`, `value`), replacing the current opaque `cannot get signer for ${from}` error at this call site.
 
-   **Keep a defensive not-found throw.** This task removes both guards that today catch "classified signable, but no signer entry found". The known cause of such a disagreement (the `addressSigners` key casing defect) was fixed in commit `09ea46d`, so this is not guarding a live hazard — do not go hunting for one. It guards future divergence between the signability view and the signer map, and it is cheap: if they ever disagree, the result must be a clear error naming the address rather than a `TypeError` on `undefined`.
+   **Keep a defensive not-found throw.** This task replaces the guard inside `broadcastTransaction` that today catches "classified signable, but no signer entry found". (The other such guard, in `@rocketh/deploy`, is NOT yours — see point 6.) The known cause of such a disagreement (the `addressSigners` key casing defect) was fixed in commit `09ea46d`, so this is not guarding a live hazard — do not go hunting for one. It guards future divergence between the signability view and the signer map, and it is cheap: if they ever disagree, the result must be a clear error naming the address rather than a `TypeError` on `undefined`.
 
 5. **Leave `contract` unset.** The enrichment is a separate task (`unknown-signer-contract-enrichment`) because it necessarily touches three other packages. The error's `contract` field stays optional and unpopulated here. Note for that task's benefit: `broadcastExecution` currently calls `broadcastTransaction(transaction)` with NO options, so the enrichment is not merely a matter of adding a field to an existing bag — that task owns solving it.
 
@@ -58,7 +61,7 @@ That constrains HOW you drive the seam, and the constraint is a good one. You ca
 - [ ] The `Signer` union's members are enumerated where the seam branches, and named in the PR/done record (see `CONTEXT.md` under `signer`) — a partial read of that union has already produced one wrong design.
 - [ ] `onUnknownSigner: 'throw' | 'auto'` accepted at run/chain level with the documented precedence, defaulting to `'auto'`, which degrades to `'throw'`.
 - [ ] No `'impersonate'` value exists on `onUnknownSigner`, and `autoImpersonate` behaviour is unchanged.
-- [ ] Effective policy is `top-of-frame ?? resolved-global`; push/pop helpers are exposed and the frame is an object carrying a policy.
+- [ ] Effective policy is `top-of-frame ?? resolved-global`; push/pop helpers are exposed and the frame is an object carrying a policy. The helpers are TYPED on the `Environment` interface in `@rocketh/core`, so a package depending on core alone can call them (`unknown-signer-package` does exactly that).
 - [ ] A pushed frame affects ONLY the `unsignable` branch — an `impersonated` account still broadcasts with a `'throw'` frame pushed (explicit test).
 - [ ] `broadcastTransaction` throws `UnknownSignerError` with `from`/`to`/`data`/`value` populated, replacing the opaque `cannot get signer for ...` error.
 - [ ] If an address classifies signable but has no signer entry, a clear error naming the address is raised, never a `TypeError` (explicit test).

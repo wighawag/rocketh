@@ -8,11 +8,9 @@ needsAnswers: true
 
 `packages/rocketh/src/environment/index.ts` records a pending transaction's `origin` inconsistently, within a few lines of itself:
 
-- `waitForDeploymentTransactionAndSave` (around line 803) sets `origin: transaction.from` with no normalisation.
+- `savePendingDeployment` (around line 803) sets `origin: transaction.from` with no normalisation.
 - `broadcastExecution` (around line 903) and `broadcastDeployment` (around line 959) both set `origin: from.toLowerCase()`.
-- `savePendingDeployment` (around line 992) also uses `transaction.from` verbatim, though there the value comes from the node's `eth_getTransactionByHash` rather than from user input.
-
-(Function attributions verified by reading the enclosing declarations; an earlier draft of this note swapped the first and last.)
+- The re-hydration path (around line 992) also uses `transaction.from` verbatim, though there the value comes from the node's `eth_getTransactionByHash` rather than from user input.
 
 So the same conceptual field is stored lowercased on some paths and as-resolved on others.
 
@@ -34,3 +32,18 @@ Confirmed by reading the file at the four sites listed above. Not otherwise inve
 ## Suggested disposition
 
 Trace the consumers of `transaction.origin`, decide whether it is an identity value or a match key, then make all four sites consistent in whichever direction that answer implies. Small, but it should be a decision rather than a reflex.
+
+## Update (2026-08-09)
+
+Two corrections to what is written above, kept as an update rather than a rewrite because
+`WORK-CONTRACT.md` makes this bucket append-only.
+
+- The function attributions at the first and last bullet were SWAPPED. Line 803 is inside
+  `waitForDeploymentTransactionAndSave`; line 992 IS `savePendingDeployment` (verified by reading
+  the enclosing declarations). The note's title therefore names a real site, but the body's first
+  bullet named the wrong one.
+- The fix commit SHA above was originally written as `693e46f`, which a rebase then rewrote; it
+  was corrected in place to `09ea46d` because a dead SHA helps nobody. `693e46f` is not an
+  ancestor of `main`.
+
+The substance is unchanged: four sites, two lowercased, two not.

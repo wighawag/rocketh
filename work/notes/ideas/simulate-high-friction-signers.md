@@ -53,7 +53,7 @@ Resist the two tempting shortcuts. A fifth signability state, or a new mode on `
 
 - `work/notes/ideas/per-call-autoimpersonate.md` — adjacent, but parked on a blocker this idea does not share.
 - `docs/adr/0006-unknown-signer-seam-and-orthogonal-autoimpersonate.md` — the capability-versus-policy separation this idea must not re-muddle.
-- `work/tasks/backlog/account-signability-classification.md` — makes this cheap by giving the environment a real notion of per-account signing capability.
+- `work/tasks/ready/account-signability-classification.md` — makes this cheap by giving the environment a real notion of per-account signing capability.
 - `work/specs/ready/explore-unknown-signer-adapters.md` — the other direction (accounts that genuinely cannot be signed for locally).
 
 _Source: raised in conversation on 2026-08-09 while reviewing the unknown-signer task set, from the observation that a genuine-but-high-friction signer is a distinct case from both a normal signer and an unsignable account._

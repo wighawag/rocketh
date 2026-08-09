@@ -15,3 +15,6 @@ tmp
 my-rocketh-project/
 
 coverage
+
+# subagent transcripts (pi-subagents scratch, never repo content)
+.pi-subagents

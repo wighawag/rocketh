@@ -2,13 +2,8 @@
 title: Remove the legacy createMockEnvironment fake
 slug: remove-legacy-mock-environment
 blockedBy: [migrate-deploy-and-read-tests, migrate-proxy-diamond-tests, unknown-signer-contract-enrichment]
-needsAnswers: true
 covers: []
 ---
-
-## Open questions
-
-1. What version bump should the breaking removal of the `createMockEnvironment` export carry? `@rocketh/test-utils` is published at `0.x`, so a minor is the conventional way to signal a break at this stage, but repo convention says a breaking change is flagged for human confirmation rather than decided by the agent. Answer this and the flag can be cleared.
 
 ## What to build
 
@@ -16,7 +11,7 @@ CONTRACT step (`TASKING-PROTOCOL.md` §3a): once every caller has moved, delete 
 
 - Delete `createMockEnvironment` and the hand-built environment literal behind it, including its reimplementations of `broadcastExecution` and `broadcastDeployment` — the specific code whose existence meant no test ever executed the real environment module.
 - Keep `createMockArtifact` and the mock provider utilities; they are orthogonal and still used.
-- `@rocketh/test-utils` is a PUBLISHED package, so removing an export is a breaking change. It needs a changeset with a migration line telling users to switch to `createTestEnvironment` and `await` it. Do NOT decide the bump yourself: repo convention is that a breaking bump is flagged for human confirmation, so propose one and ask.
+- `@rocketh/test-utils` is a PUBLISHED package, so removing an export is a breaking change. It needs a changeset with a migration line telling users to switch to `createTestEnvironment` and `await` it. The bump is **minor** — answered by the maintainer (see `work/questions/task-remove-legacy-mock-environment.md`), since at `0.x` a minor is the conventional break signal. That answer IS the human confirmation the convention requires, so do not stop to ask again.
 - Note `unknown-signer-package` also edits `AGENTS.md` and `documentation.md` (to add the new package to the lists) and is not ordered against this task, so keep your edits to the harness-related lines and expect theirs to be elsewhere in the same files.
 - Update every remaining mention in the docs, including `AGENTS.md` (which currently names `createMockEnvironment` in both its `Do` list and its test-structure example) and any reference in `documentation.md` / `TESTING.md`.
 - Do NOT rename `createTestEnvironment` back to `createMockEnvironment` on the way out. It would churn every call site a second time for a cosmetic gain, and the new name is more honest: it builds a real environment, it does not mock one.

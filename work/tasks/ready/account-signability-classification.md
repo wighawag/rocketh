@@ -38,7 +38,7 @@ Note this task is ADDITIVE except for one deliberate behaviour change (the candi
 
   One consequence in your favour: a differently-cased named account can no longer be silently re-listed as unnamed and have its `signerOnly` entry overwritten by a `remote` one (the quieter of that bug's two modes). So an account's resolved signer is now a trustworthy input to classification.
 
-- Expose it additively on the environment as `addressSignability`, keyed by lowercased address, alongside the existing `addressSigners`. Two files carry the field: the `Environment` interface in `packages/rocketh-core/src/types.ts` (an additive core-type change, PRE-AUTHORISED by this task so you neither stall on the ask-first rule nor reach for a cast) and its mirrored copy in `hardhat-deploy/documentation/environment.md`, which commit `09ea46d` updated the same way. Keep them in step.
+- Expose it additively on the environment as `addressSignability`, keyed by lowercased address, alongside the existing `addressSigners`. Two files carry the field: the `Environment` interface in `packages/rocketh-core/src/types.ts` (an additive core-type change, PRE-AUTHORISED by this task so you neither stall on `AGENTS.md`'s ask-first rule for core types nor reach for a cast) and its mirrored copy in `hardhat-deploy/documentation/environment.md`, which commit `09ea46d` updated the same way. Keep them in step.
 - **Normalise the impersonation outcome before recording it.** `unknownAccounts` is built from `Object.values(namedAccounts)`, whose values are deliberately NOT normalised, and the impersonation helper pushes each address verbatim. So the successful-impersonation list arrives un-normalised, and keying anything from it without lowercasing would recreate exactly the bug class `09ea46d` fixed. **Do not change `addressSigners`, and do not add a variant to the `Signer` union** — an unsignable account keeps the entry it has today so nothing downstream breaks. This is an additive read-only view, not a refactor of account resolution.
 - Stop discarding the result of auto-impersonation: its successful addresses are what distinguish `impersonated` from `unsignable`. Keep the existing swallow-and-continue behaviour for nodes that do not support impersonation; only the RECORDING of the outcome changes.
 - Querying an address that was never seen returns `unsignable` rather than `undefined`, so callers never have to handle a third case.
@@ -56,14 +56,16 @@ Nothing consumes this yet — `unknown-signer-broadcast-seam` is the first consu
 - [ ] `namedAccounts` and `unnamedAccounts` values remain un-normalised (the key normalisation landed in `09ea46d`; the user-visible addresses were deliberately left alone, and this task must not "tidy" them).
 - [ ] A named account whose auto-impersonation FAILED (or whose node does not support impersonation) classifies as `unsignable`, not `impersonated` — this is the case that is currently silently indistinguishable.
 - [ ] `addressSigners` keys are already normalised (`09ea46d`); do not otherwise change `addressSigners`, and do not add a variant to the `Signer` union. No transaction routing changes in this task.
-- [ ] A changeset accompanies the change (this task modifies published packages and the verify gate runs `changeset status`).
+- [ ] A changeset accompanies the change. A `patch` is intended: the additive `addressSignability` view plus the narrowed impersonation candidate set. Do NOT flag it as breaking or stop to ask — the narrowing is dev/fork-only and its accepted risk is recorded above.
 - [ ] `autoImpersonate` semantics are unchanged: still a node-capability switch, still resolved with the existing precedence, still best-effort with failures swallowed.
 - [ ] Tests live in `packages/rocketh/test/` and build a real environment with a small local mock provider, following `addressSigners-casing.test.ts`. They must NOT use `@rocketh/test-utils`: `rocketh` deliberately does not depend on it, and adding that devDependency would close a `rocketh` to `test-utils` project-graph cycle against `nx`'s `dependsOn: ["^build"]`. A small shared helper local to `packages/rocketh/test/` is fine and expected; it must not be published or promoted into `@rocketh/test-utils`.
 - [ ] `pnpm typecheck` and `pnpm test` pass.
 
 ## Blocked by
 
-- None — can start immediately. Its tests build a real environment locally inside `packages/rocketh/test/` rather than depending on the shared harness, so it does not wait on `test-env-harness`.
+- None — can start immediately.
+
+Deliberately NOT blocked on `test-env-harness`: its tests build a real environment locally inside `packages/rocketh/test/`, so it does not wait on the shared harness. And deliberately NOT serialised against `unknown-signer-error-type` despite both touching `@rocketh/core`: that task adds a NEW file plus one export line in `src/index.ts`, this one edits the `Environment` interface in `src/types.ts` (which has no runtime exports), so there is no file overlap to conflict on.
 
 (`unknown-signer-broadcast-seam` is `blockedBy` this task, partly to serialize edits to the same module and avoid a merge conflict.)
 
