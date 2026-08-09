@@ -1,6 +1,6 @@
 ---
 title: savePendingDeployment records transaction.origin un-lowercased, unlike every sibling
-slug: pending-deployment-origin-not-lowercased
+slug: pending-deployment-origin-not-lowercased-2026-08-09
 needsAnswers: true
 ---
 
