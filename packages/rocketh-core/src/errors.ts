@@ -10,6 +10,8 @@
  * ADR 0006).
  */
 
+import {postfixBigIntReplacer} from './json.js';
+
 export type UnknownSignerContractCall = {
 	/** Optional — resolved downstream by reverse-lookup; absent when unknown. */
 	name?: string;
@@ -35,12 +37,18 @@ function formatValue(value: bigint | string | undefined): string | undefined {
 }
 
 function buildMessage(data: UnknownSignerErrorData): string {
-	const lines: string[] = ['Unknown signer for account ' + data.from];
+	const lines: string[] = [
+		'Unknown signer for account ' + data.from,
+		'  Execute the following transaction out-of-band, then re-run:',
+	];
 	if (data.contract) {
 		const target = data.contract.name ?? data.to ?? '<unknown>';
-		const args = data.contract.args
-			.map((a) => (typeof a === 'bigint' ? a.toString() + 'n' : JSON.stringify(a)))
-			.join(', ');
+		// `postfixBigIntReplacer` is RECURSIVE, which a top-level `typeof a === 'bigint'`
+		//  check is not: a `uint256[]` or any tuple argument (a diamondCut, a batch call)
+		//  nests its bigints, and plain `JSON.stringify` throws on those. Rendering the
+		//  error must never be able to throw — an exception here would replace the very
+		//  error the user needs with an opaque TypeError.
+		const args = data.contract.args.map((a) => JSON.stringify(a, postfixBigIntReplacer)).join(', ');
 		lines.push(`  contract: ${target}.${data.contract.method}(${args})`);
 	}
 	lines.push(`  from: ${data.from}`);
