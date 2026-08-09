@@ -2,7 +2,7 @@
 title: Unknown-signer integration scenarios (Safe proxy upgrade + tx-agnostic + mixed run + idempotent re-run)
 slug: unknown-signer-integration-scenarios
 spec: unknown-signer-core
-blockedBy: [unknown-signer-package, unknown-signer-contract-enrichment]
+blockedBy: [unknown-signer-package, unknown-signer-contract-enrichment, deploy-unsignable-deployer-reaches-seam]
 covers: [1, 5, 6, 7, 8]
 ---
 
@@ -43,6 +43,7 @@ Note on overlap: stories 5 and 6 are also covered by `unknown-signer-broadcast-s
 
 - `unknown-signer-package` — these drive `catchUnknownSigner`.
 - `unknown-signer-contract-enrichment` — scenario 2 asserts the `contract` block on the execute path.
+- `deploy-unsignable-deployer-reaches-seam` — scenario 2's deploy case cannot pass until `@rocketh/deploy` stops short-circuiting an unsignable deployer with its own guard.
 
 ## Prompt
 

@@ -100,17 +100,20 @@ This spec has been tasked; its technical detail was trimmed one-time into the ta
 durable rationale into an ADR (nothing was lost).
 
 - Decisions and their WHY: `docs/adr/0006-unknown-signer-seam-and-orthogonal-autoimpersonate.md`.
-- What to build: `test-env-harness` (prerequisite chore), `unknown-signer-error-type`,
+- What to build: `test-env-harness` (chore), `unknown-signer-error-type`,
   `account-signability-classification`, `unknown-signer-broadcast-seam`,
-  `unknown-signer-contract-enrichment`, `unknown-signer-package`,
-  `unknown-signer-integration-scenarios`.
+  `deploy-unsignable-deployer-reaches-seam`, `unknown-signer-contract-enrichment`,
+  `unknown-signer-package`, `unknown-signer-integration-scenarios`.
 
-The test harness is a PREREQUISITE, not an assumption. `createMockEnvironment` fabricates an
-environment and reimplements the broadcast path, so no test in this repo has ever executed the
-real environment module. `test-env-harness` adds `createTestEnvironment` beside it, built on the
-real `createEnvironment`, and every task here depends on that. Migrating the existing tests onto
-it, and removing the old fake, are separate chores (`migrate-deploy-and-read-tests`, `migrate-proxy-diamond-tests`,
-`remove-legacy-mock-environment`) deliberately kept OFF this spec's critical path.
+Test homes are split BY DESIGN, and the split shapes the task graph. `rocketh` must not depend on
+`@rocketh/test-utils` (that closes an nx project-graph cycle once the harness makes test-utils
+depend on `rocketh`), so tests for `rocketh` internals build a real environment locally, as
+`packages/rocketh/test/addressSigners-casing.test.ts` does, while tests needing the extension
+packages use the shared `createTestEnvironment` harness. Consequently `account-signability-classification`
+and `unknown-signer-broadcast-seam` do NOT depend on `test-env-harness`; the set has three roots.
+Migrating the existing tests onto the harness and removing the old fake are separate chores
+(`migrate-deploy-and-read-tests`, `migrate-proxy-diamond-tests`, `remove-legacy-mock-environment`)
+deliberately kept OFF this spec's critical path. See `CONTEXT.md` under _test environment_.
 
 ## Out of Scope
 

@@ -13,9 +13,7 @@ Scope fence, stated explicitly because an earlier draft of this task contradicte
 - `packages/rocketh/src/environment/` — the seam, the policy resolution, the frame stack.
 - `packages/rocketh/src/executor/` and `packages/rocketh/src/environment/chains.ts` — the `onUnknownSigner` precedence chain, mirroring how `autoImpersonate` is already threaded.
 - `packages/rocketh-core/src/types.ts` — the config/env type additions for `onUnknownSigner` (it sits beside `autoImpersonate`, which appears in several places in this file).
-- `packages/rocketh-deploy/src/index.ts` — ONLY the second signer guard described in point 6.
-
-NOT owned here: the `contract` enrichment on the execute path, which is `unknown-signer-contract-enrichment`.
+  NOT owned here: `packages/rocketh-deploy` (its own signer guard is `deploy-unsignable-deployer-reaches-seam`'s), and the `contract` enrichment on the execute path (`unknown-signer-contract-enrichment`'s).
 
 ## What to build
 
@@ -33,11 +31,11 @@ Pieces of the vertical:
 
 4. **Throw at the seam.** When the effective policy is `throw`, construct and throw `UnknownSignerError` populated from the tx (`from`, `to`, `data`, `value`), replacing the current opaque `cannot get signer for ${from}` error at this call site.
 
-   **Keep a defensive not-found throw.** This task removes both guards that today catch "classified signable, but no signer entry found". The known cause of such a disagreement (the `addressSigners` key casing defect) was fixed in commit `693e46f`, so this is not guarding a live hazard — do not go hunting for one. It guards future divergence between the signability view and the signer map, and it is cheap: if they ever disagree, the result must be a clear error naming the address rather than a `TypeError` on `undefined`.
+   **Keep a defensive not-found throw.** This task removes both guards that today catch "classified signable, but no signer entry found". The known cause of such a disagreement (the `addressSigners` key casing defect) was fixed in commit `09ea46d`, so this is not guarding a live hazard — do not go hunting for one. It guards future divergence between the signability view and the signer map, and it is cheap: if they ever disagree, the result must be a clear error naming the address rather than a `TypeError` on `undefined`.
 
 5. **Leave `contract` unset.** The enrichment is a separate task (`unknown-signer-contract-enrichment`) because it necessarily touches three other packages. The error's `contract` field stays optional and unpopulated here. Note for that task's benefit: `broadcastExecution` currently calls `broadcastTransaction(transaction)` with NO options, so the enrichment is not merely a matter of adding a field to an existing bag — that task owns solving it.
 
-6. **The second signer guard in `deploy`.** `packages/rocketh-deploy` performs its OWN `env.addressSigners[address]` lookup and throws the same opaque `cannot get signer` error BEFORE building the transaction, so a deploy from an unsignable account dies there and never reaches the choke point. Story 5 promises the mechanism fires for a deploy, so this task must close it: make the unsignable case raise the same `UnknownSignerError` under the same effective policy. The looked-up `signer` is passed on to the create2/create3 factory helpers but, at time of writing, is not actually READ inside either of them — verify that before deciding, then either keep the lookup to satisfy those signatures or drop the now-unused parameter deliberately. Do not assume the guard is load-bearing, and do not assume it is dead; check.
+6. **NOT the second signer guard in `deploy`.** `packages/rocketh-deploy` performs its own `env.addressSigners[address]` lookup and throws the same opaque `cannot get signer` error before building the transaction, so a deploy from an unsignable account dies there and never reaches this choke point. That genuinely must be fixed, but NOT here: it changes another package and could not be tested from within this task's fence (`packages/rocketh/test/` cannot import `@rocketh/deploy`). It is owned by `deploy-unsignable-deployer-reaches-seam`, which is blocked on this task and on the harness. Leave that guard alone.
 
 Test coverage on this task:
 
@@ -64,9 +62,9 @@ That constrains HOW you drive the seam, and the constraint is a good one. You ca
 - [ ] A pushed frame affects ONLY the `unsignable` branch — an `impersonated` account still broadcasts with a `'throw'` frame pushed (explicit test).
 - [ ] `broadcastTransaction` throws `UnknownSignerError` with `from`/`to`/`data`/`value` populated, replacing the opaque `cannot get signer for ...` error.
 - [ ] If an address classifies signable but has no signer entry, a clear error naming the address is raised, never a `TypeError` (explicit test).
-- [ ] `deploy`'s own signer guard no longer short-circuits an unsignable deployer with the opaque error; it routes to the same seam behaviour, and the create2/create3 factory path still gets its signer.
+
 - [ ] The error's `contract` field is left unpopulated here (owned by `unknown-signer-contract-enrichment`).
-- [ ] Tests cover stories 4, 5, 6, 11 plus policy resolution, pop-on-throw, and the impersonation anti-regression, mirroring the repo's `*.integration.test.ts` style, and are driven through the PUBLIC API (`deploy` / `execute` / `tx`) against the rebuilt real-environment harness — `broadcastTransaction` is deliberately not exported and must stay that way.
+- [ ] Tests cover stories 4, 6, 11 and the funnel half of story 5, plus policy resolution, pop-on-throw and the impersonation anti-regression. They live in `packages/rocketh/test/`, build a real environment locally, and drive `env.broadcastExecution` and `env.broadcastDeployment` — NOT `deploy`/`execute`/`tx` (importing those from here would close the dependency cycle) and NOT `broadcastTransaction`, which is deliberately unexported and must stay that way.
 - [ ] A changeset accompanies the change (this task modifies published packages and the verify gate runs `changeset status`).
 - [ ] `pnpm typecheck` and `pnpm test` pass.
 

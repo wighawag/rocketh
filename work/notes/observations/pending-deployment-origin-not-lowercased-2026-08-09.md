@@ -8,15 +8,17 @@ needsAnswers: true
 
 `packages/rocketh/src/environment/index.ts` records a pending transaction's `origin` inconsistently, within a few lines of itself:
 
-- `savePendingDeployment` (around line 803) sets `origin: transaction.from` with no normalisation.
+- `waitForDeploymentTransactionAndSave` (around line 803) sets `origin: transaction.from` with no normalisation.
 - `broadcastExecution` (around line 903) and `broadcastDeployment` (around line 959) both set `origin: from.toLowerCase()`.
-- The re-hydration path (around line 992) also uses `transaction.from` verbatim, though there the value comes from the node's `eth_getTransactionByHash` rather than from user input.
+- `savePendingDeployment` (around line 992) also uses `transaction.from` verbatim, though there the value comes from the node's `eth_getTransactionByHash` rather than from user input.
+
+(Function attributions verified by reading the enclosing declarations; an earlier draft of this note swapped the first and last.)
 
 So the same conceptual field is stored lowercased on some paths and as-resolved on others.
 
 ## Why it was captured rather than fixed
 
-Found while fixing the `addressSigners` key-casing defect (commit `693e46f`), and deliberately left out of that commit's scope. It is a DIFFERENT question from the one that fix answered: `addressSigners` is a lookup MAP, where a non-normalised key is straightforwardly a bug, whereas `origin` is a persisted VALUE, and this repo has just ratified that user-visible address values keep their EIP-55 checksum (`namedAccounts` and `unnamedAccounts` were deliberately left un-normalised for exactly that reason).
+Found while fixing the `addressSigners` key-casing defect (commit `09ea46d`), and deliberately left out of that commit's scope. It is a DIFFERENT question from the one that fix answered: `addressSigners` is a lookup MAP, where a non-normalised key is straightforwardly a bug, whereas `origin` is a persisted VALUE, and this repo has just ratified that user-visible address values keep their EIP-55 checksum (`namedAccounts` and `unnamedAccounts` were deliberately left un-normalised for exactly that reason).
 
 That makes the right answer non-obvious, and worth a human decision rather than a tidy-up:
 

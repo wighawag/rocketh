@@ -115,7 +115,7 @@ override stack) and the `catchUnknownSigner` primitive.
   all complete in one run; (d) no prompt capability → `'auto'`/`'ask'` degrades to throw;
   (e) deployment with a receipt lacking address/success → FAILS; (f) deterministic deploy →
   address verified via code-at-address, not tx parsing.
-- Seam remains the shared test harness (`createTestEnvironment`, once `test-env-harness` lands); the mock provider returns crafted receipts.
+- Test home follows the two-homes split this project settled on (see `CONTEXT.md` under _test environment_): work inside `packages/rocketh` (the seam, the policy, the resolver) is tested there with a locally-built real environment, because `rocketh` must not depend on `@rocketh/test-utils`; work in the extension packages uses the shared `createTestEnvironment` harness. Whoever tasks this spec should honour that split rather than re-deriving the dependency cycle. The mock provider returns crafted receipts either way.
 
 ## Out of Scope
 
