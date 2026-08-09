@@ -3,7 +3,6 @@ title: Add createTestEnvironment, a harness built on the REAL environment
 slug: test-env-harness
 blockedBy: []
 covers: []
-needsAnswers: true
 ---
 
 ## What to build
