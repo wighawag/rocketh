@@ -177,8 +177,11 @@ describe('createTestEnvironment - real broadcast path (signer selection)', () =>
 	});
 
 	it('routes a remote account to eth_sendTransaction', async () => {
+		// the node must actually HOLD the account (`eth_accounts`), otherwise it is `unsignable`
+		//  and the unknown-signer seam throws before any routing happens
 		const {env, provider} = await createTestEnvironment({
 			accounts: {deployer: NODE_ACCOUNT_LOWER as `0x${string}`},
+			nodeAccounts: [NODE_ACCOUNT_LOWER as `0x${string}`],
 		});
 
 		await env.broadcastExecution({
@@ -195,7 +198,9 @@ describe('createTestEnvironment - real broadcast path (signer selection)', () =>
 		expect(methods).not.toContain('eth_sendRawTransaction');
 	});
 
-	it('an unsignable `from` (no addressSigners entry) throws "cannot get signer"', async () => {
+	it('an unsignable `from` throws a first-class UnknownSignerError', async () => {
+		// the seam at the broadcast choke point replaced the old opaque `cannot get signer for ...`
+		//  with `UnknownSignerError`, which carries the tx to execute out-of-band
 		const {env} = await createTestEnvironment();
 		await expect(
 			env.broadcastExecution({
@@ -206,12 +211,13 @@ describe('createTestEnvironment - real broadcast path (signer selection)', () =>
 					chainId: '0x7a69',
 				} as any,
 			}),
-		).rejects.toThrow(/cannot get signer/);
+		).rejects.toThrow(/Unknown signer for account 0xdeaddead/);
 	});
 
 	it('autoMine:true emits evm_mine after broadcastTransaction', async () => {
 		const {env, provider} = await createTestEnvironment({
 			accounts: {deployer: NODE_ACCOUNT_LOWER as `0x${string}`},
+			nodeAccounts: [NODE_ACCOUNT_LOWER as `0x${string}`],
 			executionParams: {autoMine: true},
 		});
 
@@ -244,6 +250,7 @@ describe('createTestEnvironment - per-tx contractAddress (pitfall fix)', () => {
 		 */
 		const {env} = await createTestEnvironment({
 			accounts: {deployer: NODE_ACCOUNT_LOWER as `0x${string}`},
+			nodeAccounts: [NODE_ACCOUNT_LOWER as `0x${string}`],
 		});
 
 		const artifact = createMockArtifact('A');
@@ -284,6 +291,7 @@ describe('createTestEnvironment - Map-backed store survives across environments'
 
 		const first = await createTestEnvironment({
 			accounts: {deployer: NODE_ACCOUNT_LOWER as `0x${string}`},
+			nodeAccounts: [NODE_ACCOUNT_LOWER as `0x${string}`],
 			deploymentStore,
 		});
 
@@ -304,6 +312,7 @@ describe('createTestEnvironment - Map-backed store survives across environments'
 
 		const second = await createTestEnvironment({
 			accounts: {deployer: NODE_ACCOUNT_LOWER as `0x${string}`},
+			nodeAccounts: [NODE_ACCOUNT_LOWER as `0x${string}`],
 			deploymentStore,
 		});
 		await second.internal.loadDeployments();
@@ -349,6 +358,7 @@ describe('createTestEnvironment - noise-free construction', () => {
 		try {
 			const {env} = await createTestEnvironment({
 				accounts: {deployer: NODE_ACCOUNT_LOWER as `0x${string}`},
+				nodeAccounts: [NODE_ACCOUNT_LOWER as `0x${string}`],
 			});
 			await env.broadcastExecution({
 				type: 'object',

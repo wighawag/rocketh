@@ -22,7 +22,10 @@ import type {
 	ProgressIndicator,
 	PartialDeployment,
 	TransactionToBroadcast,
+	UnknownSignerPolicyFrame,
 } from '@rocketh/core/types';
+import {UnknownSignerError} from '@rocketh/core';
+import {createUnknownSignerPolicyStack} from './unknownSignerPolicy.js';
 import {Abi, Address} from 'abitype';
 import {InternalEnvironment} from '../internal/types.js';
 import {JSONToString, stringToJSON} from '@rocketh/core/json';
@@ -499,6 +502,19 @@ export async function createEnvironment<
 		},
 	}) as {[address: `0x${string}`]: Signability};
 
+	// The unknown-signer policy for this run, with the scoped-frame stack the wrapper package
+	// pushes onto. Resolution of the global (`execution param > chain config > 'auto'`) happens
+	// in `resolveExecutionParams`, so this is the already-resolved value.
+	const unknownSignerPolicyStack = createUnknownSignerPolicyStack(
+		resolvedExecutionParams.environment.onUnknownSigner ?? 'auto',
+	);
+	function pushUnknownSignerPolicy(frame: UnknownSignerPolicyFrame): void {
+		unknownSignerPolicyStack.push(frame);
+	}
+	function popUnknownSignerPolicy(): void {
+		unknownSignerPolicyStack.pop();
+	}
+
 	const perliminaryEnvironment = {
 		context: {
 			saveDeployments: context.saveDeployments,
@@ -913,39 +929,99 @@ export async function createEnvironment<
 		} else {
 			const transactionData = transaction.data;
 			const from = transactionData.from.toLowerCase() as `0x${string}`;
-			const signer = env.addressSigners[from];
 
-			if (!signer) {
-				throw new Error(`cannot get signer for ${from}`);
+			// THE UNKNOWN-SIGNER SEAM. This is the single choke point every transaction funnels
+			// through (`deploy`, `execute`, `tx`, the proxy upgrade path), which is why the check
+			// lives here ONCE instead of at each call site as hardhat-deploy v1 did.
+			//
+			// It decides on SIGNABILITY, not on the presence of a signer entry: a named account
+			// declared as a bare address always HAS an entry (`{type:'remote', signer: provider}`),
+			// so a presence check could never fire for a named Safe. Of the four states
+			// (`local`, `node`, `impersonated`, `unsignable`), only `unsignable` reaches the policy;
+			// the other three broadcast exactly as before. Auto-impersonation has already run by
+			// now, so an account it resolved never gets here — `autoImpersonate` (a node capability)
+			// and `onUnknownSigner` (a policy) stay orthogonal (ADR 0006).
+			if (env.addressSignability[from] === 'unsignable') {
+				// The policy frame is consulted HERE, inside the `unsignable` branch, and nowhere
+				// else: a frame pushed by `catchUnknownSigner` forces `throw` over `ask`, NEVER over
+				// impersonation. Reading it before the signability check would turn every signable
+				// call inside a wrapper into a throw, breaking the mixed run and silently changing
+				// what a fork test does.
+				const policy = unknownSignerPolicyStack.effective();
+				// `from` is carried VERBATIM from the transaction (not the lowercased lookup key):
+				// this error IS the transaction the user has to execute out-of-band.
+				// `contract` is deliberately left unpopulated here; enriching it from the execute
+				// call site is owned by a separate task.
+				const unknownSignerData = {
+					from: transactionData.from,
+					to: transactionData.to,
+					data: transactionData.data,
+					value: transactionData.value,
+				};
+				switch (policy) {
+					case 'throw':
+						throw new UnknownSignerError(unknownSignerData);
+					case 'auto':
+						// No interactive resolver ships yet, so `'auto'` degrades to `'throw'`: a
+						// non-interactive/CI run never prompts and never hangs.
+						throw new UnknownSignerError(unknownSignerData);
+				}
+				// `policy` is `never` here as long as the switch above is exhaustive over
+				// `UnknownSignerPolicy`; adding a value (e.g. `'ask'`) without a case fails to compile
+				// rather than silently falling through to the signer lookup below.
+				const exhaustive: never = policy;
+				throw new UnknownSignerError(unknownSignerData, `unhandled onUnknownSigner policy: ${exhaustive}`);
 			}
 
-			if (signer.type === 'wallet' || signer.type === 'remote') {
-				const txHash = await signer.signer.request({
-					method: 'eth_sendTransaction',
-					params: [transactionData],
-				});
+			const signer = env.addressSigners[from];
 
-				if (env.context.autoMine) {
-					await (env.network.provider as any).request({method: 'evm_mine', params: []});
+			// Defensive: the signability view and `addressSigners` are built from the same keys, so
+			// they cannot disagree today (the casing defect that once made them disagree was fixed in
+			// `09ea46d`). This guards FUTURE divergence, and makes it a clear error naming the
+			// address instead of a `TypeError` on `undefined` one line down.
+			if (!signer) {
+				throw new Error(
+					`no signer entry for ${from}, even though it is classified as "${env.addressSignability[from]}" (signable). ` +
+						`This is an internal inconsistency between addressSignability and addressSigners.`,
+				);
+			}
+
+			// The `Signer` union has THREE variants and they are easy to get backwards, so all of
+			// them are enumerated here (see CONTEXT.md under `signer`): `wallet` (an external wallet
+			// provider) and `remote` (the node) sign via `eth_sendTransaction`, while `signerOnly`
+			// (what the `privateKey` protocol and hardware/HSM protocols return) signs locally and
+			// then sends raw. Routing is unchanged by this seam.
+			switch (signer.type) {
+				case 'wallet':
+				case 'remote': {
+					const txHash = await signer.signer.request({
+						method: 'eth_sendTransaction',
+						params: [transactionData],
+					});
+
+					if (env.context.autoMine) {
+						await (env.network.provider as any).request({method: 'evm_mine', params: []});
+					}
+
+					return txHash;
 				}
+				case 'signerOnly': {
+					const rawTx = await signer.signer.request({
+						method: 'eth_signTransaction',
+						params: [transactionData],
+					});
 
-				return txHash;
-			} else {
-				const rawTx = await signer.signer.request({
-					method: 'eth_signTransaction',
-					params: [transactionData],
-				});
+					const txHash = await env.network.provider.request({
+						method: 'eth_sendRawTransaction',
+						params: [rawTx],
+					});
 
-				const txHash = await env.network.provider.request({
-					method: 'eth_sendRawTransaction',
-					params: [rawTx],
-				});
+					if (env.context.autoMine) {
+						await (env.network.provider as any).request({method: 'evm_mine', params: []});
+					}
 
-				if (env.context.autoMine) {
-					await (env.network.provider as any).request({method: 'evm_mine', params: []});
+					return txHash;
 				}
-
-				return txHash;
 			}
 		}
 	}
@@ -1142,6 +1218,8 @@ export async function createEnvironment<
 		save,
 		broadcastExecution,
 		broadcastDeployment,
+		pushUnknownSignerPolicy,
+		popUnknownSignerPolicy,
 		get,
 		getOrNull,
 		fromAddressToNamedABI,
