@@ -2,6 +2,7 @@
 title: Unknown Signer — Interactive resolver (pause + ask for tx hash)
 slug: unknown-signer-interactive
 taskedAfter: [unknown-signer-core]
+needsAnswers: true
 ---
 
 > Launch snapshot — records intent at creation, NOT maintained. Current truth: `docs/adr/` (decisions) + the code; remaining work: `work/tasks/ready/` tasks. (The technical-detail sections below are trimmed by `to-task` once the work is tasked — they move into tasks/ADRs and this spec settles to its durable framing: Problem / Solution / User Stories / Out of Scope.)
@@ -74,21 +75,47 @@ caller-provided extra details are required.
 
 ## Open questions
 
-None blocking — this spec is agent-taskable. (A minor design point recorded in
-Implementation Decisions: deterministic-deploy-via-factory address recovery is handled by
-checking code at the known address rather than parsing the pasted tx.)
+One remaining, found by a spike on 2026-08-09 (the spike code was thrown away; its answers are
+in Implementation Decisions). The spike's other finding — how the prompt capability reaches the
+seam — was ANSWERED: hardhat must support `'ask'`, so the capability has to reach the
+environment on both construction paths. That decision is recorded in Implementation Decisions
+and materially widens this spec's scope, so read it before tasking.
+
+1. **`PromptExecutor` is confirm-only and must be widened.** It is
+   `prompt({type: 'confirm', name, message}) => {proceed: boolean}`. Pasting a tx hash needs a
+   text prompt returning a string, so this is an additive CORE type change plus a new
+   implementation in `@rocketh/node` (which uses `prompts`), not the pure reuse this spec
+   originally claimed. Confirm the widening is acceptable, and that the browser executor
+   (`@rocketh/web`) may legitimately not implement the text variant — in which case the
+   capability check must be per-CAPABILITY, not merely "is there a PromptExecutor?".
 
 ## Autonomy notes
 
-Resolved and agent-taskable; omitting `humanOnly`/`needsAnswers`. Ordered `taskedAfter:
-[unknown-signer-core]` because it extends the core seam (`onUnknownSigner`, the policy
-override stack) and the `catchUnknownSigner` primitive.
+Ordered `taskedAfter: [unknown-signer-core]` because it extends the core seam
+(`onUnknownSigner`, the policy frame stack) and the `catchUnknownSigner` primitive. That
+ordering constraint is now SATISFIED: `unknown-signer-core` lives in `work/specs/tasked/`.
+
+Carries `needsAnswers: true` for the two questions below. They are plumbing decisions, not
+design doubts — the spec's central mechanic was verified by spike — but each changes the shape
+of the tasks, so answering them first is cheaper than discovering them mid-build. This is also
+the honest state: the sibling spec bounced once precisely because a seam was assumed rather
+than checked.
 
 ## Implementation Decisions
 
-- **`'ask'` added to `onUnknownSigner`**; `'auto'` becomes capability-aware (ask if a
-  `PromptExecutor` is available, else throw). Reuse rocketh's existing `PromptExecutor`
-  abstraction — no raw enquirer, keeps it browser/CI-safe.
+- **`'ask'` added to `onUnknownSigner`**; `'auto'` becomes capability-aware (ask if a text-capable
+  prompt is available, else throw). Build on rocketh's existing `PromptExecutor` abstraction — no
+  raw enquirer, keeps it browser/CI-safe — but note it must be WIDENED, not merely reused: it is
+  confirm-only today (see Open questions).
+- **HARDHAT MUST SUPPORT `'ask'`** (decided 2026-08-09). This is not a small detail: the prompt
+  capability reaches the seam through `createExecutor` today, but the seam lives in
+  `createEnvironment`, and there are TWO callers of it — the one inside `createExecutor`, where a
+  prompt is in scope, and `loadEnvironmentFromStore`, where there is none. hardhat-deploy uses
+  the second, via `loadEnvironmentFromFiles`. So threading the capability through the executor
+  ALONE would silently leave hardhat users on `'throw'` forever. The capability must reach the
+  environment on BOTH paths, which makes this a change to how the environment is constructed
+  rather than a one-line addition to the executor. Design it as a capability the environment
+  carries, not one the executor owns.
 - **Interactive resolver over the core seam**: on unsignable `from` under `'ask'`, present tx
   details; accept a tx hash → `eth_getTransactionByHash`/receipt → apply receipt-invariant
   checks → route through the SAME state-saving path as a normal broadcast
@@ -101,6 +128,18 @@ override stack) and the `catchUnknownSigner` primitive.
   a successful-but-wrong tx; we accept this (same trust boundary as v1, but stricter — we at
   least require success). Do not attempt to decode MultiSend/Timelock or match `to`/`data`.
 - **Resolves instead of throws** ⇒ stays inside the action ⇒ multi-step proceeds in one run.
+  **VERIFIED by spike (2026-08-09), so this is not an assumption:** the environment happily
+  completes a transaction it never sent. Feeding a user-supplied hash back from the broadcast
+  choke point flows through the normal pipeline (`savePendingExecution` →
+  `eth_getTransactionByHash` → `waitForTransaction`) and returns a real receipt, with no send
+  RPC attempted; and the DEPLOYMENT case recovers the address from `receipt.contractAddress`
+  and saves the deployment under its name. Both halves of this spec's central mechanic work
+  against the code as it stands.
+  One consequence the spike surfaced: `TransactionHashTracker` only records hashes it sees on
+  `eth_sendTransaction`/`eth_sendRawTransaction`, so an externally-executed tx is invisible to
+  it, and `reportGasUse` (which iterates `provider.transactionHashes`) will silently omit it.
+  Decide whether the resolver should register the pasted hash with the tracker; it is a
+  one-line affordance, and omitting it is a small, quiet reporting hole.
 - **Per-call/`catchUnknownSigner` override precedence** (reusing the core policy-override
   stack): per-call override may VARY the policy but only within environment capability — with
   no prompt available, `'ask'` degrades to `'throw'`. This keeps US2b working on forks (prompt

@@ -40,9 +40,18 @@ Introduce a single "unsignable `from`" seam and the v1-parity `catchUnknownSigne
   that wraps an action, catches `UnknownSignerError`, prints the tx to execute, and returns
   its description — with EXACT v1 parity: it persists nothing.
 
-The Safe/multisig workflow this enables is exactly v1's: print the tx → user executes it in
-their Safe (or wherever) out-of-band → user re-runs the idempotent script → on-chain state
-check sees the change and skips the step. No Safe-specific code exists in this spec (none
+  **It is deliberately OPTIONAL, and exists mainly for v1 migration.** It has to be written
+  INTO the deploy script, so requiring it would tax every user; the defer-and-re-run loop must
+  therefore work WITHOUT it (story 4). What wrapping adds is continuing past the deferred step
+  within the SAME run, which only matters when later steps are independent of it. The direction
+  of travel is `onUnknownSigner` doing the right thing by default — `'auto'` becoming
+  interactive wherever a prompt exists (`unknown-signer-interactive`) — not more script-level
+  wrapping.
+
+The Safe/multisig workflow this enables is exactly v1's, minus the need to edit your script:
+the tx is surfaced with everything needed to execute it → user executes it in their Safe (or
+wherever) out-of-band → user re-runs the idempotent script → on-chain state check sees the
+change and skips the step. No Safe-specific code exists in this spec (none
 existed in v1 either); Safe is just one instance of an unsignable `from`.
 
 ## User Stories
