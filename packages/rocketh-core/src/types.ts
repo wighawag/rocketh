@@ -553,6 +553,26 @@ export type Signer =
 	| {type: 'remote'; signer: EIP1193ProviderWithoutEvents}
 	| {type: 'wallet'; signer: EIP1193WalletProvider};
 
+/**
+ * Whether rocketh can actually sign a transaction for an address, and how.
+ *
+ * Derived from the resolved `Signer` variant plus node state, in this precedence:
+ * `local` > `node` > `impersonated` > `unsignable`.
+ *
+ * - `local` — the resolved signer is `signerOnly` OR `wallet`; a signature is
+ *   produced without the node's help. `signerOnly` is what the `privateKey`
+ *   protocol and hardware/remote signer protocols return. `wallet` is an
+ *   external wallet provider and is currently never constructed in this repo.
+ * - `node` — the resolved signer is `remote` and the address is present in
+ *   `eth_accounts` (the node holds the key).
+ * - `impersonated` — the resolved signer is `remote`, the address is absent
+ *   from `eth_accounts`, and auto-impersonation succeeded for it.
+ * - `unsignable` — none of the above (an address never seen during setup, or a
+ *   named account with a `remote` signer that neither the node holds nor
+ *   impersonation could take on).
+ */
+export type Signability = 'local' | 'node' | 'impersonated' | 'unsignable';
+
 export type ResolvedNamedSigners<T extends UnknownNamedAccounts> = {
 	[Property in keyof T]: Signer;
 };
@@ -617,6 +637,13 @@ export interface Environment<
 	 * `namedAccounts`/`unnamedAccounts` are left as resolved and may be checksummed.
 	 */
 	readonly addressSigners: {[name: `0x${string}`]: Signer};
+	/**
+	 * Signability indexed by address, computed after auto-impersonation runs.
+	 * The keys are always LOWERCASE, matching `addressSigners`. Looking up an
+	 * address that was never seen during setup returns `'unsignable'` rather than
+	 * `undefined`, so callers never have to handle a third case.
+	 */
+	readonly addressSignability: {[address: `0x${string}`]: Signability};
 
 	save<TAbi extends Abi = Abi>(
 		name: string,
