@@ -43,6 +43,7 @@ A framework-agnostic smart contract deployment system for Ethereum-compatible ne
 | [`@rocketh/proxy`](./packages/rocketh-proxy)               | Proxy deployment patterns (UUPS, Transparent, ERC173) |
 | [`@rocketh/diamond`](./packages/rocketh-diamond)           | EIP-2535 Diamond proxy support                        |
 | [`@rocketh/read-execute`](./packages/rocketh-read-execute) | Contract read/write utilities                         |
+| [`@rocketh/unknown-signer`](./packages/rocketh-unknown-signer) | `catchUnknownSigner` for Safe/multisig-owned calls |
 | [`@rocketh/node`](./packages/rocketh-node)                 | Node.js deployment executor                           |
 | [`@rocketh/verifier`](./packages/rocketh-verifier)         | Contract verification (Etherscan, Sourcify)           |
 | [`@rocketh/export`](./packages/rocketh-export)             | Export deployments for frontend consumption           |

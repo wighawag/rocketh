@@ -35,6 +35,7 @@ rocketh/
 │   ├── rocketh-viem/         # Viem integration
 │   ├── rocketh-web/          # Browser runtime support
 │   ├── rocketh-read-execute/ # Contract read/write utilities
+│   ├── rocketh-unknown-signer/ # catchUnknownSigner for Safe/multisig-owned calls
 │   └── rocketh-test-utils/   # Test utilities and mock helpers
 ├── documentation.md          # Main documentation
 ├── TESTING.md               # Testing guide
