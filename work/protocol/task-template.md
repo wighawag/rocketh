@@ -1,5 +1,5 @@
 ---
-title: <Human Readable Title>
+title: '<Human Readable Title>'
 slug: <url-safe-slug>
 spec: <source-spec-slug> # slug of the work/specs/ready/<slug>.md this task derives from. REQUIRED iff `covers` is set; OMIT for a self-contained chore/refactor (covers: []).
 # humanOnly: true     # gate axis 1 (DECIDED, NARROW): NEVER-for-agents BY NATURE (secrets/release/security). Survives even in the pool work/tasks/ready/. OMIT otherwise — "review this before the agent builds" is the POSITION's job (the task is BIRTHED in work/tasks/backlog/), NOT humanOnly's.
