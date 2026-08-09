@@ -7,7 +7,6 @@ import type {
 	Deployment,
 	Environment,
 	PartialDeployment,
-	Signer,
 	LinkedDataProvided,
 	Libraries,
 } from '@rocketh/core/types';
@@ -126,7 +125,16 @@ type FactoryParams = {
 	maxFeePerGas: `0x${string}` | undefined;
 	maxPriorityFeePerGas: `0x${string}` | undefined;
 };
-async function getCreate2Factory(env: Environment, signer: Signer, params: FactoryParams) {
+/**
+ * Neither this helper nor {@link getCreate3Factory} ever took a signer of its own: every
+ * transaction they send goes through `env.broadcastExecution`, which resolves the signer at
+ * the single broadcast choke point. They used to receive a `signer` argument that was only
+ * forwarded, never read, and existed purely to consume `deploy`'s own
+ * `env.addressSigners[address]` lookup. That lookup is gone (see the note in `deploy` below),
+ * so the parameter went with it rather than being kept alive by a lookup that exists only to
+ * feed it. Both helpers are module-private, so this is not a public signature change.
+ */
+async function getCreate2Factory(env: Environment, params: FactoryParams) {
 	const deploymentInfo =
 		'create2' in env.network.deterministicDeployment
 			? env.network.deterministicDeployment.create2
@@ -191,7 +199,7 @@ async function getCreate2Factory(env: Environment, signer: Signer, params: Facto
 	};
 }
 
-async function getCreate3Factory(env: Environment, signer: Signer, params: FactoryParams) {
+async function getCreate3Factory(env: Environment, params: FactoryParams) {
 	const deploymentInfo =
 		'create3' in env.network.deterministicDeployment ? env.network.deterministicDeployment.create3 : undefined;
 	if (!deploymentInfo) throw new Error('create3 deterministic deployment info not found');
@@ -204,7 +212,7 @@ async function getCreate3Factory(env: Environment, signer: Signer, params: Facto
 		params: [factoryAddress, 'latest'],
 	});
 	if (code === '0x') {
-		const create2 = await getCreate2Factory(env, signer, params);
+		const create2 = await getCreate2Factory(env, params);
 		const salt = deploymentInfo.salt || zeroHash;
 		const expectedAddress = create2.getExpectedAddress({salt, bytecode: factoryBytecode});
 		if (expectedAddress.toLowerCase() !== factoryAddress.toLowerCase())
@@ -373,12 +381,18 @@ export function deploy(env: Environment): <TAbi extends Abi>(
 			libraries: options?.libraries,
 		};
 
-		const signer = env.addressSigners[address];
-
-		if (!signer) {
-			throw new Error(`cannot get signer for ${address}`);
-		}
-
+		// NO SIGNER LOOKUP HERE, deliberately. `deploy` used to look up
+		// `env.addressSigners[address]` and throw `cannot get signer for ${address}` at this
+		// point, which short-circuited a deploy from an account rocketh cannot sign for BEFORE
+		// the transaction was even built — so it never reached the single `broadcastTransaction`
+		// choke point where the unknown-signer seam lives, and the user got an opaque error
+		// instead of the transaction to execute on their Safe (ADR 0006).
+		//
+		// The check was also the wrong question. It tested for the PRESENCE of a signer entry,
+		// and a named account declared as a bare address always has one
+		// (`{type:'remote', signer: provider}`), so it never fired for the canonical named-Safe
+		// case and fired only for an address passed literally, which has no entry at all. The
+		// seam asks the right question (signability, recorded at setup) for both spellings.
 		const chainId = `0x${env.network.chain.id.toString(16)}` as `0x${string}`;
 		const maxFeePerGas = viemArgs.maxFeePerGas && (`0x${viemArgs.maxFeePerGas.toString(16)}` as `0x${string}`);
 		const maxPriorityFeePerGas =
@@ -418,8 +432,8 @@ export function deploy(env: Environment): <TAbi extends Abi>(
 			const factoryParams = {chainId, address, maxFeePerGas, maxPriorityFeePerGas};
 			const create =
 				deterministicType === 'create2'
-					? await getCreate2Factory(env, signer, factoryParams)
-					: await getCreate3Factory(env, signer, factoryParams);
+					? await getCreate2Factory(env, factoryParams)
+					: await getCreate3Factory(env, factoryParams);
 
 			expectedAddress = create.getExpectedAddress({salt, bytecode});
 
