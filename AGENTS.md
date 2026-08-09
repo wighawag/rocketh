@@ -108,6 +108,8 @@ pnpm docs:build
 - Use `abitype` for ABI typing with `Abi` type
 - Use `eip-1193` types for EIP-1193 provider interactions
 - Follow existing patterns in similar files when adding new functionality
+- **When your change branches on a CLOSED SET (a union, an enum, the members of an interface, the call sites of a function), open the definition and enumerate it before designing around it.** Cite the file and the full member list in the task or PR. Do not infer membership from a `grep`/search result: search output can truncate or skip lines, and a union you believe has two variants may have three. The pinned meanings of the most error-prone ones are in `CONTEXT.md` under `signer` / `signability` — read those rather than re-deriving them.
+- **Verify a claim about the code before you build on it, INCLUDING a claim from a review, an issue, a task description, or another agent.** Open the file and confirm it. This repo has repeatedly lost review cycles to confident work built on an unverified assertion: that a missing signer entry is what a named account produces, that an options bag already reaches a throw site, that a union had two variants, that a package branched on `eth_getCode` when it branches on an in-memory record. In every case the claim was plausible, secondhand, and wrong. A claim that survives one repetition becomes indistinguishable from fact, so check it at the point you first rely on it and cite what you checked.
 - Write integration tests that serve as documentation (see `packages/*/test/*.integration.test.ts`)
 - Use `createMockEnvironment` and `createMockArtifact` from `@rocketh/test-utils` for tests
 - Keep functions focused and modular - one concern per function
