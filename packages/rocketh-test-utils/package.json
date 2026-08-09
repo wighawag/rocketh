@@ -43,13 +43,20 @@
 		"eip-1193": "^0.6.5",
 		"viem": "^2.48.2"
 	},
+	"peerDependencies": {
+		"rocketh": "workspace:*"
+	},
 	"devDependencies": {
+		"@rocketh/signer": "workspace:*",
 		"as-soon": "^0.1.6",
-		"typescript": "^6.0.3"
+		"rocketh": "workspace:*",
+		"typescript": "^6.0.3",
+		"vitest": "^4.1.10"
 	},
 	"scripts": {
 		"prepublishOnly": "cp ../../LICENSE LICENSE",
 		"build": "tsc --project tsconfig.json",
-		"dev": "as-soon -w src pnpm build"
+		"dev": "as-soon -w src pnpm build",
+		"test": "vitest"
 	}
 }

@@ -625,3 +625,11 @@ export function createMockEnvironment(options: MockEnvironmentOptions = {}): Moc
 // ============================================================================
 
 export type {Environment} from '@rocketh/core/types';
+
+export {
+	createTestEnvironment,
+	createMapDeploymentStore,
+	type CreateTestEnvironmentOptions,
+	type TestEnvironmentResult,
+	type InternalTestEnvironment,
+} from './test-environment.js';
