@@ -66,7 +66,11 @@ caller-provided extra details are required.
    `PromptExecutor` that returns a canned hash (or "cannot sign"), so US2/US2b are testable.
 8. As a deployer, I want a per-call ability to force `'ask'` (or `'throw'`) via a call option,
    overriding the ambient policy within what the environment supports (no prompt ⇒ cannot
-   become interactive; degrades to throw).
+   become interactive; degrades to throw). This story ALSO absorbs what was `unknown-signer-core`
+   story 9 (`catchUnknownSigner` takes the throw path regardless of the ambient policy): that
+   guarantee is only observable once `'ask'` exists, since the core slice ships only `'throw'`
+   and `'auto'`-degrading-to-`'throw'`. The policy-frame mechanism it relies on is built by the
+   core spec's seam task; this spec is where it becomes assertable.
 
 ## Open questions
 
@@ -111,7 +115,7 @@ override stack) and the `catchUnknownSigner` primitive.
   all complete in one run; (d) no prompt capability → `'auto'`/`'ask'` degrades to throw;
   (e) deployment with a receipt lacking address/success → FAILS; (f) deterministic deploy →
   address verified via code-at-address, not tx parsing.
-- Seam remains `createMockEnvironment`; the mock provider returns crafted receipts.
+- Seam remains the shared test harness (`createTestEnvironment`, once `test-env-harness` lands); the mock provider returns crafted receipts.
 
 ## Out of Scope
 
