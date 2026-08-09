@@ -94,7 +94,12 @@ Integration tests in this project are designed to serve as executable documentat
  * - Use the deploy function to deploy a contract
  * - Specify the account, artifact, and constructor arguments
  */
-const {env, accounts} = createTestEnvironment();
+// createTestEnvironment is async and returns a REAL environment (from packages/rocketh)
+//  wired to a mock EIP-1193 provider. Pass `accounts` in the real UserConfig shape.
+const {env, provider} = await createTestEnvironment({
+  accounts: {deployer: '0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266'},
+  nodeAccounts: ['0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266'],
+});
 const _deploy = deploy(env);
 
 const artifact = createMockArtifact('SimpleContract', [...]);
@@ -177,7 +182,10 @@ describe('My Feature - Integration Tests', () => {
        *
        * Detailed explanation of the scenario and why it matters.
        */
-      const {env} = createTestEnvironment();
+      const {env} = await createTestEnvironment({
+        accounts: {deployer: '0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266'},
+        nodeAccounts: ['0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266'],
+      });
       const _deploy = deploy(env);
 
       const artifact = createMockArtifact('MyContract');

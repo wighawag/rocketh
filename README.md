@@ -50,6 +50,7 @@ A framework-agnostic smart contract deployment system for Ethereum-compatible ne
 | [`@rocketh/signer`](./packages/rocketh-signer)             | Signer utilities                                      |
 | [`@rocketh/router`](./packages/rocketh-router)             | Route-based contract deployment                       |
 | [`@rocketh/web`](./packages/rocketh-web)                   | rocketh in web browser                                |
+| [`@rocketh/test-utils`](./packages/rocketh-test-utils)     | Test harness (`createTestEnvironment`, artifacts)     |
 
 ## Installation
 
