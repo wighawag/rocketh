@@ -96,6 +96,8 @@ export function getChainConfigFromUserConfig(
 			provider,
 			tags: chainConfig?.tags || [...defaultTags],
 			autoImpersonate: chainConfig?.autoImpersonate || false,
+			// passed through UNDEFAULTED: the `'auto'` default lives in `resolveExecutionParams`
+			onUnknownSigner: chainConfig?.onUnknownSigner,
 			autoMine: chainConfig?.autoMine || false,
 			confirmationsRequired: chainConfig?.confirmationsRequired,
 			deleteDeploymentsIfDifferentGenesisHash:
@@ -110,6 +112,8 @@ export function getChainConfigFromUserConfig(
 			rpcUrl: rpcUrl,
 			tags: chainConfig?.tags || [...defaultTags],
 			autoImpersonate: chainConfig?.autoImpersonate || false,
+			// passed through UNDEFAULTED: the `'auto'` default lives in `resolveExecutionParams`
+			onUnknownSigner: chainConfig?.onUnknownSigner,
 			autoMine: chainConfig?.autoMine || false,
 			confirmationsRequired: chainConfig?.confirmationsRequired,
 			deleteDeploymentsIfDifferentGenesisHash:

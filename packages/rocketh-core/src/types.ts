@@ -240,6 +240,8 @@ export type ChainUserConfig = {
 	readonly pollingInterval?: number;
 	readonly properties?: Record<string, JSONTypePlusBigInt>;
 	readonly autoImpersonate?: boolean;
+	/** Policy for an `unsignable` `from` at this chain; see `UnknownSignerPolicy`. */
+	readonly onUnknownSigner?: UnknownSignerPolicy;
 	readonly autoMine?: boolean;
 	readonly confirmationsRequired?: number;
 	/**
@@ -259,6 +261,13 @@ export type ChainConfig = {
 	readonly pollingInterval: number;
 	readonly properties: Record<string, JSONTypePlusBigInt>;
 	readonly autoImpersonate: boolean;
+	/**
+	 * Left OPTIONAL (unlike `autoImpersonate`, which defaults to `false` here) so the
+	 * `'auto'` default has exactly ONE home, `resolveExecutionParams`. Defaulting it
+	 * here too would make "no chain-level policy" indistinguishable from "chain-level
+	 * policy of `'auto'`" and quietly outrank a future higher-level default.
+	 */
+	readonly onUnknownSigner?: UnknownSignerPolicy;
 	readonly autoMine: boolean;
 	readonly confirmationsRequired?: number;
 	readonly deleteDeploymentsIfDifferentGenesisHash: boolean;
@@ -337,6 +346,8 @@ export type ExecutionParams<Extra extends Record<string, unknown> = Record<strin
 	provider?: EIP1193ProviderWithoutEvents;
 	config?: ConfigOverrides;
 	autoImpersonate?: boolean;
+	/** Run-level policy for an `unsignable` `from`; wins over the chain config. */
+	onUnknownSigner?: UnknownSignerPolicy;
 	autoMine?: boolean;
 	reset?: boolean;
 };
@@ -573,6 +584,37 @@ export type Signer =
  */
 export type Signability = 'local' | 'node' | 'impersonated' | 'unsignable';
 
+/**
+ * What rocketh does when a transaction's `from` is still `unsignable` after
+ * auto-impersonation ran (see ADR 0006).
+ *
+ * - `throw` — surface an `UnknownSignerError` carrying the transaction a human
+ *   or multisig must execute out-of-band.
+ * - `auto` — the default. It resolves to `throw` while no interactive resolver
+ *   exists, so a CI/non-interactive run never prompts and never hangs. The
+ *   `'ask'` value ships with `@rocketh/unknown-signer`'s interactive slice.
+ *
+ * This is a POLICY, deliberately orthogonal to `autoImpersonate`, which is a
+ * NODE CAPABILITY switch that runs BEFORE the seam: if impersonation resolved
+ * the account, the account is signable and no policy is consulted. There is
+ * therefore no `'impersonate'` value here — that would conflate "can this node
+ * fake signatures?" with "what should happen when we genuinely cannot sign?".
+ */
+export type UnknownSignerPolicy = 'throw' | 'auto';
+
+/**
+ * A scoped override of the resolved `onUnknownSigner` policy, pushed on the
+ * environment for the duration of one action (this is what
+ * `@rocketh/unknown-signer`'s `catchUnknownSigner` does).
+ *
+ * It is an OBJECT rather than a bare policy string so a later slice can carry
+ * extra per-scope fields (e.g. what to do with a prompt's answer) without
+ * re-cutting the seam.
+ */
+export type UnknownSignerPolicyFrame = {
+	readonly policy: UnknownSignerPolicy;
+};
+
 export type ResolvedNamedSigners<T extends UnknownNamedAccounts> = {
 	[Property in keyof T]: Signer;
 };
@@ -586,6 +628,8 @@ export type ResolvedExecutionParams<Extra extends Record<string, unknown> = Reco
 		readonly fork?: boolean;
 		readonly deterministicDeployment: DeterministicDeploymentInfo;
 		readonly autoImpersonate?: boolean;
+		/** Resolved as: execution param > chain config > `'auto'`. */
+		readonly onUnknownSigner: UnknownSignerPolicy;
 		readonly confirmationsRequired?: number;
 		readonly autoMine: boolean;
 		readonly deleteDeploymentsIfDifferentGenesisHash: boolean;
@@ -644,6 +688,21 @@ export interface Environment<
 	 * `undefined`, so callers never have to handle a third case.
 	 */
 	readonly addressSignability: {[address: `0x${string}`]: Signability};
+
+	/**
+	 * Push a policy frame that overrides the resolved `onUnknownSigner` for the
+	 * duration of a scoped action, and pop it again. `@rocketh/unknown-signer`
+	 * calls these (it depends on `@rocketh/core` only, which is why they are typed
+	 * here rather than left as an untyped environment internal).
+	 *
+	 * ALWAYS pop in a `finally`, or the frame leaks into the rest of the run.
+	 *
+	 * A frame changes what happens to an `unsignable` account ONLY. It never turns
+	 * a `local` / `node` / `impersonated` account into a throw: the frame is
+	 * consulted INSIDE the unsignable branch of the seam (ADR 0006).
+	 */
+	pushUnknownSignerPolicy(frame: UnknownSignerPolicyFrame): void;
+	popUnknownSignerPolicy(): void;
 
 	save<TAbi extends Abi = Abi>(
 		name: string,

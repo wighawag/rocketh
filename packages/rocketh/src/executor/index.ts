@@ -257,6 +257,17 @@ export function resolveExecutionParams<Extra extends Record<string, unknown> = R
 		autoImpersonate = actualChainConfig.autoImpersonate;
 	}
 
+	// Resolve the unknown-signer policy (priority: params > chain config > default `'auto'`),
+	// mirroring how `autoImpersonate` above is threaded. `'auto'` degrades to `'throw'` at the
+	// seam while no interactive resolver exists, so a CI run never prompts.
+	let onUnknownSigner = executionParameters.onUnknownSigner;
+	if (onUnknownSigner === undefined && actualChainConfig.onUnknownSigner !== undefined) {
+		onUnknownSigner = actualChainConfig.onUnknownSigner;
+	}
+	if (onUnknownSigner === undefined) {
+		onUnknownSigner = 'auto';
+	}
+
 	let autoMine = executionParameters.autoMine;
 	if (autoMine === undefined && actualChainConfig.autoMine !== undefined) {
 		autoMine = actualChainConfig.autoMine;
@@ -278,6 +289,7 @@ export function resolveExecutionParams<Extra extends Record<string, unknown> = R
 			fork,
 			deterministicDeployment: actualChainConfig.deterministicDeployment,
 			autoImpersonate,
+			onUnknownSigner,
 			confirmationsRequired: actualChainConfig.confirmationsRequired,
 			autoMine,
 			deleteDeploymentsIfDifferentGenesisHash: actualChainConfig.deleteDeploymentsIfDifferentGenesisHash,
