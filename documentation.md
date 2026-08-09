@@ -46,6 +46,7 @@ rocketh follows a modular architecture with several key components:
 5. **Export Package (`@rocketh/export`)**: Provides functionality to export deployments for use in frontends.
 6. **Verifier Package (`@rocketh/verifier`)**: Provides contract verification capabilities for Etherscan, Sourcify, etc.
 7. **Doc Package (`@rocketh/doc`)**: Generates documentation for deployed contracts.
+8. **Unknown Signer Package (`@rocketh/unknown-signer`)**: Adds `catchUnknownSigner`, for calls whose `from` is an account rocketh cannot sign for (a Safe multisig, a hardware wallet, a governance key).
 
 Each package extends the core with additional functionality, allowing you to use only what you need.
 
@@ -453,6 +454,34 @@ The `@rocketh/doc` package generates documentation for your contracts:
 ```bash
 npx rocketh-doc
 ```
+
+### Handling unknown signers (Safe / multisig owners)
+
+When a privileged call targets an account rocketh cannot sign for, the transaction surfaces as an `UnknownSignerError` carrying exactly what has to be executed out-of-band. The `@rocketh/unknown-signer` package lets you catch it, keep the run going, and get that transaction back:
+
+```bash
+npm install -D @rocketh/unknown-signer
+```
+
+```typescript
+import {catchUnknownSigner} from '@rocketh/unknown-signer';
+import {execute} from '@rocketh/read-execute';
+
+// NOTE the call shape: the action is a FUNCTION, not an already-started promise.
+//  This is the one mechanical change from a hardhat-deploy v1 script
+//  (v1: `catchUnknownSigner(execute(...))`), because a promise has already begun
+//  executing before the wrapper can establish its policy scope. The v1 form is a
+//  compile error, and a JavaScript caller gets a runtime error naming the fix.
+const deferred = await catchUnknownSigner(env)(() =>
+	execute(env)(proxy, {account: 'safeOwner', functionName: 'upgradeTo', args: [newImplementation.address]}),
+);
+
+if (deferred) {
+	// {from, to, value, data} — execute this on the Safe, then re-run the script.
+}
+```
+
+It returns `null` when the action succeeded, and otherwise hardhat-deploy v1's exact shape: every key present even when `undefined`, `value` as a string. Pass `{log: false}` to suppress the printed block. Nothing is persisted — idempotency comes from on-chain state, so you execute the transaction on your Safe and re-run the idempotent script. One wrapper captures one transaction (the first unsignable one inside it), so deferring several steps means one `catchUnknownSigner` per step.
 
 ### Testing your deploy scripts
 
