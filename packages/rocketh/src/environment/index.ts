@@ -4,6 +4,7 @@ import type {
 	Deployment,
 	Environment,
 	Signer,
+	Signability,
 	PendingDeployment,
 	PendingTransaction,
 	ResolvedAccount,
@@ -423,22 +424,80 @@ export async function createEnvironment<
 		};
 	}
 
-	// Identify unknown accounts (addresses in namedAccounts not in allRemoteAccounts)
-	const unknownAccounts = Object.values(namedAccounts).filter(
-		(address) => !allRemoteAccounts.map((a) => a.toLowerCase()).includes(address.toLowerCase()),
-	);
+	// A named account needs impersonation iff it has no USABLE signer for this run: its resolved
+	// signer is `remote` (i.e. we would otherwise ask the node to sign) AND the node does not
+	// already list it in `eth_accounts`. `signerOnly` and `wallet` accounts sign without the
+	// node, so impersonating them is wasted RPC (and contradicts the helper's own doc comment,
+	// which says it exists "for named accounts that don't have private keys available").
+	//
+	// This is the ONE place the "no usable signer for this run" decision lives, so a later
+	// feature (e.g. deliberately simulating a hardware-wallet friction path on a fork by making
+	// an account with a real signer a candidate again) can extend the rule here without
+	// unpicking a hard-coded assumption at the call site.
+	const remoteAccountsLower = new Set(allRemoteAccounts.map((a) => a.toLowerCase()));
+	function needsImpersonationForRun(address: `0x${string}`): boolean {
+		const lower = address.toLowerCase() as `0x${string}`;
+		if (remoteAccountsLower.has(lower)) return false;
+		const signer = addressSigners[lower];
+		return signer?.type === 'remote';
+	}
 
-	// Impersonate unknown accounts if enabled
+	const unknownAccounts = Object.values(namedAccounts).filter((address) => needsImpersonationForRun(address));
+
+	// Impersonate unknown accounts if enabled, and REMEMBER which ones succeeded so we can tell
+	// `impersonated` apart from `unsignable` below. The helper returns addresses verbatim (they
+	// come from `Object.values(namedAccounts)`, which are deliberately un-normalised), so we
+	// lowercase before storing to keep the same address-key contract as `addressSigners`.
+	const impersonatedAccountsLower = new Set<`0x${string}`>();
 	if (unknownAccounts.length > 0) {
 		const impersonatedAccounts = await impersonateAccounts(
 			rawProvider,
 			unknownAccounts,
 			resolvedExecutionParams.environment.autoImpersonate,
 		);
+		for (const address of impersonatedAccounts) {
+			impersonatedAccountsLower.add(address.toLowerCase() as `0x${string}`);
+		}
 		if (impersonatedAccounts.length > 0) {
 			logger.debug(`Auto-impersonated ${impersonatedAccounts.length} account(s): ${impersonatedAccounts.join(', ')}`);
 		}
 	}
+
+	// Classification runs AFTER impersonation, since impersonation is what moves an address from
+	// `unsignable` to `impersonated`. Enumerates every variant of the `Signer` union (three:
+	// `signerOnly`, `wallet`, `remote`) so a future variant surfaces as a compile error rather
+	// than silently classifying as `unsignable`. Precedence `local` > `node` > `impersonated` >
+	// `unsignable` is defensive: it stays correct even if `needsImpersonationForRun` above ever
+	// regresses and sweeps a `signerOnly` account back into the candidate set.
+	function classifySigner(signer: Signer | undefined, lower: `0x${string}`): Signability {
+		if (!signer) return 'unsignable';
+		switch (signer.type) {
+			case 'signerOnly':
+			case 'wallet':
+				return 'local';
+			case 'remote':
+				if (remoteAccountsLower.has(lower)) return 'node';
+				if (impersonatedAccountsLower.has(lower)) return 'impersonated';
+				return 'unsignable';
+		}
+	}
+
+	const addressSignabilityMap: {[address: `0x${string}`]: Signability} = {};
+	for (const key of Object.keys(addressSigners) as `0x${string}`[]) {
+		addressSignabilityMap[key] = classifySigner(addressSigners[key], key);
+	}
+	// Expose as a Proxy so an address that was never seen during setup reads as `'unsignable'`
+	// rather than `undefined`, per the contract on the `Environment` interface. The stored keys
+	// are already lowercased (same contract as `addressSigners`); callers pass a lowercased
+	// address, as they do for `addressSigners`.
+	const addressSignability = new Proxy(addressSignabilityMap, {
+		get(target, prop, receiver) {
+			if (typeof prop === 'string' && prop.startsWith('0x')) {
+				return target[prop as `0x${string}`] ?? 'unsignable';
+			}
+			return Reflect.get(target, prop, receiver);
+		},
+	}) as {[address: `0x${string}`]: Signability};
 
 	const perliminaryEnvironment = {
 		context: {
@@ -454,6 +513,7 @@ export async function createEnvironment<
 		namedSigners: namedSigners as ResolvedNamedSigners<ResolvedNamedAccounts<NamedAccounts>>,
 		unnamedAccounts,
 		addressSigners: addressSigners,
+		addressSignability,
 		network: {
 			chain: resolvedExecutionParams.chain,
 			fork: context.fork,

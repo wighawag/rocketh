@@ -36,6 +36,13 @@ export interface Environment<
 	 * `namedAccounts`/`unnamedAccounts` are left as resolved and may be checksummed.
 	 */
 	readonly addressSigners: {[name: `0x${string}`]: Signer};
+	/**
+	 * Signability indexed by address, computed after auto-impersonation runs.
+	 * The keys are always LOWERCASE, matching `addressSigners`. Looking up an
+	 * address that was never seen during setup returns `'unsignable'` rather than
+	 * `undefined`, so callers never have to handle a third case.
+	 */
+	readonly addressSignability: {[address: `0x${string}`]: Signability};
 	save<TAbi extends Abi = Abi>(
 		name: string,
 		deployment: Deployment<TAbi>,
