@@ -24,7 +24,7 @@ import type {
 	TransactionToBroadcast,
 	UnknownSignerPolicyFrame,
 } from '@rocketh/core/types';
-import {UnknownSignerError} from '@rocketh/core';
+import {UnknownSignerError, type UnknownSignerContractCall} from '@rocketh/core';
 import {createUnknownSignerPolicyStack} from './unknownSignerPolicy.js';
 import {Abi, Address} from 'abitype';
 import {InternalEnvironment} from '../internal/types.js';
@@ -916,7 +916,27 @@ export async function createEnvironment<
 		}
 	}
 
-	async function broadcastTransaction(transaction: TransactionToBroadcast): Promise<`0x${string}`> {
+	/**
+	 * The single broadcast choke point. Deliberately NOT exported and absent from the
+	 * `Environment` interface: it is reached only through `broadcastExecution` and
+	 * `broadcastDeployment`.
+	 *
+	 * `origin.contract` is the contract-call metadata of whatever call produced this
+	 * transaction, used ONLY to enrich an `UnknownSignerError`. It is THREADED down here
+	 * rather than caught-and-rethrown one level up in `broadcastExecution`, deliberately:
+	 * the error is then constructed ONCE, at the single site that already knows the
+	 * unsignable `from` and owns the message, so the stack points at the seam and there is
+	 * no second construction path to keep in sync. Catch-and-rethrow was the alternative;
+	 * it would have kept this signature narrower, but at the cost of rebuilding the error
+	 * (or mutating `error.data` after the fact) in every public funnel that ever wants to
+	 * enrich it, and of a second place where the message shape is decided. Widening a
+	 * private closure's parameter list is the cheaper of the two, since it has no exported
+	 * surface to keep stable.
+	 */
+	async function broadcastTransaction(
+		transaction: TransactionToBroadcast,
+		origin?: {contract?: Omit<UnknownSignerContractCall, 'name'>},
+	): Promise<`0x${string}`> {
 		if (transaction.type === 'raw') {
 			const txHash = await env.network.provider.request({
 				method: 'eth_sendRawTransaction',
@@ -950,13 +970,38 @@ export async function createEnvironment<
 				const policy = unknownSignerPolicyStack.effective();
 				// `from` is carried VERBATIM from the transaction (not the lowercased lookup key):
 				// this error IS the transaction the user has to execute out-of-band.
-				// `contract` is deliberately left unpopulated here; enriching it from the execute
-				// call site is owned by a separate task.
+				// `contract` is present only when the caller said this transaction IS a contract
+				// call (`execute` / `executeByName`); a plain `tx`, a value transfer and a deploy
+				// leave it unset, because they have no function to name.
+				// The deployment name is resolved HERE, on the error path only, through the
+				// environment's existing reverse lookup rather than a second hand-rolled one
+				// (ADR 0006 predates that helper). It is opportunistic: an address matching no
+				// deployment leaves `name` ABSENT (not `undefined`-valued) and the printed
+				// message falls back to `to`. An address CAN carry several names (a proxy and
+				// its implementation record commonly share one); the first is used, since this
+				// is presentation-only enrichment and the unambiguous `to` is printed anyway.
+				let contract: UnknownSignerContractCall | undefined;
+				if (origin?.contract) {
+					let name: string | undefined;
+					if (transactionData.to) {
+						try {
+							name = fromAddressToNamedABIOrNull(transactionData.to)?.names[0];
+						} catch (e) {
+							// The lookup MERGES the ABIs of every deployment at the address and throws on
+							// a selector conflict (`mergeArtifacts`). Enriching a name must never be able
+							// to replace the error the user actually needs with an unrelated one, so a
+							// conflicting address simply goes unnamed and the message falls back to `to`.
+							logger.warn(`could not resolve a deployment name for ${transactionData.to}: ${e}`);
+						}
+					}
+					contract = name ? {name, ...origin.contract} : {...origin.contract};
+				}
 				const unknownSignerData = {
 					from: transactionData.from,
 					to: transactionData.to,
 					data: transactionData.data,
 					value: transactionData.value,
+					contract,
 				};
 				switch (policy) {
 					case 'throw':
@@ -1028,9 +1073,9 @@ export async function createEnvironment<
 
 	async function broadcastExecution(
 		transaction: TransactionToBroadcast,
-		options?: {message?: string},
+		options?: {message?: string; contract?: Omit<UnknownSignerContractCall, 'name'>},
 	): Promise<EIP1193TransactionReceipt> {
-		const txHash = await broadcastTransaction(transaction);
+		const txHash = await broadcastTransaction(transaction, {contract: options?.contract});
 
 		const from = transaction.type == 'raw' ? transaction.from : transaction.data.from;
 

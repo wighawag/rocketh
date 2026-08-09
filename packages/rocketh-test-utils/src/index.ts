@@ -13,6 +13,7 @@ import type {
 	PartialDeployment,
 	TransactionToBroadcast,
 } from '@rocketh/core/types';
+import type {UnknownSignerContractCall} from '@rocketh/core';
 import type {EIP1193Provider, EIP1193TransactionReceipt} from 'eip-1193';
 
 // ============================================================================
@@ -535,7 +536,10 @@ export function createMockEnvironment(options: MockEnvironmentOptions = {}): Moc
 		},
 		broadcastExecution: async (
 			transaction: TransactionToBroadcast,
-			_options?: {message?: string},
+			// `contract` mirrors the `Environment` interface (contract-call origin used to enrich
+			//  an `UnknownSignerError`). This legacy fake has no unknown-signer seam to enrich, so
+			//  it is accepted and ignored; `createTestEnvironment` exercises the real behaviour.
+			_options?: {message?: string; contract?: Omit<UnknownSignerContractCall, 'name'>},
 		): Promise<EIP1193TransactionReceipt> => {
 			// Mock implementation that uses the provider
 			const from = transaction.type === 'raw' ? transaction.from : transaction.data.from;
