@@ -4,7 +4,6 @@ slug: unknown-signer-package
 spec: unknown-signer-core
 blockedBy: [unknown-signer-error-type, unknown-signer-broadcast-seam, test-env-harness]
 covers: [2, 3, 10]
-needsAnswers: true
 ---
 
 ## What to build
