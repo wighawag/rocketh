@@ -498,10 +498,11 @@ export function createMockEnvironment(options: MockEnvironmentOptions = {}): Moc
 			return address.toLowerCase() as `0x${string}`;
 		},
 		resolveAccountOrUndefined: (account: string | `0x${string}`): `0x${string}` | undefined => {
+			// lowercased like the real environment's resolver, so the fake cannot drift from production
 			if (account.startsWith('0x')) {
-				return account as `0x${string}`;
+				return account.toLowerCase() as `0x${string}`;
 			}
-			return resolvedNamedAccounts[account];
+			return resolvedNamedAccounts[account]?.toLowerCase() as `0x${string}` | undefined;
 		},
 		save: async <T>(name: string, deployment: T) => {
 			deployments[name] = deployment;

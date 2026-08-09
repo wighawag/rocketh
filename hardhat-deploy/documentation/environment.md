@@ -14,6 +14,8 @@ export interface Environment<
 	readonly name: string;
 	readonly context: {
 		readonly saveDeployments: boolean;
+		readonly autoMine: boolean;
+		readonly retry: ResolvedRetryConfig;
 	};
 	readonly tags: {readonly [tag: string]: boolean};
 	readonly network: {
@@ -28,21 +30,35 @@ export interface Environment<
 	readonly namedSigners: ResolvedNamedSigners<ResolvedNamedAccounts<NamedAccounts>>;
 	readonly unnamedAccounts: EIP1193Account[];
 	// unnamedSigners: {type: 'remote'; signer: EIP1193ProviderWithoutEvents}[];
+	/**
+	 * Signers indexed by address. The keys are always LOWERCASE, so index it with a lowercased
+	 * address (`resolveAccount` already returns one). The address VALUES exposed by
+	 * `namedAccounts`/`unnamedAccounts` are left as resolved and may be checksummed.
+	 */
 	readonly addressSigners: {[name: `0x${string}`]: Signer};
 	save<TAbi extends Abi = Abi>(
 		name: string,
 		deployment: Deployment<TAbi>,
 		options?: {doNotCountAsNewDeployment?: boolean}
 	): Promise<Deployment<TAbi>>;
-	savePendingDeployment<TAbi extends Abi = Abi>(pendingDeployment: PendingDeployment<TAbi>): Promise<Deployment<TAbi>>;
-	savePendingExecution(pendingExecution: PendingExecution): Promise<EIP1193TransactionReceipt>;
+	broadcastExecution(
+		transaction: TransactionToBroadcast,
+		options?: {message?: string}
+	): Promise<EIP1193TransactionReceipt>;
+	broadcastDeployment<TAbi extends Abi = Abi>(
+		name: string,
+		transaction: TransactionToBroadcast,
+		partialDeployment: PartialDeployment<TAbi>,
+		options?: {message?: string; expectedAddress?: `0x${string}`}
+	): Promise<Deployment<TAbi>>;
 	get<TAbi extends Abi>(name: string): Deployment<TAbi>;
 	getOrNull<TAbi extends Abi>(name: string): Deployment<TAbi> | null;
 	fromAddressToNamedABI<TAbi extends Abi>(address: Address): {mergedABI: TAbi; names: string[]};
 	fromAddressToNamedABIOrNull<TAbi extends Abi>(address: Address): {mergedABI: TAbi; names: string[]} | null;
 	showMessage(message: string): void;
 	showProgress(message?: string): ProgressIndicator;
-
+	resolveAccountOrUndefined(account: string | EIP1193Account): `0x${string}` | undefined;
+	resolveAccount(account: string | EIP1193Account): `0x${string}`;
 	hasMigrationBeenDone(id: string): boolean;
 	readonly extra?: Extra;
 }

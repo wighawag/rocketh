@@ -127,6 +127,9 @@ importers:
         specifier: ^0.4.1
         version: 0.4.1
     devDependencies:
+      '@rocketh/signer':
+        specifier: workspace:*
+        version: link:../rocketh-signer
       as-soon:
         specifier: ^0.1.6
         version: 0.1.6

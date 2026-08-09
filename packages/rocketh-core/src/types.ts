@@ -611,6 +611,11 @@ export interface Environment<
 	readonly namedSigners: ResolvedNamedSigners<ResolvedNamedAccounts<NamedAccounts>>;
 	readonly unnamedAccounts: EIP1193Account[];
 	// unnamedSigners: {type: 'remote'; signer: EIP1193ProviderWithoutEvents}[];
+	/**
+	 * Signers indexed by address. The keys are always LOWERCASE, so index it with a lowercased
+	 * address (`resolveAccount` already returns one). The address VALUES exposed by
+	 * `namedAccounts`/`unnamedAccounts` are left as resolved and may be checksummed.
+	 */
 	readonly addressSigners: {[name: `0x${string}`]: Signer};
 
 	save<TAbi extends Abi = Abi>(

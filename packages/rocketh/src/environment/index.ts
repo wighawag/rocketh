@@ -399,17 +399,25 @@ export async function createEnvironment<
 	const namedSigners: {[name: string]: Signer} = {};
 	const addressSigners: {[name: `0x${string}`]: Signer} = {};
 
+	// `addressSigners` is a lookup map keyed by address, and EVERY reader looks it up with a
+	//  lowercased key (`resolveAccount` lowercases both of its branches, `broadcastTransaction`
+	//  lowercases `transactionData.from`). The addresses we key it with here are NOT normalised at
+	//  the source: a `privateKey`/protocol account resolves to whatever the signer's `eth_accounts`
+	//  returns (checksummed, for `eip-1193-signer`), a bare-address account to whatever the user
+	//  wrote in the config, and a numbered account to whatever the node returns. So the KEYS are
+	//  normalised here. The address VALUES kept in `namedAccounts`/`unnamedAccounts` are
+	//  user-visible and deliberately left as resolved.
 	for (const entry of Object.entries(resolvedAccounts)) {
 		const name = entry[0];
 		const {address, ...namedSigner} = entry[1];
 		namedAccounts[name] = address;
-		addressSigners[address] = namedSigner;
+		addressSigners[address.toLowerCase() as `0x${string}`] = namedSigner;
 		namedSigners[name] = namedSigner;
 	}
 
-	const unnamedAccounts = allRemoteAccounts.filter((v) => !addressSigners[v]);
+	const unnamedAccounts = allRemoteAccounts.filter((v) => !addressSigners[v.toLowerCase() as `0x${string}`]);
 	for (const account of unnamedAccounts) {
-		addressSigners[account] = {
+		addressSigners[account.toLowerCase() as `0x${string}`] = {
 			type: 'remote',
 			signer: provider,
 		};
@@ -1014,13 +1022,18 @@ export async function createEnvironment<
 		throw new Error(`no accounts setup, cannot get address for ${account}`);
 	}
 
+	// Normalises like `resolveAccount` above: both are address RESOLVERS, and the addresses they
+	//  resolve from are not normalised at the source (a protocol signer's `eth_accounts`, a
+	//  user-written config address, the node's `eth_accounts`). Returning a lowercased address from
+	//  one and a raw one from the other is what made `addressSigners` lookups miss; keep them in step
+	//  so a caller can safely feed either into an address-keyed map.
 	function resolveAccountOrUndefined(account: string | EIP1193Account): `0x${string}` | undefined {
 		if (account.startsWith('0x')) {
-			return account as `0x${string}`;
+			return account.toLowerCase() as `0x${string}`;
 		}
 
 		if (env.namedAccounts) {
-			return env.namedAccounts[account];
+			return env.namedAccounts[account]?.toLowerCase() as `0x${string}` | undefined;
 		}
 
 		return undefined;
