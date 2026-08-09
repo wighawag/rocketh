@@ -4,7 +4,6 @@ slug: unknown-signer-error-type
 spec: unknown-signer-core
 blockedBy: []
 covers: []
-needsAnswers: true
 ---
 
 <!-- covers is empty deliberately: this task builds the class only. Story 4 (an unwrapped call

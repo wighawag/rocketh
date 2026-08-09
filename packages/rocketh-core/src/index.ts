@@ -1,6 +1,9 @@
 // Re-export types
 export type * from './types.js';
 
+// Re-export errors
+export {UnknownSignerError, type UnknownSignerErrorData, type UnknownSignerContractCall} from './errors.js';
+
 // Re-export JSON utilities
 export {
 	postfixBigIntReplacer,
