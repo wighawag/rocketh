@@ -9,9 +9,10 @@
  *
  * ```typescript
  * import {catchUnknownSigner} from '@rocketh/unknown-signer';
+ * import {execute} from '@rocketh/read-execute';
  *
  * const deferred = await catchUnknownSigner(env)(() =>
- *   execute(env)(proxy, {account: 'safeOwner', functionName: 'upgradeTo'}, [newImpl.address]),
+ *   execute(env)(proxy, {account: 'safeOwner', functionName: 'upgradeTo', args: [newImpl.address]}),
  * );
  * if (deferred) {
  *   // {from, to, value, data} — execute this on the Safe, then re-run.

@@ -465,6 +465,7 @@ npm install -D @rocketh/unknown-signer
 
 ```typescript
 import {catchUnknownSigner} from '@rocketh/unknown-signer';
+import {execute} from '@rocketh/read-execute';
 
 // NOTE the call shape: the action is a FUNCTION, not an already-started promise.
 //  This is the one mechanical change from a hardhat-deploy v1 script
@@ -472,7 +473,7 @@ import {catchUnknownSigner} from '@rocketh/unknown-signer';
 //  executing before the wrapper can establish its policy scope. The v1 form is a
 //  compile error, and a JavaScript caller gets a runtime error naming the fix.
 const deferred = await catchUnknownSigner(env)(() =>
-	execute(env)(proxy, {account: 'safeOwner', functionName: 'upgradeTo'}, [newImplementation.address]),
+	execute(env)(proxy, {account: 'safeOwner', functionName: 'upgradeTo', args: [newImplementation.address]}),
 );
 
 if (deferred) {

@@ -4,9 +4,10 @@
 
 ```typescript
 import {catchUnknownSigner} from '@rocketh/unknown-signer';
+import {execute} from '@rocketh/read-execute';
 
 const deferred = await catchUnknownSigner(env)(() =>
-	execute(env)(proxy, {account: 'safeOwner', functionName: 'upgradeTo'}, [newImplementation.address]),
+	execute(env)(proxy, {account: 'safeOwner', functionName: 'upgradeTo', args: [newImplementation.address]}),
 );
 
 if (deferred) {
