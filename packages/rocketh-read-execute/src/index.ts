@@ -169,7 +169,18 @@ export function execute(
 				type: 'object',
 				data: txParam,
 			},
-			{message: args.message},
+			{
+				message: args.message,
+				// Declare that this transaction IS a contract call, so that an unsignable `from`
+				// (typically a Safe owning the contract) surfaces an `UnknownSignerError` naming
+				// the function to run out-of-band instead of only the address. The calldata alone
+				// cannot say it: only this call site knows the function name and the decoded args.
+				// The deployment NAME is not passed: the environment resolves it at the throw site.
+				contract: {
+					method: viemArgs.functionName,
+					args: (viemArgs.args ?? []) as readonly unknown[],
+				},
+			},
 		);
 		return receipt;
 	};

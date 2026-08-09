@@ -11,6 +11,7 @@ import {
 } from 'eip-1193';
 import type {Address, Chain, DeployContractParameters} from 'viem';
 import {TransactionHashTracker} from './providers/TransactionHashTracker.js';
+import type {UnknownSignerContractCall} from './errors.js';
 
 export type ProgressIndicator = {
 	start(msg?: string): ProgressIndicator;
@@ -709,9 +710,21 @@ export interface Environment<
 		deployment: Deployment<TAbi>,
 		options?: {doNotCountAsNewDeployment?: boolean},
 	): Promise<Deployment<TAbi>>;
+	/**
+	 * Broadcast a transaction that is not a contract deployment (`execute`, `executeByName`
+	 * and `tx` all funnel here).
+	 *
+	 * `options.contract` is the ORIGIN metadata of a contract call: pass it when the
+	 * transaction encodes a function call, so an `UnknownSignerError` raised for an
+	 * unsignable `from` can name the function the user must execute out-of-band rather
+	 * than showing only an address. Leave it out for a plain transaction, a value
+	 * transfer or a deploy — there is no function to name. It carries no `name`: the
+	 * deployment name is resolved at the throw site through `fromAddressToNamedABIOrNull`,
+	 * so callers never have to look it up (ADR 0006).
+	 */
 	broadcastExecution(
 		transaction: TransactionToBroadcast,
-		options?: {message?: string},
+		options?: {message?: string; contract?: Omit<UnknownSignerContractCall, 'name'>},
 	): Promise<EIP1193TransactionReceipt>;
 	broadcastDeployment<TAbi extends Abi = Abi>(
 		name: string,
