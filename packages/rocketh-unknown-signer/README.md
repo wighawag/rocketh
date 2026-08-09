@@ -47,4 +47,8 @@ There is no unsigned-transactions file and no other side effect, exactly as in v
 
 The policy frame this wrapper pushes forces the `throw` path over the interactive `ask` path that ships later. It never overrides impersonation: an account the node can sign for, including one `autoImpersonate` took on, is signable and still broadcasts inside the wrapper. To exercise the unknown-signer path on a fork, set `autoImpersonate: false` for the run. See `docs/adr/0006-unknown-signer-seam-and-orthogonal-autoimpersonate.md`.
 
+## Worked examples
+
+`test/scenarios.integration.test.ts` in this package is written as documentation: a Safe-governed proxy upgrade, the same mechanism firing for a plain `tx`, a deploy, an `execute` and a value transfer, a run that mixes signable and Safe-only steps, and the full execute-on-the-Safe-then-re-run loop. Each test body reads as a deploy script.
+
 For full documentation, visit [rocketh.dev](https://rocketh.dev).
