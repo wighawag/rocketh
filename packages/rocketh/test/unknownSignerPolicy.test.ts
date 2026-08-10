@@ -1,16 +1,15 @@
 import {describe, it, expect} from 'vitest';
 
-import {createUnknownSignerPolicyStack} from '../src/environment/unknownSignerPolicy.js';
+import {createUnknownSignerPolicyStack, resolveUnknownSignerBehaviour} from '../src/environment/unknownSignerPolicy.js';
 
 /**
- * Unit tests for the unknown-signer POLICY FRAME STACK.
+ * Unit tests for the unknown-signer POLICY FRAME STACK and for turning a policy
+ * into the behaviour a run can actually carry out.
  *
- * This mechanism delivers no user story in this slice: with only `'throw'` and
- * `'auto'` (which degrades to `'throw'`) shipping, every policy value resolves to
- * the same behaviour, so precedence is not observable from the seam yet. It is
- * built as declared forward-compat for `unknown-signer-interactive`, which adds
- * `'ask'`. The plumbing is therefore unit-tested HERE, at the stack itself,
- * rather than claimed as behaviour at the seam.
+ * Precedence between frames is unit-tested HERE, at the stack itself; what it
+ * MEANS at the seam (a `'throw'` frame beating an ambient `'ask'` without ever
+ * consulting the prompt) is pinned in `interactive-unknown-signer.test.ts`, which
+ * is where the two policy values became observably different.
  */
 describe('createUnknownSignerPolicyStack', () => {
 	/** With no frame pushed, the effective policy is the run/chain-resolved global. */
@@ -83,5 +82,33 @@ describe('createUnknownSignerPolicyStack', () => {
 		expect(stack.effective()).toBe('auto');
 		stack.push({policy: 'throw'});
 		expect(stack.effective()).toBe('throw');
+	});
+});
+
+/**
+ * CAPABILITY IS A CEILING, NOT A DEFAULT (ADR 0007). These four cases are the whole
+ * truth table, and both directions of each capability-dependent value are asserted
+ * with DIFFERENT expected results, so none of them can pass by coincidence.
+ */
+describe('resolveUnknownSignerBehaviour', () => {
+	it('keeps `throw` a throw, capability or not', () => {
+		expect(resolveUnknownSignerBehaviour('throw', {canPromptForText: true})).toBe('throw');
+		expect(resolveUnknownSignerBehaviour('throw', {canPromptForText: false})).toBe('throw');
+	});
+
+	/** `'auto'` is CAPABILITY-AWARE in both directions: this is the CI guarantee. */
+	it('resolves `auto` to `ask` with a text prompt and to `throw` without one', () => {
+		expect(resolveUnknownSignerBehaviour('auto', {canPromptForText: true})).toBe('ask');
+		expect(resolveUnknownSignerBehaviour('auto', {canPromptForText: false})).toBe('throw');
+	});
+
+	/**
+	 * An EXPLICIT `'ask'` cannot exceed the ceiling: with no way to reach a human it
+	 * degrades to `'throw'` rather than hanging. A script that hardcodes `'ask'`
+	 * therefore still runs in CI.
+	 */
+	it('degrades an explicit `ask` to `throw` without a text prompt', () => {
+		expect(resolveUnknownSignerBehaviour('ask', {canPromptForText: true})).toBe('ask');
+		expect(resolveUnknownSignerBehaviour('ask', {canPromptForText: false})).toBe('throw');
 	});
 });

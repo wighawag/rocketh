@@ -249,15 +249,16 @@ describe('text-prompt capability - construction paths', () => {
 	});
 });
 
-describe('text-prompt capability - nothing branches on it yet', () => {
+describe('text-prompt capability - what branches on it', () => {
 	/**
-	 * The capability is INERT in this slice: an unsignable `from` still throws
-	 * `UnknownSignerError` under the default `'auto'` policy even when a text prompt is
-	 * available, and the prompt is never consulted. The interactive resolver lands in a
-	 * later task; until then a run must behave EXACTLY as it did before.
+	 * The capability is what makes `'auto'` interactive: with a text prompt available,
+	 * an unsignable `from` is ASKED about rather than thrown at. The full interactive
+	 * behaviour (pasted hash, "cannot sign", receipt invariants) is covered in
+	 * `interactive-unknown-signer.test.ts`; what is pinned HERE is only that this
+	 * predicate, and nothing else, is the switch.
 	 */
-	it('still throws UnknownSignerError under `auto`, without asking the prompt', async () => {
-		const promptExecutor = createTextCapablePromptExecutor();
+	it('makes `auto` consult the prompt when the run carries a text capability', async () => {
+		const promptExecutor = createTextCapablePromptExecutor('cannot sign');
 		const {env} = await buildEnvironment({
 			accounts: {deployer: PRIVATE_KEY, admin: SAFE_ADDRESS},
 			nodeAccounts: [],
@@ -275,7 +276,24 @@ describe('text-prompt capability - nothing branches on it yet', () => {
 				(e) => e,
 			);
 
+		expect(promptExecutor.promptText).toHaveBeenCalledTimes(1);
+		// answering "cannot sign" degrades to the same error the throw path raises
 		expect(error).toBeInstanceOf(UnknownSignerError);
-		expect(promptExecutor.promptText).not.toHaveBeenCalled();
+	});
+
+	/** The CI half: no capability, so `'auto'` throws and asks nobody anything. */
+	it('leaves `auto` throwing, without asking anyone, when the run carries no prompt', async () => {
+		const {env} = await buildEnvironment({
+			accounts: {deployer: PRIVATE_KEY, admin: SAFE_ADDRESS},
+			nodeAccounts: [],
+		});
+
+		const from = env.resolveAccount('admin');
+		await expect(
+			env.broadcastExecution({
+				type: 'object',
+				data: {type: '0x2', from, to: TARGET_CONTRACT, data: '0xdeadbeef', chainId: '0x7a69'},
+			}),
+		).rejects.toBeInstanceOf(UnknownSignerError);
 	});
 });

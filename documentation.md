@@ -483,6 +483,49 @@ if (deferred) {
 
 It returns `null` when the action succeeded, and otherwise hardhat-deploy v1's exact shape: every key present even when `undefined`, `value` as a string. Pass `{log: false}` to suppress the printed block. Nothing is persisted — idempotency comes from on-chain state, so you execute the transaction on your Safe and re-run the idempotent script. One wrapper captures one transaction (the first unsignable one inside it), so deferring several steps means one `catchUnknownSigner` per step.
 
+#### Resolving it interactively instead (`onUnknownSigner: 'ask'`)
+
+If you are at a keyboard, rocketh can PAUSE instead of throwing: it prints the transaction, waits while you execute it out-of-band (on your Safe, a hardware wallet, an air-gapped machine), takes back the transaction hash you paste, and CONTINUES the same run with the deployment state saved. No re-run dance, and an action with several unsignable steps pauses at each one and finishes them all in a single run.
+
+The behaviour is chosen by `onUnknownSigner`, resolved as execution parameter > chain config > the default `'auto'`:
+
+| value     | what happens when a `from` is unsignable                                          |
+| --------- | --------------------------------------------------------------------------------- |
+| `'throw'` | raise `UnknownSignerError` immediately (the defer workflow above)                 |
+| `'ask'`   | pause and ask, when the run can ask a human for text; otherwise behave as `throw` |
+| `'auto'`  | the default: `ask` when the run can ask a human for text, `throw` when it cannot  |
+
+Set it for a whole chain in `rocketh/config.ts`:
+
+```typescript
+export const config = {
+	accounts: {
+		/* ... */
+	},
+	chains: {
+		11155111: {onUnknownSigner: 'ask'},
+	},
+	data: {},
+} as const satisfies UserConfig;
+```
+
+or for one run, which wins over the chain config:
+
+```typescript
+await loadAndExecuteDeploymentsFromFiles({environment: 'sepolia', onUnknownSigner: 'ask'});
+```
+
+"Can the run ask a human for text?" is a CAPABILITY of the runtime, not a preference: it is true only when the run carries a `PromptExecutor` that implements `promptText`. `@rocketh/node` (the `rocketh` CLI and the hardhat-deploy path) does; `@rocketh/web` deliberately does not, because a browser cannot sensibly ask you to paste a transaction hash. Capability is a CEILING: asking for `'ask'` where there is no such prompt degrades to `'throw'` rather than hanging, so CI never blocks on a prompt even if a script hardcodes the value.
+
+At the pause you have two answers:
+
+- **paste the transaction hash** — rocketh waits for it, requires the receipt to report a SUCCESSFUL status, saves state through the same pending-transaction path a normal broadcast uses, records the hash for gas reporting, and returns the receipt to your script. It never sends a transaction of its own.
+- **`cannot sign`** (or just press enter) — rocketh prints the full transaction and throws the same `UnknownSignerError` as the non-interactive path, so the interactive flow degrades cleanly into the defer workflow and is still caught by `catchUnknownSigner`. Aborting the prompt (Ctrl-C) does the same. A paste that is not a transaction hash is re-asked a couple of times and then also defers.
+
+`catchUnknownSigner` always takes the throw path, whatever the ambient policy: a wrapped action never pops a prompt at you, because you already said you would handle the transaction yourself.
+
+ACCEPTED RESIDUAL RISK, stated rather than engineered around: for an EXECUTION, rocketh checks that the transaction you pasted succeeded, and nothing else. It does not decode MultiSend or Timelock payloads and does not try to match `to`/`data`, because a governed execution is routinely wrapped by the multisig into a different transaction shape. A successful-but-unrelated hash would therefore be accepted. This is the same trust boundary as hardhat-deploy v1 (where the run continued after you executed the transaction, with no check at all), only stricter, and it exists because an execution has no address to anchor on.
+
 ### Testing your deploy scripts
 
 The `@rocketh/test-utils` package provides `createTestEnvironment`, an async harness

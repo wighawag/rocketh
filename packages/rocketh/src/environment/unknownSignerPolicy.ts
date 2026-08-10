@@ -6,9 +6,8 @@ import type {UnknownSignerPolicy, UnknownSignerPolicyFrame} from '@rocketh/core/
  * The effective policy at the broadcast seam is `top-of-stack?.policy ?? resolvedGlobal`,
  * where the global comes from `onUnknownSigner` (execution param > chain config > `'auto'`).
  * A frame is pushed by a scoped wrapper (`catchUnknownSigner` in
- * `@rocketh/unknown-signer`) so its wrapped action reliably receives the error instead of,
- * once `'ask'` lands, popping an interactive prompt at a user who already said they would
- * handle it.
+ * `@rocketh/unknown-signer`) so its wrapped action reliably receives the error instead of
+ * popping an interactive prompt at a user who already said they would handle it.
  *
  * WHAT A FRAME DOES NOT DO: it never turns a signable account into a throw. The seam
  * consults this stack only INSIDE its `unsignable` branch, so a `local` / `node` /
@@ -18,9 +17,11 @@ import type {UnknownSignerPolicy, UnknownSignerPolicyFrame} from '@rocketh/core/
  * DYNAMIC SCOPE INVARIANT: this is a single stack per environment, not a per-action
  * context, which is sound because rocketh runs deploy scripts SEQUENTIALLY (one await at
  * a time), so at most one scoped action is in flight. A user who runs `Promise.all` of
- * two actions inside one wrapper leaks the frame to the concurrent action. That is
- * harmless while every policy value resolves to `throw`, and is recorded as a known
- * limitation in ADR 0006 rather than enforced here.
+ * two actions inside one wrapper leaks the frame to the concurrent action. Now that
+ * `'ask'` exists that leak is REAL rather than theoretical (the concurrent action gets a
+ * throw where it would have prompted, never the other way round, since a frame only ever
+ * forces `throw`). It remains a known limitation recorded in ADR 0006 rather than
+ * enforced here.
  */
 export type UnknownSignerPolicyStack = {
 	/** Push a scoped override. ALWAYS pair with `pop` in a `finally`. */
@@ -35,6 +36,45 @@ export type UnknownSignerPolicyStack = {
 	/** `top-of-stack?.policy ?? resolvedGlobal`. */
 	effective(): UnknownSignerPolicy;
 };
+
+/**
+ * What the seam actually DOES once a policy is in force. `'auto'` is not one of
+ * these: it is a request to pick, and picking is what
+ * {@link resolveUnknownSignerBehaviour} does.
+ */
+export type UnknownSignerBehaviour = 'throw' | 'ask';
+
+/**
+ * Turn a policy into the behaviour this RUN can actually carry out.
+ *
+ * CAPABILITY IS A CEILING, NOT A DEFAULT (ADR 0007). `'auto'` picks `'ask'` where a
+ * text prompt genuinely exists and `'throw'` where it does not, and an EXPLICIT
+ * `'ask'` is bounded by the same ceiling: it degrades to `'throw'` rather than
+ * hanging a run that has no way to reach a human. That is what makes a CI run
+ * un-hangable even when a script hardcodes `'ask'`.
+ *
+ * The capability is passed IN rather than read here so this stays a pure function of
+ * (policy, capability) — the two directions of the `'auto'` branch are then testable
+ * without building an environment, and the seam keeps exactly one place that asks
+ * `env.canPromptForText()`.
+ */
+export function resolveUnknownSignerBehaviour(
+	policy: UnknownSignerPolicy,
+	capabilities: {canPromptForText: boolean},
+): UnknownSignerBehaviour {
+	switch (policy) {
+		case 'throw':
+			return 'throw';
+		case 'ask':
+			return capabilities.canPromptForText ? 'ask' : 'throw';
+		case 'auto':
+			return capabilities.canPromptForText ? 'ask' : 'throw';
+	}
+	// Exhaustive over `UnknownSignerPolicy`: adding a value without a case fails to
+	// compile here rather than silently resolving to `undefined` at the seam.
+	const exhaustive: never = policy;
+	throw new Error(`unhandled onUnknownSigner policy: ${exhaustive}`);
+}
 
 export function createUnknownSignerPolicyStack(resolvedGlobal: UnknownSignerPolicy): UnknownSignerPolicyStack {
 	const frames: UnknownSignerPolicyFrame[] = [];

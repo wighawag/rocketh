@@ -28,16 +28,17 @@
  * effect, exactly like v1: idempotency comes from on-chain state alone.
  *
  * SCOPE OF THE POLICY FRAME (ADR 0006). The frame this wrapper pushes forces `throw`
- * over `ask` (the interactive policy that ships later), NEVER over impersonation. An
- * account the node can sign for — including one `autoImpersonate` took on — is
- * signable, full stop, and still BROADCASTS inside the wrapper. That is what keeps a
- * mixed run working, and it is why testing the throw path on a fork is done with
+ * over `ask` (the interactive policy), NEVER over impersonation. An account the node
+ * can sign for — including one `autoImpersonate` took on — is signable, full stop, and
+ * still BROADCASTS inside the wrapper. That is what keeps a mixed run working, and it
+ * is why testing the throw path on a fork is done with
  * `autoImpersonate: false` for the run.
  *
  * The frame stack is dynamic scope, which suits how rocketh runs deploy scripts
  * (sequentially, one await at a time). Running `Promise.all` of two actions inside one
- * wrapper leaks the frame to the concurrent action; harmless while every policy value
- * resolves to `throw`, and recorded as a known limitation in ADR 0006.
+ * wrapper leaks the frame to the concurrent action, which under an ambient `'ask'`
+ * policy means that concurrent action throws where it would have prompted. Recorded as
+ * a known limitation in ADR 0006.
  */
 
 import {UnknownSignerError} from '@rocketh/core';

@@ -25,7 +25,8 @@ import type {
 	UnknownSignerPolicyFrame,
 } from '@rocketh/core/types';
 import {UnknownSignerError, type UnknownSignerContractCall} from '@rocketh/core';
-import {createUnknownSignerPolicyStack} from './unknownSignerPolicy.js';
+import {createUnknownSignerPolicyStack, resolveUnknownSignerBehaviour} from './unknownSignerPolicy.js';
+import {askForExecutedTransactionHash} from './interactiveUnknownSigner.js';
 import {Abi, Address} from 'abitype';
 import {InternalEnvironment} from '../internal/types.js';
 import {JSONToString, stringToJSON} from '@rocketh/core/json';
@@ -1016,19 +1017,67 @@ export async function createEnvironment<
 					value: transactionData.value,
 					contract,
 				};
-				switch (policy) {
-					case 'throw':
-						throw new UnknownSignerError(unknownSignerData);
-					case 'auto':
-						// No interactive resolver ships yet, so `'auto'` degrades to `'throw'`: a
-						// non-interactive/CI run never prompts and never hangs.
-						throw new UnknownSignerError(unknownSignerData);
+				// The error is BUILT here whichever way this goes: it is what the throw path
+				// throws AND what the interactive path shows the human, so the two can never
+				// drift into showing different amounts of what has to be executed.
+				const unknownSignerError = new UnknownSignerError(unknownSignerData);
+
+				// CAPABILITY IS A CEILING (ADR 0007): `'auto'` becomes `'ask'` only where a text
+				// prompt genuinely exists, and an explicit `'ask'` degrades to `'throw'` rather
+				// than hanging a run that cannot reach a human. This is the ONE place
+				// `canPromptForText()` is consulted.
+				const behaviour = resolveUnknownSignerBehaviour(policy, {canPromptForText: canPromptForText()});
+				if (behaviour === 'throw') {
+					throw unknownSignerError;
 				}
-				// `policy` is `never` here as long as the switch above is exhaustive over
-				// `UnknownSignerPolicy`; adding a value (e.g. `'ask'`) without a case fails to compile
-				// rather than silently falling through to the signer lookup below.
-				const exhaustive: never = policy;
-				throw new UnknownSignerError(unknownSignerData, `unhandled onUnknownSigner policy: ${exhaustive}`);
+
+				// INTERACTIVE RESOLUTION. `promptText` is present because `canPromptForText()`
+				// just said so; the non-null assertion is that check, one line up.
+				//
+				// DECISION — the resolver is NOT gated to executions. It lives at the shared
+				// choke point, so a DEPLOYMENT from an unsignable `from` resolves interactively
+				// too and inherits the successful-status invariant below. What it does NOT yet
+				// get is deployment-specific address verification (code at the expected address
+				// for a deterministic deploy); that is `interactive-deployment-address-recovery`,
+				// which extends this same point. Gating deployments to `throw` here was the
+				// alternative: rejected because it would need a new "which funnel am I in?" flag
+				// threaded through the choke point purely to ship a behaviour the very next
+				// change removes, and because a user who asked for `'ask'` would be surprised to
+				// find half their transactions still throwing.
+				const answer = await askForExecutedTransactionHash({
+					promptText: promptExecutor!.promptText!,
+					// Routed through `env` (not the local closure) so a caller/test that replaces
+					// `showMessage` sees what the human was shown.
+					showMessage: (message) => env.showMessage(message),
+					// The error MESSAGE is the deliverable of the deferral workflow, so the
+					// interactive path shows exactly it, never a summary of it.
+					details: unknownSignerError.message,
+					from: transactionData.from,
+				});
+				if (answer.type === 'cannot-sign') {
+					// "cannot sign" DEGRADES to the defer path: the same error, undegraded, so it
+					// is caught by `catchUnknownSigner` exactly as an unwrapped throw would be.
+					logger.debug(`interactive unknown-signer resolution declined (${answer.reason})`);
+					throw unknownSignerError;
+				}
+
+				// The RECEIPT's own invariants are the correctness backbone; there is no bespoke
+				// verification layer, and deliberately NO attempt to decode a MultiSend/Timelock
+				// payload or to match `to`/`data` (the accepted residual risk, documented under
+				// "Handling unknown signers"). Checked BEFORE anything is saved or tracked, so a
+				// failed transaction leaves no state behind at all.
+				await requireSuccessfulExecutedTransaction(answer.hash, unknownSignerError);
+
+				// The tracker only records hashes it OBSERVES on `eth_sendTransaction` /
+				// `eth_sendRawTransaction`, so a transaction executed elsewhere would be invisible
+				// to it and gas reporting (which iterates this list) would silently omit it.
+				provider.transactionHashes.push(answer.hash);
+
+				// Returning the hash lets the SAME pipeline a normal broadcast uses take over
+				// (`savePendingExecution` / `savePendingDeployment` → `eth_getTransactionByHash`
+				// → `waitForTransaction`). Nothing about pending state or receipt waiting is
+				// reimplemented here.
+				return answer.hash;
 			}
 
 			const signer = env.addressSigners[from];
@@ -1081,6 +1130,39 @@ export async function createEnvironment<
 					return txHash;
 				}
 			}
+		}
+	}
+
+	/**
+	 * The receipt invariant shared by every interactively-resolved transaction: it must
+	 * have SUCCEEDED. A pasted hash is a claim ("I executed this"), and the only thing
+	 * that can check the claim without trusting the user is the chain.
+	 *
+	 * Fails LOUDLY, naming BOTH the transaction rocketh needed executed and the hash
+	 * that was pasted, because those are the two things needed to work out what went
+	 * wrong. Nothing is saved and nothing is tracked when it fires: it runs before both.
+	 */
+	async function requireSuccessfulExecutedTransaction(
+		hash: `0x${string}`,
+		unknownSignerError: UnknownSignerError,
+	): Promise<void> {
+		const receipt = await waitForTransaction(hash, {
+			message: `  - Checking the transaction you pasted:\n      {hash}`,
+		});
+		let succeeded = false;
+		try {
+			succeeded = receipt.status !== undefined && BigInt(receipt.status) === 1n;
+		} catch {
+			// an unparseable status is not a successful one
+			succeeded = false;
+		}
+		if (!succeeded) {
+			throw new Error(
+				`The transaction you pasted (${hash}) did not succeed: its receipt reports status ` +
+					`${receipt.status === undefined ? '<absent>' : receipt.status}, and rocketh requires a successful ` +
+					`status before it records anything. Nothing was saved.\n` +
+					`The transaction that still needs executing:\n${unknownSignerError.message}`,
+			);
 		}
 	}
 

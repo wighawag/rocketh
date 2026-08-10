@@ -603,9 +603,15 @@ export type Signability = 'local' | 'node' | 'impersonated' | 'unsignable';
  *
  * - `throw` — surface an `UnknownSignerError` carrying the transaction a human
  *   or multisig must execute out-of-band.
- * - `auto` — the default. It resolves to `throw` while no interactive resolver
- *   exists, so a CI/non-interactive run never prompts and never hangs. The
- *   `'ask'` value ships with `@rocketh/unknown-signer`'s interactive slice.
+ * - `ask` — PAUSE and resolve interactively: present the transaction, let the
+ *   human execute it out-of-band (on their Safe) and paste back the resulting
+ *   transaction hash, then continue the run with that transaction. Requires the
+ *   run to be able to ask a human for text (`env.canPromptForText()`); where it
+ *   cannot, `ask` degrades to `throw`. CAPABILITY IS A CEILING: asking for `ask`
+ *   can never make a run interactive that has no way to reach a human, which is
+ *   what keeps CI un-hangable even when a script hardcodes the value.
+ * - `auto` — the default, and CAPABILITY-AWARE: it resolves to `ask` when a text
+ *   prompt is available for the run and to `throw` when it is not.
  *
  * This is a POLICY, deliberately orthogonal to `autoImpersonate`, which is a
  * NODE CAPABILITY switch that runs BEFORE the seam: if impersonation resolved
@@ -613,7 +619,7 @@ export type Signability = 'local' | 'node' | 'impersonated' | 'unsignable';
  * therefore no `'impersonate'` value here — that would conflate "can this node
  * fake signatures?" with "what should happen when we genuinely cannot sign?".
  */
-export type UnknownSignerPolicy = 'throw' | 'auto';
+export type UnknownSignerPolicy = 'throw' | 'ask' | 'auto';
 
 /**
  * A scoped override of the resolved `onUnknownSigner` policy, pushed on the
@@ -623,6 +629,10 @@ export type UnknownSignerPolicy = 'throw' | 'auto';
  * It is an OBJECT rather than a bare policy string so a later slice can carry
  * extra per-scope fields (e.g. what to do with a prompt's answer) without
  * re-cutting the seam.
+ *
+ * A frame forces `throw` over `ask`, NEVER over impersonation: it is read only
+ * inside the seam's `unsignable` branch, so a signable account broadcasts
+ * identically whether or not a frame is pushed (ADR 0006).
  */
 export type UnknownSignerPolicyFrame = {
 	readonly policy: UnknownSignerPolicy;
