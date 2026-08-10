@@ -1,3 +1,7 @@
+---
+needsAnswers: true
+---
+
 # `fromAddressToNamedABIOrNull` can THROW despite its `OrNull` name (2026-08-09)
 
 Noticed while enriching `UnknownSignerError` with a deployment name: `fromAddressToNamedABIOrNull` (`packages/rocketh/src/environment/index.ts:~606`) calls `mergeArtifacts`, which throws `ABI conflict: ...` when two deployments registered at the SAME address share a function selector. So the helper returns `null` for "no match" but throws for "several conflicting matches", which its name does not suggest.
