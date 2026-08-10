@@ -2,6 +2,7 @@
 title: dorfl's tasker-review leg truncates at the model output cap, discarding a good task set
 slug: dorfl-tasker-review-truncates-at-output-cap-2026-08-10
 date: 2026-08-10
+needsAnswers: true
 ---
 
 # `dorfl do spec:<slug>` cannot task a large spec (dorfl 0.11.2)
