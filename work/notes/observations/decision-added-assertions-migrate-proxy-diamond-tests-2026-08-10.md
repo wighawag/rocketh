@@ -3,6 +3,7 @@ title: 'Decision: two assertion blocks were ADDED (not just ported) in migrate-p
 date: 2026-08-10
 status: open
 decisionFor: migrate-proxy-diamond-tests
+needsAnswers: true
 ---
 
 ## Decisions
