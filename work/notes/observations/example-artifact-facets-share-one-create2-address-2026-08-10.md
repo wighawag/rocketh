@@ -1,5 +1,6 @@
 ---
 date: 2026-08-10
+needsAnswers: true
 ---
 
 # Three "different" facets in the diamond multi-facet test share one create2 address
