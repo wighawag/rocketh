@@ -26,6 +26,9 @@ export function createNodePromptExecutor(): PromptExecutor {
 				// The user aborted (Ctrl-C): `prompts` resolves with the key absent.
 				return {cancelled: true};
 			}
+			// An EMPTY string is a VALUE, not a cancellation: this is a generic text primitive and
+			// only the caller knows what its prompt can accept, so the caller validates (a resolver
+			// asking for a transaction hash rejects `''` itself). See `TextPromptAnswer`.
 			return {value};
 		},
 		exit() {

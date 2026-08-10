@@ -832,9 +832,15 @@ export type PromptAnswer = {
 
 /**
  * What asking a human for free TEXT can yield: the text they typed, or the fact
- * that they aborted (Ctrl-C, an empty non-answer, a runtime that gave up). A
- * caller must handle both; there is deliberately no "undefined means cancelled"
- * convention, which is the shape that hides mistakes.
+ * that they aborted (Ctrl-C, or a runtime that gave up). A caller must handle
+ * both; there is deliberately no "undefined means cancelled" convention, which is
+ * the shape that hides mistakes.
+ *
+ * This is a GENERIC text primitive, so it does not judge the text: an EMPTY string
+ * is a VALUE (`{value: ''}`), NOT a cancellation. Only the caller knows what its
+ * prompt makes sense to receive, so the caller VALIDATES: a resolver asking for a
+ * transaction hash must reject `''` (and anything else malformed) itself, and
+ * decide whether that means re-ask, abort or defer.
  */
 export type TextPromptAnswer = {value: string} | {cancelled: true};
 

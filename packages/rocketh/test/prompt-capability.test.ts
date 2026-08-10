@@ -188,11 +188,6 @@ describe('text-prompt capability - construction paths', () => {
 	});
 
 	/**
-	 * The path hardhat-deploy takes: `@rocketh/node`'s `loadEnvironmentFromFiles` →
-	 * `loadEnvironmentFromStore`. There is no executor here, so before this capability
-	 * rode the run parameters a hardhat user could never have been interactive.
-	 */
-	/**
 	 * The path a `rocketh` CLI run takes. The executor is handed a `PromptExecutor` at
 	 * construction, and passes it on as a DEFAULT: run parameters carrying one still win,
 	 * which is what lets a test (or an embedder with its own UI) substitute a fake.
@@ -234,6 +229,11 @@ describe('text-prompt capability - construction paths', () => {
 		expect(env.canPromptForText()).toBe(false);
 	});
 
+	/**
+	 * The path hardhat-deploy takes: `@rocketh/node`'s `loadEnvironmentFromFiles` →
+	 * `loadEnvironmentFromStore`. There is no executor here, so before this capability
+	 * rode the run parameters a hardhat user could never have been interactive.
+	 */
 	it('reaches the environment through loadEnvironmentFromStore', async () => {
 		const env = await loadEnvironmentFromStore(
 			userConfigWith({deployer: PRIVATE_KEY}),
