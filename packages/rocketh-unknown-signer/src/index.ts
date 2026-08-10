@@ -1,5 +1,11 @@
 /**
- * `@rocketh/unknown-signer` — the hardhat-deploy v1 `catchUnknownSigner` helper.
+ * `@rocketh/unknown-signer` — what happens when rocketh cannot sign, at the CALL site.
+ *
+ * Two wrappers, both scoping the unknown-signer policy to ONE action through the same
+ * push/pop policy frame on the environment: `catchUnknownSigner` (the hardhat-deploy v1
+ * helper: force the throw path and hand the transaction back) and
+ * `withUnknownSignerPolicy` (choose the policy for one call, within what the run can
+ * actually do).
  *
  * Wrap a privileged call whose `from` is an account rocketh cannot sign for (a Safe
  * multisig, a hardware wallet left unplugged, an air-gapped or governance key) and
@@ -39,12 +45,26 @@
  * wrapper leaks the frame to the concurrent action, which under an ambient `'ask'`
  * policy means that concurrent action throws where it would have prompted. Recorded as
  * a known limitation in ADR 0006.
+ *
+ * DECISION — the per-call override is a WRAPPER (`withUnknownSignerPolicy`) in this
+ * package, not an option on `deploy` / `execute` / `tx`. It reuses the frame stack the
+ * seam already reads, so precedence stays ONE rule (innermost frame, else the run's
+ * `onUnknownSigner`) and no extension package's options bag has to grow a policy field
+ * that each would then thread to the choke point separately. The alternative, an
+ * `onUnknownSigner` option on every call site, was rejected on that duplication: it
+ * would put the same decision in four packages and make "which one wins" a second
+ * precedence rule. The cost of this shape is that the override is written around the
+ * call rather than inside it, and that it lives in the package a user installs for
+ * `catchUnknownSigner`. Frames nest LIFO, so an override written INSIDE a
+ * `catchUnknownSigner` wins over the wrapper's own frame: the deferral guarantee is
+ * about the AMBIENT policy, not about an override the same script deliberately asked
+ * for. See `work/notes/observations/decisions-per-call-ask-override-and-deferral-precedence-2026-08-11.md`.
  */
 
 import {UnknownSignerError} from '@rocketh/core';
 import type {UnknownSignerErrorData} from '@rocketh/core';
 import {postfixBigIntReplacer} from '@rocketh/core/json';
-import type {Environment} from '@rocketh/core/types';
+import type {Environment, UnknownSignerPolicy} from '@rocketh/core/types';
 
 /**
  * What a caught unknown signer gives you back: the transaction to execute
@@ -160,18 +180,92 @@ function isUnknownSignerError(err: unknown): err is {data: UnknownSignerErrorDat
 	return typeof candidate.data === 'object' && candidate.data !== null && 'from' in (candidate.data as object);
 }
 
-function assertIsThunk(action: unknown): asserts action is () => unknown {
+/**
+ * The thunk guard, shared by both wrappers because they diverge from v1 for the same
+ * reason. `callShape` is the corrected call the message shows, so a caller is told how
+ * to fix the function they actually used rather than a sibling of it.
+ */
+function assertIsThunk(action: unknown, wrapperName: string, callShape: string): asserts action is () => unknown {
 	if (typeof action === 'function') return;
 	const isThenable =
 		typeof action === 'object' && action !== null && typeof (action as {then?: unknown}).then === 'function';
 	throw new Error(
 		isThenable
-			? `@rocketh/unknown-signer: catchUnknownSigner takes a FUNCTION, not a promise. The promise you passed has ` +
+			? `@rocketh/unknown-signer: ${wrapperName} takes a FUNCTION, not a promise. The promise you passed has ` +
 					`already started running, so there is no moment left at which to establish the unknown-signer policy for it. ` +
-					`Wrap the call in an arrow function: catchUnknownSigner(env)(() => execute(...)).`
-			: `@rocketh/unknown-signer: catchUnknownSigner takes a FUNCTION returning a promise, but received ` +
-					`${typeof action}. Wrap the call in an arrow function: catchUnknownSigner(env)(() => execute(...)).`,
+					`Wrap the call in an arrow function: ${callShape}.`
+			: `@rocketh/unknown-signer: ${wrapperName} takes a FUNCTION returning a promise, but received ` +
+					`${typeof action}. Wrap the call in an arrow function: ${callShape}.`,
 	);
+}
+
+/**
+ * Run `action` with `policy` in force, and pop the frame again whatever happens.
+ *
+ * The SINGLE push/pop site of this package, so the two public wrappers cannot drift
+ * into different scoping rules. The pop is in a `finally`: an action that throws (the
+ * deferral itself does) must not strand its frame on the stack, or the rest of the run
+ * would silently inherit a policy nobody asked for.
+ */
+async function runUnderPolicyFrame<T>(
+	env: Environment,
+	policy: UnknownSignerPolicy,
+	action: () => Promise<T> | T,
+): Promise<T> {
+	env.pushUnknownSignerPolicy({policy});
+	try {
+		return await action();
+	} finally {
+		env.popUnknownSignerPolicy();
+	}
+}
+
+export type WithUnknownSignerPolicyFunction = <T>(
+	policy: UnknownSignerPolicy,
+	action: UnknownSignerAction<T>,
+) => Promise<T>;
+
+/**
+ * Choose the unknown-signer policy for ONE action, overriding the run's own
+ * (`onUnknownSigner`, itself resolved as run parameter > chain config > `'auto'`).
+ *
+ * ```typescript
+ * import {withUnknownSignerPolicy} from '@rocketh/unknown-signer';
+ *
+ * // on a fork whose run-level policy is 'throw': rehearse the interactive flow, once
+ * const receipt = await withUnknownSignerPolicy(env)('ask', () =>
+ *   execute(env)(proxy, {account: 'safeOwner', functionName: 'upgradeTo', args: [next.address]}),
+ * );
+ * ```
+ *
+ * It is the SAME mechanism `catchUnknownSigner` uses — a policy frame pushed on the
+ * environment for the duration of the action — so the precedence is one rule rather
+ * than two: the innermost frame wins, and with no frame the run's policy applies.
+ * Whatever the action returns is handed back, and whatever it throws propagates (a
+ * deferral under `'throw'` therefore throws `UnknownSignerError`, catchable by
+ * wrapping this in `catchUnknownSigner`).
+ *
+ * CAPABILITY IS A CEILING, NOT A DEFAULT (ADR 0007). Asking for `'ask'` here can only
+ * choose among what the run can already do: where the run cannot ask a human for text
+ * (`env.canPromptForText()` is false — CI, a non-TTY shell, the browser) it degrades
+ * to `'throw'` and nobody is prompted. A script that hardcodes the override therefore
+ * still runs, un-hangable, in CI.
+ *
+ * WHAT IT DOES NOT DO: it never turns a SIGNABLE account into a throw, and never
+ * defeats impersonation. The policy is read only inside the seam's `unsignable`
+ * branch, so a `local` / `node` / `impersonated` account broadcasts identically inside
+ * this scope (ADR 0006).
+ *
+ * The action is a THUNK, for the same reason `catchUnknownSigner`'s is: a promise has
+ * already started before the frame could be pushed, so accepting one would silently
+ * not apply the override.
+ */
+export function withUnknownSignerPolicy(env: Environment): WithUnknownSignerPolicyFunction {
+	return async <T>(policy: UnknownSignerPolicy, action: UnknownSignerAction<T>): Promise<T> => {
+		// Guard BEFORE the frame is pushed, so a rejected call shape cannot leak a frame.
+		assertIsThunk(action, 'withUnknownSignerPolicy', "withUnknownSignerPolicy(env)('ask', () => execute(...))");
+		return runUnderPolicyFrame(env, policy, action);
+	};
 }
 
 /**
@@ -193,13 +287,15 @@ export function catchUnknownSigner(env: Environment): CatchUnknownSignerFunction
 		options?: CatchUnknownSignerOptions,
 	): Promise<CaughtUnknownSignerTransaction | null> => {
 		// Guard BEFORE the frame is pushed, so a rejected call shape cannot leak a frame.
-		assertIsThunk(action);
+		assertIsThunk(action, 'catchUnknownSigner', 'catchUnknownSigner(env)(() => execute(...))');
 
 		const log = options?.log ?? true;
 
-		env.pushUnknownSignerPolicy({policy: 'throw'});
 		try {
-			await action();
+			// The frame is what makes the guarantee below hold: the wrapped action takes the
+			//  throw path whatever the run's ambient policy is, so it never pops a prompt at a
+			//  user who already said they would execute the transaction themselves.
+			await runUnderPolicyFrame(env, 'throw', action);
 		} catch (err) {
 			if (!isUnknownSignerError(err)) {
 				throw err;
@@ -211,8 +307,6 @@ export function catchUnknownSigner(env: Environment): CatchUnknownSignerFunction
 			// Exactly v1's return: the four keys, always present, `value` stringified, and
 			//  no `contract` (which exists only to enrich the message above).
 			return {from, to, value: stringifyValue(value), data};
-		} finally {
-			env.popUnknownSignerPolicy();
 		}
 		return null;
 	};

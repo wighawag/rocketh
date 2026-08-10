@@ -2,6 +2,8 @@
 
 `catchUnknownSigner` for rocketh: wrap a privileged call whose `from` is an account rocketh cannot sign for (a Safe multisig, a hardware wallet left unplugged, an air-gapped or governance key) and get back the exact transaction to execute out-of-band instead of halting the run. This is hardhat-deploy v1's helper, with one deliberate call-shape divergence.
 
+The package also exports `withUnknownSignerPolicy`, which chooses the unknown-signer policy for ONE call (see below).
+
 ```typescript
 import {catchUnknownSigner} from '@rocketh/unknown-signer';
 import {execute} from '@rocketh/read-execute';
@@ -43,9 +45,26 @@ The error unwinds the wrapped action, so the FIRST unsignable transaction inside
 
 There is no unsigned-transactions file and no other side effect, exactly as in v1. Idempotency comes from on-chain state alone: execute the deferred transaction on your Safe, re-run your idempotent script, and its on-chain state check skips the completed step.
 
+## Choosing the policy for one call
+
+The run-level policy (`onUnknownSigner`, resolved as run parameter > chain config > the default `'auto'`) decides what happens when a `from` is unsignable. `withUnknownSignerPolicy` overrides it for a single action:
+
+```typescript
+import {withUnknownSignerPolicy} from '@rocketh/unknown-signer';
+
+// on a fork whose run-level policy is 'throw': rehearse the interactive flow, once
+const receipt = await withUnknownSignerPolicy(env)('ask', () =>
+	execute(env)(proxy, {account: 'safeOwner', functionName: 'upgradeTo', args: [newImplementation.address]}),
+);
+```
+
+It returns whatever the action returned and propagates whatever it threw, so wrapping it in `catchUnknownSigner` still defers as usual. The action is a thunk for the same reason as above. It is the SAME policy frame `catchUnknownSigner` pushes, so the rule is one rule: the innermost override wins, and with none the run's policy applies.
+
+**Capability is a ceiling, not a default.** Asking for `'ask'` here only chooses among what the run can already do: where the run cannot ask a human for text (CI, a non-TTY shell, the browser) it degrades to `'throw'` and nobody is prompted, so a script that hardcodes the override still runs, un-hangable, in CI.
+
 ## It does not defeat impersonation
 
-The policy frame this wrapper pushes forces the `throw` path over the interactive `ask` path that ships later. It never overrides impersonation: an account the node can sign for, including one `autoImpersonate` took on, is signable and still broadcasts inside the wrapper. To exercise the unknown-signer path on a fork, set `autoImpersonate: false` for the run. See `docs/adr/0006-unknown-signer-seam-and-orthogonal-autoimpersonate.md`.
+The policy frame these wrappers push forces the `throw` path over the interactive `ask` path. It never overrides impersonation: an account the node can sign for, including one `autoImpersonate` took on, is signable and still broadcasts inside the wrapper. To exercise the unknown-signer path on a fork, set `autoImpersonate: false` for the run. See `docs/adr/0006-unknown-signer-seam-and-orthogonal-autoimpersonate.md`.
 
 ## Worked examples
 
