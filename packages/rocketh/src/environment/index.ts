@@ -48,6 +48,18 @@ function wait(numSeconds: number): Promise<void> {
 	});
 }
 
+/**
+ * How many rounds a hash PASTED at the interactive unknown-signer prompt gets to become
+ * KNOWN to this node before the run gives up on it.
+ *
+ * It bounds only the "this node has never heard of that hash" case (a typo, a hash from
+ * another chain), never the wait for MINING: a transaction the node knows is waited for
+ * like any other. The wall-clock length is the run's own `pollingInterval` times this,
+ * so a chain configured to poll slowly stretches the grace period exactly as it
+ * stretches every other wait, and a test that polls fast is fast.
+ */
+export const PASTED_TRANSACTION_LOOKUP_ROUNDS = 10;
+
 function displayTransaction(transaction: EIP1193Transaction) {
 	if ('maxFeePerGas' in transaction) {
 		return `(type ${transaction.type}, maxFeePerGas: ${BigInt(
@@ -522,6 +534,18 @@ export async function createEnvironment<
 		return typeof promptExecutor?.promptText === 'function';
 	}
 
+	/**
+	 * Receipts already fetched for a hash the USER pasted at the interactive
+	 * unknown-signer prompt, handed to the pipeline that waits for that same hash next.
+	 *
+	 * The resolver has to have the receipt BEFORE anything is saved (that is what lets a
+	 * failed or unknown transaction leave no state behind), while `savePendingExecution` /
+	 * `savePendingDeployment` then wait for the very same hash. Without this the user
+	 * watches two waits for one transaction. Entries are consumed on read, so a hash
+	 * pasted twice is looked up twice rather than resolving from a stale receipt.
+	 */
+	const pastedTransactionReceipts = new Map<`0x${string}`, EIP1193TransactionReceipt>();
+
 	function pushUnknownSignerPolicy(frame: UnknownSignerPolicyFrame): void {
 		unknownSignerPolicyStack.push(frame);
 	}
@@ -822,6 +846,14 @@ export async function createEnvironment<
 				message = message.replaceAll('{transaction}', '(tx not found)');
 			}
 		}
+		const alreadyFetched = pastedTransactionReceipts.get(hash);
+		if (alreadyFetched) {
+			// Already waited for, right after it was pasted. The message is still shown (the
+			// run should say what it is doing) but nothing is polled a second time.
+			pastedTransactionReceipts.delete(hash);
+			spin(message).succeed();
+			return alreadyFetched;
+		}
 		const spinner = spin(message);
 		let receipt: EIP1193TransactionReceipt;
 		try {
@@ -1061,17 +1093,19 @@ export async function createEnvironment<
 					throw unknownSignerError;
 				}
 
-				// The RECEIPT's own invariants are the correctness backbone; there is no bespoke
-				// verification layer, and deliberately NO attempt to decode a MultiSend/Timelock
-				// payload or to match `to`/`data` (the accepted residual risk, documented under
-				// "Handling unknown signers"). Checked BEFORE anything is saved or tracked, so a
-				// failed transaction leaves no state behind at all.
-				await requireSuccessfulExecutedTransaction(answer.hash, unknownSignerError);
+				// The transaction has to be FOUND on this network and have SUCCEEDED before the
+				// run records anything: checked BEFORE anything is saved or tracked, so a failed,
+				// or simply non-existent, transaction leaves no state behind at all.
+				const receipt = await waitForPastedTransaction(answer.hash, unknownSignerError);
 
 				// The tracker only records hashes it OBSERVES on `eth_sendTransaction` /
 				// `eth_sendRawTransaction`, so a transaction executed elsewhere would be invisible
 				// to it and gas reporting (which iterates this list) would silently omit it.
 				provider.transactionHashes.push(answer.hash);
+
+				// Hand the receipt to the pipeline about to wait for this same hash, so the user
+				// does not watch two waits for one transaction.
+				pastedTransactionReceipts.set(answer.hash, receipt);
 
 				// Returning the hash lets the SAME pipeline a normal broadcast uses take over
 				// (`savePendingExecution` / `savePendingDeployment` → `eth_getTransactionByHash`
@@ -1134,21 +1168,63 @@ export async function createEnvironment<
 	}
 
 	/**
-	 * The receipt invariant shared by every interactively-resolved transaction: it must
-	 * have SUCCEEDED. A pasted hash is a claim ("I executed this"), and the only thing
-	 * that can check the claim without trusting the user is the chain.
+	 * Turn a hash the user PASTED into a receipt this run may act on, or fail loudly.
 	 *
-	 * Fails LOUDLY, naming BOTH the transaction rocketh needed executed and the hash
-	 * that was pasted, because those are the two things needed to work out what went
-	 * wrong. Nothing is saved and nothing is tracked when it fires: it runs before both.
+	 * Two things can be wrong with a pasted hash, and they need different treatment:
+	 *
+	 * - THIS NODE HAS NEVER HEARD OF IT (pasted from the wrong chain or the wrong tab, or
+	 *   a typo that is still 64 hex characters). The lookup is BOUNDED
+	 *   ({@link PASTED_TRANSACTION_LOOKUP_ROUNDS} rounds at the run's own polling
+	 *   interval, enough for a just-broadcast transaction to reach this node) and then
+	 *   gives up, naming the hash as not found. Polling for it for ever would park the
+	 *   run behind a spinner with Ctrl-C as the only exit.
+	 * - IT EXISTS BUT HAS NOT SUCCEEDED (yet). Once the node knows the transaction, the
+	 *   wait for its receipt is the ORDINARY unbounded one any transaction rocketh sends
+	 *   itself gets, confirmations included: a Safe execution can legitimately take a
+	 *   while to mine. The receipt's own status is then the correctness backbone: there
+	 *   is no bespoke verification layer, and deliberately no attempt to decode a
+	 *   MultiSend/Timelock payload or to match `to`/`data` (the accepted residual risk,
+	 *   documented under "Handling unknown signers").
+	 *
+	 * Both failures name BOTH the transaction rocketh needed executed and the hash that
+	 * was pasted, because those are the two things needed to work out what went wrong.
+	 * Nothing is saved and nothing is tracked when either fires: this runs before both.
 	 */
-	async function requireSuccessfulExecutedTransaction(
+	async function waitForPastedTransaction(
 		hash: `0x${string}`,
 		unknownSignerError: UnknownSignerError,
-	): Promise<void> {
+	): Promise<EIP1193TransactionReceipt> {
+		const lookupSpinner = spin(`  - Looking for the transaction you pasted:\n      ${hash}`);
+		let transaction: EIP1193Transaction | null = null;
+		for (let round = 1; !transaction; round++) {
+			try {
+				transaction = await provider.request({
+					method: 'eth_getTransactionByHash',
+					params: [hash],
+				});
+			} catch (e) {
+				logger.debug(`could not look up the pasted transaction ${hash}: ${e}`);
+			}
+			if (!transaction) {
+				if (round >= PASTED_TRANSACTION_LOOKUP_ROUNDS) {
+					lookupSpinner.fail();
+					throw new Error(
+						`The transaction you pasted (${hash}) was not found on this network: after ` +
+							`${PASTED_TRANSACTION_LOOKUP_ROUNDS} attempts the node still does not know it. Check you ` +
+							`pasted the hash of a transaction executed on this very network. Nothing was saved.\n` +
+							`The transaction that still needs executing:\n${unknownSignerError.message}`,
+					);
+				}
+				await wait(resolvedExecutionParams.pollingInterval);
+			}
+		}
+		lookupSpinner.succeed();
+
 		const receipt = await waitForTransaction(hash, {
-			message: `  - Checking the transaction you pasted:\n      {hash}`,
+			transaction,
+			message: `  - Waiting for the transaction you pasted:\n      {hash}`,
 		});
+
 		let succeeded = false;
 		try {
 			succeeded = receipt.status !== undefined && BigInt(receipt.status) === 1n;
@@ -1164,6 +1240,7 @@ export async function createEnvironment<
 					`The transaction that still needs executing:\n${unknownSignerError.message}`,
 			);
 		}
+		return receipt;
 	}
 
 	async function broadcastExecution(

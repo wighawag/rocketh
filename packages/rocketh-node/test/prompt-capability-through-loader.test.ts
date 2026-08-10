@@ -1,4 +1,4 @@
-import {describe, it, expect} from 'vitest';
+import {describe, it, expect, afterEach} from 'vitest';
 import os from 'node:os';
 import path from 'node:path';
 import type {EIP1193ProviderWithoutEvents} from 'eip-1193';
@@ -13,7 +13,9 @@ import {setupEnvironmentFromFiles} from '../src/index.js';
  * the run parameters, that meant a hardhat user could never be interactive, silently
  * and with no way to opt in (ADR 0007). This drives that exact path (with an explicit
  * config, so no `rocketh.ts` on disk is needed) and asserts the capability is there BY
- * DEFAULT, because `@rocketh/node` supplies its own prompt on it.
+ * DEFAULT on a run with a terminal, because `@rocketh/node` supplies its own prompt on
+ * it, and ABSENT without one, which is what keeps a hardhat-deploy run in CI on the
+ * throw path.
  */
 
 const GENESIS_HASH = '0x0000000000000000000000000000000000000000000000000000000000000042';
@@ -50,13 +52,45 @@ const executionParams = {
 	saveDeployments: false,
 } as const;
 
+/**
+ * The loader builds `@rocketh/node`'s prompt itself, so what stdin looks like at that
+ * moment decides the capability. The test process's own stdin is not a terminal, so
+ * both directions are driven by setting the flag the runtime reads.
+ */
+function pretendStdinIsATTY(isTTY: boolean | undefined) {
+	(process.stdin as {isTTY?: boolean}).isTTY = isTTY as boolean;
+}
+
+const realStdinIsTTY = process.stdin.isTTY;
+
 describe('@rocketh/node - text-prompt capability through the loader', () => {
+	afterEach(() => {
+		pretendStdinIsATTY(realStdinIsTTY);
+	});
+
 	it('gives the environment the capability by default on the hardhat-deploy path', async () => {
+		pretendStdinIsATTY(true);
 		const {loadEnvironmentFromFilesWithConfig} = setupEnvironmentFromFiles({});
 
 		const env = await loadEnvironmentFromFilesWithConfig({...executionParams}, config);
 
 		expect(env.canPromptForText()).toBe(true);
+	});
+
+	/**
+	 * THE CI CASE, and the reason the gate is in the RUNTIME rather than in
+	 * `canPromptForText()`: a hardhat-deploy run whose stdin is not a terminal gets NO
+	 * text ability, so the unknown-signer policy degrades to `throw` rather than pausing
+	 * on a prompt nobody can answer (`prompts` would never settle, see
+	 * `docs/spikes/ask-policy-interactive-resolver/prompts-non-tty-behaviour.md`).
+	 */
+	it('withholds the capability when stdin is not a TTY, so CI degrades instead of prompting', async () => {
+		pretendStdinIsATTY(false);
+		const {loadEnvironmentFromFilesWithConfig} = setupEnvironmentFromFiles({});
+
+		const env = await loadEnvironmentFromFilesWithConfig({...executionParams}, config);
+
+		expect(env.canPromptForText()).toBe(false);
 	});
 
 	it('lets a caller-supplied prompt override the default (a capability-less one degrades)', async () => {
@@ -68,6 +102,7 @@ describe('@rocketh/node - text-prompt capability through the loader', () => {
 			},
 			exit() {},
 		};
+		pretendStdinIsATTY(true);
 		const {loadEnvironmentFromFilesWithConfig} = setupEnvironmentFromFiles({});
 
 		const env = await loadEnvironmentFromFilesWithConfig({...executionParams, promptExecutor: confirmOnly}, config);

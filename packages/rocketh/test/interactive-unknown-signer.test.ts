@@ -1,7 +1,7 @@
 import {describe, it, expect, vi} from 'vitest';
 
 import {resolveConfig, getChainIdForEnvironment, resolveExecutionParams} from '../src/executor/index.js';
-import {createEnvironment} from '../src/environment/index.js';
+import {createEnvironment, PASTED_TRANSACTION_LOOKUP_ROUNDS} from '../src/environment/index.js';
 import {privateKey} from '@rocketh/signer';
 import {UnknownSignerError} from '@rocketh/core';
 import type {
@@ -66,8 +66,14 @@ function createMockProvider(options?: {
 	accounts?: string[];
 	/** Per-hash receipt overrides, e.g. a reverted status for the pasted hash. */
 	receipts?: Record<string, Record<string, unknown>>;
+	/** Hashes this node has never heard of: no transaction and no receipt, ever. */
+	unknownHashes?: string[];
+	/** Hashes the node knows but has not mined yet: no receipt for the first N asks. */
+	pendingReceiptRounds?: Record<string, number>;
 }): {provider: EIP1193ProviderWithoutEvents; calls: Call[]} {
 	const calls: Call[] = [];
+	const unknownHashes = new Set((options?.unknownHashes ?? []).map((h) => h.toLowerCase()));
+	const pendingRoundsLeft: Record<string, number> = {...options?.pendingReceiptRounds};
 	const provider = {
 		request: (async (args: {method: string; params?: unknown}) => {
 			calls.push({method: args.method, params: args.params});
@@ -87,10 +93,20 @@ function createMockProvider(options?: {
 					return SENT_TX_HASH;
 				case 'eth_getTransactionByHash': {
 					const hash = (args.params as string[])[0];
+					if (unknownHashes.has(hash.toLowerCase())) {
+						return null;
+					}
 					return {hash, nonce: '0x3', from: SAFE_ADDRESS, gasPrice: '0x1', type: '0x0'};
 				}
 				case 'eth_getTransactionReceipt': {
 					const hash = (args.params as string[])[0];
+					if (unknownHashes.has(hash.toLowerCase())) {
+						return null;
+					}
+					if (pendingRoundsLeft[hash] > 0) {
+						pendingRoundsLeft[hash]--;
+						return null;
+					}
 					return successReceipt(hash, options?.receipts?.[hash]);
 				}
 				case 'eth_blockNumber':
@@ -186,8 +202,15 @@ async function buildEnvironment(options: {
 	promptExecutor?: PromptExecutor;
 	saveDeployments?: boolean;
 	receipts?: Record<string, Record<string, unknown>>;
+	unknownHashes?: string[];
+	pendingReceiptRounds?: Record<string, number>;
 }) {
-	const {provider, calls} = createMockProvider({accounts: options.nodeAccounts, receipts: options.receipts});
+	const {provider, calls} = createMockProvider({
+		accounts: options.nodeAccounts,
+		receipts: options.receipts,
+		unknownHashes: options.unknownHashes,
+		pendingReceiptRounds: options.pendingReceiptRounds,
+	});
 	const {store, writes, deletes} = createInMemoryStore();
 	const config = resolveConfig({
 		accounts: options.accounts,
@@ -224,6 +247,12 @@ function safeTransaction(from: `0x${string}`) {
 }
 
 const sendMethods = ['eth_sendTransaction', 'eth_sendRawTransaction'];
+
+/**
+ * The bound is expressed in LOOKUP rounds, and one round is one `eth_getTransactionByHash`,
+ * so this is how many times a hash the node does not know can be asked about at most.
+ */
+const MAX_LOOKUPS_FOR_AN_UNKNOWN_HASH = PASTED_TRANSACTION_LOOKUP_ROUNDS;
 
 describe('interactive resolver - capability decides whether `auto` and `ask` prompt', () => {
 	/**
@@ -584,6 +613,112 @@ describe('interactive resolver - receipt invariants', () => {
 		});
 
 		await expect(env.broadcastExecution(safeTransaction(env.resolveAccount('admin')))).rejects.toThrow(PASTED_HASH);
+	});
+
+	/**
+	 * A hash this node has NEVER heard of (pasted from the wrong chain, or a plausible
+	 * typo that is still 64 hex characters) must not park the run behind a spinner for
+	 * ever: the lookup is BOUNDED, and giving up names the hash as not found and hands
+	 * back the transaction that still needs executing. The test finishing at all is half
+	 * the assertion: an unbounded poll would hang it until the suite timeout.
+	 */
+	it('gives up on a hash this node has never seen, naming it as not found', async () => {
+		const promptExecutor = createScriptedPrompt([{value: PASTED_HASH}]);
+		const {env, calls, writes} = await buildEnvironment({
+			accounts: {admin: SAFE_ADDRESS},
+			onUnknownSigner: 'ask',
+			promptExecutor,
+			saveDeployments: true,
+			unknownHashes: [PASTED_HASH],
+		});
+
+		const from = env.resolveAccount('admin');
+		const error = await env.broadcastExecution(safeTransaction(from)).then(
+			() => undefined,
+			(e) => e,
+		);
+
+		expect(error).toBeInstanceOf(Error);
+		expect((error as Error).message).toContain(PASTED_HASH);
+		expect((error as Error).message).toContain('not found');
+		// the transaction that still needs executing comes back with it
+		expect((error as Error).message).toContain('0xdeadbeef');
+		// bounded: it stopped asking rather than polling for ever
+		expect(calls.filter((c) => c.method === 'eth_getTransactionByHash').length).toBeLessThanOrEqual(
+			MAX_LOOKUPS_FOR_AN_UNKNOWN_HASH,
+		);
+		// and it never got as far as waiting for a receipt
+		expect(calls.filter((c) => c.method === 'eth_getTransactionReceipt')).toEqual([]);
+		// and nothing was recorded for a transaction that does not exist
+		expect(writes.filter((w) => w.name === '.pending_transactions.json')).toEqual([]);
+		expect(env.network.provider.transactionHashes).toEqual([]);
+	});
+
+	/**
+	 * The bound is on "this node has never heard of it", NOT on mining: a transaction the
+	 * node knows but has not mined yet is waited for exactly like one rocketh sent
+	 * itself, so a slow Safe execution still resolves.
+	 */
+	it('keeps waiting for a known-but-unmined pasted transaction', async () => {
+		const promptExecutor = createScriptedPrompt([{value: PASTED_HASH}]);
+		const {env} = await buildEnvironment({
+			accounts: {admin: SAFE_ADDRESS},
+			onUnknownSigner: 'ask',
+			promptExecutor,
+			// more rounds than an unknown hash is ever given, so this can only pass by
+			// distinguishing "unknown" from "not mined yet"
+			pendingReceiptRounds: {[PASTED_HASH]: MAX_LOOKUPS_FOR_AN_UNKNOWN_HASH + 5},
+		});
+
+		const receipt = await env.broadcastExecution(safeTransaction(env.resolveAccount('admin')));
+
+		expect(receipt.transactionHash).toBe(PASTED_HASH);
+	});
+
+	/**
+	 * ONE transaction, ONE wait. The resolver has to fetch the receipt before anything is
+	 * saved (that is what makes the status check able to save nothing), and the pipeline
+	 * then waits for the same hash, so the receipt it already has is handed over instead
+	 * of being polled for a second time, which is what the user sees as two waits for one
+	 * transaction.
+	 */
+	it('does not wait for the same pasted transaction twice', async () => {
+		const promptExecutor = createScriptedPrompt([{value: PASTED_HASH}]);
+		const {env, calls} = await buildEnvironment({
+			accounts: {admin: SAFE_ADDRESS},
+			onUnknownSigner: 'ask',
+			promptExecutor,
+			saveDeployments: true,
+		});
+
+		const receipt = await env.broadcastExecution(safeTransaction(env.resolveAccount('admin')));
+
+		expect(receipt.transactionHash).toBe(PASTED_HASH);
+		expect(
+			calls.filter((c) => c.method === 'eth_getTransactionReceipt' && (c.params as string[])[0] === PASTED_HASH),
+		).toHaveLength(1);
+	});
+
+	/**
+	 * The handed-over receipt is consumed, not left behind: a SECOND transaction that
+	 * happens to be pasted with the same hash goes through its own lookup rather than
+	 * silently reusing a stale receipt.
+	 */
+	it('does not reuse a handed-over receipt for a later transaction', async () => {
+		const promptExecutor = createScriptedPrompt([{value: PASTED_HASH}, {value: PASTED_HASH}]);
+		const {env, calls} = await buildEnvironment({
+			accounts: {admin: SAFE_ADDRESS},
+			onUnknownSigner: 'ask',
+			promptExecutor,
+		});
+		const from = env.resolveAccount('admin');
+
+		await env.broadcastExecution(safeTransaction(from));
+		await env.broadcastExecution(safeTransaction(from));
+
+		expect(
+			calls.filter((c) => c.method === 'eth_getTransactionReceipt' && (c.params as string[])[0] === PASTED_HASH),
+		).toHaveLength(2);
 	});
 });
 

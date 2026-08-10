@@ -242,6 +242,10 @@ export async function readAndResolveConfig<
 }
 
 const deploymentStore = createFSDeploymentStore();
+// The CLI's prompt. Built once at import, which is fine here because a process's stdin does
+// not become a terminal later, and `createNodePromptExecutor` reads it to decide whether to
+// offer the text ability at all. The loader path below builds its own per call instead, so a
+// test can drive both sides of that gate.
 const promptExecutor = createNodePromptExecutor();
 const executor = createExecutor(deploymentStore, promptExecutor);
 
@@ -282,9 +286,15 @@ async function loadEnvironmentFromFilesWithSpecificConfig<
 	// is where the Node runtime's prompt has to join the run parameters, or a hardhat user
 	// would be pinned to the non-interactive policy forever (ADR 0007). A caller-supplied
 	// prompt wins, so a test (or an embedder with its own UI) can substitute one.
+	//
+	// Built PER CALL rather than reusing the module-level one, so the text ability reflects
+	// the stdin of the run being loaded rather than whatever stdin looked like when this
+	// module was first imported. `createNodePromptExecutor` supplies that ability only on a
+	// TTY, so a hardhat-deploy run in CI arrives with no text capability and the policy
+	// degrades to `throw` instead of asking a prompt nobody can answer.
 	return loadEnvironmentFromStore(
 		config,
-		{...executionParams, promptExecutor: executionParams.promptExecutor ?? promptExecutor},
+		{...executionParams, promptExecutor: executionParams.promptExecutor ?? createNodePromptExecutor()},
 		deploymentStore,
 	);
 }
