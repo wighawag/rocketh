@@ -1,3 +1,7 @@
+---
+needsAnswers: true
+---
+
 # Decisions taken while building `prompt-capability-on-the-environment` (2026-08-10)
 
 Recorded here because they are user-visible or touch other tasks, and the task body (which the runner moves) is not mine to edit. Each also carries a JSDoc at its choice site.
