@@ -72,7 +72,7 @@ pnpm test --coverage
 
 ## Test Utilities
 
-The integration tests use inline mock helpers rather than a separate test utilities package. Each integration test file includes its own helper functions to create mock environments and artifacts for testing purposes.
+The integration tests share the helpers in `@rocketh/test-utils`: `createTestEnvironment` (async, `await` it) builds a REAL rocketh environment against a mock EIP-1193 provider, and `createMockArtifact` builds artifacts. There is no fabricated environment stand-in to reach for.
 
 ## Integration Tests as Documentation
 

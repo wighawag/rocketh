@@ -1,11 +1,14 @@
 /**
  * `createTestEnvironment` — a REAL rocketh environment wired to a mock EIP-1193 provider.
  *
- * The existing {@link createMockEnvironment} in this package hand-builds an object literal
- * that reimplements `broadcastExecution` / `broadcastDeployment`, so no test that uses it
- * exercises `createEnvironment` in `packages/rocketh` (account resolution, `eth_accounts`,
- * auto-impersonation, the single `broadcastTransaction` choke point). This harness composes
- * the exported `resolveConfig` → `getChainIdForEnvironment` → `resolveExecutionParams` →
+ * This is the ONLY test-environment builder in this package. It replaced (and the legacy fake
+ * has since been removed) a hand-built `Environment` object literal that reimplemented
+ * `broadcastExecution` / `broadcastDeployment`, so no test using it ever exercised
+ * `createEnvironment` in `packages/rocketh` (account resolution, `eth_accounts`,
+ * auto-impersonation, the single `broadcastTransaction` choke point). Do NOT reintroduce a
+ * fabricated environment literal here; see the *test environment* vs *mock environment* entry
+ * in `CONTEXT.md`. This harness instead composes the exported
+ * `resolveConfig` → `getChainIdForEnvironment` → `resolveExecutionParams` →
  * `createEnvironment` pipeline just like production, against a canned mock provider.
  *
  * NON-GOAL: no stateful chain simulation. The provider answers the calls real setup and
