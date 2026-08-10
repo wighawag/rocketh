@@ -1,7 +1,6 @@
 import 'tsx';
 import fs from 'node:fs';
 import path from 'node:path';
-import prompts from 'prompts';
 import {
 	type Environment,
 	type ExecutionParams,
@@ -14,7 +13,6 @@ import {
 	type ResolvedUserConfig,
 	type ConfigOverrides,
 	type UserConfig,
-	type PromptExecutor,
 	type ChainInfo,
 	type ChainUserConfig,
 	Chains,
@@ -32,6 +30,7 @@ import {
 import {enhanceEnvIfNeeded} from '@rocketh/core/environment';
 import {traverseMultipleDirectory} from '../utils/fs.js';
 import {createFSDeploymentStore} from '../environment/deployment-store.js';
+import {createNodePromptExecutor} from '../environment/prompt.js';
 import {logs} from 'named-logs';
 import {chainByCanonicalName, chainById} from '../environment/chains.js';
 
@@ -243,17 +242,7 @@ export async function readAndResolveConfig<
 }
 
 const deploymentStore = createFSDeploymentStore();
-const promptExecutor: PromptExecutor = {
-	async prompt(request: {type: 'confirm'; name: string; message: string}) {
-		const answer = await prompts<string>(request);
-		return {
-			proceed: answer.proceed,
-		};
-	},
-	exit() {
-		process.exit();
-	},
-};
+const promptExecutor = createNodePromptExecutor();
 const executor = createExecutor(deploymentStore, promptExecutor);
 
 // used by @rocketh/export, @rocketh/verifier, @rocketh/doc
@@ -289,7 +278,15 @@ async function loadEnvironmentFromFilesWithSpecificConfig<
 	executionParams: ExecutionParams<Extra>,
 	config: UserConfig<NamedAccounts, Data>,
 ): Promise<Environment<NamedAccounts, Data, UnknownDeployments>> {
-	return loadEnvironmentFromStore(config, executionParams, deploymentStore);
+	// This is the path hardhat-deploy takes, and it never goes through the executor — so this
+	// is where the Node runtime's prompt has to join the run parameters, or a hardhat user
+	// would be pinned to the non-interactive policy forever (ADR 0007). A caller-supplied
+	// prompt wins, so a test (or an embedder with its own UI) can substitute one.
+	return loadEnvironmentFromStore(
+		config,
+		{...executionParams, promptExecutor: executionParams.promptExecutor ?? promptExecutor},
+		deploymentStore,
+	);
 }
 
 // used by hardhat-deploy

@@ -15,6 +15,7 @@
 
 import {describe, it, expect, vi} from 'vitest';
 import type {EIP1193ProviderWithoutEvents} from 'eip-1193';
+import type {PromptExecutor} from '@rocketh/core/types';
 import {createEnvironment} from 'rocketh';
 
 import {createTestEnvironment, createMapDeploymentStore, createMockArtifact} from '../src/index.js';
@@ -357,6 +358,41 @@ describe('createTestEnvironment - generic passthrough', () => {
 			executionParams: {extra: {my: 'flag'} as any},
 		});
 		expect(env.extra).toEqual({my: 'flag'});
+	});
+
+	/**
+	 * The harness is the THIRD `createEnvironment` call site, and the text-prompt
+	 * capability rides the resolved run parameters (ADR 0007) — so injecting a prompt
+	 * needs NO harness API of its own, just the existing partial pass-through. A later
+	 * task drives the interactive path through this same route; if it ever finds itself
+	 * having to add a harness option, the plumbing regressed.
+	 */
+	it('executionParams.promptExecutor reaches the environment as a text-prompt capability', async () => {
+		const textCapable: PromptExecutor = {
+			async prompt() {
+				return {proceed: true};
+			},
+			async promptText() {
+				return {value: '0xdeadbeef'};
+			},
+			exit() {},
+		};
+		const capable = await createTestEnvironment({executionParams: {promptExecutor: textCapable}});
+		expect(capable.env.canPromptForText()).toBe(true);
+
+		// and a prompt WITHOUT the text ability (what `@rocketh/web` ships) is not a capability
+		const confirmOnly: PromptExecutor = {
+			async prompt() {
+				return {proceed: true};
+			},
+			exit() {},
+		};
+		const incapable = await createTestEnvironment({executionParams: {promptExecutor: confirmOnly}});
+		expect(incapable.env.canPromptForText()).toBe(false);
+
+		// the default harness environment carries no prompt at all
+		const bare = await createTestEnvironment();
+		expect(bare.env.canPromptForText()).toBe(false);
 	});
 });
 
