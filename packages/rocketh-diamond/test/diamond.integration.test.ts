@@ -7,12 +7,41 @@
  *
  * Note: These tests are primarily documentation examples. Full integration testing
  * would require a local blockchain node (like Anvil or Hardhat Network).
+ *
+ * They run against `createTestEnvironment` from @rocketh/test-utils, which builds a REAL
+ * rocketh environment (`createEnvironment` in `packages/rocketh`) against a mock EIP-1193
+ * provider. Every facet and the diamond proxy below therefore go through production's
+ * account resolution and its single `broadcastTransaction` choke point (facets through the
+ * create2 factory, since a facet defaults to `deterministic: true`); only the RPC answers
+ * are canned.
+ *
+ * Every case here builds a fresh environment under a fresh name, so `env.getOrNull(name)`
+ * in `diamond` is always null and every case takes the FRESH-deployment path: no
+ * `diamondCut` upgrade, no `facets()` loupe read, no `owner()` read. That is why no test
+ * mocks `eth_call`. A case that needed those answers would be an upgrade test, which is
+ * separate work.
  */
 
 import {describe, it, expect} from 'vitest';
 import {diamond} from '../src/index.js';
-import {createMockEnvironment} from '@rocketh/test-utils';
-import {createMockArtifact, createExampleArtifact} from '@rocketh/test-utils';
+import {createMockArtifact, createExampleArtifact, createTestEnvironment} from '@rocketh/test-utils';
+
+/**
+ * Named accounts in the real `UserConfig.accounts` shape, declared as bare addresses;
+ * `nodeAccounts` says the node actually HOLDS them (`eth_accounts`), so they are signable
+ * and every facet + the diamond proxy broadcast through `eth_sendTransaction`.
+ */
+const NAMED_ACCOUNTS = {
+	deployer: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
+	user1: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
+	user2: '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC',
+} as const;
+const NODE_ACCOUNTS = Object.values(NAMED_ACCOUNTS) as `0x${string}`[];
+
+/** The environment these tests deploy from: three named accounts the node holds. */
+function createEnv() {
+	return createTestEnvironment({accounts: NAMED_ACCOUNTS, nodeAccounts: NODE_ACCOUNTS});
+}
 
 describe('@rocketh/diamond - Integration Tests', () => {
 	describe('Basic Diamond Deployment', () => {
@@ -49,7 +78,7 @@ describe('@rocketh/diamond - Integration Tests', () => {
 			 * });
 			 * ```
 			 */
-			const {env} = createMockEnvironment();
+			const {env} = await createEnv();
 			const _diamond = diamond(env);
 
 			const customFacet = createMockArtifact('MyFacet', [
@@ -81,6 +110,24 @@ describe('@rocketh/diamond - Integration Tests', () => {
 
 			expect(deployment).toBeDefined();
 			expect(deployment.address).toBeDefined();
+
+			// What this pins: the custom facet plus the three default facets are four DISTINCT
+			//  create2 contracts (a facet defaults to `deterministic: true`, so each address is the
+			//  create2 address computed from its own bytecode, which the environment prefers over
+			//  the receipt), and the diamond itself is a SEPARATE, RECEIPT-DERIVED proxy in front of
+			//  them (deployed non-deterministically here, since no `deterministicSalt` is given).
+			//  So this is a shape assertion about the deployment graph the fresh path builds, not a
+			//  guard against a single-address receipt; it replaces a `toBeDefined()`-only case that
+			//  never checked the graph at all.
+			const facetAddresses = (deployment.facets ?? []).map((f) => f.facetAddress.toLowerCase());
+			expect(facetAddresses.length).toBe(4);
+			expect(new Set(facetAddresses).size).toBe(4);
+			expect(facetAddresses).toContain(env.get('MyFacet').address.toLowerCase());
+			expect(facetAddresses).toContain(env.get('_DefaultDiamondCutFacet').address.toLowerCase());
+			expect(facetAddresses).toContain(env.get('_DefaultDiamondOwnershipFacet').address.toLowerCase());
+			expect(facetAddresses).toContain(env.get('_DefaultDiamondLoupeFacet').address.toLowerCase());
+			expect(deployment.address).toBe(env.get('MyDiamond_DiamondProxy').address);
+			expect(facetAddresses).not.toContain(deployment.address.toLowerCase());
 		});
 
 		it('should demonstrate diamond with custom owner', async () => {
@@ -108,7 +155,7 @@ describe('@rocketh/diamond - Integration Tests', () => {
 			 * });
 			 * ```
 			 */
-			const {env} = createMockEnvironment();
+			const {env} = await createEnv();
 			const _diamond = diamond(env);
 
 			const customFacet = createMockArtifact('OwnedFacet');
@@ -162,7 +209,7 @@ describe('@rocketh/diamond - Integration Tests', () => {
 			 * });
 			 * ```
 			 */
-			const {env} = createMockEnvironment();
+			const {env} = await createEnv();
 			const _diamond = diamond(env);
 
 			const initFacet = createMockArtifact('InitFacet', [
@@ -236,7 +283,7 @@ describe('@rocketh/diamond - Integration Tests', () => {
 			 * });
 			 * ```
 			 */
-			const {env} = createMockEnvironment();
+			const {env} = await createEnv();
 			const _diamond = diamond(env);
 
 			const facet1 = createExampleArtifact('UserFacet', 0);
@@ -297,7 +344,7 @@ describe('@rocketh/diamond - Integration Tests', () => {
 			 * });
 			 * ```
 			 */
-			const {env} = createMockEnvironment();
+			const {env} = await createEnv();
 			const _diamond = diamond(env);
 
 			const facetWithArgs = createMockArtifact('FacetWithArgs', [
@@ -362,7 +409,7 @@ describe('@rocketh/diamond - Integration Tests', () => {
 			 * });
 			 * ```
 			 */
-			const {env} = createMockEnvironment();
+			const {env} = await createEnv();
 			const _diamond = diamond(env);
 
 			const facet = createMockArtifact('DeterministicFacet');
@@ -417,7 +464,7 @@ describe('@rocketh/diamond - Integration Tests', () => {
 			 * });
 			 * ```
 			 */
-			const {env} = createMockEnvironment();
+			const {env} = await createEnv();
 			const _diamond = diamond(env);
 
 			const facet = createMockArtifact('NoCutFacet');
@@ -451,7 +498,7 @@ describe('@rocketh/diamond - Integration Tests', () => {
 			 * The deterministic salt cannot be zero bytes32, as this
 			 * would lead to collisions when deploying multiple diamonds.
 			 */
-			const {env} = createMockEnvironment();
+			const {env} = await createEnv();
 			const _diamond = diamond(env);
 
 			const facet = createMockArtifact('ZeroSaltFacet');
