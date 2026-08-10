@@ -49,10 +49,14 @@
 		"@rocketh/core": "workspace:*"
 	},
 	"devDependencies": {
+		"@rocketh/deploy": "workspace:*",
+		"@rocketh/proxy": "workspace:*",
+		"@rocketh/read-execute": "workspace:*",
 		"@rocketh/test-utils": "workspace:*",
 		"as-soon": "^0.1.6",
 		"rimraf": "^6.1.3",
 		"typescript": "^6.0.3",
+		"viem": "^2.48.2",
 		"vitest": "^4.1.10"
 	},
 	"scripts": {
