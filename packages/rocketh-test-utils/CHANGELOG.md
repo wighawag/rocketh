@@ -1,5 +1,13 @@
 # @rocketh/test-utils
 
+## 0.2.7
+
+### Patch Changes
+
+- 09ea46d: Fix "cannot get signer" for named accounts declared with a private key, a signer protocol, or a checksummed address. `addressSigners` is now keyed by a lowercased address at both write sites and at the leftover-account filter, matching every reader (which already lowercased). `resolveAccountOrUndefined` now normalises like `resolveAccount`, so both resolvers agree. Address values exposed by `namedAccounts`/`unnamedAccounts` are unchanged.
+- Updated dependencies [09ea46d]
+  - @rocketh/core@0.19.7
+
 ## 0.2.6
 
 ### Patch Changes
