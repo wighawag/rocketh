@@ -3,6 +3,7 @@ title: review-gate non-blocking nits for 'unknown-signer-integration-scenarios' 
 date: 2026-08-10
 status: open
 reviewOf: unknown-signer-integration-scenarios
+needsAnswers: true
 ---
 
 ## Non-blocking review findings
