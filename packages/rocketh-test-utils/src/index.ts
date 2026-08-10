@@ -2,8 +2,8 @@
  * @rocketh/test-utils
  *
  * Test utilities for rocketh packages. Provides the `createTestEnvironment` harness
- * (a REAL rocketh environment wired to a mock EIP-1193 provider), plus mock providers
- * and mock artifacts for testing deployment scenarios.
+ * (a REAL rocketh environment wired to a mock EIP-1193 provider), plus mock providers,
+ * mock artifacts and a mock prompt for testing deployment scenarios.
  */
 
 import type {Abi, Artifact} from '@rocketh/core/types';
@@ -336,3 +336,13 @@ export {
 	type TestEnvironmentResult,
 	type InternalTestEnvironment,
 } from './test-environment.js';
+
+export {
+	createMockPromptExecutor,
+	type CreateMockPromptExecutorOptions,
+	type MockPromptExecutor,
+	type MockPromptRequest,
+	type MockConfirmPromptRequest,
+	type MockTextPromptRequest,
+	type MockTextAnswer,
+} from './mock-prompt.js';

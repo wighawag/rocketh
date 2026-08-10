@@ -74,6 +74,8 @@ pnpm test --coverage
 
 The integration tests share the helpers in `@rocketh/test-utils`: `createTestEnvironment` (async, `await` it) builds a REAL rocketh environment against a mock EIP-1193 provider, and `createMockArtifact` builds artifacts. There is no fabricated environment stand-in to reach for.
 
+To drive the INTERACTIVE unknown-signer path (`onUnknownSigner: 'ask'`) without a TTY, inject `createMockPromptExecutor` through the harness's run-parameter pass-through: `executionParams: {onUnknownSigner: 'ask', promptExecutor: createMockPromptExecutor({textAnswers: [PASTED_HASH]})}`. Scripted answers are consumed in order (a `'0x…'` hash continues the run, `'cannot sign'` defers it), every request is recorded on `requests` / `textRequests` so a test can assert what the human was asked — or that nobody was asked at all — and calling it with no answers gives the capability-absent shape (no `promptText`) that makes `'ask'` degrade to `'throw'`. See `packages/rocketh-unknown-signer/test/interactive-prompt.integration.test.ts`.
+
 ## Integration Tests as Documentation
 
 Integration tests in this project are designed to serve as executable documentation. Each test scenario includes:
