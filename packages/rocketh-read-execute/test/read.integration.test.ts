@@ -3,11 +3,17 @@
  *
  * These tests demonstrate the retry mechanism for handling AbiDecodingZeroDataError
  * when contract calls return zero data temporarily.
+ *
+ * They run against `createTestEnvironment`, a REAL rocketh environment wired to a mock
+ * EIP-1193 provider, so the retry budget read below is the one production resolves from
+ * config (`env.context.retry`), and the deployment lookup the retry depends on is the
+ * real `env.save` / `fromAddressToNamedABIOrNull` pair. A read needs no account, so no
+ * named accounts are declared.
  */
 
 import {describe, it, expect} from 'vitest';
 import {read, readByName} from '../src/index.js';
-import {createMockEnvironment, createMockArtifact} from '@rocketh/test-utils';
+import {createTestEnvironment, createMockArtifact} from '@rocketh/test-utils';
 
 describe('@rocketh/read-execute - Integration Tests', () => {
 	describe('Read with Retry', () => {
@@ -16,7 +22,7 @@ describe('@rocketh/read-execute - Integration Tests', () => {
 			 * Example: Basic read operation succeeds without retry
 			 * When the contract returns valid data immediately, no retry is needed.
 			 */
-			const {env, provider} = createMockEnvironment();
+			const {env, provider} = await createTestEnvironment();
 			const _read = read(env);
 
 			provider.setResponse('eth_call', '0x000000000000000000000000000000000000000000000000000000000000002a');
@@ -41,7 +47,7 @@ describe('@rocketh/read-execute - Integration Tests', () => {
 			 * This demonstrates the retry mechanism when a contract call
 			 * temporarily returns zero data.
 			 */
-			const {env, provider} = createMockEnvironment();
+			const {env, provider} = await createTestEnvironment();
 			const _read = read(env);
 
 			let callCount = 0;
@@ -71,7 +77,7 @@ describe('@rocketh/read-execute - Integration Tests', () => {
 			 * The retry mechanism checks for deployment existence.
 			 * If the deployment doesn't exist in the environment, the error is thrown immediately.
 			 */
-			const {env, provider} = createMockEnvironment();
+			const {env, provider} = await createTestEnvironment();
 			const _read = read(env);
 
 			provider.setResponse('eth_call', '0x');
@@ -94,7 +100,7 @@ describe('@rocketh/read-execute - Integration Tests', () => {
 			 * When the contract consistently returns zero data, the retry
 			 * mechanism will eventually give up after maxRetries attempts.
 			 */
-			const {env, provider} = createMockEnvironment();
+			const {env, provider} = await createTestEnvironment();
 			const _read = read(env);
 
 			let callCount = 0;
@@ -124,10 +130,18 @@ describe('@rocketh/read-execute - Integration Tests', () => {
 			 * Example: Custom retry configuration
 			 * Users can configure retry behavior globally in their config.
 			 * This test demonstrates custom maxRetries value.
+			 *
+			 * Usage in real scenario:
+			 * ```typescript
+			 * // rocketh.config.ts
+			 * export const config = {
+			 *   retry: {maxRetries: 2, delay: 100},
+			 * } as const satisfies UserConfig;
+			 * ```
 			 */
-			const {env, provider} = createMockEnvironment();
-
-			(env.context as any).retry = {maxRetries: 2, delay: 100};
+			// the retry budget is read from the resolved config, so it is set the way a user
+			//  sets it rather than by poking `env.context` after the fact
+			const {env, provider} = await createTestEnvironment({config: {retry: {maxRetries: 2, delay: 100}}});
 
 			const _read = read(env);
 
@@ -159,7 +173,7 @@ describe('@rocketh/read-execute - Integration Tests', () => {
 			 * Only AbiDecodingZeroDataError triggers the retry mechanism.
 			 * Other errors are thrown immediately.
 			 */
-			const {env, provider} = createMockEnvironment();
+			const {env, provider} = await createTestEnvironment();
 			const _read = read(env);
 
 			provider.setResponse('eth_call', () => {
@@ -186,7 +200,7 @@ describe('@rocketh/read-execute - Integration Tests', () => {
 			 * Since readByName calls read internally, it benefits from the same
 			 * retry mechanism without any additional configuration.
 			 */
-			const {env, provider} = createMockEnvironment();
+			const {env, provider} = await createTestEnvironment();
 
 			let callCount = 0;
 			provider.setResponse('eth_call', () => {

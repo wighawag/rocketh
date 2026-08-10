@@ -9,20 +9,26 @@
  * - Deploying a contract WITHOUT a `value` (the field must be omitted, not
  *   sent as `0x0`/`0xundefined`/`0xNaN`).
  *
- * The mock provider records every request, so we inspect the params sent to
- * `eth_sendTransaction` to assert on the dispatched transaction.
+ * They run against `createTestEnvironment`, a REAL rocketh environment wired to a mock
+ * EIP-1193 provider, so the transaction inspected below is the one production's single
+ * `broadcastTransaction` choke point actually dispatched. The mock provider records every
+ * request, so we inspect the params sent to `eth_sendTransaction` to assert on the
+ * dispatched transaction.
  */
 
 import {describe, it, expect} from 'vitest';
 import {deploy} from '../src/index.js';
-import {createMockEnvironment, createMockArtifact} from '@rocketh/test-utils';
+import {createTestEnvironment, createMockArtifact} from '@rocketh/test-utils';
+
+/** An address the mock node lists in `eth_accounts`, so the deployer is signable. */
+const DEPLOYER = '0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266' as `0x${string}`;
 
 /**
  * Returns the transaction object passed to the last `eth_sendTransaction`
  * (or `eth_sendRawTransaction`) call recorded by the mock provider.
  */
 function getLastDispatchedTransaction(
-	provider: ReturnType<typeof createMockEnvironment>['provider'],
+	provider: Awaited<ReturnType<typeof createTestEnvironment>>['provider'],
 ): Record<string, unknown> | undefined {
 	const requests = provider.getRequests();
 	const sendRequest = [...requests]
@@ -51,7 +57,10 @@ describe('@rocketh/deploy - Deployment value', () => {
 			 * });
 			 * ```
 			 */
-			const {env, provider} = createMockEnvironment();
+			const {env, provider} = await createTestEnvironment({
+				accounts: {deployer: DEPLOYER},
+				nodeAccounts: [DEPLOYER],
+			});
 			const _deploy = deploy(env);
 
 			const artifact = createMockArtifact('FundedContract');
@@ -89,7 +98,10 @@ describe('@rocketh/deploy - Deployment value', () => {
 			 * });
 			 * ```
 			 */
-			const {env, provider} = createMockEnvironment();
+			const {env, provider} = await createTestEnvironment({
+				accounts: {deployer: DEPLOYER},
+				nodeAccounts: [DEPLOYER],
+			});
 			const _deploy = deploy(env);
 
 			const artifact = createMockArtifact('PlainContract');
