@@ -1,3 +1,7 @@
+---
+needsAnswers: true
+---
+
 # `deploy`'s pre-guard never fired for a NAMED bare-address Safe
 
 2026-08-10, noticed while landing `deploy-unsignable-deployer-reaches-seam`.
