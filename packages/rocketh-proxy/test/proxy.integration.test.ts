@@ -7,11 +7,41 @@
  *
  * Note: These tests are primarily documentation examples. Full integration testing
  * would require a local blockchain node (like Anvil or Hardhat Network).
+ *
+ * They run against `createTestEnvironment` from @rocketh/test-utils, which builds a REAL
+ * rocketh environment (`createEnvironment` in `packages/rocketh`) against a mock EIP-1193
+ * provider. So each proxy deployment below genuinely resolves accounts and broadcasts the
+ * implementation and the proxy through the single `broadcastTransaction` choke point, and
+ * the two deployments get DISTINCT addresses (the mock receipt is per-transaction); only
+ * the RPC answers are canned.
+ *
+ * Every case here builds a fresh environment under a fresh name, so `env.getOrNull(name)`
+ * in `deployViaProxy` is always null and every case takes the FRESH-deployment path. The
+ * upgrade branch (and its `eth_getStorageAt` implementation-slot / owner-slot reads) is
+ * therefore never reached, which is why no test mocks those calls. If you add a case that
+ * needs them, you are adding an upgrade test, which is separate work.
  */
 
 import {describe, it, expect} from 'vitest';
 import {deployViaProxy} from '../src/index.js';
-import {createMockArtifact, createMockEnvironment} from '@rocketh/test-utils';
+import {createMockArtifact, createTestEnvironment} from '@rocketh/test-utils';
+
+/**
+ * Named accounts in the real `UserConfig.accounts` shape, declared as bare addresses;
+ * `nodeAccounts` says the node actually HOLDS them (`eth_accounts`), so they are signable
+ * and broadcast through `eth_sendTransaction`.
+ */
+const NAMED_ACCOUNTS = {
+	deployer: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
+	user1: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
+	user2: '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC',
+} as const;
+const NODE_ACCOUNTS = Object.values(NAMED_ACCOUNTS) as `0x${string}`[];
+
+/** The environment these tests deploy from: three named accounts the node holds. */
+function createEnv() {
+	return createTestEnvironment({accounts: NAMED_ACCOUNTS, nodeAccounts: NODE_ACCOUNTS});
+}
 
 describe('@rocketh/proxy - Integration Tests', () => {
 	describe('ERC173 Proxy Pattern', () => {
@@ -38,7 +68,7 @@ describe('@rocketh/proxy - Integration Tests', () => {
 			 * });
 			 * ```
 			 */
-			const {env} = createMockEnvironment();
+			const {env} = await createEnv();
 			const _deployViaProxy = deployViaProxy(env);
 
 			const artifact = createMockArtifact('OwnableLogic');
@@ -51,6 +81,18 @@ describe('@rocketh/proxy - Integration Tests', () => {
 
 			expect(deployment).toBeDefined();
 			expect(deployment.address).toBeDefined();
+
+			// A proxy deployment is TWO contracts: the implementation and the proxy in front of
+			//  it, saved under `<name>_Implementation` and `<name>_Proxy`, with `<name>` itself
+			//  pointing at the proxy and carrying the merged ABI. Asserted here because the
+			//  addresses now come from the real broadcast path (one receipt per transaction), so
+			//  a harness that reported a single contract address for every transaction would
+			//  collapse the two onto one address without any test noticing.
+			const implementation = env.get('OwnableContract_Implementation');
+			const proxy = env.get('OwnableContract_Proxy');
+			expect(implementation.address).not.toBe(proxy.address);
+			expect(deployment.address).toBe(proxy.address);
+			expect(deployment.abi.length).toBeGreaterThan(artifact.abi.length);
 		});
 
 		it('should demonstrate ERC173 proxy with custom owner', async () => {
@@ -72,7 +114,7 @@ describe('@rocketh/proxy - Integration Tests', () => {
 			 * });
 			 * ```
 			 */
-			const {env} = createMockEnvironment();
+			const {env} = await createEnv();
 			const _deployViaProxy = deployViaProxy(env);
 
 			const artifact = createMockArtifact('CustomOwnerLogic');
@@ -114,7 +156,7 @@ describe('@rocketh/proxy - Integration Tests', () => {
 			 * });
 			 * ```
 			 */
-			const {env} = createMockEnvironment();
+			const {env} = await createEnv();
 			const _deployViaProxy = deployViaProxy(env);
 
 			const artifact = createMockArtifact('InitableLogic', [
@@ -169,7 +211,7 @@ describe('@rocketh/proxy - Integration Tests', () => {
 			 * });
 			 * ```
 			 */
-			const {env} = createMockEnvironment();
+			const {env} = await createEnv();
 			const _deployViaProxy = deployViaProxy(env);
 
 			const artifact = createMockArtifact('UUPSLogic', [
@@ -230,7 +272,7 @@ describe('@rocketh/proxy - Integration Tests', () => {
 			 * ```
 			 */
 			// TODO
-			// const {env} = createMockEnvironment();
+			// const {env} = await createEnv();
 			// const _deployViaProxy = deployViaProxy(env);
 			// const artifact = createMockArtifact('TransparentLogic');
 			// const deployment = await _deployViaProxy(
@@ -266,7 +308,7 @@ describe('@rocketh/proxy - Integration Tests', () => {
 			 * ```
 			 */
 			// TODO
-			// const {env} = createMockEnvironment();
+			// const {env} = await createEnv();
 			// const _deployViaProxy = deployViaProxy(env);
 			// const artifact = createMockArtifact('OptimizedTransparentLogic');
 			// const deployment = await _deployViaProxy(
@@ -307,7 +349,7 @@ describe('@rocketh/proxy - Integration Tests', () => {
 			 * });
 			 * ```
 			 */
-			const {env} = createMockEnvironment();
+			const {env} = await createEnv();
 			const _deployViaProxy = deployViaProxy(env);
 
 			const artifact = createMockArtifact('DeterministicProxyLogic');
@@ -338,7 +380,7 @@ describe('@rocketh/proxy - Integration Tests', () => {
 			/**
 			 * Example: Error handling for missing account
 			 */
-			const {env} = createMockEnvironment();
+			const {env} = await createEnv();
 			const _deployViaProxy = deployViaProxy(env);
 
 			const artifact = createMockArtifact('NoAccountContract');
