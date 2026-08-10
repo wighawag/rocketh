@@ -2,6 +2,7 @@
 title: Two pending changesets will contradict the createMockEnvironment removal in one published CHANGELOG
 slug: changesets-contradict-on-test-utils-changelog-2026-08-10
 date: 2026-08-10
+needsAnswers: true
 ---
 
 # The next `@rocketh/test-utils` CHANGELOG will contradict itself
