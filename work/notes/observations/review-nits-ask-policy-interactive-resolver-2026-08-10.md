@@ -3,6 +3,7 @@ title: review-gate non-blocking nits for 'ask-policy-interactive-resolver' (Gate
 date: 2026-08-10
 status: open
 reviewOf: ask-policy-interactive-resolver
+needsAnswers: true
 ---
 
 ## Non-blocking review findings
