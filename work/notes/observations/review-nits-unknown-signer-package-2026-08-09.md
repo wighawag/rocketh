@@ -3,6 +3,7 @@ title: review-gate non-blocking nits for 'unknown-signer-package' (Gate 2 approv
 date: 2026-08-09
 status: open
 reviewOf: unknown-signer-package
+needsAnswers: true
 ---
 
 ## Non-blocking review findings
