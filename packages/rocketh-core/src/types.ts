@@ -351,6 +351,18 @@ export type ExecutionParams<Extra extends Record<string, unknown> = Record<strin
 	onUnknownSigner?: UnknownSignerPolicy;
 	autoMine?: boolean;
 	reset?: boolean;
+	/**
+	 * How this run may ask a human something. Carried HERE, on the run parameters,
+	 * rather than only on the executor, so it reaches the environment on every
+	 * construction path — including `loadEnvironmentFromStore`, which is how
+	 * hardhat-deploy gets an environment and where no executor is in scope (ADR 0007).
+	 * This is the road `autoImpersonate` already travels.
+	 *
+	 * A runtime that supplies one (`@rocketh/node`) may still be unable to ask for
+	 * free text, so what matters downstream is the per-CAPABILITY predicate
+	 * `env.canPromptForText()`, not the presence of this field.
+	 */
+	promptExecutor?: PromptExecutor;
 };
 
 export type {Abi, AbiConstructor, AbiError, AbiEvent, AbiFallback, AbiFunction, AbiReceive};
@@ -645,6 +657,8 @@ export type ResolvedExecutionParams<Extra extends Record<string, unknown> = Reco
 	readonly extra?: Extra;
 	readonly provider: EIP1193ProviderWithoutEvents;
 	readonly scripts: readonly string[];
+	/** Passed through verbatim from `ExecutionParams.promptExecutor` (see there). */
+	readonly promptExecutor?: PromptExecutor;
 };
 
 export type TransactionToBroadcast =
@@ -736,6 +750,17 @@ export interface Environment<
 	getOrNull<TAbi extends Abi>(name: string): Deployment<TAbi> | null;
 	fromAddressToNamedABI<TAbi extends Abi>(address: Address): {mergedABI: TAbi; names: string[]};
 	fromAddressToNamedABIOrNull<TAbi extends Abi>(address: Address): {mergedABI: TAbi; names: string[]} | null;
+	/**
+	 * Whether this run can ask a human for free TEXT (e.g. "paste the transaction
+	 * hash you executed on your Safe").
+	 *
+	 * Per-CAPABILITY, never per-executor: it is true only when the run's
+	 * `PromptExecutor` actually implements `promptText`. `@rocketh/web`'s prompt
+	 * exists but returns `{proceed: true}` without asking anyone, so presence proves
+	 * nothing (ADR 0007). Capability is a CEILING: a policy or a per-call override
+	 * may narrow what is done, but can never ask a human where this reports false.
+	 */
+	canPromptForText(): boolean;
 	showMessage(message: string): void;
 	showProgress(message?: string): ProgressIndicator;
 	resolveAccountOrUndefined(account: string | EIP1193Account): `0x${string}` | undefined;
@@ -804,7 +829,32 @@ export type ModuleObject<
 export type PromptAnswer = {
 	proceed: boolean;
 };
+
+/**
+ * What asking a human for free TEXT can yield: the text they typed, or the fact
+ * that they aborted (Ctrl-C, or a runtime that gave up). A caller must handle
+ * both; there is deliberately no "undefined means cancelled" convention, which is
+ * the shape that hides mistakes.
+ *
+ * This is a GENERIC text primitive, so it does not judge the text: an EMPTY string
+ * is a VALUE (`{value: ''}`), NOT a cancellation. Only the caller knows what its
+ * prompt makes sense to receive, so the caller VALIDATES: a resolver asking for a
+ * transaction hash must reject `''` (and anything else malformed) itself, and
+ * decide whether that means re-ask, abort or defer.
+ */
+export type TextPromptAnswer = {value: string} | {cancelled: true};
+
 export interface PromptExecutor {
 	prompt(request: {type: 'confirm'; name: string; message: string}): Promise<PromptAnswer>;
+	/**
+	 * Ask a human for free TEXT (e.g. "paste the transaction hash").
+	 *
+	 * OPTIONAL, and its ABSENCE IS the capability signal: a runtime that cannot
+	 * sensibly ask a human to type a hash (the browser) simply does not implement it
+	 * (ADR 0007). Never infer the ability from the mere presence of a
+	 * `PromptExecutor`: `@rocketh/web` ships one whose confirm auto-proceeds without
+	 * asking anyone. Check `env.canPromptForText()` instead.
+	 */
+	promptText?(request: {type: 'text'; name: string; message: string}): Promise<TextPromptAnswer>;
 	exit(): void;
 }

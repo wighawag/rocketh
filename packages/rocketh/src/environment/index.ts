@@ -508,6 +508,19 @@ export async function createEnvironment<
 	const unknownSignerPolicyStack = createUnknownSignerPolicyStack(
 		resolvedExecutionParams.environment.onUnknownSigner ?? 'auto',
 	);
+	// The prompt this run may ask a human with, if any. It rides the resolved run parameters so
+	// it is present on EVERY construction path, not just the one that goes through an executor
+	// (ADR 0007).
+	const promptExecutor = resolvedExecutionParams.promptExecutor;
+	/**
+	 * Per-CAPABILITY, never per-executor: a `PromptExecutor` can exist and still be unable to
+	 * ask a human for free text (`@rocketh/web`'s confirm returns `{proceed: true}` without
+	 * asking anyone), so the ABSENCE of `promptText` is what the answer is derived from.
+	 */
+	function canPromptForText(): boolean {
+		return typeof promptExecutor?.promptText === 'function';
+	}
+
 	function pushUnknownSignerPolicy(frame: UnknownSignerPolicyFrame): void {
 		unknownSignerPolicyStack.push(frame);
 	}
@@ -1265,6 +1278,7 @@ export async function createEnvironment<
 		broadcastDeployment,
 		pushUnknownSignerPolicy,
 		popUnknownSignerPolicy,
+		canPromptForText,
 		get,
 		getOrNull,
 		fromAddressToNamedABI,

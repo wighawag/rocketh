@@ -298,6 +298,12 @@ export function resolveExecutionParams<Extra extends Record<string, unknown> = R
 		provider,
 		scripts,
 		reset: executionParameters.reset || false,
+		// Passed through verbatim (by identity, no defaulting here): this single funnel is
+		// what makes the prompt reach EVERY `createEnvironment` caller, `loadEnvironmentFromStore`
+		// included, exactly as `autoImpersonate` above does (ADR 0007). Which runtime supplies a
+		// prompt, and whether that prompt can ask for free text, is decided by the adapter
+		// (`@rocketh/node` does, `@rocketh/web` deliberately does not).
+		promptExecutor: executionParameters.promptExecutor,
 	};
 }
 
@@ -405,9 +411,17 @@ export function createExecutor(deploymentStore: DeploymentStore, promptExecutor:
 			}
 		}
 
+		// The executor was handed a `PromptExecutor` at construction, so a run driven through it
+		// is interactive by default. Run parameters still WIN when they carry one (that is how a
+		// test injects a fake), and callers that resolved their parameters themselves before
+		// calling in (`@rocketh/node`, `@rocketh/web`) get the executor's prompt from here.
+		const executionParamsWithPrompt: ResolvedExecutionParams = resolvedExecutionParams.promptExecutor
+			? resolvedExecutionParams
+			: {...resolvedExecutionParams, promptExecutor};
+
 		const {internal, external} = await createEnvironment<NamedAccounts, Data, UnknownDeployments>(
 			userConfig,
-			resolvedExecutionParams,
+			executionParamsWithPrompt,
 			deploymentStore,
 		);
 
