@@ -55,3 +55,22 @@ Spec auto-tasking is effectively unavailable for any non-trivial spec here, incl
 ## Where the fix belongs
 
 Not in this repo — in `dorfl` (`../dorfl`, `packages/dorfl/src/`), around `tasker-review-loop.ts` + `review-verdict.ts`. Shape of the fix: get the unbounded full-file `edits` payload out of the same capped response as the verdict (emit edits to files, or one task per response, or a patch/verdict-first split), and make cap-truncation a named, distinguishable failure rather than an opaque parse error.
+
+## Update (2026-08-10): a second, related defect — `gc --ledger` reports the stale MIRROR as arbiter locks
+
+While clearing what that report called crash-orphaned locks, it turned out **none of them existed on the arbiter**.
+
+`dorfl gc --ledger` reported 6 locks "held on the arbiter", four of them labelled `STALE / crash-window orphan (reconcilable)` with a suggested `dorfl release-lock <item>` for each. Acting on that:
+
+- the first `release-lock` for each was REJECTED with `(delete) -> refs/dorfl/lock/<item> (stale info)`;
+- after `git fetch --prune origin '+refs/dorfl/lock/*:refs/dorfl/lock/*'`, the local refs were themselves pruned as absent upstream;
+- the retry reported `already absent on origin` for all four.
+
+So they were never on the arbiter. Checked directly, `git ls-remote origin 'refs/dorfl/lock/*'` returns **nothing**, while the hub mirror `~/.dorfl/repos/github-com/wighawag/rocketh.git` still holds 8 `refs/dorfl/lock/*` refs, including three whose locks were genuinely released on origin earlier the same session (`task-migrate-deploy-and-read-tests`, `task-migrate-proxy-diamond-tests`, `task-remove-legacy-mock-environment`).
+
+Two consequences:
+
+1. **The mirror never prunes `refs/dorfl/lock/*`**, so released locks accumulate there indefinitely.
+2. **`gc --ledger` (and by extension the operator's trust in `status`/`scan`) reads that stale mirror and presents it as arbiter truth**, inventing crash orphans that do not exist. This cost a real detour: a lock reported as `in flight` for `spec-tag-tracking-selective-reset` was deliberately preserved on the assumption its open PR #45 still held it, when in fact no such lock existed.
+
+This is the same class as the truncation defect above: the diagnostic misdescribes the failure and sends the operator at the wrong thing. Fix belongs in `../dorfl` alongside it — prune lock refs on mirror sync, and have the ledger report state its SOURCE (mirror vs arbiter) or read the arbiter directly for a report whose whole purpose is to name locks a human should delete.
