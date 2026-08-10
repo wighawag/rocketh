@@ -2,7 +2,6 @@
 title: Unknown Signer — Interactive resolver (pause + ask for tx hash)
 slug: unknown-signer-interactive
 taskedAfter: [unknown-signer-core]
-needsAnswers: true
 ---
 
 > Launch snapshot — records intent at creation, NOT maintained. Current truth: `docs/adr/` (decisions) + the code; remaining work: `work/tasks/ready/` tasks. (The technical-detail sections below are trimmed by `to-task` once the work is tasked — they move into tasks/ADRs and this spec settles to its durable framing: Problem / Solution / User Stories / Out of Scope.)
@@ -75,19 +74,12 @@ caller-provided extra details are required.
 
 ## Open questions
 
-One remaining, found by a spike on 2026-08-09 (the spike code was thrown away; its answers are
-in Implementation Decisions). The spike's other finding — how the prompt capability reaches the
-seam — was ANSWERED: hardhat must support `'ask'`, so the capability has to reach the
-environment on both construction paths. That decision is recorded in Implementation Decisions
-and materially widens this spec's scope, so read it before tasking.
-
-1. **`PromptExecutor` is confirm-only and must be widened.** It is
-   `prompt({type: 'confirm', name, message}) => {proceed: boolean}`. Pasting a tx hash needs a
-   text prompt returning a string, so this is an additive CORE type change plus a new
-   implementation in `@rocketh/node` (which uses `prompts`), not the pure reuse this spec
-   originally claimed. Confirm the widening is acceptable, and that the browser executor
-   (`@rocketh/web`) may legitimately not implement the text variant — in which case the
-   capability check must be per-CAPABILITY, not merely "is there a PromptExecutor?".
+None remaining. The spike's two findings (2026-08-09) are both ANSWERED by the maintainer
+(2026-08-10) and recorded in Implementation Decisions: how the prompt capability reaches the
+seam (hardhat must support `'ask'`, so it reaches the environment on every construction path),
+and the `PromptExecutor` widening (additive `promptText?`, per-CAPABILITY checking, with web
+deliberately opting out and reaching for impersonation instead). Both materially shape the
+tasks, so read Implementation Decisions before tasking.
 
 ## Autonomy notes
 
@@ -95,27 +87,87 @@ Ordered `taskedAfter: [unknown-signer-core]` because it extends the core seam
 (`onUnknownSigner`, the policy frame stack) and the `catchUnknownSigner` primitive. That
 ordering constraint is now SATISFIED: `unknown-signer-core` lives in `work/specs/tasked/`.
 
-Carries `needsAnswers: true` for the two questions below. They are plumbing decisions, not
-design doubts — the spec's central mechanic was verified by spike — but each changes the shape
-of the tasks, so answering them first is cheaper than discovering them mid-build. This is also
-the honest state: the sibling spec bounced once precisely because a seam was assumed rather
-than checked.
+`needsAnswers` was CLEARED on 2026-08-10: both plumbing questions are answered (see
+Implementation Decisions). They were never design doubts — the central mechanic was verified by
+spike — but each changed the shape of the tasks, so answering them first was cheaper than
+discovering them mid-build. This is also the honest state: the sibling spec bounced once
+precisely because a seam was assumed rather than checked, which is why every claim carried
+here now cites the file and line it was verified at.
 
 ## Implementation Decisions
 
 - **`'ask'` added to `onUnknownSigner`**; `'auto'` becomes capability-aware (ask if a text-capable
   prompt is available, else throw). Build on rocketh's existing `PromptExecutor` abstraction — no
-  raw enquirer, keeps it browser/CI-safe — but note it must be WIDENED, not merely reused: it is
-  confirm-only today (see Open questions).
+  raw enquirer, keeps it browser/CI-safe — but it must be WIDENED, not merely reused: it is
+  confirm-only today. The union is `UnknownSignerPolicy = 'throw' | 'auto'`
+  (`packages/rocketh-core/src/types.ts:604`), so `'ask'` is the third member; the frame type
+  `UnknownSignerPolicyFrame` (`:615`) is already an OBJECT specifically so this slice can carry
+  "what to do with a prompt's answer" without re-cutting the seam.
+
+- **DECIDED 2026-08-10 — widen `PromptExecutor` with an OPTIONAL `promptText?`, and check
+  PER-CAPABILITY (method presence), never "is a PromptExecutor present?".** Verified shape today
+  (`packages/rocketh-core/src/types.ts:805-810`): `PromptAnswer = {proceed: boolean}` and
+  `PromptExecutor { prompt(request: {type:'confirm'; name; message}): Promise<PromptAnswer>; exit(): void }`.
+  The agreed widening is additive:
+
+  ```ts
+  export type TextPromptAnswer = {value: string} | {cancelled: true};
+
+  export interface PromptExecutor {
+  	prompt(request: {type: 'confirm'; name: string; message: string}): Promise<PromptAnswer>;
+  	/** OPTIONAL. Absence IS the capability signal: this runtime cannot ask for free text. */
+  	promptText?(request: {type: 'text'; name: string; message: string}): Promise<TextPromptAnswer>;
+  	exit(): void;
+  }
+  ```
+
+  A SEPARATE optional method rather than widening `prompt`'s request union, for three reasons.
+  (1) It is purely additive: no existing implementation breaks. (2) The capability check becomes
+  the single honest predicate `typeof prompt?.promptText === 'function'` — no parallel
+  `capabilities` descriptor that can drift from reality. (3) It sidesteps a LIVE trap:
+  `@rocketh/node`'s implementation (`packages/rocketh-node/src/executor/index.ts:246-252`) does
+  `return {proceed: answer.proceed}`, reading `.proceed` UNCONDITIONALLY and ignoring
+  `request.name`, while `prompts` keys its answer object BY `request.name`. Both existing call
+  sites pass `name: 'proceed'` (`packages/rocketh/src/executor/index.ts:426`, `:437`), so it works
+  only by coincidence of naming — a text prompt named `txHash` would silently receive `undefined`.
+  A distinct method with its own return shape makes that class of bug unrepresentable. The node
+  implementation of `promptText` MUST key off `request.name`.
+
+- **DECIDED 2026-08-10 — deliver the capability on `ExecutionParams`, not as a new
+  `createEnvironment` positional.** `ExecutionParams`
+  (`packages/rocketh-core/src/types.ts:339-354`) already carries exactly this class of run-level
+  thing: `provider`, `autoImpersonate`, and `onUnknownSigner` itself. Add `prompt?: PromptExecutor`
+  there (and to `ResolvedExecutionParams`). This is the seam that makes the hardhat decision below
+  actually work, because `autoImpersonate` ALREADY travels this exact road to both construction
+  paths (resolved inside `resolveExecutionParams`,
+  `packages/rocketh/src/executor/index.ts:255-257`, which `loadEnvironmentFromStore` also calls) —
+  whereas the prompt is today a runtime object only `createExecutor` holds. Make the prompt ride
+  the road that already works instead of cutting a new one.
+
+- **CORRECTION to the "two callers" claim below: there are now THREE call sites of
+  `createEnvironment`**, because `test-env-harness` landed a fourth construction path after the
+  spike. Enumerated in full (do not re-derive from a grep):
+  `packages/rocketh/src/executor/index.ts:318` (inside `loadEnvironmentFromStore`, NO prompt in
+  scope), `packages/rocketh/src/executor/index.ts:408` (inside `createExecutor`'s
+  `resolveConfigAndExecuteDeployScriptModules`, prompt in scope), and
+  `packages/rocketh-test-utils/src/test-environment.ts:337` (the shared harness). The third is a
+  GIFT, not a burden: `createTestEnvironment` already accepts
+  `executionParams?: Partial<Omit<ExecutionParams, 'provider'>>`, so once the prompt lives on
+  `ExecutionParams`, **US7's injectable fake prompt needs ZERO new harness API**.
 - **HARDHAT MUST SUPPORT `'ask'`** (decided 2026-08-09). This is not a small detail: the prompt
   capability reaches the seam through `createExecutor` today, but the seam lives in
-  `createEnvironment`, and there are TWO callers of it — the one inside `createExecutor`, where a
-  prompt is in scope, and `loadEnvironmentFromStore`, where there is none. hardhat-deploy uses
-  the second, via `loadEnvironmentFromFiles`. So threading the capability through the executor
-  ALONE would silently leave hardhat users on `'throw'` forever. The capability must reach the
-  environment on BOTH paths, which makes this a change to how the environment is constructed
-  rather than a one-line addition to the executor. Design it as a capability the environment
-  carries, not one the executor owns.
+  `createEnvironment`, and the caller that hardhat uses has no prompt in scope. hardhat-deploy
+  reaches it through `loadEnvironmentFromStore`, via the chain
+  `packages/hardhat-deploy/src/helpers.ts:124` → `@rocketh/node`'s `loadEnvironmentFromFiles`
+  (`packages/rocketh-node/src/executor/index.ts:275`) → `loadEnvironmentFromFilesWithSpecificConfig`
+  (`:284`) → `loadEnvironmentFromStore` (`packages/rocketh/src/executor/index.ts:292`, `:304`) —
+  verified 2026-08-10. So threading the capability through the executor ALONE would silently leave
+  hardhat users on `'throw'` forever. The capability must reach the environment on EVERY
+  construction path (see the caller enumeration below — there are THREE, not two), which makes this
+  a change to how the environment is constructed rather than a one-line addition to the executor.
+  Design it as a capability the environment carries, not one the executor owns. `@rocketh/node`
+  should DEFAULT that capability to its own `prompts`-backed executor, which is what actually
+  delivers `'ask'` to hardhat users.
 - **Interactive resolver over the core seam**: on unsignable `from` under `'ask'`, present tx
   details; accept a tx hash → `eth_getTransactionByHash`/receipt → apply receipt-invariant
   checks → route through the SAME state-saving path as a normal broadcast
@@ -138,14 +190,59 @@ than checked.
   One consequence the spike surfaced: `TransactionHashTracker` only records hashes it sees on
   `eth_sendTransaction`/`eth_sendRawTransaction`, so an externally-executed tx is invisible to
   it, and `reportGasUse` (which iterates `provider.transactionHashes`) will silently omit it.
-  Decide whether the resolver should register the pasted hash with the tracker; it is a
-  one-line affordance, and omitting it is a small, quiet reporting hole.
+  **DECIDED 2026-08-10: the resolver REGISTERS the pasted hash with the tracker.** Verified: the
+  push happens only in those two branches
+  (`packages/rocketh-core/src/providers/TransactionHashTracker.ts:17`), `reportGasUse` iterates
+  `provider.transactionHashes` (`packages/rocketh/src/executor/index.ts:546`), and the
+  `TransactionHashTracker` type exposes `transactionHashes` as a MUTABLE array (`:25`), so this is
+  genuinely a one-liner. Rationale: a silently under-reported gas total in exactly the
+  governed-upgrade runs this feature exists for is not an acceptable quiet hole.
 - **Per-call/`catchUnknownSigner` override precedence** (reusing the core policy-override
   stack): per-call override may VARY the policy but only within environment capability — with
   no prompt available, `'ask'` degrades to `'throw'`. This keeps US2b working on forks (prompt
   injectable) and CI un-hangable.
 - **Injectable `PromptExecutor`** in `@rocketh/test-utils` returning a canned hash or
-  "cannot sign", so the interactive path is testable without a TTY.
+  "cannot sign", so the interactive path is testable without a TTY. Per the correction above this
+  needs no new harness API — it rides `createTestEnvironment`'s existing `executionParams`
+  pass-through.
+
+- **DECIDED 2026-08-10 (maintainer) — `@rocketh/web` does NOT implement `promptText`; the browser
+  answer is IMPERSONATION, not interactivity.** A browser cannot sensibly ask a user to paste a tx
+  hash, so web omits `promptText`, the per-capability check reports "no text capability", and
+  `'auto'` resolves to `'throw'` there. That is not a gap to apologise for, because a web user on a
+  FORK or dev node has a better route: **declare the unsignable addresses as NAMED accounts and
+  turn on `autoImpersonate`**, and the accounts are resolved BEFORE the seam so no policy is ever
+  consulted. Three points a tasker must carry, each verified:
+  - **Declaring them as NAMED accounts is MANDATORY, not merely convenient.** The candidate set is
+    `Object.values(namedAccounts).filter(needsImpersonationForRun)`
+    (`packages/rocketh/src/environment/index.ts:448`), and `needsImpersonationForRun` (`:441-447`)
+    admits an address iff its signer is `remote` AND it is absent from `eth_accounts`. So
+    `unnamedAccounts`, and a bare `from` on a call, are NEVER impersonated even with
+    `autoImpersonate: true`. A bare-address named account resolves to `remote` (`:423-427`), which
+    is exactly what qualifies.
+  - **This works only against a node implementing `hardhat_impersonateAccount`** — a fork or dev
+    node. `impersonateAccounts` swallows the failure BY DESIGN
+    (`packages/rocketh/src/environment/index.ts:93-99`, commented so the feature "works gracefully
+    with non-hardhat/anvil providers"), so against a real chain the account simply stays
+    `unsignable` and the run lands on `throw` + `catchUnknownSigner`. That is the correct outcome,
+    and it is why web still needs `'throw'` to be good.
+  - **`autoImpersonate` is RUN-level, not per-transaction.** It resolves once in
+    `resolveExecutionParams` (`packages/rocketh/src/executor/index.ts:255-257`) and is applied to
+    every candidate at environment construction. Per-transaction impersonation is a separate,
+    OUT-OF-SCOPE idea (`work/notes/ideas/per-call-autoimpersonate.md`). Do not design as if a
+    per-call knob exists.
+
+  Documentation consequence a task must cover: state the fork recipe explicitly, so "web cannot do
+  `'ask'`" is never read as "web is crippled".
+
+- **The silent impersonation failure needs a HINT in `UnknownSignerError`.** Because
+  `impersonateAccounts` swallows an unsupported-RPC failure silently (cited above), a user who
+  sets `autoImpersonate: true` against a node that does not support it gets NO signal — only an
+  `UnknownSignerError` later, with nothing saying impersonation was attempted and unsupported.
+  Given this project's standing invariant that the unwrapped throw is the PRIMARY deferral
+  workflow and the error MESSAGE is the deliverable (not a summary), the error should say so when
+  `autoImpersonate` was on but impersonation did not resolve the account. Small, and it belongs
+  with this slice.
 
 ## Testing Decisions
 
