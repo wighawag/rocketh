@@ -524,6 +524,23 @@ At the pause you have two answers:
 
 `catchUnknownSigner` always takes the throw path, whatever the ambient policy: a wrapped action never pops a prompt at you, because you already said you would handle the transaction yourself.
 
+#### Choosing the policy for ONE call (`withUnknownSignerPolicy`)
+
+The policy above applies to the whole run. `withUnknownSignerPolicy` overrides it for a single action — typically to REHEARSE the interactive flow on a fork before doing it on mainnet:
+
+```typescript
+import {withUnknownSignerPolicy} from '@rocketh/unknown-signer';
+
+// this one call pauses and asks, even though the run's policy is 'throw'
+const receipt = await withUnknownSignerPolicy(env)('ask', () =>
+	execute(env)(proxy, {account: 'safeOwner', functionName: 'upgradeTo', args: [newImplementation.address]}),
+);
+```
+
+It takes a function for the same reason `catchUnknownSigner` does, returns whatever the action returned, and propagates whatever it threw (so wrapping it in `catchUnknownSigner` still defers). Precedence is one rule: the innermost override wins, then the run parameter, then the chain config, then the default `'auto'`.
+
+The override chooses among what the run can do; it cannot exceed it. Asking for `'ask'` where the run cannot ask a human for text still takes the `throw` path and never prompts, so a script that hardcodes the override is still safe in CI. And since it is the same policy frame, it never turns a signable account into a throw and never defeats impersonation.
+
 A DEPLOYMENT from an unsignable `from` pauses and asks in exactly the same way, and is then held to a STRICTER standard than an execution, because it has an address to anchor on. The address rocketh records is never taken on trust from the hash you paste:
 
 - **an ordinary deployment** is recorded at the address the pasted transaction's OWN receipt reports as created;

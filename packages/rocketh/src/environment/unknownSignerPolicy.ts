@@ -5,9 +5,15 @@ import type {UnknownSignerPolicy, UnknownSignerPolicyFrame} from '@rocketh/core/
  *
  * The effective policy at the broadcast seam is `top-of-stack?.policy ?? resolvedGlobal`,
  * where the global comes from `onUnknownSigner` (execution param > chain config > `'auto'`).
- * A frame is pushed by a scoped wrapper (`catchUnknownSigner` in
- * `@rocketh/unknown-signer`) so its wrapped action reliably receives the error instead of
- * popping an interactive prompt at a user who already said they would handle it.
+ * A frame is pushed by a scoped wrapper in `@rocketh/unknown-signer`: `catchUnknownSigner`
+ * pushes `'throw'`, so its wrapped action reliably receives the error instead of popping an
+ * interactive prompt at a user who already said they would handle it, and
+ * `withUnknownSignerPolicy` pushes whatever policy the caller chose for one action. Both go
+ * through this one stack, so precedence is a single rule (innermost frame, else the
+ * resolved global) rather than one rule per wrapper. What a frame ASKS for is still bounded
+ * by capability: {@link resolveUnknownSignerBehaviour} degrades `'ask'` to `'throw'` where
+ * the run cannot reach a human, so an override can never make a run interactive that has no
+ * way to be.
  *
  * WHAT A FRAME DOES NOT DO: it never turns a signable account into a throw. The seam
  * consults this stack only INSIDE its `unsignable` branch, so a `local` / `node` /
