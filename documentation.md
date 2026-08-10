@@ -524,7 +524,14 @@ At the pause you have two answers:
 
 `catchUnknownSigner` always takes the throw path, whatever the ambient policy: a wrapped action never pops a prompt at you, because you already said you would handle the transaction yourself.
 
-A DEPLOYMENT from an unsignable `from` pauses and asks in exactly the same way today, and the same successful-status check applies to what you paste. What it does NOT do yet is verify the deployed address (recovering it from the receipt, or checking code at the expected address of a deterministic deployment), so a successful-but-unrelated hash would save a deployment record you should not trust. That verification is coming; until it lands, prefer the defer workflow above for deployments.
+A DEPLOYMENT from an unsignable `from` pauses and asks in exactly the same way, and is then held to a STRICTER standard than an execution, because it has an address to anchor on. The address rocketh records is never taken on trust from the hash you paste:
+
+- **an ordinary deployment** is recorded at the address the pasted transaction's OWN receipt reports as created;
+- **a deterministic (or factory) deployment**, whose address was computed from bytecode and salt before broadcast, is recorded at that expected address only once rocketh has seen CODE at it on-chain. It confirms by looking for the code, never by parsing the transaction, so it does not matter what wrapper your multisig executed it inside.
+
+Anything else FAILS, saving nothing: a receipt that reports no created contract (or the zero address), an expected address with no code at it, or a transaction that did not succeed. The error names the deployment, the hash you pasted and the transaction that still needs executing, so a wrong hash cannot quietly leave you with a deployment record pointing at an address holding nothing.
+
+This applies to the interactive path only. A deployment rocketh broadcast itself is unaffected and gains no new check: it sent that transaction, so there is nothing to distrust.
 
 ACCEPTED RESIDUAL RISK, stated rather than engineered around: for an EXECUTION, rocketh checks that the transaction you pasted succeeded, and nothing else. It does not decode MultiSend or Timelock payloads and does not try to match `to`/`data`, because a governed execution is routinely wrapped by the multisig into a different transaction shape. A successful-but-unrelated hash would therefore be accepted. This is the same trust boundary as hardhat-deploy v1 (where the run continued after you executed the transaction, with no check at all), only stricter, and it exists because an execution has no address to anchor on.
 

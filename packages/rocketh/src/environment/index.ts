@@ -60,6 +60,33 @@ function wait(numSeconds: number): Promise<void> {
  */
 export const PASTED_TRANSACTION_LOOKUP_ROUNDS = 10;
 
+/**
+ * WHAT PRODUCED the transaction reaching the broadcast choke point, stated by the funnel
+ * that is calling it.
+ *
+ * It is a DISCRIMINATED UNION and a REQUIRED parameter, not an optional bag, because the
+ * deployment invariants (an interactively-pasted hash must actually have deployed
+ * something) can only run when the choke point KNOWS it is looking at a deployment. Made
+ * optional, a future funnel could reach the seam without saying, and would silently skip
+ * those checks — the exact class of hole this exists to close. Required, the compiler asks
+ * the question. The two members are the two public funnels (`broadcastExecution`,
+ * `broadcastDeployment`), which are also the only callers: this stays a private closure's
+ * parameter with no exported surface to keep stable.
+ *
+ * `contract` (execution only) is the contract-call metadata used ONLY to enrich an
+ * `UnknownSignerError`; a deploy has no function to name. `expectedAddress` (deployment
+ * only) is the address a deterministic or factory deploy computed from bytecode and salt
+ * BEFORE broadcast, which `waitForDeploymentTransactionAndSave` already PREFERS over the
+ * receipt's contract address — so it is the address that would be recorded, and therefore
+ * the one that has to be confirmed on-chain.
+ */
+type BroadcastOrigin =
+	| {type: 'execution'; contract?: Omit<UnknownSignerContractCall, 'name'>}
+	| {type: 'deployment'; name: string; expectedAddress?: `0x${string}`};
+
+/** No contract ever lives here, so a receipt naming it created nothing. */
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
+
 function displayTransaction(transaction: EIP1193Transaction) {
 	if ('maxFeePerGas' in transaction) {
 		return `(type ${transaction.type}, maxFeePerGas: ${BigInt(
@@ -967,21 +994,23 @@ export async function createEnvironment<
 	 * `Environment` interface: it is reached only through `broadcastExecution` and
 	 * `broadcastDeployment`.
 	 *
-	 * `origin.contract` is the contract-call metadata of whatever call produced this
-	 * transaction, used ONLY to enrich an `UnknownSignerError`. It is THREADED down here
-	 * rather than caught-and-rethrown one level up in `broadcastExecution`, deliberately:
-	 * the error is then constructed ONCE, at the single site that already knows the
-	 * unsignable `from` and owns the message, so the stack points at the seam and there is
-	 * no second construction path to keep in sync. Catch-and-rethrow was the alternative;
-	 * it would have kept this signature narrower, but at the cost of rebuilding the error
-	 * (or mutating `error.data` after the fact) in every public funnel that ever wants to
-	 * enrich it, and of a second place where the message shape is decided. Widening a
-	 * private closure's parameter list is the cheaper of the two, since it has no exported
-	 * surface to keep stable.
+	 * `origin` says which funnel produced this transaction (see {@link BroadcastOrigin}).
+	 * Its `contract` metadata is used ONLY to enrich an `UnknownSignerError`, and is
+	 * THREADED down here rather than caught-and-rethrown one level up in
+	 * `broadcastExecution`, deliberately: the error is then constructed ONCE, at the single
+	 * site that already knows the unsignable `from` and owns the message, so the stack
+	 * points at the seam and there is no second construction path to keep in sync.
+	 * Catch-and-rethrow was the alternative; it would have kept this signature narrower, but
+	 * at the cost of rebuilding the error (or mutating `error.data` after the fact) in every
+	 * public funnel that ever wants to enrich it, and of a second place where the message
+	 * shape is decided. Widening a private closure's parameter list is the cheaper of the
+	 * two, since it has no exported surface to keep stable. The deployment member carries
+	 * `expectedAddress` for the same reason: the interactive path's address invariants have
+	 * to run HERE, before anything is saved or tracked, and this is where that fact arrives.
 	 */
 	async function broadcastTransaction(
 		transaction: TransactionToBroadcast,
-		origin?: {contract?: Omit<UnknownSignerContractCall, 'name'>},
+		origin: BroadcastOrigin,
 	): Promise<`0x${string}`> {
 		if (transaction.type === 'raw') {
 			const txHash = await env.network.provider.request({
@@ -1027,7 +1056,7 @@ export async function createEnvironment<
 				// its implementation record commonly share one); the first is used, since this
 				// is presentation-only enrichment and the unambiguous `to` is printed anyway.
 				let contract: UnknownSignerContractCall | undefined;
-				if (origin?.contract) {
+				if (origin.type === 'execution' && origin.contract) {
 					let name: string | undefined;
 					if (transactionData.to) {
 						try {
@@ -1066,16 +1095,10 @@ export async function createEnvironment<
 				// INTERACTIVE RESOLUTION. `promptText` is present because `canPromptForText()`
 				// just said so; the non-null assertion is that check, one line up.
 				//
-				// DECISION — the resolver is NOT gated to executions. It lives at the shared
-				// choke point, so a DEPLOYMENT from an unsignable `from` resolves interactively
-				// too and inherits the successful-status invariant below. What it does NOT yet
-				// get is deployment-specific address verification (code at the expected address
-				// for a deterministic deploy); that is `interactive-deployment-address-recovery`,
-				// which extends this same point. Gating deployments to `throw` here was the
-				// alternative: rejected because it would need a new "which funnel am I in?" flag
-				// threaded through the choke point purely to ship a behaviour the very next
-				// change removes, and because a user who asked for `'ask'` would be surprised to
-				// find half their transactions still throwing.
+				// The resolver is NOT gated to executions: it lives at the shared choke point, so
+				// a DEPLOYMENT from an unsignable `from` resolves interactively too, inherits the
+				// successful-status invariant below, and then gets the ADDRESS invariants that an
+				// execution cannot have (`requireDeployedContract`).
 				const answer = await askForExecutedTransactionHash({
 					promptText: promptExecutor!.promptText!,
 					// Routed through `env` (not the local closure) so a caller/test that replaces
@@ -1097,6 +1120,13 @@ export async function createEnvironment<
 				// run records anything: checked BEFORE anything is saved or tracked, so a failed,
 				// or simply non-existent, transaction leaves no state behind at all.
 				const receipt = await waitForPastedTransaction(answer.hash, unknownSignerError);
+
+				// A DEPLOYMENT is held to a stricter standard than an execution, because it HAS an
+				// address to anchor on. Checked here, at the same point as the status and before
+				// anything is saved or tracked, so a hash that deployed nothing leaves no state.
+				if (origin.type === 'deployment') {
+					await requireDeployedContract(origin, receipt, answer.hash, unknownSignerError);
+				}
 
 				// The tracker only records hashes it OBSERVES on `eth_sendTransaction` /
 				// `eth_sendRawTransaction`, so a transaction executed elsewhere would be invisible
@@ -1243,11 +1273,86 @@ export async function createEnvironment<
 		return receipt;
 	}
 
+	/**
+	 * Prove that the transaction the user PASTED actually deployed the contract about to be
+	 * recorded, or fail loudly having recorded nothing.
+	 *
+	 * This is what an execution cannot have. An execution has no address to anchor on, so
+	 * its accepted residual risk is that a successful-but-unrelated hash is taken at face
+	 * value; a deployment DOES have one, so it is held to the stricter standard.
+	 *
+	 * Which address is checked follows which address would be SAVED
+	 * (`waitForDeploymentTransactionAndSave` computes it as `expectedAddress || receipt.contractAddress`):
+	 *
+	 * - EXPECTED ADDRESS KNOWN (a deterministic or factory deploy: the address was computed
+	 *   from bytecode and salt before broadcast, and is preferred over the receipt's). The
+	 *   confirmation is CODE AT THAT ADDRESS — deliberately not transaction parsing, which
+	 *   would have to decode whatever wrapper the multisig executed, and not the receipt's
+	 *   `contractAddress` either, which for a factory deploy names the factory call rather
+	 *   than the contract created inside it. Note the receipt's own contract address is then
+	 *   IGNORED even when present: the address that gets recorded is the expected one, so it
+	 *   is the only one worth confirming.
+	 * - NO EXPECTED ADDRESS (an ordinary deploy). The receipt's `contractAddress` IS the
+	 *   answer, and it has to be usable: present AND not the zero address. The zero address
+	 *   is called out because it is truthy, so every `if (!contractAddress)` waves it
+	 *   through, and it is exactly what a receipt that created no contract tends to report.
+	 *
+	 * NORMAL BROADCASTS DO NOT COME HERE, on purpose: rocketh sent those transactions
+	 * itself, so there is nothing to distrust, and a code check on every deterministic
+	 * deploy would be a NEW failure mode (a node lagging a block) for a path this task did
+	 * not set out to change.
+	 */
+	async function requireDeployedContract(
+		deployment: {name: string; expectedAddress?: `0x${string}`},
+		receipt: EIP1193TransactionReceipt,
+		hash: `0x${string}`,
+		unknownSignerError: UnknownSignerError,
+	): Promise<void> {
+		// Both failures name the DEPLOYMENT, the pasted HASH and the transaction that still
+		// needs executing, because those are what it takes to work out what went wrong.
+		const stillNeeded = `Nothing was saved.\nThe transaction that still needs executing:\n${unknownSignerError.message}`;
+
+		const expectedAddress = deployment.expectedAddress;
+		if (expectedAddress) {
+			let code: EIP1193DATA;
+			try {
+				code = await provider.request({method: 'eth_getCode', params: [expectedAddress, 'latest']});
+			} catch (e) {
+				// Unable to CONFIRM is not the same as confirmed, and this path exists precisely so
+				// that an unconfirmed deployment is never recorded.
+				throw new Error(
+					`Could not check whether ${deployment.name} was deployed at its expected address ${expectedAddress} ` +
+						`after you pasted ${hash}: the node failed to answer eth_getCode (${e}). ${stillNeeded}`,
+				);
+			}
+			if (!code || code === '0x') {
+				throw new Error(
+					`The transaction you pasted (${hash}) did not deploy ${deployment.name}: there is no code at ` +
+						`${expectedAddress}, the address this deployment was computed to land at. rocketh confirms a ` +
+						`deployment with a known address by looking for code at it, so it will not record ${deployment.name} ` +
+						`at an address holding nothing. Check you pasted the hash of the transaction that deploys ` +
+						`${deployment.name}. ${stillNeeded}`,
+				);
+			}
+			return;
+		}
+
+		const contractAddress = receipt.contractAddress;
+		if (!contractAddress || contractAddress.toLowerCase() === ZERO_ADDRESS) {
+			throw new Error(
+				`The transaction you pasted (${hash}) created no contract, so rocketh cannot record ${deployment.name}: ` +
+					`its receipt reports ${contractAddress ? `the zero address (${contractAddress})` : 'no contract address'} ` +
+					`as the contract it created. Check you pasted the hash of the transaction that deploys ` +
+					`${deployment.name}. ${stillNeeded}`,
+			);
+		}
+	}
+
 	async function broadcastExecution(
 		transaction: TransactionToBroadcast,
 		options?: {message?: string; contract?: Omit<UnknownSignerContractCall, 'name'>},
 	): Promise<EIP1193TransactionReceipt> {
-		const txHash = await broadcastTransaction(transaction, {contract: options?.contract});
+		const txHash = await broadcastTransaction(transaction, {type: 'execution', contract: options?.contract});
 
 		const from = transaction.type == 'raw' ? transaction.from : transaction.data.from;
 
@@ -1300,7 +1405,11 @@ export async function createEnvironment<
 		partialDeployment: PartialDeployment<TAbi>,
 		options?: {message?: string; expectedAddress?: `0x${string}`},
 	): Promise<Deployment<TAbi>> {
-		const txHash = await broadcastTransaction(transaction);
+		const txHash = await broadcastTransaction(transaction, {
+			type: 'deployment',
+			name,
+			expectedAddress: options?.expectedAddress,
+		});
 
 		const from = transaction.type == 'raw' ? transaction.from : transaction.data.from;
 
