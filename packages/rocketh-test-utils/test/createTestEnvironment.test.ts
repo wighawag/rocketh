@@ -4,7 +4,8 @@
  * `env.broadcastDeployment` end-to-end so the assertions actually exercise
  * `packages/rocketh`'s environment module (account resolution, `eth_accounts`,
  * auto-impersonation, the single `broadcastTransaction` choke point) — the same
- * paths the old {@link createMockEnvironment} fake bypasses.
+ * paths the removed fabricated stand-in used to bypass (see the *test environment* vs
+ * *mock environment* entry in `CONTEXT.md`).
  *
  * By design this file does NOT import `@rocketh/deploy` or `@rocketh/read-execute`:
  * both already devDepend on `@rocketh/test-utils`, so importing them here would close
@@ -16,12 +17,8 @@ import {describe, it, expect, vi} from 'vitest';
 import type {EIP1193ProviderWithoutEvents} from 'eip-1193';
 import {createEnvironment} from 'rocketh';
 
-import {
-	createTestEnvironment,
-	createMapDeploymentStore,
-	createMockArtifact,
-	createMockEnvironment,
-} from '../src/index.js';
+import {createTestEnvironment, createMapDeploymentStore, createMockArtifact} from '../src/index.js';
+import * as testUtils from '../src/index.js';
 
 /** The address the shipped `@rocketh/signer` `privateKey` protocol resolves this key to. Checksummed. */
 const PRIVATE_KEY = '0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d';
@@ -49,8 +46,20 @@ describe('createTestEnvironment - harness identity + wiring', () => {
 		expect(typeof internal.loadDeployments).toBe('function');
 	});
 
-	it('createMockEnvironment is still exported (this task adds; it does not migrate)', () => {
-		expect(typeof createMockEnvironment).toBe('function');
+	it('exports exactly ONE environment builder (no second, fabricated one)', () => {
+		/**
+		 * Regrowth fence. While the migration was in flight this assertion said the opposite
+		 * (the legacy fabricated builder is still exported); it is inverted rather than deleted,
+		 * because the whole value of the removal is that a SECOND notion of a test environment
+		 * cannot come back under any name. The mock PROVIDER and mock ARTIFACT helpers are
+		 * orthogonal and stay.
+		 */
+		const environmentBuilders = Object.keys(testUtils)
+			.filter((name) => /^create.*Environment$/.test(name))
+			.sort();
+		expect(environmentBuilders).toEqual(['createTestEnvironment']);
+		expect(typeof testUtils.createMockProvider).toBe('function');
+		expect(typeof testUtils.createMockArtifact).toBe('function');
 	});
 });
 
