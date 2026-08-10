@@ -3,6 +3,7 @@ title: review-gate non-blocking nits for 'unknown-signer-broadcast-seam' (Gate 2
 date: 2026-08-09
 status: open
 reviewOf: unknown-signer-broadcast-seam
+needsAnswers: true
 ---
 
 ## Non-blocking review findings
