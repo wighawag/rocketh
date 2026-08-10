@@ -1,3 +1,7 @@
+---
+needsAnswers: true
+---
+
 # Decisions taken while building `ask-policy-interactive-resolver` (2026-08-10)
 
 Recorded here because each is user-visible, introduces a refusal, or touches another task, and the task body (which the runner moves) is not mine to edit. Each also carries a JSDoc at its choice site.
