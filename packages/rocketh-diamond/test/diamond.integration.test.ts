@@ -111,11 +111,14 @@ describe('@rocketh/diamond - Integration Tests', () => {
 			expect(deployment).toBeDefined();
 			expect(deployment.address).toBeDefined();
 
-			// The custom facet plus the three default facets are each a SEPARATE contract, and
-			//  the diamond itself is the proxy in front of them. Asserted here because the
-			//  addresses now come from the real deployment path: a harness reporting one contract
-			//  address for every transaction would silently collapse every facet of the diamond
-			//  onto a single address, and a `toBeDefined()`-only suite would stay green.
+			// What this pins: the custom facet plus the three default facets are four DISTINCT
+			//  create2 contracts (a facet defaults to `deterministic: true`, so each address is the
+			//  create2 address computed from its own bytecode, which the environment prefers over
+			//  the receipt), and the diamond itself is a SEPARATE, RECEIPT-DERIVED proxy in front of
+			//  them (deployed non-deterministically here, since no `deterministicSalt` is given).
+			//  So this is a shape assertion about the deployment graph the fresh path builds, not a
+			//  guard against a single-address receipt; it replaces a `toBeDefined()`-only case that
+			//  never checked the graph at all.
 			const facetAddresses = (deployment.facets ?? []).map((f) => f.facetAddress.toLowerCase());
 			expect(facetAddresses.length).toBe(4);
 			expect(new Set(facetAddresses).size).toBe(4);
