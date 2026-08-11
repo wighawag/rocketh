@@ -1,5 +1,5 @@
 ---
-needsAnswers: true
+needsAnswers: false
 ---
 
 # Decisions taken while building `interactive-deployment-address-recovery` (2026-08-10)
@@ -29,3 +29,9 @@ The acceptance criteria allowed tightening the code-at-address check for normall
 ## 6. Coherence check on `origin` (noted, NOT introduced by this task)
 
 `origin` now means two things in this module: the choke point's "what produced this transaction" bag (named by `unknown-signer-contract-enrichment`, extended here), and `PendingTransaction.transaction.origin`, which is the SENDER ADDRESS of a pending transaction. Both predate this task and neither is in `CONTEXT.md`'s glossary. I reused the existing parameter name rather than forking a third term, and named the type `BroadcastOrigin` to keep it locally unambiguous. Flagged so the collision is visible before a third meaning appears; renaming either is out of scope here.
+
+## Applied answers 2026-08-11
+
+### q1: Should the flagged in-module collision on the term 'origin' (BroadcastOrigin's 'what produced this tx' bag vs PendingTransaction.transaction.origin's SENDER ADDRESS) be resolved now by renaming one, or left as-is with only a glossary note?
+
+**Rename now.** Done: the choke point's "what produced this transaction" bag is now `BroadcastSource` (parameter `source`), and `PendingTransaction.transaction.origin` keeps the name and its meaning, the SENDER ADDRESS. A glossary note alone was the cheaper option but leaves the ambiguity in place; both names are module-private (`broadcastTransaction` is a closure absent from the `Environment` interface, with exactly two callers), so renaming is cheap TODAY and gets expensive the moment a third meaning appears. Landed with an empty changeset, since nothing exported moves.
