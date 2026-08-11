@@ -112,8 +112,9 @@ pnpm docs:build
 - **When your change branches on a CLOSED SET (a union, an enum, the members of an interface, the call sites of a function), open the definition and enumerate it before designing around it.** Cite the file and the full member list in the task or PR. Do not infer membership from a `grep`/search result: search output can truncate or skip lines, and a union you believe has two variants may have three. The pinned meanings of the most error-prone ones are in `CONTEXT.md` under `signer` / `signability` — read those rather than re-deriving them.
 - **Verify a claim about the code before you build on it, INCLUDING a claim from a review, an issue, a task description, or another agent.** Open the file and confirm it. This repo has repeatedly lost review cycles to confident work built on an unverified assertion: that a missing signer entry is what a named account produces, that an options bag already reaches a throw site, that a union had two variants, that a package branched on `eth_getCode` when it branches on an in-memory record. In every case the claim was plausible, secondhand, and wrong. A claim that survives one repetition becomes indistinguishable from fact, so check it at the point you first rely on it and cite what you checked.
 - Write integration tests that serve as documentation (see `packages/*/test/*.integration.test.ts`)
-- Use `createTestEnvironment` and `createMockArtifact` from `@rocketh/test-utils` for tests. `createTestEnvironment` is async (`await` it) and constructs a REAL `rocketh` environment against a mock EIP-1193 provider, so tests exercise the actual `broadcastTransaction` / account-resolution path. It is the only test-environment builder in the package: the legacy fabricated stand-in has been removed. Do not reintroduce a hand-built environment literal (see the *test environment* vs *mock environment* entry in `CONTEXT.md`).
+- Use `createTestEnvironment` and `createMockArtifact` from `@rocketh/test-utils` for tests. `createTestEnvironment` is async (`await` it) and constructs a REAL `rocketh` environment against a mock EIP-1193 provider, so tests exercise the actual `broadcastTransaction` / account-resolution path. It is the only test-environment builder in the package: the legacy fabricated stand-in has been removed. Do not reintroduce a hand-built environment literal (see the _test environment_ vs _mock environment_ entry in `CONTEXT.md`).
 - Keep functions focused and modular - one concern per function
+- **An extension package's ROOT export surface may contain ONLY curried `(env) => …` functions** (plus `export type`s, which erase). The documented user idiom is a namespace spread (`const extensions = {...deployExtension, ...myExtension}`), and `withEnvironment` calls `value(env)` on EVERY entry it is given: a re-exported CLASS throws `TypeError: Class constructor … cannot be invoked without 'new'`, and a plain constant is silently turned into a getter returning itself. The failure surfaces at deploy-script RUN time, not at build time. Put anything else (an error class, a constant) on a subpath export — `@rocketh/unknown-signer` keeps `UnknownSignerError` on `./errors` for exactly this reason.
 - Export types separately from implementation: `export type * from './types.js'`
 - Use `as const satisfies` pattern for configuration objects
 - Keep deployment logic separate from environment setup
@@ -143,14 +144,16 @@ pnpm docs:build
 
 ```typescript
 // packages/rocketh-deploy/src/index.ts
-export function deploy(env: Environment): <TAbi extends Abi>(
-  name: string,
-  args: DeploymentConstruction<TAbi>,
-  options?: DeployOptions,
+export function deploy(
+	env: Environment,
+): <TAbi extends Abi>(
+	name: string,
+	args: DeploymentConstruction<TAbi>,
+	options?: DeployOptions,
 ) => Promise<DeployResult<TAbi>> {
-  return async <TAbi extends Abi>(name: string, args: DeploymentConstruction<TAbi>, options?: DeployOptions) => {
-    // Implementation
-  };
+	return async <TAbi extends Abi>(name: string, args: DeploymentConstruction<TAbi>, options?: DeployOptions) => {
+		// Implementation
+	};
 }
 ```
 
@@ -172,29 +175,29 @@ import {deploy} from '../src/index.js';
 import {createTestEnvironment, createMockArtifact} from '@rocketh/test-utils';
 
 describe('@rocketh/deploy - Integration Tests', () => {
-  describe('Basic Contract Deployment', () => {
-    it('should demonstrate basic deployment pattern', async () => {
-      /**
-       * Example: Deploying a simple contract
-       * This demonstrates the most basic deployment scenario.
-       */
-      const {env} = await createTestEnvironment({
-        accounts: {deployer: '0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266'},
-        nodeAccounts: ['0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266'],
-      });
-      const _deploy = deploy(env);
+	describe('Basic Contract Deployment', () => {
+		it('should demonstrate basic deployment pattern', async () => {
+			/**
+			 * Example: Deploying a simple contract
+			 * This demonstrates the most basic deployment scenario.
+			 */
+			const {env} = await createTestEnvironment({
+				accounts: {deployer: '0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266'},
+				nodeAccounts: ['0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266'],
+			});
+			const _deploy = deploy(env);
 
-      const artifact = createMockArtifact('SimpleContract');
-      const deployment = await _deploy('SimpleContract', {
-        account: 'deployer',
-        artifact,
-        args: [42n],
-      });
+			const artifact = createMockArtifact('SimpleContract');
+			const deployment = await _deploy('SimpleContract', {
+				account: 'deployer',
+				artifact,
+				args: [42n],
+			});
 
-      expect(deployment).toBeDefined();
-      expect(deployment.newlyDeployed).toBe(true);
-    });
-  });
+			expect(deployment).toBeDefined();
+			expect(deployment.newlyDeployed).toBe(true);
+		});
+	});
 });
 ```
 
@@ -205,15 +208,15 @@ describe('@rocketh/deploy - Integration Tests', () => {
 import type {UserConfig} from 'rocketh/types';
 
 export const config = {
-  accounts: {
-    deployer: {
-      default: 0,
-    },
-    admin: {
-      default: 1,
-    },
-  },
-  data: {},
+	accounts: {
+		deployer: {
+			default: 0,
+		},
+		admin: {
+			default: 1,
+		},
+	},
+	data: {},
 } as const satisfies UserConfig;
 ```
 
