@@ -11,4 +11,4 @@ Name the function in an `UnknownSignerError` raised from a contract call. `execu
 
 Non-contract paths are unchanged and leave `contract` unset: a plain `tx()`, a value transfer and a deploy have no function to name.
 
-`@rocketh/test-utils` is a type-only touch: the legacy `createMockEnvironment` mirrors the widened `broadcastExecution` signature (it ignores the new option; it has no unknown-signer seam).
+`@rocketh/test-utils` is a type-only touch, mirroring the widened `broadcastExecution` signature.
