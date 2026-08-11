@@ -1237,6 +1237,17 @@ export async function createEnvironment<
 
 					return txHash;
 				}
+				default: {
+					// Exhaustive over the `Signer` union: adding a fourth variant without a case fails
+					// to compile here rather than silently returning `undefined` as a tx hash and
+					// blowing up confusingly downstream in `savePendingExecution`. The runtime throw
+					// covers cast / JS-caller / user-supplied-`signerProtocols` paths that violate
+					// their own type contract. Mirrors the idiom in `unknownSignerPolicy.ts`.
+					const exhaustive: never = signer;
+					throw new Error(
+						`unhandled signer type: ${(exhaustive as {type: string}).type}`,
+					);
+				}
 			}
 		}
 	}
