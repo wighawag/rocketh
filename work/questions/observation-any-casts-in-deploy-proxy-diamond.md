@@ -11,3 +11,6 @@ Item: [`observation:any-casts-in-deploy-proxy-diamond`](../notes/observations/an
 <!-- q1 fields: id=q1 -->
 
 **Your answer** (write below this line):
+
+**Keep (resolve, note stays).** Verified still live and still accurate, so it remains a useful standing map of where the "no `any`" rule is broken: `packages/rocketh-deploy/src/index.ts:333` (`encodeDeployData(argsToUse as any) // TODO any`), `packages/rocketh-proxy/src/index.ts:347,352,359,364,371,376,475`, `packages/rocketh-diamond/src/index.ts:207,441`. Not promoting to a task now: the fix is a viem/abitype generics exercise with no user-visible payoff, and the note is worth more as the map than as a scheduled chore.
+

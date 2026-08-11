@@ -11,3 +11,9 @@ Item: [`observation:decisions-remove-legacy-mock-environment-2026-08-10`](../not
 <!-- q1 fields: id=q1 -->
 
 **Your answer** (write below this line):
+
+**Ratify decision 2 as-is; REVERSE decision 1.**
+
+Decision 2 (inverting the transitional test into a regrowth fence rather than deleting it) is right and stays.
+
+Decision 1 is not: the three unreleased changesets (`test-env-harness.md`, `migrate-deploy-and-read-tests.md`, `migrate-proxy-diamond-tests.md`) still describe `createMockEnvironment` as live, and they will be folded into the SAME published `@rocketh/test-utils` version as `.changeset/remove-legacy-mock-environment.md`'s "**Breaking:** remove the legacy `createMockEnvironment`". A consumer reading one CHANGELOG entry would see a direct contradiction. The stated reason for leaving them ("rewriting history corrupts the record") does not apply, because nothing has been PUBLISHED yet, so trimming the now-false "still exported / still used" clauses misdescribes no released version. Trim those clauses before the next release.

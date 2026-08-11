@@ -11,3 +11,5 @@ Item: [`observation:silent-empty-catch-blocks`](../notes/observations/silent-emp
 <!-- q1 fields: id=q1 -->
 
 **Your answer** (write below this line):
+
+**Amend, keep.** The note is now half stale: the `@rocketh/deploy` occurrence it names is GONE. Only `packages/rocketh-proxy/src/index.ts:477` (`} catch (err) {}`, the owner-address fallback) remains. Narrow the note to that one site (append an `## Update` rather than rewriting — this bucket is append-only), and keep it: the surviving site is a real signal, and the fix is probably a comment saying why the throw is deliberately swallowed rather than a behaviour change.

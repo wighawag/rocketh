@@ -14,6 +14,8 @@ _Suggested default: Accept as-is: wrapper in `@rocketh/unknown-signer`, minor bu
 
 **Your answer** (write below this line):
 
+**Accept as-is.** The wrapper form (`withUnknownSignerPolicy` exported from `@rocketh/unknown-signer`, minor bump) is the ratified shape for the per-call override. It reuses the existing `push/popUnknownSignerPolicy` frame stack and needs no `@rocketh/core` type change, which the alternatives (an `onUnknownSigner` field threaded through four packages, or a method on `Environment`) both would. The accepted cost stands as recorded: the override is written AROUND a call, and a user who wants only the override installs the package named after `catchUnknownSigner`.
+
 ## Q2
 
 **Ratify decision 2: should `withUnknownSignerPolicy` accept the full `UnknownSignerPolicy` union including `'auto'`, rather than the narrower `'throw' | 'ask'` the task text literally names?**
@@ -26,6 +28,8 @@ _Suggested default: Accept the full union; keep parity with the frame type and t
 
 **Your answer** (write below this line):
 
+**Accept the full union**, `'auto'` included. A frame carries `UnknownSignerPolicyFrame.policy`, which is the whole union, and narrowing here would fork the vocabulary from the config key's for no gain. `'auto'` scoped to one call ("use this run's capability-aware default for this call") is the only way to opt one call back out of a run-level `'throw'` without deciding for it.
+
 ## Q3
 
 **Ratify decision 3 (precedence): an EXPLICIT `withUnknownSignerPolicy('ask', ...)` written inside a `catchUnknownSigner` block WINS over the outer defer frame (innermost frame decides) — is this the intended user-facing contract, and is documenting it in module JSDoc + the LIFO test sufficient, or does it warrant an ADR?**
@@ -37,3 +41,5 @@ _Suggested default: Accept LIFO-wins; keep documentation in module JSDoc + the '
 <!-- q3 fields: id=q3 -->
 
 **Your answer** (write below this line):
+
+**Accept LIFO-wins**; module JSDoc plus the "lets an inner explicit override win over an outer one" test is sufficient documentation, and no separate ADR is needed. One correction to make while this is fresh, since it is user-facing: `documentation.md:574` still states flatly that "`catchUnknownSigner` always takes the throw path, whatever the ambient policy", with no nesting caveat — that sentence now understates the contract being ratified here and should gain the caveat.

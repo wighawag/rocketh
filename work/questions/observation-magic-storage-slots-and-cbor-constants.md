@@ -11,3 +11,5 @@ Item: [`observation:magic-storage-slots-and-cbor-constants`](../notes/observatio
 <!-- q1 fields: id=q1 -->
 
 **Your answer** (write below this line):
+
+**Promote (small).** Still live: `packages/rocketh-proxy/src/index.ts:444` and `:467` are bare hex literals with no `EIP-1967` mention anywhere in the file. Name them as constants with a comment citing EIP-1967, and do the same for the CBOR length magic number in `@rocketh/deploy`. Cheap readability win on the two files a reader is most likely to be lost in.

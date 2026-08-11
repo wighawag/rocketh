@@ -14,6 +14,8 @@ _Suggested default: Both: add a default that throws an Error naming the unexpect
 
 **Your answer** (write below this line):
 
+**Both**, matching the idiom this repo already uses rather than inventing a second one: a `default` that throws naming the unexpected `signer.type`, guarded by an exhaustiveness assignment so a future fourth `Signer` variant fails to COMPILE. The precedent is `packages/rocketh/src/environment/unknownSignerPolicy.ts:81` (`const exhaustive: never = policy;`). Still live: the switch at `packages/rocketh/src/environment/index.ts:1203` covers `wallet | remote | signerOnly` and the file contains no `default:` at all.
+
 ## Q2
 
 **Should this fix ride along with the next task that touches broadcastTransaction (the observation suggests unknown-signer-contract-enrichment), or be minted as its own tiny task now?**
@@ -25,3 +27,6 @@ _Suggested default: Ride along with unknown-signer-contract-enrichment — the c
 <!-- q2 fields: id=q2 -->
 
 **Your answer** (write below this line):
+
+Its own task. The ride-along candidate the question names (`unknown-signer-contract-enrichment`) has LANDED (`work/tasks/done/unknown-signer-contract-enrichment.md`), so that option no longer exists; the seam has since been touched twice more (`interactive-deployment-address-recovery`, `per-call-ask-override-and-deferral-precedence`) without anyone picking this up, which is evidence enough that "ride along" does not happen by itself.
+

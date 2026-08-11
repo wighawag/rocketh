@@ -11,3 +11,14 @@ Item: [`observation:review-nits-interactive-deployment-address-recovery-2026-08-
 <!-- q1 fields: id=q1 -->
 
 **Your answer** (write below this line):
+
+**Ratified - all findings in this note are accepted as-is; no reversal.** The task this reviews is in `work/tasks/done/`, so none of these block anything.
+
+All accepted: the required discriminated origin bag, the unanswerable-`eth_getCode` refusal, and ignoring the receipt's own `contractAddress` when an expected address exists.
+
+Two of these are now ACTED ON rather than merely ratified:
+
+- the missing test for the unanswerable-`eth_getCode` refusal now exists (`packages/rocketh/test/interactive-deployment-address.test.ts`, "fails when the node cannot answer the code lookup"), and `documentation.md` names that failure shape alongside the other three;
+- the `origin` collision is resolved by renaming the choke point's bag to `BroadcastSource` (parameter `source`). `PendingTransaction.transaction.origin` keeps the name and its meaning, the sender address.
+
+Keep the note until the residue above is either acted on or judged not worth acting on; it is the only record of these choices outside the code.

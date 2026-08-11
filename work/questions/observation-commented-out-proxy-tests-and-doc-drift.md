@@ -11,3 +11,10 @@ Item: [`observation:commented-out-proxy-tests-and-doc-drift`](../notes/observati
 <!-- q1 fields: id=q1 -->
 
 **Your answer** (write below this line):
+
+**Promote, split in two.** Both halves verified live.
+
+1. The DOC DRIFT is the urgent half and should become a small task: `documentation.md:208` ("Named accounts are configured in the `rocketh.ts` file") and `:853` both name `rocketh.ts`, while the real path everywhere in this repo is `rocketh/config.ts` (`packages/hardhat-deploy/templates/basic/rocketh/config.ts`, all four `demoes/*/rocketh/config.ts`, and `skills/hardhat-deploy-migration/SKILL.md`). A new user following the docs creates a file rocketh never reads.
+2. The COMMENTED-OUT TESTS (`packages/rocketh-proxy/test/proxy.integration.test.ts:274` and `:310`, full Transparent / Optimized-Transparent bodies under `// TODO`) are a separate decision: implement them against `createTestEnvironment` or delete them. Not decided here.
+
+Keep the note until the doc-drift task exists, then narrow it to the commented tests.
