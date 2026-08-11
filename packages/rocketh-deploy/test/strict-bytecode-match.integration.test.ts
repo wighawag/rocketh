@@ -35,9 +35,10 @@ const RUNTIME_CODE = '0x60806040526001';
  * end of the runtime bytecode. `000c` = 12 bytes, matching the 12-byte blob in front of
  * it, so stripping the declared length removes exactly the metadata.
  */
-function withMetadata(metadataByte: string): `0x${string}` {
-	const blob = metadataByte.repeat(10); // 10 bytes of "metadata"
-	return `${RUNTIME_CODE}${blob}000c` as `0x${string}`;
+function withMetadata(metadataByte: string, lengthInBytes = 10): `0x${string}` {
+	const blob = metadataByte.repeat(lengthInBytes);
+	const suffix = lengthInBytes.toString(16).padStart(4, '0');
+	return `${RUNTIME_CODE}${blob}${suffix}` as `0x${string}`;
 }
 
 /**
@@ -87,6 +88,107 @@ describe('@rocketh/deploy - strictBytecodeMatch', () => {
 			expect(second.address).toBe(first.address);
 			// and it is not merely reported as reused: no transaction was sent
 			expect(provider.getRequests().map((r) => r.method)).not.toContain('eth_sendTransaction');
+		});
+	});
+
+	describe('the default: reading the metadata length correctly', () => {
+		it('reuses when the two compilations produced metadata of DIFFERENT lengths', async () => {
+			/**
+			 * Metadata length is not a constant. It varies with what solc puts in the blob — an
+			 * absolute source path is enough to change it — so two builds of the same contract on
+			 * two machines can carry blobs of different sizes.
+			 *
+			 * Each side must therefore be stripped by ITS OWN declared length. Applying one
+			 * side's length to both cuts at a different offset in each, leaves a fragment of one
+			 * blob in the comparison, and reports a difference that does not exist — redeploying
+			 * a contract, or upgrading a proxy, over nothing at all.
+			 */
+			const {env} = await createNodeHeldEnvironment();
+			const _deploy = deploy(env);
+
+			const shortMetadata = createMockArtifact('VaryingMetadataContract');
+			(shortMetadata as {deployedBytecode: string}).deployedBytecode = withMetadata('a1', 10);
+			const longMetadata = createMockArtifact('VaryingMetadataContract');
+			(longMetadata as {deployedBytecode: string}).deployedBytecode = withMetadata('b2', 14);
+
+			const first = await _deploy('VaryingMetadataContract', {
+				account: 'deployer',
+				artifact: shortMetadata,
+				args: [42n],
+			});
+			const second = await _deploy('VaryingMetadataContract', {
+				account: 'deployer',
+				artifact: longMetadata,
+				args: [42n],
+			});
+
+			expect(first.newlyDeployed).toBe(true);
+			expect(second.newlyDeployed).toBe(false);
+			expect(second.address).toBe(first.address);
+		});
+
+		it('does NOT treat two different contracts as identical when the trailing bytes are not a real length', async () => {
+			/**
+			 * The failure mode that made this worth fixing.
+			 *
+			 * ANY bytecode ends in some two bytes, and reading them as a metadata length is only
+			 * meaningful if a blob that size could be there. A short runtime bytecode (a stub, a
+			 * minimal proxy, a test fixture) routinely ends in bytes that parse as tens of
+			 * thousands. Stripping that many characters yields an EMPTY string — and then every
+			 * such contract compares equal to every other one, so a genuinely CHANGED contract is
+			 * skipped as already deployed and the new code never reaches the chain.
+			 *
+			 * The two artifacts below have different runtime code AND different creation code.
+			 * They must not be confused for each other.
+			 */
+			const {env} = await createNodeHeldEnvironment();
+			const _deploy = deploy(env);
+
+			// '4052' as a length claims 16466 bytes of metadata on a 5-byte runtime bytecode
+			const stubby = createMockArtifact('StubbyContract');
+			(stubby as {deployedBytecode: string}).deployedBytecode = '0x6080604052';
+			(stubby as {bytecode: string}).bytecode = '0x6080604052348015600f57600080fd5baa';
+
+			const differentStubby = createMockArtifact('StubbyContract');
+			(differentStubby as {deployedBytecode: string}).deployedBytecode = '0x6080604053';
+			(differentStubby as {bytecode: string}).bytecode = '0x6080604052348015600f57600080fd5bbb';
+
+			const first = await _deploy('StubbyContract', {account: 'deployer', artifact: stubby, args: [42n]});
+			const second = await _deploy('StubbyContract', {
+				account: 'deployer',
+				artifact: differentStubby,
+				args: [42n],
+			});
+
+			expect(first.newlyDeployed).toBe(true);
+			expect(second.newlyDeployed).toBe(true);
+			expect(second.address).not.toBe(first.address);
+		});
+
+		it('still reuses an unchanged contract whose trailing bytes are not a real length', async () => {
+			/** The other half: falling back must not mean "always redeploy". */
+			const {env} = await createNodeHeldEnvironment();
+			const _deploy = deploy(env);
+
+			const stubby = () => {
+				const artifact = createMockArtifact('UnchangedStubbyContract');
+				(artifact as {deployedBytecode: string}).deployedBytecode = '0x6080604052';
+				return artifact;
+			};
+
+			const first = await _deploy('UnchangedStubbyContract', {
+				account: 'deployer',
+				artifact: stubby(),
+				args: [42n],
+			});
+			const second = await _deploy('UnchangedStubbyContract', {
+				account: 'deployer',
+				artifact: stubby(),
+				args: [42n],
+			});
+
+			expect(first.newlyDeployed).toBe(true);
+			expect(second.newlyDeployed).toBe(false);
 		});
 	});
 

@@ -265,6 +265,49 @@ async function getCreate3Factory(env: Environment, params: FactoryParams) {
 	};
 }
 
+/** Two bytes, big-endian, at the very end of the runtime bytecode. */
+const CBOR_LENGTH_SUFFIX_HEX_CHARS = 4;
+const HEX_CHARS_PER_BYTE = 2;
+
+/**
+ * Remove solc's trailing CBOR METADATA BLOB from a contract's DEPLOYED (runtime) bytecode,
+ * returning the code without it — or `undefined` when this bytecode does not credibly end
+ * in one.
+ *
+ * solc appends the blob to the runtime bytecode and terminates it with a two-byte
+ * big-endian length of the blob, NOT counting those two bytes. So the removal is
+ * `declared length + 2` bytes off the end, and the +2 matters: leaving the length suffix
+ * behind makes two contracts whose metadata differ in LENGTH compare unequal on the
+ * leftover suffix alone, even after their blobs are gone.
+ *
+ * THE LENGTH IS VALIDATED, not trusted. Any bytecode ends in SOME two bytes, and reading
+ * them as a length is only meaningful when a blob that size could actually be there. A
+ * short runtime bytecode (a stub, a hand-written fixture, a minimal proxy) routinely ends
+ * in bytes that parse as tens of thousands, and stripping that many characters silently
+ * yields an EMPTY string — at which point every such contract compares equal to every
+ * other, and a genuinely changed contract is skipped as already deployed. Returning
+ * `undefined` instead sends the caller to its no-metadata fallback, which compares the
+ * creation bytecode it can trust.
+ *
+ * Creation bytecode is never used here: the blob can sit at other offsets in it.
+ */
+function stripCBORMetadata(deployedBytecode: string): string | undefined {
+	const hex = deployedBytecode.startsWith('0x') ? deployedBytecode.slice(2) : deployedBytecode;
+	if (hex.length <= CBOR_LENGTH_SUFFIX_HEX_CHARS) {
+		return undefined;
+	}
+	const declaredLengthInBytes = parseInt(hex.slice(-CBOR_LENGTH_SUFFIX_HEX_CHARS), 16);
+	if (isNaN(declaredLengthInBytes) || declaredLengthInBytes <= 0) {
+		return undefined;
+	}
+	const metadataHexChars = declaredLengthInBytes * HEX_CHARS_PER_BYTE + CBOR_LENGTH_SUFFIX_HEX_CHARS;
+	// it must leave some actual code behind, or it was never a metadata blob
+	if (metadataHexChars >= hex.length) {
+		return undefined;
+	}
+	return `0x${hex.slice(0, hex.length - metadataHexChars)}`;
+}
+
 function areLibrariesIdentical(oldLibs: Libraries, newLibs: Libraries) {
 	const oldKeys = Object.keys(oldLibs || {});
 	const newKeys = Object.keys(newLibs || {});
@@ -342,39 +385,26 @@ export function deploy(env: Environment): <TAbi extends Abi>(
 			const previousArgsData = existingDeployment.argsData;
 			const newlyDeployedBytecode = artifactToUse.deployedBytecode;
 			let bytecodeMatches: boolean;
-			if (previousDeployedBytecode && newlyDeployedBytecode && !strictBytecodeMatch) {
-				// NON-STRICT MATCHING: compare the bytecode with its trailing CBOR METADATA BLOB
-				//  removed, so a recompile that changed only the metadata (a different absolute
-				//  source path, a bumped compiler patch, an added comment) does not look like a new
-				//  contract and trigger a redeploy. This is the default, and ADR 0004 is why.
-				//  `strictBytecodeMatch: true` opts out and compares the bytes verbatim.
-				//
-				// solc appends the blob to the DEPLOYED bytecode (runtime code) and ends it with a
-				//  two-byte big-endian LENGTH of the blob itself, excluding those two bytes. So the
-				//  last 4 hex characters are that length, and stripping `cborLength` bytes (twice as
-				//  many hex characters) removes the metadata. Creation bytecode is not used for this:
-				//  there the blob can sit at different offsets.
-				const CBOR_LENGTH_SUFFIX_HEX_CHARS = 4; // two bytes, big-endian
-				const HEX_CHARS_PER_BYTE = 2;
-				const cborLengthSuffix = previousDeployedBytecode.slice(-CBOR_LENGTH_SUFFIX_HEX_CHARS);
-				const cborLength = parseInt(cborLengthSuffix, 16);
-				if (isNaN(cborLength) || cborLength < 0) {
-					const linkedPreviousBytecode = linkLibraries(
-						{bytecode: existingDeployment.bytecode, linkReferences: existingDeployment.linkReferences},
-						existingDeployment.libraries,
-					);
-					bytecodeMatches = linkedPreviousBytecode === bytecode;
-				} else {
-					const previousDeployedBytecodeWithoutCBOR = previousDeployedBytecode.slice(
-						0,
-						-cborLength * HEX_CHARS_PER_BYTE,
-					);
-					const newlyDeployedBytecodeWithoutCBOR = newlyDeployedBytecode.slice(0, -cborLength * HEX_CHARS_PER_BYTE);
+			const previousDeployedBytecodeWithoutCBOR =
+				previousDeployedBytecode && !strictBytecodeMatch ? stripCBORMetadata(previousDeployedBytecode) : undefined;
+			const newlyDeployedBytecodeWithoutCBOR =
+				newlyDeployedBytecode && !strictBytecodeMatch ? stripCBORMetadata(newlyDeployedBytecode) : undefined;
 
-					bytecodeMatches =
-						areLibrariesIdentical(existingDeployment.libraries || {}, options?.libraries || {}) &&
-						previousDeployedBytecodeWithoutCBOR === newlyDeployedBytecodeWithoutCBOR;
-				}
+			if (previousDeployedBytecodeWithoutCBOR !== undefined && newlyDeployedBytecodeWithoutCBOR !== undefined) {
+				// NON-STRICT MATCHING: compare the runtime bytecode with its trailing CBOR METADATA
+				//  BLOB removed, so a recompile that changed only the metadata (a different absolute
+				//  source path, a bumped compiler patch, an added comment) does not look like a new
+				//  contract and trigger a redeploy — or, for a proxy, an UPGRADE. This is the
+				//  default and ADR 0004 is why; `strictBytecodeMatch: true` compares verbatim.
+				//
+				// Each side is stripped by ITS OWN declared length (see `stripCBORMetadata`). Using
+				//  one side's length for both was wrong whenever the two compilations produced
+				//  metadata of DIFFERENT lengths, which an absolute source path alone can cause: the
+				//  cut then landed at a different offset in each, leaving a fragment of one blob in
+				//  the comparison and reporting a difference that does not exist.
+				bytecodeMatches =
+					areLibrariesIdentical(existingDeployment.libraries || {}, options?.libraries || {}) &&
+					previousDeployedBytecodeWithoutCBOR === newlyDeployedBytecodeWithoutCBOR;
 			} else {
 				const linkedPreviousBytecode = linkLibraries(
 					{bytecode: existingDeployment.bytecode, linkReferences: existingDeployment.linkReferences},
