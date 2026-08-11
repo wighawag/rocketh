@@ -1,6 +1,12 @@
 ---
 promotedFrom: observation:strict-bytecode-match-untested-and-undocumented
+reason: 'superseded: already delivered by bf7ee52 before this task was minted'
+cancelledOn: 2026-08-11
 ---
+
+> **CANCELLED, and the work is DONE — this is not an abandonment.** `documentation.md` gained the "When does a re-run REDEPLOY?" section covering `strictBytecodeMatch` alongside `skipIfAlreadyDeployed` and `alwaysOverride`, and `packages/rocketh-deploy/test/strict-bytecode-match.integration.test.ts` pins BOTH directions on the same pair of artifacts (a metadata-only difference is reused by default, redeployed under `strictBytecodeMatch: true`), verified by mutation. The follow-on commit `2ea36e3` then fixed two real bugs in the CBOR stripping that this coverage exposed.
+>
+> Why it was minted at all: `dorfl advance` created this task from a human answer that listed the item as live residue. The answer was written during the 2026-08-11 observation triage and was accurate WHEN WRITTEN; the residue was then executed later in that same session, before `advance` ran. The engine reads the ANSWER, not the code, so it could not know. The task template's own drift check ("check this task against current reality — it is a launch snapshot and may have DRIFTED") is the designed guard and would have fired here; cancelling just saves the agent run.
 
 ## Context
 

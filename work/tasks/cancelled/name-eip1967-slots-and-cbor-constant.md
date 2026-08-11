@@ -1,6 +1,12 @@
 ---
 promotedFrom: observation:magic-storage-slots-and-cbor-constants
+reason: 'superseded: already delivered by bf7ee52 before this task was minted'
+cancelledOn: 2026-08-11
 ---
+
+> **CANCELLED, and the work is DONE — this is not an abandonment.** `packages/rocketh-proxy/src/index.ts` defines `EIP1967_IMPLEMENTATION_SLOT` and `EIP1967_ADMIN_SLOT`, each citing the EIP and explaining the `- 1`, and `packages/rocketh-deploy/src/index.ts` names `CBOR_LENGTH_SUFFIX_HEX_CHARS` / `HEX_CHARS_PER_BYTE` with a comment on what solc appends and why creation bytecode is not used for the comparison.
+>
+> Why it was minted at all: `dorfl advance` created this task from a human answer that listed the item as live residue. The answer was written during the 2026-08-11 observation triage and was accurate WHEN WRITTEN; the residue was then executed later in that same session, before `advance` ran. The engine reads the ANSWER, not the code, so it could not know. The task template's own drift check ("check this task against current reality — it is a launch snapshot and may have DRIFTED") is the designed guard and would have fired here; cancelling just saves the agent run.
 
 ## What to build
 

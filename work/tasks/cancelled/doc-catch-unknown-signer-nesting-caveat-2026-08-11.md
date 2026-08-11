@@ -1,7 +1,13 @@
 ---
 needsAnswers: false
 promotedFrom: observation:decisions-per-call-ask-override-and-deferral-precedence-2026-08-11
+reason: 'superseded: already delivered by 6ea32f1, and a DUPLICATE of part 3 of `fix-unknown-signer-policy-doc-residue-from-per-call-override`'
+cancelledOn: 2026-08-11
 ---
+
+> **CANCELLED, and the work is DONE — this is not an abandonment.** Two review-nits notes reported the same residue independently, so `advance` minted two tasks for the ONE `documentation.md` sentence. It now reads: `catchUnknownSigner` takes the throw path whatever the AMBIENT policy is, and an explicit override written inside the wrapper wins because frames nest LIFO.
+>
+> Why it was minted at all: `dorfl advance` created this task from a human answer that listed the item as live residue. The answer was written during the 2026-08-11 observation triage and was accurate WHEN WRITTEN; the residue was then executed later in that same session, before `advance` ran. The engine reads the ANSWER, not the code, so it could not know. The task template's own drift check ("check this task against current reality — it is a launch snapshot and may have DRIFTED") is the designed guard and would have fired here; cancelling just saves the agent run.
 
 ## What to build
 

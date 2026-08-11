@@ -1,6 +1,12 @@
 ---
 promotedFrom: observation:review-nits-unknown-signer-integration-scenarios-2026-08-10
+reason: 'superseded: already delivered by c833bda before this task was minted'
+cancelledOn: 2026-08-11
 ---
+
+> **CANCELLED, and the work is DONE — this is not an abandonment.** Story 7's JSDoc no longer claims the whole re-run loop is chain-driven: it separates the deferred UPGRADE (chain-derived) from the v2 implementation DEPLOY (skipped from the persisted deployment record). The README's worked-examples reference is now a GitHub link, since the npm tarball ships `dist` and `src` only.
+>
+> Why it was minted at all: `dorfl advance` created this task from a human answer that listed the item as live residue. The answer was written during the 2026-08-11 observation triage and was accurate WHEN WRITTEN; the residue was then executed later in that same session, before `advance` ran. The engine reads the ANSWER, not the code, so it could not know. The task template's own drift check ("check this task against current reality — it is a launch snapshot and may have DRIFTED") is the designed guard and would have fired here; cancelling just saves the agent run.
 
 ## What to build
 
@@ -27,6 +33,7 @@ Replace the in-package pointer with a GitHub link to the file at a stable ref (r
 ## Out of scope / already ratified
 
 The other two findings on the parent observation are ratified as-is and MUST NOT be undone by this task:
+
 - `viem` as a test-only devDependency of `@rocketh/unknown-signer` stays.
 - The stale `my-rocketh-project` importer block removed from `pnpm-lock.yaml` stays removed.
 
@@ -45,7 +52,6 @@ The parent observation note (the review-nits note that spawned this task (delete
 > You are picking up two documentation nits left over from the completed `unknown-signer-integration-scenarios` task in the `@rocketh/unknown-signer` package. Both are cheap and both are about files whose job is to be documentation.
 >
 > 1. In `packages/rocketh-unknown-signer/test/scenarios.integration.test.ts`, the Story 7 `describe` block JSDoc claims the re-run's idempotency comes entirely from on-chain state, "not from anything rocketh wrote down". Before editing, open `packages/rocketh-deploy/src/index.ts` lines 303-373 and confirm for yourself that the deploy-skip path uses `env.getOrNull(name)` plus a `deployedBytecode`-minus-CBOR compare, with no `eth_getCode`. Then narrow the JSDoc so the chain-derived / nothing-written-down claim applies only to the deferred UPGRADE step, and explicitly note that the v2 implementation DEPLOY is skipped via the persisted deployment record plus bytecode compare in `@rocketh/deploy`. Do not change any test behaviour.
->
 > 2. In `packages/rocketh-unknown-signer/README.md`, the "Worked examples" section points at `test/scenarios.integration.test.ts` "in this package", but the package's `files` field is `[dist, src]`, so a reader who installs from npm does not have that file. Replace the in-package pointer with a GitHub link to the test file at a stable ref; match the convention already used by other package READMEs in this repo for source links (grep first).
 >
 > Do NOT touch the ratified items: leave `viem` as a devDependency of `@rocketh/unknown-signer` alone, and leave the `pnpm-lock.yaml` change (removed `my-rocketh-project` importer block) alone. Leave the parent observation note in `work/notes/observations/` in place.

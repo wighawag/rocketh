@@ -3,7 +3,13 @@ title: Fix unknownSignerPolicy doc residue falsified by per-call ask/auto overri
 status: open
 reviewOf: per-call-ask-override-and-deferral-precedence
 promotedFrom: observation:review-nits-per-call-ask-override-and-deferral-precedence-2026-08-10
+reason: 'superseded: already delivered by 6ea32f1 before this task was minted'
+cancelledOn: 2026-08-11
 ---
+
+> **CANCELLED, and the work is DONE — this is not an abandonment.** All FOUR parts verified done: the `DYNAMIC SCOPE INVARIANT` paragraph in `unknownSignerPolicy.ts` describes the leak as bidirectional and drops the "only forces throw" justification (quoting the old claim only to mark it corrected); ADR 0006's matching paragraph is updated (the `@rocketh/unknown-signer` module JSDoc never carried that paragraph, so there was nothing to fix there); `documentation.md` carries the nesting caveat; and the `#### Choosing the policy for ONE call` subsection was moved AFTER the deployment paragraphs it had orphaned (heading now at line 611, deployment paragraph at 602).
+>
+> Why it was minted at all: `dorfl advance` created this task from a human answer that listed the item as live residue. The answer was written during the 2026-08-11 observation triage and was accurate WHEN WRITTEN; the residue was then executed later in that same session, before `advance` ran. The engine reads the ANSWER, not the code, so it could not know. The task template's own drift check ("check this task against current reality — it is a launch snapshot and may have DRIFTED") is the designed guard and would have fired here; cancelling just saves the agent run.
 
 ## Context
 
