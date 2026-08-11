@@ -328,7 +328,7 @@ export function createMockArtifactWithLibrary<TAbi extends Abi = typeof DEFAULT_
 	return {
 		contractName: name,
 		abi,
-		bytecode: '0x6080604052348015600f57600080fd5b50' as `0x${string}`,
+		bytecode: ('0x6080604052348015600f57600080fd5b50' + '0'.repeat(128)) as `0x${string}`,
 		deployedBytecode: '0x6080604052' as `0x${string}`,
 		linkReferences: {
 			'contracts/libraries.sol': {
