@@ -492,7 +492,20 @@ export async function createEnvironment<
 	// come from `Object.values(namedAccounts)`, which are deliberately un-normalised), so we
 	// lowercase before storing to keep the same address-key contract as `addressSigners`.
 	const impersonatedAccountsLower = new Set<`0x${string}`>();
+	// The addresses impersonation was actually TRIED for. Only ever non-empty when
+	// `autoImpersonate` is on, since the helper is a no-op otherwise, and it exists purely so the
+	// unknown-signer error can say which of the two silences a user is looking at (attempted and
+	// refused vs never a candidate). It is read ONLY when building that message.
+	const impersonationAttemptedLower = new Set<`0x${string}`>();
+	// Same falsy test the helper itself makes, so "was it enabled?" cannot answer differently
+	// here than where the attempt is made.
+	const autoImpersonateEnabled = !!resolvedExecutionParams.environment.autoImpersonate;
 	if (unknownAccounts.length > 0) {
+		if (autoImpersonateEnabled) {
+			for (const address of unknownAccounts) {
+				impersonationAttemptedLower.add(address.toLowerCase() as `0x${string}`);
+			}
+		}
 		const impersonatedAccounts = await impersonateAccounts(
 			rawProvider,
 			unknownAccounts,
@@ -504,6 +517,26 @@ export async function createEnvironment<
 		if (impersonatedAccounts.length > 0) {
 			logger.debug(`Auto-impersonated ${impersonatedAccounts.length} account(s): ${impersonatedAccounts.join(', ')}`);
 		}
+	}
+
+	/**
+	 * What auto-impersonation did for an address, for the unknown-signer error MESSAGE and
+	 * nothing else.
+	 *
+	 * The impersonation attempt deliberately SWALLOWS an unsupported or refused
+	 * `hardhat_impersonateAccount` so the feature degrades gracefully on a provider that is not
+	 * a dev node. That silence stays: this only makes its outcome SAYABLE, so a user who
+	 * enabled the feature against the wrong kind of node is told so instead of reading an
+	 * unknown-signer error that never mentions it.
+	 *
+	 * It reads node-capability state (ADR 0006) and must therefore stay strictly on the message
+	 * path: it is called only where the error is built, INSIDE the `unsignable` branch, never
+	 * before the signability check and never as an input to the policy. Returns `undefined`
+	 * when `autoImpersonate` was off, which is what keeps the common path's message unchanged.
+	 */
+	function autoImpersonationOutcomeFor(lower: `0x${string}`): 'attempted' | 'not-a-candidate' | undefined {
+		if (!autoImpersonateEnabled) return undefined;
+		return impersonationAttemptedLower.has(lower) ? 'attempted' : 'not-a-candidate';
 	}
 
 	// Classification runs AFTER impersonation, since impersonation is what moves an address from
@@ -1071,12 +1104,17 @@ export async function createEnvironment<
 					}
 					contract = name ? {name, ...origin.contract} : {...origin.contract};
 				}
+				// The auto-impersonation note is attached HERE, on the error-building path only, and is
+				// presentation-only: it reports what a node capability did BEFORE this seam, and is not
+				// consulted by (nor able to reach) the policy decision above. Absent whenever
+				// `autoImpersonate` was off, so the common path's message is byte-for-byte unchanged.
 				const unknownSignerData = {
 					from: transactionData.from,
 					to: transactionData.to,
 					data: transactionData.data,
 					value: transactionData.value,
 					contract,
+					autoImpersonation: autoImpersonationOutcomeFor(from),
 				};
 				// The error is BUILT here whichever way this goes: it is what the throw path
 				// throws AND what the interactive path shows the human, so the two can never
