@@ -1,0 +1,4 @@
+---
+---
+
+Docs/tests only. `@rocketh/unknown-signer`'s README now documents the `./errors` subpath (a consumer wanting an `instanceof UnknownSignerError` check previously could not discover it) and links its worked-examples file on GitHub rather than by path, since the npm tarball ships `dist` and `src` only. Story 7's JSDoc no longer claims the whole re-run loop is chain-driven: the deferred UPGRADE is, the v2 implementation deploy is skipped from the persisted deployment record. `@rocketh/deploy`'s test suite gains the missing `signerProtocols: {privateKey}` line in its private-key snippet (a user copying it hit "protocol: privateKey is not supported"), asserts `eth_signTransaction` is absent on the local-signing test (the mock answers it, so nothing distinguished local from node signing), and the create2/create3 tests now assert the factory call and the recorded address instead of only `toBeDefined()`.

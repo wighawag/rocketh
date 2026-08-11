@@ -361,7 +361,7 @@ describe('@rocketh/deploy - Integration Tests', () => {
 			 * });
 			 * ```
 			 */
-			const {env} = await createEnv();
+			const {env, provider} = await createEnv();
 			const _deploy = deploy(env);
 
 			const artifact = createMockArtifact('DeterministicContract');
@@ -384,6 +384,20 @@ describe('@rocketh/deploy - Integration Tests', () => {
 			);
 
 			expect(deployment).toBeDefined();
+
+			// A deterministic deploy does not send the creation bytecode to the node directly:
+			//  it CALLS THE FACTORY, and the address it records is the create2 address computed
+			//  from bytecode + salt before broadcast, not one read off the receipt. Asserting the
+			//  dispatched `to` is what distinguishes this from an ordinary deployment; the
+			//  address assertion is what pins that the computed address is the one recorded.
+			const factory = env.network.deterministicDeployment;
+			const factoryAddress = ('create2' in factory ? factory.create2.factory : factory.factory).toLowerCase();
+			const deploymentSends = provider
+				.getRequests()
+				.filter((r) => r.method === 'eth_sendTransaction')
+				.map((r) => ((r.params as [{to?: string}])[0].to || '').toLowerCase());
+			expect(deploymentSends).toContain(factoryAddress);
+			expect(deployment.address).toBe(env.get('DeterministicContract').address);
 		});
 
 		it('should demonstrate CREATE3 deterministic deployment', async () => {
@@ -411,7 +425,7 @@ describe('@rocketh/deploy - Integration Tests', () => {
 			 * });
 			 * ```
 			 */
-			const {env} = await createEnv();
+			const {env, provider} = await createEnv();
 			const _deploy = deploy(env);
 
 			const artifact = createMockArtifact('Create3Contract');
@@ -434,6 +448,18 @@ describe('@rocketh/deploy - Integration Tests', () => {
 			);
 
 			expect(deployment).toBeDefined();
+
+			// Same shape as the create2 case: the transaction goes to a FACTORY, and the address
+			//  recorded is the computed one. For create3 the receipt would name the factory call
+			//  rather than the contract created inside it, which is exactly why the environment
+			//  prefers the expected address over the receipt's.
+			const deploymentSends = provider
+				.getRequests()
+				.filter((r) => r.method === 'eth_sendTransaction')
+				.map((r) => (r.params as [{to?: string}])[0].to);
+			expect(deploymentSends.length).toBeGreaterThan(0);
+			expect(deploymentSends.every((to) => !!to)).toBe(true);
+			expect(deployment.address).toBe(env.get('Create3Contract').address);
 		});
 	});
 
@@ -557,13 +583,20 @@ describe('@rocketh/deploy - Integration Tests', () => {
 			 * the node holds. Rocketh then signs the deployment itself and submits the signed
 			 * transaction, so the node is never asked to sign.
 			 *
-			 * Usage in real scenario:
+			 * Usage in real scenario — note the `signerProtocols` registration, which is NOT
+			 * optional: nothing registers the `privateKey` protocol for you in production (the
+			 * test harness registers it itself, which is why the setup below is shorter), and
+			 * without it the account fails to resolve with `protocol: privateKey is not
+			 * supported`:
 			 * ```typescript
-			 * // rocketh.config.ts
+			 * // rocketh/config.ts
+			 * import {privateKey} from '@rocketh/signer';
+			 *
 			 * export const config = {
 			 *   accounts: {
 			 *     deployer: {default: 'privateKey:0x...'},
 			 *   },
+			 *   signerProtocols: {privateKey},
 			 * } as const satisfies UserConfig;
 			 * ```
 			 */
@@ -580,11 +613,14 @@ describe('@rocketh/deploy - Integration Tests', () => {
 
 			expect(deployment.newlyDeployed).toBe(true);
 
-			// the signing itself never touches the node (`eth_signTransaction` goes to the local
-			//  signer), so what the node sees is the signed transaction and nothing else
+			// the signing itself never touches the node, so what the node sees is the signed
+			//  transaction and nothing else. `eth_signTransaction` is asserted ABSENT and not
+			//  just `eth_sendTransaction`: the mock node answers `eth_signTransaction` too, so
+			//  without this line nothing here distinguishes local signing from node signing.
 			const methods = provider.getRequests().map((r) => r.method);
 			expect(methods).toContain('eth_sendRawTransaction');
 			expect(methods).not.toContain('eth_sendTransaction');
+			expect(methods).not.toContain('eth_signTransaction');
 		});
 
 		it('emits evm_mine right after the deployment transaction when autoMine is on', async () => {

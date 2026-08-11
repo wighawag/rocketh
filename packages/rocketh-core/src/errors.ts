@@ -71,8 +71,8 @@ function buildMessage(data: UnknownSignerErrorData): string {
 	if (data.autoImpersonation === 'attempted') {
 		lines.push(
 			'  note: auto-impersonation was enabled for this run and `hardhat_impersonateAccount` was sent for this ' +
-				'account, but the node did not accept it (only a fork or dev node, such as anvil or hardhat, implements ' +
-				'that RPC), so the account remains unsignable.',
+				'account, but the node did not accept it (it either does not implement that RPC \u2014 only a fork or dev ' +
+				'node, such as anvil or hardhat, does \u2014 or it refused this account), so the account remains unsignable.',
 		);
 	} else if (data.autoImpersonation === 'not-a-candidate') {
 		lines.push(

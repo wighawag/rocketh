@@ -469,8 +469,14 @@ describe('@rocketh/unknown-signer - Story 7: execute on the Safe, then re-run th
 		 * records, notices the proxy already points at v2 and skips the upgrade entirely.
 		 * `catchUnknownSigner` returns `null`, because there was nothing left to catch.
 		 *
-		 * The idempotency comes from ON-CHAIN STATE, not from anything rocketh wrote
-		 * down: see the sibling test for the assertion that nothing was persisted.
+		 * THE UPGRADE's idempotency comes from ON-CHAIN STATE: nothing about the deferred
+		 * transaction is persisted, and run 2 skips it because it reads the proxy's
+		 * implementation slot (see the sibling test for the assertion that nothing was
+		 * written). Be careful not to over-read that: the v2 IMPLEMENTATION deploy is
+		 * skipped for a different reason, the ordinary deployment record, which run 2
+		 * reloads and compares bytecode against. `deploy` does not re-check code on-chain
+		 * on that path. So this loop is chain-driven exactly where it has to be — the part
+		 * a human did out-of-band — and record-driven everywhere it always was.
 		 */
 		const {env, storage, deploymentStore, vault} = await deployVaultOwnedBySafe();
 
