@@ -17,6 +17,31 @@ import {toJSONCompatibleLinkedData} from '@rocketh/core/json';
 
 const logger = logs('@rocketh/proxy');
 
+/**
+ * The EIP-1967 IMPLEMENTATION slot: `bytes32(uint256(keccak256('eip1967.proxy.implementation')) - 1)`.
+ *
+ * Standardised precisely so that tooling can find a proxy's implementation without the
+ * proxy having to expose a getter, which is what we do here — `eth_getStorageAt` on this
+ * slot, rather than an `implementation()` call that many proxies deliberately do not have
+ * (or hide from the admin). The minus-one is part of the EIP: it makes the slot provably
+ * outside the range any Solidity mapping or array can compute, so it cannot collide with
+ * the implementation contract's own storage layout.
+ *
+ * @see https://eips.ethereum.org/EIPS/eip-1967
+ */
+const EIP1967_IMPLEMENTATION_SLOT = '0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc' as const;
+
+/**
+ * The EIP-1967 ADMIN slot: `bytes32(uint256(keccak256('eip1967.proxy.admin')) - 1)`.
+ *
+ * Read here to find out who may upgrade a proxy, as the fallback for the cases where
+ * asking the proxy (an `owner()` / `admin()` call) does not work — a transparent proxy
+ * routes non-admin calls to the implementation, so the answer depends on who is asking.
+ *
+ * @see https://eips.ethereum.org/EIPS/eip-1967
+ */
+const EIP1967_ADMIN_SLOT = '0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103' as const;
+
 export type {Abi, AbiFunction, Artifact, DeploymentConstruction, Deployment, Environment};
 
 export type PredefinedProxyContract =
@@ -439,11 +464,7 @@ export function deployViaProxy(
 
 			const implementationSlotData = await env.network.provider.request({
 				method: 'eth_getStorageAt',
-				params: [
-					proxyDeployment.address,
-					'0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc',
-					'latest',
-				],
+				params: [proxyDeployment.address, EIP1967_IMPLEMENTATION_SLOT, 'latest'],
 			});
 			const currentImplementationAddress = `0x${implementationSlotData.substr(-40)}`;
 
@@ -462,11 +483,7 @@ export function deployViaProxy(
 				// if (!currentOwner) {
 				const ownerSlotData = await env.network.provider.request({
 					method: 'eth_getStorageAt',
-					params: [
-						proxyDeployment.address,
-						'0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103',
-						'latest',
-					],
+					params: [proxyDeployment.address, EIP1967_ADMIN_SLOT, 'latest'],
 				});
 				let currentOwner = `0x${ownerSlotData.substr(-40)}`;
 

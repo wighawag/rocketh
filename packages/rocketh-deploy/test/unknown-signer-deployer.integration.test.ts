@@ -144,6 +144,59 @@ describe('@rocketh/deploy - unsignable deployer reaches the unknown-signer seam'
 				env.network.deterministicDeployment.create2.factory.toLowerCase() as `0x${string}`,
 			);
 		});
+
+		it('surfaces the FUNDING transfer first when the create2 factory is missing and under-funded', async () => {
+			/**
+			 * The consequence of routing this path through the seam instead of stopping it at a
+			 * pre-guard, and the one a user is most likely to be surprised by.
+			 *
+			 * A deterministic deploy needs the create2 factory to exist. If it does not, rocketh
+			 * deploys it — and if the factory's own deployer is short of gas money, it FIRST
+			 * sends a plain value transfer from the deployment account. When that account is the
+			 * Safe, that funding transfer is the first thing to reach the seam, so the
+			 * transaction the human is asked to execute is a 21000-gas ETH transfer, NOT the
+			 * deployment they asked for. The deployment surfaces on a later run, once the factory
+			 * exists; the idempotent re-run loop is what makes that acceptable.
+			 *
+			 * The default harness answers `eth_getBalance` with 1000 ETH, so every other
+			 * deterministic test lands on the factory CALL and this branch was never exercised.
+			 */
+			const {env} = await createTestEnvironment({
+				accounts: {deployer: NODE_ACCOUNT, safeDeployer: SAFE_ADDRESS},
+				nodeAccounts: [NODE_ACCOUNT],
+				executionParams: {autoImpersonate: false},
+				providerConfig: {
+					responses: {
+						// no factory deployed yet
+						eth_getCode: '0x',
+						// and its deployer cannot pay for its own deployment
+						eth_getBalance: '0x0',
+					},
+				},
+			});
+
+			const error = await expectUnknownSignerError(() =>
+				deploy(env)(
+					'DeterministicContract',
+					{
+						account: 'safeDeployer',
+						artifact: createMockArtifact('DeterministicContract'),
+						args: [42n],
+					},
+					{deterministic: true},
+				),
+			);
+
+			// it is the FUNDING transfer, not the factory call and not the deployment
+			expect(error.data.from.toLowerCase()).toBe(SAFE_ADDRESS);
+			expect(error.data.to?.toLowerCase()).toBe(
+				env.network.deterministicDeployment.create2.deployer.toLowerCase() as `0x${string}`,
+			);
+			expect(error.data.to?.toLowerCase()).not.toBe(env.network.deterministicDeployment.create2.factory.toLowerCase());
+			expect(BigInt(error.data.value ?? '0x0')).toBeGreaterThan(0n);
+			// nothing was recorded for the deployment the user actually asked for
+			expect(env.getOrNull('DeterministicContract')).toBeNull();
+		});
 	});
 
 	describe('A deployer passed as a bare address, with no signer entry at all', () => {

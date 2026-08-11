@@ -205,7 +205,7 @@ Deployments are saved to disk in the `deployments/<environment>` folder, allowin
 
 Named accounts allow you to refer to accounts by name rather than index or address. This makes your deployment scripts and tests more readable and maintainable.
 
-Named accounts are configured in the `rocketh.ts` file:
+Named accounts are configured in `rocketh/config.ts`:
 
 ```typescript
 export const config = {
@@ -267,6 +267,32 @@ export default deployScript(
 	{tags: ['GreetingsRegistry', 'GreetingsRegistry_deploy']},
 );
 ```
+
+#### When does a re-run REDEPLOY?
+
+A deploy script is meant to be re-runnable, so `deploy` first asks whether the contract it is about to deploy is already deployed. Three options control that question:
+
+| option | effect |
+| --- | --- |
+| `skipIfAlreadyDeployed` | if a deployment with this name exists, return it and look no further — the code is never compared |
+| `alwaysOverride` | redeploy unconditionally, comparing nothing (mutually exclusive with `skipIfAlreadyDeployed`, which throws) |
+| `strictBytecodeMatch` | how to compare, when comparing happens — see below |
+
+With neither `skipIfAlreadyDeployed` nor `alwaysOverride`, rocketh compares the saved deployment's code and constructor arguments against what you are deploying now, and redeploys only if they differ.
+
+By default that comparison **ignores the contract metadata**. Solidity appends a CBOR metadata blob to a contract's runtime bytecode, and that blob changes when things that do not affect behaviour change: a comment, an absolute source path, a compiler patch version. Comparing raw bytes would therefore redeploy — or, worse, UPGRADE A PROXY — because someone reformatted a file. So rocketh strips the metadata from both sides before comparing (`docs/adr/0004-non-strict-bytecode-matching-by-default.md`). `@rocketh/proxy` forces this off for exactly that reason and does not let you change it.
+
+Set `strictBytecodeMatch: true` to compare the bytes verbatim instead, metadata included:
+
+```typescript
+await deploy(
+	'GreetingsRegistry',
+	{account: deployer, artifact: artifacts.GreetingsRegistry, args: ['']},
+	{strictBytecodeMatch: true},
+);
+```
+
+Use it when you need the deployed contract to correspond to one exact compilation — typically because a verification or attestation flow pins the metadata hash, so a metadata-only difference genuinely IS a different artifact to you. The cost is that recompiling on a different machine, or with a patch-level compiler bump, will redeploy.
 
 ### Deploying Proxies
 
@@ -852,7 +878,7 @@ namedAccounts: {
 },
 ```
 
-In v2, configuration is in `rocketh.ts`:
+In v2, configuration is in `rocketh/config.ts`:
 
 ```typescript
 export const config = {

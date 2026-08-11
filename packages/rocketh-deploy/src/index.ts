@@ -343,9 +343,21 @@ export function deploy(env: Environment): <TAbi extends Abi>(
 			const newlyDeployedBytecode = artifactToUse.deployedBytecode;
 			let bytecodeMatches: boolean;
 			if (previousDeployedBytecode && newlyDeployedBytecode && !strictBytecodeMatch) {
-				// CBOR metadata is appended to deployed bytecode (runtime code), not creation bytecode (where CBOR can be at different places).
-				const last2Bytes = previousDeployedBytecode.slice(-4);
-				const cborLength = parseInt(last2Bytes, 16);
+				// NON-STRICT MATCHING: compare the bytecode with its trailing CBOR METADATA BLOB
+				//  removed, so a recompile that changed only the metadata (a different absolute
+				//  source path, a bumped compiler patch, an added comment) does not look like a new
+				//  contract and trigger a redeploy. This is the default, and ADR 0004 is why.
+				//  `strictBytecodeMatch: true` opts out and compares the bytes verbatim.
+				//
+				// solc appends the blob to the DEPLOYED bytecode (runtime code) and ends it with a
+				//  two-byte big-endian LENGTH of the blob itself, excluding those two bytes. So the
+				//  last 4 hex characters are that length, and stripping `cborLength` bytes (twice as
+				//  many hex characters) removes the metadata. Creation bytecode is not used for this:
+				//  there the blob can sit at different offsets.
+				const CBOR_LENGTH_SUFFIX_HEX_CHARS = 4; // two bytes, big-endian
+				const HEX_CHARS_PER_BYTE = 2;
+				const cborLengthSuffix = previousDeployedBytecode.slice(-CBOR_LENGTH_SUFFIX_HEX_CHARS);
+				const cborLength = parseInt(cborLengthSuffix, 16);
 				if (isNaN(cborLength) || cborLength < 0) {
 					const linkedPreviousBytecode = linkLibraries(
 						{bytecode: existingDeployment.bytecode, linkReferences: existingDeployment.linkReferences},
@@ -353,8 +365,11 @@ export function deploy(env: Environment): <TAbi extends Abi>(
 					);
 					bytecodeMatches = linkedPreviousBytecode === bytecode;
 				} else {
-					const previousDeployedBytecodeWithoutCBOR = previousDeployedBytecode.slice(0, -cborLength * 2);
-					const newlyDeployedBytecodeWithoutCBOR = newlyDeployedBytecode.slice(0, -cborLength * 2);
+					const previousDeployedBytecodeWithoutCBOR = previousDeployedBytecode.slice(
+						0,
+						-cborLength * HEX_CHARS_PER_BYTE,
+					);
+					const newlyDeployedBytecodeWithoutCBOR = newlyDeployedBytecode.slice(0, -cborLength * HEX_CHARS_PER_BYTE);
 
 					bytecodeMatches =
 						areLibrariesIdentical(existingDeployment.libraries || {}, options?.libraries || {}) &&
