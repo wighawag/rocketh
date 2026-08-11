@@ -3,7 +3,7 @@ title: review-gate non-blocking nits for 'migrate-proxy-diamond-tests' (Gate 2 a
 date: 2026-08-10
 status: open
 reviewOf: migrate-proxy-diamond-tests
-needsAnswers: false
+needsAnswers: true
 ---
 
 ## Non-blocking review findings
