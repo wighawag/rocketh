@@ -60,9 +60,9 @@
 		"node": ">=22.0.0"
 	},
 	"devDependencies": {
-		"@types/node": "^25.6.2",
+		"@types/node": "^26.2.0",
 		"as-soon": "^0.1.6",
-		"hardhat": "^3.6.0",
+		"hardhat": "^3.12.0",
 		"rimraf": "^6.1.3",
 		"typescript": "^6.0.3",
 		"vitest": "^4.1.10"
@@ -73,12 +73,12 @@
 		"rocketh": "workspace:*"
 	},
 	"dependencies": {
-		"@rocketh/node": "workspace:*",
-		"rocketh": "workspace:*",
 		"@nomicfoundation/hardhat-zod-utils": "^3.0.4",
-		"commander": "^14.0.3",
+		"@rocketh/node": "workspace:*",
+		"commander": "^15.0.0",
 		"named-logs": "^0.4.1",
 		"named-logs-console": "^0.5.1",
+		"rocketh": "workspace:*",
 		"zod": "^3.25.76"
 	},
 	"scripts": {

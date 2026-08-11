@@ -41,7 +41,7 @@
 	"dependencies": {
 		"@rocketh/core": "workspace:*",
 		"eip-1193": "^0.6.5",
-		"viem": "^2.48.2"
+		"viem": "^2.55.13"
 	},
 	"peerDependencies": {
 		"rocketh": "workspace:*"
