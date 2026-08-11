@@ -24,10 +24,15 @@ import type {UnknownSignerPolicy, UnknownSignerPolicyFrame} from '@rocketh/core/
  * context, which is sound because rocketh runs deploy scripts SEQUENTIALLY (one await at
  * a time), so at most one scoped action is in flight. A user who runs `Promise.all` of
  * two actions inside one wrapper leaks the frame to the concurrent action. Now that
- * `'ask'` exists that leak is REAL rather than theoretical (the concurrent action gets a
- * throw where it would have prompted, never the other way round, since a frame only ever
- * forces `throw`). It remains a known limitation recorded in ADR 0006 rather than
- * enforced here.
+ * `'ask'` exists that leak is REAL rather than theoretical, and it leaks in BOTH
+ * DIRECTIONS: `catchUnknownSigner` pushes `'throw'`, so a concurrent action can get a
+ * throw where it would have prompted, and `withUnknownSignerPolicy` can push `'ask'` or
+ * `'auto'`, so a concurrent action can equally be PROMPTED where it would have thrown.
+ * (An earlier version of this paragraph claimed the second direction was impossible
+ * "since a frame only ever forces `throw`" — true only while `catchUnknownSigner` was
+ * the sole thing that pushed a frame.) The capability ceiling still applies to the
+ * leaked frame, so a run that cannot reach a human cannot be made to prompt by one.
+ * It remains a known limitation recorded in ADR 0006 rather than enforced here.
  */
 export type UnknownSignerPolicyStack = {
 	/** Push a scoped override. ALWAYS pair with `pop` in a `finally`. */

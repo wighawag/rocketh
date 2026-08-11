@@ -571,7 +571,16 @@ At the pause you have two answers:
 - **paste the transaction hash** — rocketh looks the transaction up on the network, waits for it to be mined, requires the receipt to report a SUCCESSFUL status, saves state through the same pending-transaction path a normal broadcast uses, records the hash for gas reporting, and returns the receipt to your script. It never sends a transaction of its own. A hash this node has never heard of (from the wrong network, or a typo that is still the right shape) is given a short grace period to show up and then reported as not found, with the transaction you still have to execute printed again, so the run stops rather than waiting for ever.
 - **`cannot sign`** (or just press enter) — rocketh prints the full transaction and throws the same `UnknownSignerError` as the non-interactive path, so the interactive flow degrades cleanly into the defer workflow and is still caught by `catchUnknownSigner`. Aborting the prompt (Ctrl-C) does the same. A paste that is not a transaction hash is re-asked a couple of times and then also defers.
 
-`catchUnknownSigner` always takes the throw path, whatever the ambient policy: a wrapped action never pops a prompt at you, because you already said you would handle the transaction yourself.
+`catchUnknownSigner` takes the throw path whatever the AMBIENT policy is: a wrapped action never pops a prompt at you, because you already said you would handle the transaction yourself. The one thing that overrides it is an EXPLICIT override written inside the wrapper, because policy frames nest and the innermost one wins — so `catchUnknownSigner(env)(() => withUnknownSignerPolicy(env)('ask', ...))` does prompt. That is deliberate: the guarantee is about the policy you did not state, not about silencing one you wrote yourself a line later.
+
+A DEPLOYMENT from an unsignable `from` pauses and asks in exactly the same way, and is then held to a STRICTER standard than an execution, because it has an address to anchor on. The address rocketh records is never taken on trust from the hash you paste:
+
+- **an ordinary deployment** is recorded at the address the pasted transaction's OWN receipt reports as created;
+- **a deterministic (or factory) deployment**, whose address was computed from bytecode and salt before broadcast, is recorded at that expected address only once rocketh has seen CODE at it on-chain. It confirms by looking for the code, never by parsing the transaction, so it does not matter what wrapper your multisig executed it inside.
+
+Anything else FAILS, saving nothing: a receipt that reports no created contract (or the zero address), an expected address with no code at it, a transaction that did not succeed, or a node that cannot answer the code lookup at all (unable to confirm is not the same as confirmed, so the run fails rather than recording a deployment nobody verified). The error names the deployment, the hash you pasted and the transaction that still needs executing, so a wrong hash cannot quietly leave you with a deployment record pointing at an address holding nothing.
+
+This applies to the interactive path only. A deployment rocketh broadcast itself is unaffected and gains no new check: it sent that transaction, so there is nothing to distrust.
 
 #### Choosing the policy for ONE call (`withUnknownSignerPolicy`)
 
@@ -588,22 +597,15 @@ const receipt = await withUnknownSignerPolicy(env)('ask', () =>
 
 It takes a function for the same reason `catchUnknownSigner` does, returns whatever the action returned, and propagates whatever it threw (so wrapping it in `catchUnknownSigner` still defers). Precedence is one rule: the innermost override wins, then the run parameter, then the chain config, then the default `'auto'`.
 
+It accepts the whole policy vocabulary, `'auto'` included, not just `'ask'` and `'throw'`. Per call, `'auto'` means "use this run's capability-aware default for this one action", which is the only way to opt a single call back OUT of a run-level `'throw'` without deciding for it what to do instead.
+
 The override chooses among what the run can do; it cannot exceed it. Asking for `'ask'` where the run cannot ask a human for text still takes the `throw` path and never prompts, so a script that hardcodes the override is still safe in CI. And since it is the same policy frame, it never turns a signable account into a throw and never defeats impersonation.
-
-A DEPLOYMENT from an unsignable `from` pauses and asks in exactly the same way, and is then held to a STRICTER standard than an execution, because it has an address to anchor on. The address rocketh records is never taken on trust from the hash you paste:
-
-- **an ordinary deployment** is recorded at the address the pasted transaction's OWN receipt reports as created;
-- **a deterministic (or factory) deployment**, whose address was computed from bytecode and salt before broadcast, is recorded at that expected address only once rocketh has seen CODE at it on-chain. It confirms by looking for the code, never by parsing the transaction, so it does not matter what wrapper your multisig executed it inside.
-
-Anything else FAILS, saving nothing: a receipt that reports no created contract (or the zero address), an expected address with no code at it, a transaction that did not succeed, or a node that cannot answer the code lookup at all (unable to confirm is not the same as confirmed, so the run fails rather than recording a deployment nobody verified). The error names the deployment, the hash you pasted and the transaction that still needs executing, so a wrong hash cannot quietly leave you with a deployment record pointing at an address holding nothing.
-
-This applies to the interactive path only. A deployment rocketh broadcast itself is unaffected and gains no new check: it sent that transaction, so there is nothing to distrust.
 
 ACCEPTED RESIDUAL RISK, stated rather than engineered around: for an EXECUTION, rocketh checks that the transaction you pasted succeeded, and nothing else. It does not decode MultiSend or Timelock payloads and does not try to match `to`/`data`, because a governed execution is routinely wrapped by the multisig into a different transaction shape. A successful-but-unrelated hash would therefore be accepted. This is the same trust boundary as hardhat-deploy v1 (where the run continued after you executed the transaction, with no check at all), only stricter, and it exists because an execution has no address to anchor on.
 
 #### In the browser, and on a fork: impersonation instead of interactivity
 
-`@rocketh/web` deliberately implements no text prompt, so a browser run can never ask you to paste a transaction hash: `'ask'` (and `'auto'`) take the `throw` path there, exactly as in CI. That is by design, not a missing feature, and it is not a dead end. On a FORK or a dev node the browser has a better answer than interactivity anyway: let the account be IMPERSONATED, which resolves it BEFORE the unknown-signer seam so no policy is ever consulted and nothing has to be executed out-of-band.
+`@rocketh/web` implements no text prompt today, so a browser run cannot ask you to paste a transaction hash: `'ask'` (and `'auto'`) take the `throw` path there, exactly as in CI. That is a deliberate absence rather than an oversight — asking in a browser means a real UI integration point (a modal, a form, somewhere for the answer to come from), which is a different kind of thing from reading a line of stdin, and nothing forces that decision yet. It is also not a dead end. On a FORK or a dev node the browser has a better answer than interactivity anyway: let the account be IMPERSONATED, which resolves it BEFORE the unknown-signer seam so no policy is ever consulted and nothing has to be executed out-of-band.
 
 ```typescript
 // rocketh/config.ts
