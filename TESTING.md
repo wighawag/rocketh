@@ -13,6 +13,7 @@ The Rocketh project uses Vitest for testing. Tests are organized by package and 
 Unit tests focus on individual functions and utilities. They are located in each package's `src` directory with the `.test.ts` suffix.
 
 Examples:
+
 - [`packages/rocketh-core/src/account.test.ts`](packages/rocketh-core/src/account.test.ts) - Tests for account resolution
 - [`packages/rocketh-core/src/artifacts.test.ts`](packages/rocketh-core/src/artifacts.test.ts) - Tests for ABI/artifact merging
 - [`packages/rocketh-core/src/json.test.ts`](packages/rocketh-core/src/json.test.ts) - Tests for JSON utilities
@@ -25,6 +26,7 @@ Integration tests demonstrate real-world usage scenarios and serve as executable
 **Note**: These integration tests are primarily documentation examples that demonstrate usage patterns. For full integration testing with actual blockchain interactions, you would need to run them against a local blockchain node (like Anvil or Hardhat Network).
 
 Examples:
+
 - [`packages/rocketh-deploy/src/deploy.integration.test.ts`](packages/rocketh-deploy/src/deploy.integration.test.ts) - Deployment scenarios
 - [`packages/rocketh-proxy/src/proxy.integration.test.ts`](packages/rocketh-proxy/src/proxy.integration.test.ts) - Proxy deployment patterns
 - [`packages/rocketh-diamond/src/diamond.integration.test.ts`](packages/rocketh-diamond/src/diamond.integration.test.ts) - Diamond proxy scenarios
@@ -73,9 +75,12 @@ pnpm test --coverage
 ### Type-check and format the tests
 
 ```bash
+pnpm build       # REQUIRED FIRST on a clean checkout — see below
 pnpm typecheck   # src (each package's tsconfig.json) AND test (each package's tsconfig.test.json)
 pnpm format      # packages/*/{src,test}/**/*.ts
 ```
+
+**`pnpm typecheck` needs `pnpm build` to have run at least once.** Cross-package imports resolve through the workspace link to `packages/*/dist/*.d.ts`, which only exists after a build, so on a clean checkout `typecheck` fails with `Cannot find module '@rocketh/core'` and similar. This is invisible day to day (your `dist/` is already there) and bites only a fresh clone or a fresh gate worktree — which is why the `verify` gate runs `typecheck` AFTER `build`, not before.
 
 Test files are type-checked, and the `verify` gate runs `pnpm typecheck`. This matters beyond tidiness: a test that asserts a COMPILE-TIME contract with `@ts-expect-error` (for example that a wrapper's promise form must not compile) is only an assertion if something checks it. Vitest does not type-check, and each package's build `tsconfig.json` deliberately includes `src` only — widening it would emit test files into `dist` — so the checking lives in a sibling `tsconfig.test.json` per package.
 
@@ -186,30 +191,30 @@ import {deploy} from '@rocketh/deploy';
 import {createTestEnvironment, createMockArtifact} from '@rocketh/test-utils';
 
 describe('My Feature - Integration Tests', () => {
-  describe('Scenario 1', () => {
-    it('should do something useful', async () => {
-      /**
-       * Example: Brief description of what this test demonstrates
-       *
-       * Detailed explanation of the scenario and why it matters.
-       */
-      const {env} = await createTestEnvironment({
-        accounts: {deployer: '0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266'},
-        nodeAccounts: ['0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266'],
-      });
-      const _deploy = deploy(env);
+	describe('Scenario 1', () => {
+		it('should do something useful', async () => {
+			/**
+			 * Example: Brief description of what this test demonstrates
+			 *
+			 * Detailed explanation of the scenario and why it matters.
+			 */
+			const {env} = await createTestEnvironment({
+				accounts: {deployer: '0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266'},
+				nodeAccounts: ['0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266'],
+			});
+			const _deploy = deploy(env);
 
-      const artifact = createMockArtifact('MyContract');
-      
-      const deployment = await _deploy('MyContract', {
-        account: 'deployer',
-        artifact,
-        args: [],
-      });
+			const artifact = createMockArtifact('MyContract');
 
-      expect(deployment.address).toBeDefined();
-    });
-  });
+			const deployment = await _deploy('MyContract', {
+				account: 'deployer',
+				artifact,
+				args: [],
+			});
+
+			expect(deployment.address).toBeDefined();
+		});
+	});
 });
 ```
 
