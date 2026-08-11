@@ -1,4 +1,0 @@
----
----
-
-Fix `pnpm typecheck:tests`, which could not run on a clean checkout. It looped `npx tsc --noEmit -p packages/*/tsconfig.test.json` from the repo root, but TypeScript is not a dependency of the ROOT manifest — so with no local resolution `npx` fetched the unrelated `tsc` package from the registry and printed its "This is not the tsc command you are looking for" banner instead of type-checking anything. It now runs per package via `pnpm -r --parallel exec`, the same way the first phase does, so each package uses its own `typescript` devDependency, and packages without a `tsconfig.test.json` are skipped rather than failing. Verified in both directions: clean exit on a healthy tree, and a real failure (exit 1, the TS error printed) when a test file is given a type error. Found by the builder of `broadcast-signer-switch-exhaustiveness-default`, who captured it rather than working around it.
