@@ -1,5 +1,14 @@
 # rocketh
 
+## 0.19.13
+
+### Patch Changes
+
+- 6ea32f1: Docs/comments only: correct a documented invariant that `withUnknownSignerPolicy` falsified. `unknownSignerPolicy.ts` (and ADR 0006) claimed the `Promise.all` frame leak could only make a concurrent action throw where it would have prompted, "never the other way round, since a frame only ever forces `throw`" — true only while `catchUnknownSigner` was the sole thing pushing a frame. A per-call override can push `'ask'` or `'auto'`, so the leak now runs in both directions; the capability ceiling still applies to a leaked frame. `documentation.md` also gains the missing nesting caveat on `catchUnknownSigner` (an explicit override written inside it wins), documents the per-call `'auto'` meaning, and moves the `withUnknownSignerPolicy` subsection after the deployment paragraphs it had orphaned.
+- 1a583b2: `PendingTransaction.transaction.origin` is now written un-normalised at all five sites, where two of them previously lowercased it. It is a persisted RECORD VALUE, not a lookup key: nothing reads it back, and it reaches the deployment record and the pending-transaction files, so it keeps the address as resolved (EIP-55 checksum intact), exactly as `namedAccounts`/`unnamedAccounts` deliberately do, while the re-hydration paths keep what the node returned. Contrast `addressSigners`, which is a lookup map and stays keyed lowercase. Records written before this change hold lowercased values, so anything that ever starts matching on `origin` must lowercase at the comparison rather than rely on the stored form.
+- Updated dependencies [c833bda]
+  - @rocketh/core@0.19.9
+
 ## 0.19.12
 
 ### Patch Changes
