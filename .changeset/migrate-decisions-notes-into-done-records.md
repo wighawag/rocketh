@@ -1,0 +1,4 @@
+---
+---
+
+Work-protocol migration, no code change: the seven `decisions-*` / `decision-*` notes under `work/notes/observations/` are transcribed into the `## Decisions` block of their own done record and deleted. The protocol synced at `2026-08-11` gives a builder's rationale exactly one home (that block, transcribed into `work/tasks/done/<slug>.md`) and states outright that a decision is not an observation: a deliberate, verified choice is neither spotted nor unverified, and as a backward-looking artifact in a live forward bucket it could never be discharged. Each transcription carries the rationale unchanged plus the human's ratification from the 2026-08-11 triage, so the review outcome survives the note. Cross-references from the surviving review-nits notes and from `@rocketh/unknown-signer`'s module JSDoc now point at the done records.

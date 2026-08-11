@@ -19,4 +19,4 @@ is their durable home for triage — promote-to-task / keep / delete.
 - The measured prompts@2.4.2 non-TTY behaviour is verified external ground truth, which the work/ contract homes in work/notes/findings/ with a source:. It landed instead in a brand-new docs/spikes/ directory (absent on main) alongside a committed probe.mjs, while work/notes/findings/ is empty. Is docs/spikes/ a deliberate new convention to pin in CONTEXT.md, or should the measurement move to a finding note?
   (docs/spikes/ask-policy-interactive-resolver/{probe.mjs,prompts-non-tty-behaviour.md}; work/notes/findings/ is empty; WORK-CONTRACT bucket polarity)
 - The durable decisions note still names requireSuccessfulExecutedTransaction in decision 2, but the function that landed is waitForPastedTransaction (decision 8 in the same file uses the new name). A future reader grepping the cited symbol finds nothing.
-  (work/notes/observations/decisions-ask-policy-interactive-resolver-2026-08-10.md item 2 vs packages/rocketh/src/environment/index.ts)
+  (the `## Decisions` block of `work/tasks/done/ask-policy-interactive-resolver.md` item 2 vs packages/rocketh/src/environment/index.ts)

@@ -12,7 +12,7 @@ blockedBy: []
 
 Fix the `libraries` section of the `solidity-standard-json-input` payload that `@rocketh/verifier` sends to Etherscan so that contracts (and libraries) which link to other deployed libraries verify successfully.
 
-Today, in `packages/rocketh-verifier/src/etherscan.ts` (~L246-L254), every linked library address is nested under the *consuming* contract's source path (`contractNamePath`):
+Today, in `packages/rocketh-verifier/src/etherscan.ts` (~L246-L254), every linked library address is nested under the _consuming_ contract's source path (`contractNamePath`):
 
 ```ts
 settings.libraries[contractNamePath][libraryName] = deployment.libraries[libraryName];

@@ -58,7 +58,8 @@
  * `catchUnknownSigner`. Frames nest LIFO, so an override written INSIDE a
  * `catchUnknownSigner` wins over the wrapper's own frame: the deferral guarantee is
  * about the AMBIENT policy, not about an override the same script deliberately asked
- * for. See `work/notes/observations/decisions-per-call-ask-override-and-deferral-precedence-2026-08-11.md`.
+ * for. See the `## Decisions` block of
+ * `work/tasks/done/per-call-ask-override-and-deferral-precedence.md`.
  */
 
 import {UnknownSignerError} from '@rocketh/core';
