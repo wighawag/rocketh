@@ -3,7 +3,7 @@ title: review-gate non-blocking nits for 'injectable-prompt-executor-for-extensi
 date: 2026-08-10
 status: open
 reviewOf: injectable-prompt-executor-for-extension-tests
-needsAnswers: false
+needsAnswers: true
 ---
 
 ## Non-blocking review findings
