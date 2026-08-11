@@ -1244,9 +1244,7 @@ export async function createEnvironment<
 					// covers cast / JS-caller / user-supplied-`signerProtocols` paths that violate
 					// their own type contract. Mirrors the idiom in `unknownSignerPolicy.ts`.
 					const exhaustive: never = signer;
-					throw new Error(
-						`unhandled signer type: ${(exhaustive as {type: string}).type}`,
-					);
+					throw new Error(`unhandled signer type: ${(exhaustive as {type: string}).type}`);
 				}
 			}
 		}
