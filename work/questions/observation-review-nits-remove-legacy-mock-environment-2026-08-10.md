@@ -11,3 +11,11 @@ Item: [`observation:review-nits-remove-legacy-mock-environment-2026-08-10`](../n
 <!-- q1 fields: id=q1 -->
 
 **Your answer** (write below this line):
+
+**Ratified, with ONE reversal** (recorded in full on the `decisions-remove-legacy-mock-environment` note). The task this reviews is in `work/tasks/done/`, so none of this blocks anything.
+
+This review is RIGHT that decision 1 does not hold: the three unreleased changesets still describing `createMockEnvironment` as live (`test-env-harness.md`, `migrate-deploy-and-read-tests.md`, `migrate-proxy-diamond-tests.md`) will publish in the SAME `@rocketh/test-utils` version as the "Breaking: remove" note, so one CHANGELOG entry would contradict itself. Nothing has been published, so trimming the now-false "still exported / still used" clauses misdescribes no released version. Trim them before the next release.
+
+Decision 2's name-shaped regrowth fence is ratified as-is, neither narrower nor wider: it trips on any second `create*Environment` builder in this package, which is the intent, and `CONTEXT.md`'s sanctioned "two builders" are in different packages on opposite sides of the dependency edge.
+
+The third finding (the done record moved byte-identical, so the required verification statement lives only in the note) is a protocol tension, not agent fault, and is covered by the separate repo-wide question about where a builder's rationale is allowed to live.

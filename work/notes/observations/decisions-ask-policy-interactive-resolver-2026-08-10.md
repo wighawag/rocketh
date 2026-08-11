@@ -4,6 +4,8 @@ needsAnswers: true
 
 # Decisions taken while building `ask-policy-interactive-resolver` (2026-08-10)
 
+> **Correction (2026-08-11).** Decision 2 below named `requireSuccessfulExecutedTransaction`, which is not a symbol that exists: the function that landed is `waitForPastedTransaction` (the name decision 8 already uses), and it absorbed the successful-status check during the same requeue that added the unknown-hash bound. Corrected in place rather than as an appended note, because a decision record whose cited symbol cannot be grepped is worse than useless to the reader it exists for; the substance of the decision is unchanged.
+
 Recorded here because each is user-visible, introduces a refusal, or touches another task, and the task body (which the runner moves) is not mine to edit. Each also carries a JSDoc at its choice site.
 
 ## 1. USER-VISIBLE DEFAULT: `'auto'` now becomes interactive wherever a text prompt exists
@@ -14,7 +16,7 @@ RESOLVED on the 2026-08-10 requeue (see decision 7): the missing TTY probe is no
 
 ## 2. NEW REFUSAL: a pasted transaction whose receipt is not successful fails the run
 
-`requireSuccessfulExecutedTransaction` (`packages/rocketh/src/environment/index.ts`) throws a plain `Error` naming the pasted hash, the receipt's status and the whole transaction that still needs executing. It runs BEFORE any state is saved and before the tracker is touched, so a failed paste leaves nothing behind. Alternatives considered: a new exported error class (rejected: new public surface for a message that already IS the deliverable, and nothing programmatic needs to branch on it), and checking after `savePendingExecution` (rejected: the pending-transaction file would already have been written, breaking "saves NO state"). What it touches: `interactive-deployment-address-recovery` extends this same check with the address invariants.
+`waitForPastedTransaction` (`packages/rocketh/src/environment/index.ts`) throws a plain `Error` naming the pasted hash, the receipt's status and the whole transaction that still needs executing. It runs BEFORE any state is saved and before the tracker is touched, so a failed paste leaves nothing behind. Alternatives considered: a new exported error class (rejected: new public surface for a message that already IS the deliverable, and nothing programmatic needs to branch on it), and checking after `savePendingExecution` (rejected: the pending-transaction file would already have been written, breaking "saves NO state"). What it touches: `interactive-deployment-address-recovery` extends this same check with the address invariants.
 
 ## 3. USER-VISIBLE: what the prompt accepts, and that re-asking is BOUNDED
 

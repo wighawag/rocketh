@@ -11,3 +11,9 @@ Item: [`observation:decision-added-assertions-migrate-proxy-diamond-tests-2026-0
 <!-- q1 fields: id=q1 -->
 
 **Your answer** (write below this line):
+
+**Ratify both blocks; do not trim.** Reviewed the actual assertions.
+
+The PROXY block (`packages/rocketh-proxy/test/proxy.integration.test.ts:84-95`) is inside acceptance criterion 3's fence and demonstrably so: under the old fake's single-`contractAddress` receipt the implementation and the proxy genuinely collapsed onto one address, so `expect(implementation.address).not.toBe(proxy.address)` could not have been written before the migration.
+
+The DIAMOND block (`diamond.integration.test.ts:113-131`) is outside the fence, as the note itself says - facets default to `deterministic: true`, so those four addresses were already distinct under the old fake. Ratified anyway, as a deliberate strengthening. Trimming it back would restore a `toBeDefined()`-only case in exactly the file where such a case has already been shown to hide a real defect: the multi-facet example had three differently-named facets deploying to ONE create2 address and stayed green (now fixed, and asserted). The fence is worth enforcing against behaviour changes; enforcing it against added coverage costs more than it protects.
