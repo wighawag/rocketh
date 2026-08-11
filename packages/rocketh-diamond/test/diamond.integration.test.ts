@@ -318,6 +318,22 @@ describe('@rocketh/diamond - Integration Tests', () => {
 			);
 
 			expect(deployment).toBeDefined();
+
+			// Three NAMED facets must be three CONTRACTS. Facets deploy deterministically, so
+			//  their address is the create2 address computed from their own bytecode: templates
+			//  that differed only in ABI used to collapse onto ONE address, and this example then
+			//  documented a diamond whose three cuts all pointed at the same contract while every
+			//  assertion stayed green. Asserted here so the example cannot quietly go back to
+			//  describing something the code does not build.
+			const userFacet = env.get('UserFacet').address.toLowerCase();
+			const paymentFacet = env.get('PaymentFacet').address.toLowerCase();
+			const adminFacet = env.get('AdminFacet').address.toLowerCase();
+			expect(new Set([userFacet, paymentFacet, adminFacet]).size).toBe(3);
+
+			const facetAddresses = (deployment.facets ?? []).map((f) => f.facetAddress.toLowerCase());
+			expect(facetAddresses).toContain(userFacet);
+			expect(facetAddresses).toContain(paymentFacet);
+			expect(facetAddresses).toContain(adminFacet);
 		});
 
 		it('should demonstrate facets with constructor arguments', async () => {

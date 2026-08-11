@@ -237,6 +237,17 @@ export function createMockArtifact<TAbi extends Abi = typeof DEFAULT_ABI>(
 	};
 }
 
+/**
+ * A mock artifact whose TEMPLATE distinguishes it from its siblings — in both the ABI and
+ * the BYTECODE.
+ *
+ * The bytecode half is not cosmetic. A deterministic (create2) deployment derives its
+ * address from the bytecode, so templates that differ only in their ABI all deploy to the
+ * SAME address. That made the multi-facet diamond example silently document a diamond
+ * whose three differently-named facets were one contract: three cuts pointing at one
+ * address, with every assertion still green. Each template therefore carries a distinct
+ * bytecode (and deployedBytecode, so the redeploy comparison can tell them apart too).
+ */
 export function createExampleArtifact(name: string, templateNumber: number): Artifact<Abi> {
 	const mock = createMockArtifact(name);
 	if (templateNumber == 0) {
@@ -287,6 +298,11 @@ export function createExampleArtifact(name: string, templateNumber: number): Art
 	} else {
 		throw new Error(`no template ${templateNumber}`);
 	}
+
+	// Distinct code per template, so two templates never collapse onto one create2 address.
+	const templateByte = templateNumber.toString(16).padStart(2, '0');
+	(mock as any).bytecode = `${mock.bytecode}${templateByte}`;
+	(mock as any).deployedBytecode = `${mock.deployedBytecode}${templateByte}`;
 
 	return mock;
 }
