@@ -257,12 +257,16 @@ export function resolveExecutionParams<Extra extends Record<string, unknown> = R
 		autoImpersonate = actualChainConfig.autoImpersonate;
 	}
 
-	// Resolve the unknown-signer policy (priority: params > chain config > default `'auto'`),
-	// mirroring how `autoImpersonate` above is threaded. `'auto'` degrades to `'throw'` at the
-	// seam while no interactive resolver exists, so a CI run never prompts.
+	// Resolve the unknown-signer policy (priority: params > chain config > top-level config >
+	// default `'auto'`), mirroring how `autoImpersonate` above is threaded. `'auto'` resolves to
+	// `'ask'` only where the run can actually ask a human for text, so a CI run never prompts:
+	// it is the CAPABILITY that keeps CI safe, not the absence of a resolver.
 	let onUnknownSigner = executionParameters.onUnknownSigner;
 	if (onUnknownSigner === undefined && actualChainConfig.onUnknownSigner !== undefined) {
 		onUnknownSigner = actualChainConfig.onUnknownSigner;
+	}
+	if (onUnknownSigner === undefined && config?.onUnknownSigner !== undefined) {
+		onUnknownSigner = config.onUnknownSigner;
 	}
 	if (onUnknownSigner === undefined) {
 		onUnknownSigner = 'auto';

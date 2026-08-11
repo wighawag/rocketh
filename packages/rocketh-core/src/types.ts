@@ -324,6 +324,15 @@ export type UserConfig<
 	readonly signerProtocols?: Record<string, SignerProtocolFunction>;
 	readonly defaultPollingInterval?: number;
 	readonly retry?: RetryConfig;
+	/**
+	 * Default policy for an `unsignable` `from`, across EVERY chain (see
+	 * `UnknownSignerPolicy`). A per-chain `chains[id].onUnknownSigner` overrides it,
+	 * and a run-level `ExecutionParams.onUnknownSigner` overrides both.
+	 *
+	 * Exists so "never prompt me anywhere" is ONE line rather than one per chain
+	 * entry. Omitted means the built-in default `'auto'`.
+	 */
+	readonly onUnknownSigner?: UnknownSignerPolicy;
 };
 
 export type ResolvedUserConfig<

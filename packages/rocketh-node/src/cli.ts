@@ -4,7 +4,7 @@ import {loadEnv} from 'ldenv';
 import {Command} from 'commander';
 import pkg from '../package.json' with {type: 'json'};
 import {loadAndExecuteDeploymentsFromFiles} from './executor/index.js';
-import {ExecutionParams} from 'rocketh/types';
+import {ExecutionParams, UnknownSignerPolicy} from 'rocketh/types';
 import {packagesWithLogsEnabled} from './index.js';
 
 hookup();
@@ -22,7 +22,11 @@ program
 	.option('-d, --deployments <value>', 'folder where deployments are saved')
 	.option('--skip-gas-report', 'if set skip gas report')
 	.option('--log-level <value>', 'set the log level')
-	.option('--skip-prompts', 'if set skip any prompts')
+	.option('--skip-prompts', 'if set skip any prompts (this also forces --on-unknown-signer throw)')
+	.option(
+		'--on-unknown-signer <value>',
+		"what to do when a transaction's `from` cannot be signed for: throw | ask | auto (default: auto)",
+	)
 	.option('--save-deployments', 'if set, save deployments')
 	.option('--reset', 'if set, delete all deployments first')
 	.requiredOption('-e, --environment <value>', 'environment to use')
@@ -59,10 +63,39 @@ setupLogger(packagesWithLogsEnabled, {
 	level: logLevelAsNumber,
 });
 
+const UNKNOWN_SIGNER_POLICIES: readonly UnknownSignerPolicy[] = ['throw', 'ask', 'auto'];
+
+function resolveOnUnknownSigner(): UnknownSignerPolicy | undefined {
+	// `--skip-prompts` says "skip any prompts", and the interactive unknown-signer
+	//  resolver IS a prompt, so it must force `throw` rather than only silencing the
+	//  reset/gas-price confirmations. It wins over an explicit value: asking to be
+	//  prompted AND not prompted is a contradiction, and the safe half is not prompting.
+	if (options.skipPrompts) {
+		return 'throw';
+	}
+	const value = options.onUnknownSigner;
+	if (value === undefined) {
+		// leave it unset so config (chain, then top-level) still decides
+		return undefined;
+	}
+	if (!UNKNOWN_SIGNER_POLICIES.includes(value)) {
+		console.error(
+			`invalid --on-unknown-signer value: ${JSON.stringify(value)}. Expected one of: ${UNKNOWN_SIGNER_POLICIES.join(', ')}.`,
+		);
+		process.exit(1);
+	}
+	return value;
+}
+
+const onUnknownSigner = resolveOnUnknownSigner();
+
 loadAndExecuteDeploymentsFromFiles({
 	...(options as ExecutionParams),
 	askBeforeProceeding: options.skipPrompts ? false : true,
 	reportGasUse: options.skipGasReport ? false : true,
 	saveDeployments: options.saveDeployments,
 	reset: options.reset ? true : false,
+	// AFTER the spread: commander would otherwise pass the raw, unvalidated string
+	//  through, and an omitted flag must stay `undefined` so config still decides.
+	onUnknownSigner,
 });

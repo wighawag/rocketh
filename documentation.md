@@ -463,23 +463,51 @@ When a privileged call targets an account rocketh cannot sign for, the transacti
 npm install -D @rocketh/unknown-signer
 ```
 
+Register it as an extension in `rocketh/config.ts`, exactly like `@rocketh/deploy` and `@rocketh/read-execute`:
+
+```typescript
+import * as deployExtension from '@rocketh/deploy';
+import * as readExecuteExtension from '@rocketh/read-execute';
+import * as unknownSignerExtension from '@rocketh/unknown-signer';
+
+const extensions = {...deployExtension, ...readExecuteExtension, ...unknownSignerExtension};
+export {extensions};
+```
+
+and then it arrives on the environment your deploy script is handed, with no `env` to thread:
+
+```typescript
+export default deployScript(
+	async ({deploy, execute, catchUnknownSigner, namedAccounts, artifacts}) => {
+		// NOTE the call shape: the action is a FUNCTION, not an already-started promise.
+		//  This is the one mechanical change from a hardhat-deploy v1 script
+		//  (v1: `catchUnknownSigner(execute(...))`), because a promise has already begun
+		//  executing before the wrapper can establish its policy scope. The v1 form is a
+		//  compile error, and a JavaScript caller gets a runtime error naming the fix.
+		const deferred = await catchUnknownSigner(() =>
+			execute(proxy, {account: 'safeOwner', functionName: 'upgradeTo', args: [newImplementation.address]}),
+		);
+
+		if (deferred) {
+			// {from, to, value, data} — execute this on the Safe, then re-run the script.
+		}
+	},
+	{tags: ['Upgrade']},
+);
+```
+
+Outside a deploy script (a test, a standalone script) you have an `Environment` in hand rather than an enhanced one, so call the same functions curried:
+
 ```typescript
 import {catchUnknownSigner} from '@rocketh/unknown-signer';
 import {execute} from '@rocketh/read-execute';
 
-// NOTE the call shape: the action is a FUNCTION, not an already-started promise.
-//  This is the one mechanical change from a hardhat-deploy v1 script
-//  (v1: `catchUnknownSigner(execute(...))`), because a promise has already begun
-//  executing before the wrapper can establish its policy scope. The v1 form is a
-//  compile error, and a JavaScript caller gets a runtime error naming the fix.
 const deferred = await catchUnknownSigner(env)(() =>
 	execute(env)(proxy, {account: 'safeOwner', functionName: 'upgradeTo', args: [newImplementation.address]}),
 );
-
-if (deferred) {
-	// {from, to, value, data} — execute this on the Safe, then re-run the script.
-}
 ```
+
+Both forms are the same function: an extension package's root exports only curried `(env) => …` functions, which is precisely what lets the spread above turn them into methods on the environment.
 
 It returns `null` when the action succeeded, and otherwise hardhat-deploy v1's exact shape: every key present even when `undefined`, `value` as a string. Pass `{log: false}` to suppress the printed block. Nothing is persisted — idempotency comes from on-chain state, so you execute the transaction on your Safe and re-run the idempotent script. One wrapper captures one transaction (the first unsignable one inside it), so deferring several steps means one `catchUnknownSigner` per step.
 
@@ -487,7 +515,7 @@ It returns `null` when the action succeeded, and otherwise hardhat-deploy v1's e
 
 If you are at a keyboard, rocketh can PAUSE instead of throwing: it prints the transaction, waits while you execute it out-of-band (on your Safe, a hardware wallet, an air-gapped machine), takes back the transaction hash you paste, and CONTINUES the same run with the deployment state saved. No re-run dance, and an action with several unsignable steps pauses at each one and finishes them all in a single run.
 
-The behaviour is chosen by `onUnknownSigner`, resolved as execution parameter > chain config > the default `'auto'`:
+The behaviour is chosen by `onUnknownSigner`, resolved as CLI flag / execution parameter > chain config > top-level config > the default `'auto'`:
 
 | value     | what happens when a `from` is unsignable                                          |
 | --------- | --------------------------------------------------------------------------------- |
@@ -509,11 +537,32 @@ export const config = {
 } as const satisfies UserConfig;
 ```
 
-or for one run, which wins over the chain config:
+Set it once for EVERY chain with the top-level key, so "never prompt me anywhere" does not have to be repeated per chain entry (a `chains[id]` entry still overrides it):
+
+```typescript
+export const config = {
+	accounts: {
+		/* ... */
+	},
+	onUnknownSigner: 'throw',
+	data: {},
+} as const satisfies UserConfig;
+```
+
+or for one run, which wins over both:
 
 ```typescript
 await loadAndExecuteDeploymentsFromFiles({environment: 'sepolia', onUnknownSigner: 'ask'});
 ```
+
+or for one INVOCATION from your shell, which is the same run-level lever:
+
+```bash
+rocketh -e sepolia --on-unknown-signer throw
+pnpm hardhat deploy --network sepolia --on-unknown-signer throw
+```
+
+`--skip-prompts` (on both CLIs) forces `throw`, because the interactive resolver IS a prompt. It wins over an explicit `--on-unknown-signer ask`: asking to be prompted and not prompted at once is a contradiction, and not prompting is the safe half.
 
 "Can the run ask a human for text?" is a CAPABILITY of the runtime, not a preference: it is true only when the run carries a `PromptExecutor` that implements `promptText`. `@rocketh/node` (the `rocketh` CLI and the hardhat-deploy path) supplies one **only when stdin is a terminal**; `@rocketh/web` deliberately never does, because a browser cannot sensibly ask you to paste a transaction hash. So a CI job, whose stdin is not a terminal, has no text capability at all and takes the `throw` path: it never blocks on a prompt, even under `'auto'` and even if a script hardcodes `'ask'`. Capability is a CEILING, not a default. (The TTY check is not politeness: the underlying prompt library, asked a question with no terminal behind it, never answers and never fails, so the only safe move is not to ask.)
 

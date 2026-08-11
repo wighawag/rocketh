@@ -16,7 +16,16 @@ const hardhatPlugin: HardhatPlugin = {
 	tasks: [
 		task('deploy', 'Deploy contracts')
 			// .addFlag('skipGasReport', 'if set, skip gas report')
-			.addFlag({name: 'skipPrompts', description: 'if set, skip any prompts'})
+			.addFlag({
+				name: 'skipPrompts',
+				description: 'if set, skip any prompts (this also forces --on-unknown-signer throw)',
+			})
+			.addOption({
+				name: 'onUnknownSigner',
+				description: "what to do when a transaction's `from` cannot be signed for: throw | ask | auto (default: auto)",
+				defaultValue: undefined,
+				type: ArgumentType.STRING_WITHOUT_DEFAULT,
+			})
 			.addFlag({name: 'reportGasUsed', description: 'if set, report gas used'})
 			.addOption({
 				name: 'saveDeployments',

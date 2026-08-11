@@ -155,6 +155,8 @@ async function buildEnvironment(options: {
 	onUnknownSigner?: UnknownSignerPolicy;
 	/** The CHAIN-level policy (`chains[31337].onUnknownSigner` in the config). */
 	chainOnUnknownSigner?: UnknownSignerPolicy;
+	/** The TOP-LEVEL config default (`onUnknownSigner` beside `accounts`), lowest of the three. */
+	configOnUnknownSigner?: UnknownSignerPolicy;
 	promptExecutor?: PromptExecutor;
 }) {
 	const {provider, calls} = createMockProvider({accounts: options.nodeAccounts});
@@ -163,6 +165,7 @@ async function buildEnvironment(options: {
 		signerProtocols: {privateKey},
 		defaultPollingInterval: 0.001,
 		chains: options.chainOnUnknownSigner ? {31337: {onUnknownSigner: options.chainOnUnknownSigner}} : undefined,
+		onUnknownSigner: options.configOnUnknownSigner,
 	});
 	const executionParams = {
 		provider,
@@ -489,5 +492,70 @@ describe('unknown-signer policy precedence - the policy is read only in the unsi
 
 		expect(calls.map((c) => c.method)).toContain('eth_sendRawTransaction');
 		expect(promptExecutor.promptText).not.toHaveBeenCalled();
+	});
+});
+
+describe('unknown-signer policy precedence - the chain config beats the top-level config default', () => {
+	/**
+	 * The TOP-LEVEL `onUnknownSigner` exists so "never prompt me anywhere" is ONE line
+	 * rather than one per chain entry, which is what the per-chain-only shape forced.
+	 * It is the LOWEST-priority declared source: run parameter > chain config >
+	 * top-level config > the built-in `'auto'`.
+	 *
+	 * Asserted through observable behaviour rather than by reading the resolved value,
+	 * and the messages are checked as well as the error: a run that ENTERED the
+	 * interactive path and failed inside it also ends in an `UnknownSignerError`, so
+	 * having shown the human `PAUSED` is what separates "never asked" from "asked and
+	 * broke" (the same trap the capability-ceiling tests fell into).
+	 */
+	it('applies the top-level default when neither the run nor the chain sets one', async () => {
+		const promptExecutor = createScriptedPrompt([PASTED_HASH]);
+		const {env} = await buildEnvironment({
+			accounts: {admin: SAFE_ADDRESS},
+			configOnUnknownSigner: 'throw',
+			promptExecutor,
+		});
+		// the run CAN ask, so a bare default of `'auto'` would have gone interactive here
+		expect(env.canPromptForText()).toBe(true);
+		const messages = captureMessages(env);
+		const admin = env.resolveAccount('admin');
+
+		await expect(env.broadcastExecution(safeTransaction(admin))).rejects.toBeInstanceOf(UnknownSignerError);
+		expect(promptExecutor.promptText).not.toHaveBeenCalled();
+		expect(messages.join('\n')).not.toContain('PAUSED');
+	});
+
+	/** A chain entry is more specific, so it overrides the top-level default. */
+	it('lets the chain config override the top-level default', async () => {
+		const promptExecutor = createScriptedPrompt([PASTED_HASH]);
+		const {env} = await buildEnvironment({
+			accounts: {admin: SAFE_ADDRESS},
+			configOnUnknownSigner: 'throw',
+			chainOnUnknownSigner: 'ask',
+			promptExecutor,
+		});
+		const admin = env.resolveAccount('admin');
+
+		const receipt = await env.broadcastExecution(safeTransaction(admin));
+		expect(receipt.transactionHash).toBe(PASTED_HASH);
+		expect(promptExecutor.promptText).toHaveBeenCalledTimes(1);
+	});
+
+	/** And the run parameter still beats both, which is what the CLI flag rides on. */
+	it('lets the run-level policy override both the chain and the top-level default', async () => {
+		const promptExecutor = createScriptedPrompt([PASTED_HASH]);
+		const {env} = await buildEnvironment({
+			accounts: {admin: SAFE_ADDRESS},
+			configOnUnknownSigner: 'ask',
+			chainOnUnknownSigner: 'ask',
+			onUnknownSigner: 'throw',
+			promptExecutor,
+		});
+		const messages = captureMessages(env);
+		const admin = env.resolveAccount('admin');
+
+		await expect(env.broadcastExecution(safeTransaction(admin))).rejects.toBeInstanceOf(UnknownSignerError);
+		expect(promptExecutor.promptText).not.toHaveBeenCalled();
+		expect(messages.join('\n')).not.toContain('PAUSED');
 	});
 });
