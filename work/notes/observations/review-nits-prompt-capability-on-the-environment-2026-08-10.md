@@ -3,7 +3,7 @@ title: review-gate non-blocking nits for 'prompt-capability-on-the-environment' 
 date: 2026-08-10
 status: open
 reviewOf: prompt-capability-on-the-environment
-needsAnswers: false
+needsAnswers: true
 ---
 
 ## Non-blocking review findings
