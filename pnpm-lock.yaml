@@ -32,8 +32,8 @@ importers:
         specifier: ^4.1.10
         version: 4.1.10(vitest@4.1.10)
       dorfl:
-        specifier: 0.12.0
-        version: 0.12.0
+        specifier: 0.13.0
+        version: 0.13.0
       ezx:
         specifier: ^0.0.18
         version: 0.0.18
@@ -2572,8 +2572,8 @@ packages:
   devlop@1.1.0:
     resolution: {integrity: sha512-RWmIqhcFf1lRYBvNmr7qTNuyCt/7/ns2jbpp1+PalgE/rDQcBT0fioSMUpJ93irlUhC5hrg4cYqe6U+0ImW0rA==}
 
-  dorfl@0.12.0:
-    resolution: {integrity: sha512-sgLMiZ7tXMl8N14a1dsfHAdIhrCZYw+F7AJhAMcVpCoT5/46V/DM5QVBqfovsgkfurneofgKwWTEYy+at0sB/g==}
+  dorfl@0.13.0:
+    resolution: {integrity: sha512-o1oY9ydIA3BdRXTmkltPc8a1tXzk++E+XJMxS68IYyT/LAQTiNyVOU+DrEFYYSoJUFkpmI5Va7H/SW5jS4Ff1w==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -5841,7 +5841,7 @@ snapshots:
     dependencies:
       dequal: 2.0.3
 
-  dorfl@0.12.0:
+  dorfl@0.13.0:
     dependencies:
       commander: 14.0.3
 
