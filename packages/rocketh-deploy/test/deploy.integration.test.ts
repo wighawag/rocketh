@@ -236,7 +236,7 @@ describe('@rocketh/deploy - Integration Tests', () => {
 			 * });
 			 * ```
 			 */
-			const {env} = await createEnv();
+			const {env, provider} = await createEnv();
 			const _deploy = deploy(env);
 
 			const artifact = createMockArtifact('MultiUserContract');
@@ -248,13 +248,25 @@ describe('@rocketh/deploy - Integration Tests', () => {
 			});
 
 			const deployment2 = await _deploy('ContractByUser2', {
-				account: 'user1',
+				account: 'user2',
 				artifact,
 				args: [],
 			});
 
 			expect(deployment1).toBeDefined();
 			expect(deployment2).toBeDefined();
+
+			// The point of the example is WHICH ACCOUNT SENT WHAT, so assert it rather than
+			//  trusting the `account:` field: both deployments went out through the real
+			//  broadcast path, so each dispatched transaction's `from` is observable here.
+			//  (Until this was fixed both calls passed `user1`, so the example documented two
+			//  accounts while exercising one.)
+			const sendersInOrder = provider
+				.getRequests()
+				.filter((r) => r.method === 'eth_sendTransaction')
+				.map((r) => ((r.params as [{from: string}])[0].from || '').toLowerCase());
+
+			expect(sendersInOrder).toEqual([NAMED_ACCOUNTS.user1.toLowerCase(), NAMED_ACCOUNTS.user2.toLowerCase()]);
 		});
 	});
 
