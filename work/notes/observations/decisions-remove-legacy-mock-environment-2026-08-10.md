@@ -3,7 +3,7 @@ title: Decisions taken while removing the legacy createMockEnvironment fake
 date: 2026-08-10
 status: open
 taskOf: remove-legacy-mock-environment
-needsAnswers: true
+needsAnswers: false
 ---
 
 ## Decisions
@@ -17,3 +17,13 @@ Two judgement calls made in `remove-legacy-mock-environment` that the task did n
 ## Note
 
 `TESTING.md` also claimed "the integration tests use inline mock helpers rather than a separate test utilities package", which was stale and contradicted the rest of the same file. Updated to point at `@rocketh/test-utils` / `await createTestEnvironment(...)` as part of the "docs consistent" criterion.
+
+## Applied answers 2026-08-11
+
+### q1: What should become of this observation? Reply with a disposition and a reason: resolve (settle it, keep the note on record — say why), promote (mint a task / spec / adr — say which and why), delete (redundant or obsolete — say why), or duplicate (maps onto an existing item — name it).
+
+**Ratify decision 2 as-is; REVERSE decision 1.**
+
+Decision 2 (inverting the transitional test into a regrowth fence rather than deleting it) is right and stays.
+
+Decision 1 is not: the three unreleased changesets (`test-env-harness.md`, `migrate-deploy-and-read-tests.md`, `migrate-proxy-diamond-tests.md`) still describe `createMockEnvironment` as live, and they will be folded into the SAME published `@rocketh/test-utils` version as `.changeset/remove-legacy-mock-environment.md`'s "**Breaking:** remove the legacy `createMockEnvironment`". A consumer reading one CHANGELOG entry would see a direct contradiction. The stated reason for leaving them ("rewriting history corrupts the record") does not apply, because nothing has been PUBLISHED yet, so trimming the now-false "still exported / still used" clauses misdescribes no released version. ALREADY DONE, discovered while executing this: commit `0c93870` ("chore(changesets): stop three pending entries contradicting the createMockEnvironment removal") trimmed the false clause from `test-env-harness.md` and `unknown-signer-contract-enrichment.md`. The two `migrate-*` changesets still name the symbol but have EMPTY frontmatter, so they bump nothing and generate no CHANGELOG entry at all; correctly left alone. Nothing further to do here.
