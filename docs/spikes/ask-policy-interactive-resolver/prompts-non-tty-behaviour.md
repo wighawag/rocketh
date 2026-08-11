@@ -1,5 +1,7 @@
 # What `prompts` does when stdin is not a TTY (measured 2026-08-10)
 
+> **This folder is the EVIDENCE (the probe and its raw output). The KNOWLEDGE it establishes lives in [`work/notes/findings/prompts-non-tty-never-settles.md`](../../../work/notes/findings/prompts-non-tty-never-settles.md), which is where to look for why a capability is withheld — nobody greps `docs/spikes/` for that.**
+
 Measured because the interactive unknown-signer resolver (`onUnknownSigner: 'ask'`, and `'auto'` where a text capability exists) asks a human to paste a transaction hash, and story 5 of `unknown-signer-interactive` requires that a CI run never blocks on that prompt. The question was concrete: if `@rocketh/node` supplies its `promptText` in a non-interactive run, does `prompts` reject (so the resolver's "prompt failed, defer instead" fallback fires), or does it block?
 
 Library: `prompts@2.4.2` (the version pinned in this repo), node 22, called exactly as `@rocketh/node` calls it: `await prompts({type: 'text', name: 'txHash', message: '...'})`.
@@ -15,12 +17,12 @@ sleep 30 | node $P                   # case 2
 
 ## Results
 
-| stdin                              | `process.stdin.isTTY` | what `prompts` does                                                                             |
-| ---------------------------------- | --------------------- | ----------------------------------------------------------------------------------------------- |
-| `/dev/null` (immediate EOF)        | `undefined`           | the promise NEVER SETTLES. It neither resolves nor rejects; node then exits when the event loop drains (exit code 13 under a top-level await, silently otherwise) |
-| an open pipe with no data          | `undefined`           | HANGS indefinitely (killed at 8s by the probe's timeout)                                          |
-| a pipe carrying `0xabc\n`          | `undefined`           | resolves in ~4ms with `{txHash: '0xabc'}` (it reads piped bytes as keystrokes)                     |
-| a terminal                         | `true`                | the normal interactive prompt                                                                     |
+| stdin                       | `process.stdin.isTTY` | what `prompts` does                                                                                                                                               |
+| --------------------------- | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/dev/null` (immediate EOF) | `undefined`           | the promise NEVER SETTLES. It neither resolves nor rejects; node then exits when the event loop drains (exit code 13 under a top-level await, silently otherwise) |
+| an open pipe with no data   | `undefined`           | HANGS indefinitely (killed at 8s by the probe's timeout)                                                                                                          |
+| a pipe carrying `0xabc\n`   | `undefined`           | resolves in ~4ms with `{txHash: '0xabc'}` (it reads piped bytes as keystrokes)                                                                                    |
+| a terminal                  | `true`                | the normal interactive prompt                                                                                                                                     |
 
 The prompt still renders its question to stdout in every case, so a CI log shows the question and then either nothing or a hang.
 
