@@ -1402,7 +1402,17 @@ export async function createEnvironment<
 
 		const pendingExecution: PendingExecution = {
 			type: 'execution',
-			transaction: {hash: txHash, origin: from.toLowerCase() as `0x${string}`},
+			// `origin` IS NOT NORMALISED, and that is the rule for all five sites that write it.
+			// It is a persisted RECORD VALUE, not a lookup key: nothing in this repo reads it
+			// back, it reaches the deployment record (`Deployment.transaction.origin`) and the
+			// pending-transaction files, and from there a human or an external tool. So it keeps
+			// the address as RESOLVED (EIP-55 checksum intact), exactly as `namedAccounts` and
+			// `unnamedAccounts` deliberately do, and the re-hydration paths keep what the node
+			// returned. Contrast `addressSigners`, which IS a lookup map and is therefore keyed
+			// lowercase: internal keys normalise, user-visible values do not. If anything ever
+			// starts MATCHING on `origin`, it must lowercase at the comparison rather than
+			// change what is stored — records written before this rule hold lowercased values.
+			transaction: {hash: txHash, origin: from},
 			// description, // TODO
 			// TODO we should have the nonce, except for wallet like metamask where it is not sure you get the nonce you start with
 		};
@@ -1434,7 +1444,7 @@ export async function createEnvironment<
 
 		if (transaction) {
 			pendingExecution.transaction.nonce = transaction.nonce;
-			pendingExecution.transaction.origin = transaction.from.toLowerCase() as `0x${string}`;
+			pendingExecution.transaction.origin = transaction.from;
 		}
 
 		const receipt = await waitForTransaction(pendingExecution.transaction.hash, {transaction, message: msg});
@@ -1462,7 +1472,7 @@ export async function createEnvironment<
 			type: 'deployment',
 			expectedAddress: options?.expectedAddress,
 			partialDeployment,
-			transaction: {hash: txHash, origin: from.toLowerCase() as `0x${string}`},
+			transaction: {hash: txHash, origin: from},
 			// TODO we should have the nonce, except for wallet like metamask where it is not sure you get the nonce you start with
 		};
 		return savePendingDeployment(pendingDeployment, options?.message);
