@@ -3,6 +3,7 @@ title: review-gate non-blocking nits for 'per-call-ask-override-and-deferral-pre
 date: 2026-08-10
 status: open
 reviewOf: per-call-ask-override-and-deferral-precedence
+needsAnswers: true
 ---
 
 ## Non-blocking review findings
