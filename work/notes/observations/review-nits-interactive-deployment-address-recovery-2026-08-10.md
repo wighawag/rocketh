@@ -3,7 +3,7 @@ title: review-gate non-blocking nits for 'interactive-deployment-address-recover
 date: 2026-08-10
 status: open
 reviewOf: interactive-deployment-address-recovery
-needsAnswers: true
+needsAnswers: false
 ---
 
 ## Non-blocking review findings
@@ -20,3 +20,18 @@ is their durable home for triage — promote-to-task / keep / delete.
   (packages/rocketh/src/environment/index.ts:1315-1340; test 'confirms a deterministic deployment by code at the EXPECTED address'; decisions note item 3)
 - Coherence: 'origin' now carries two meanings in the same module, the choke point's what-produced-this bag (new BroadcastOrigin) and PendingTransaction.transaction.origin, which is the SENDER address. Both predate/extend prior work and neither is pinned in CONTEXT.md. Consider adding a glossary entry before a third meaning appears.
   (BroadcastOrigin at index.ts:80-85 vs pendingDeployment.transaction.origin at index.ts:1418; self-flagged in decisions note item 6)
+
+## Applied answers 2026-08-11
+
+### q1: What should become of this observation? Reply with a disposition and a reason: resolve (settle it, keep the note on record — say why), promote (mint a task / spec / adr — say which and why), delete (redundant or obsolete — say why), or duplicate (maps onto an existing item — name it).
+
+**Ratified - all findings in this note are accepted as-is; no reversal.** The task this reviews is in `work/tasks/done/`, so none of these block anything.
+
+All accepted: the required discriminated origin bag, the unanswerable-`eth_getCode` refusal, and ignoring the receipt's own `contractAddress` when an expected address exists.
+
+Two of these are now ACTED ON rather than merely ratified:
+
+- the missing test for the unanswerable-`eth_getCode` refusal now exists (`packages/rocketh/test/interactive-deployment-address.test.ts`, "fails when the node cannot answer the code lookup"), and `documentation.md` names that failure shape alongside the other three;
+- the `origin` collision is resolved by renaming the choke point's bag to `BroadcastSource` (parameter `source`). `PendingTransaction.transaction.origin` keeps the name and its meaning, the sender address.
+
+Keep the note until the residue above is either acted on or judged not worth acting on; it is the only record of these choices outside the code.
