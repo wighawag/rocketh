@@ -13,3 +13,6 @@ _Suggested default: Spawn a small follow-up task to add both terms to CONTEXT.md
 <!-- q1 fields: id=q1 -->
 
 **Your answer** (write below this line):
+
+**Rename now.** Done: the choke point's "what produced this transaction" bag is now `BroadcastSource` (parameter `source`), and `PendingTransaction.transaction.origin` keeps the name and its meaning, the SENDER ADDRESS. A glossary note alone was the cheaper option but leaves the ambiguity in place; both names are module-private (`broadcastTransaction` is a closure absent from the `Environment` interface, with exactly two callers), so renaming is cheap TODAY and gets expensive the moment a third meaning appears. Landed with an empty changeset, since nothing exported moves.
+
