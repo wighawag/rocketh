@@ -1,6 +1,6 @@
 ---
 promotedFrom: observation:broadcast-signer-switch-has-no-default-2026-08-09
-needsAnswers: true
+needsAnswers: false
 ---
 
 ## What to build
@@ -45,3 +45,17 @@ The gate failed at its FIRST step, `pnpm format:check`, on two files, and only o
 So the remaining work is one `prettier --write` on that second file. Rebase the kept branch onto current `main` (which now carries the `types.ts` fix), run `pnpm format`, and re-run the gate; `format:check` should be clean.
 
 Two things for whoever picks it up: verify the `default` branch still matches the repo idiom (`const exhaustive: never = signer;`, the precedent at `packages/rocketh/src/environment/unknownSignerPolicy.ts:81`) so a future fourth `Signer` variant fails to COMPILE and not merely at runtime; and note that this task's own acceptance asks for BOTH halves, compile-time and runtime, not either one.
+
+## Applied answers 2026-08-11
+
+### q1: 'task:broadcast-signer-switch-exhaustiveness-default' was bounced — how should we proceed?
+
+**CONTINUE from the branch tip again — and this bounce, like the last one, was NOT this task's fault.**
+
+The gate failed on `pnpm typecheck` with `Cannot find module '@rocketh/core'` (and siblings) across several packages. That is a REPO bug, now fixed on `main` in `b46a1a6`: `typecheck` resolves cross-package imports through the workspace link to `packages/*/dist/*.d.ts`, which does not exist until `pnpm build` has run, and the gate was running `typecheck` BEFORE `build`. It passed for everyone locally because a local `dist/` is always present; it failed only in a fresh gate worktree. Reproduced by deleting `packages/*/dist` and re-running, then passing again straight after a build. The gate now runs `build` first.
+
+So this task has now been bounced twice by the repo and zero times on its merits: first on a `prettier` reformat of `packages/rocketh-core/src/types.ts` that a dependency bump left behind (fixed in `022aacd`), now on the gate ordering (fixed in `b46a1a6`).
+
+What is actually left, unchanged from the previous answer: the implementation on `work/task-broadcast-signer-switch-exhaustiveness-default` is complete and was never rejected. Rebase onto current `main`, run `pnpm format` (its own `packages/rocketh/src/environment/index.ts` is genuinely unformatted — that part WAS this task's), and re-run the gate.
+
+Before finishing, verify the `default` branch matches the repo idiom (`const exhaustive: never = signer;`, the precedent at `packages/rocketh/src/environment/unknownSignerPolicy.ts:81`), because the acceptance asks for BOTH the compile-time exhaustiveness assignment and the runtime throw naming the unexpected `signer.type` — not either one alone.
