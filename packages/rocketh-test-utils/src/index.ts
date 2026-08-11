@@ -347,6 +347,9 @@ export type {Environment} from '@rocketh/core/types';
 
 export {
 	createTestEnvironment,
+	createNodeHeldEnvironment,
+	STANDARD_NAMED_ACCOUNTS,
+	NODE_HELD_ACCOUNTS,
 	createMapDeploymentStore,
 	type CreateTestEnvironmentOptions,
 	type TestEnvironmentResult,

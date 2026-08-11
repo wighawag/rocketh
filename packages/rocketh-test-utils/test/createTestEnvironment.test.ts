@@ -47,18 +47,35 @@ describe('createTestEnvironment - harness identity + wiring', () => {
 		expect(typeof internal.loadDeployments).toBe('function');
 	});
 
-	it('exports exactly ONE environment builder (no second, fabricated one)', () => {
+	it('exports exactly ONE environment builder (no second, fabricated one)', async () => {
 		/**
 		 * Regrowth fence. While the migration was in flight this assertion said the opposite
 		 * (the legacy fabricated builder is still exported); it is inverted rather than deleted,
 		 * because the whole value of the removal is that a SECOND notion of a test environment
 		 * cannot come back under any name. The mock PROVIDER and mock ARTIFACT helpers are
 		 * orthogonal and stay.
+		 *
+		 * WIDENED, deliberately, when `createNodeHeldEnvironment` was added: the thing being
+		 * fenced out is a second way to CONSTRUCT an environment, not a preset that fills in
+		 * `createTestEnvironment`'s arguments. So a second `create*Environment` export is
+		 * allowed only if it is named here AND proven to delegate — asserted below by checking
+		 * that what it returns is shaped by the real builder. An unlisted one still fails, which
+		 * is the property that matters: a regrown fabricated harness cannot arrive unannounced.
 		 */
 		const environmentBuilders = Object.keys(testUtils)
 			.filter((name) => /^create.*Environment$/.test(name))
 			.sort();
-		expect(environmentBuilders).toEqual(['createTestEnvironment']);
+		expect(environmentBuilders).toEqual(['createNodeHeldEnvironment', 'createTestEnvironment']);
+
+		// the one permitted extra is a PRESET, not a builder: it returns what
+		//  `createTestEnvironment` returns, with the arguments already chosen
+		const preset = await testUtils.createNodeHeldEnvironment();
+		expect(typeof preset.env.broadcastExecution).toBe('function');
+		expect(typeof preset.internal.loadDeployments).toBe('function');
+		expect(preset.env.namedAccounts.deployer.toLowerCase()).toBe(
+			testUtils.STANDARD_NAMED_ACCOUNTS.deployer.toLowerCase(),
+		);
+
 		expect(typeof testUtils.createMockProvider).toBe('function');
 		expect(typeof testUtils.createMockArtifact).toBe('function');
 	});

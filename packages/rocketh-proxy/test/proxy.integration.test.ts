@@ -24,24 +24,17 @@
 
 import {describe, it, expect} from 'vitest';
 import {deployViaProxy} from '../src/index.js';
-import {createMockArtifact, createTestEnvironment} from '@rocketh/test-utils';
+import {createMockArtifact, createNodeHeldEnvironment, STANDARD_NAMED_ACCOUNTS} from '@rocketh/test-utils';
 
 /**
  * Named accounts in the real `UserConfig.accounts` shape, declared as bare addresses;
  * `nodeAccounts` says the node actually HOLDS them (`eth_accounts`), so they are signable
  * and broadcast through `eth_sendTransaction`.
  */
-const NAMED_ACCOUNTS = {
-	deployer: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
-	user1: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
-	user2: '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC',
-} as const;
-const NODE_ACCOUNTS = Object.values(NAMED_ACCOUNTS) as `0x${string}`[];
+const NAMED_ACCOUNTS = STANDARD_NAMED_ACCOUNTS;
 
-/** The environment these tests deploy from: three named accounts the node holds. */
-function createEnv() {
-	return createTestEnvironment({accounts: NAMED_ACCOUNTS, nodeAccounts: NODE_ACCOUNTS});
-}
+/** The environment these tests deploy from: the standard named accounts, all held by the node. */
+const createEnv = createNodeHeldEnvironment;
 
 describe('@rocketh/proxy - Integration Tests', () => {
 	describe('ERC173 Proxy Pattern', () => {

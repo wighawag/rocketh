@@ -177,6 +177,38 @@ export function createMapDeploymentStore(): DeploymentStore {
 const GENESIS_HASH = `0x${'0'.repeat(63)}1` as `0x${string}`;
 
 /**
+ * THE STANDARD FIXTURE: three named accounts declared as bare addresses, exactly as a
+ * user writes them when the addresses are fixed. These are anvil's well-known accounts
+ * 0-2.
+ *
+ * Pair it with {@link NODE_HELD_ACCOUNTS} (or just call {@link createNodeHeldEnvironment})
+ * when the node should HOLD them: `createTestEnvironment` defaults `nodeAccounts` to `[]`,
+ * so a bare-address named account is otherwise `unsignable` and hits the unknown-signer
+ * seam rather than broadcasting.
+ */
+export const STANDARD_NAMED_ACCOUNTS = {
+	deployer: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
+	user1: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
+	user2: '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC',
+} as const;
+
+/** {@link STANDARD_NAMED_ACCOUNTS} as the list the mock node answers `eth_accounts` with. */
+export const NODE_HELD_ACCOUNTS = Object.values(STANDARD_NAMED_ACCOUNTS) as `0x${string}`[];
+
+/**
+ * The commonest setup there is: {@link STANDARD_NAMED_ACCOUNTS}, all held by the node, so
+ * every account is signable and broadcasts through `eth_sendTransaction`. Extracted because
+ * the same triple was being redeclared verbatim in each extension package's test suite.
+ *
+ * Anything further from the default (an unsignable Safe, impersonation, a private key)
+ * should call {@link createTestEnvironment} directly and say so, rather than grow options
+ * here — the value of this helper is that it has none.
+ */
+export function createNodeHeldEnvironment(): Promise<TestEnvironmentResult> {
+	return createTestEnvironment({accounts: STANDARD_NAMED_ACCOUNTS, nodeAccounts: NODE_HELD_ACCOUNTS});
+}
+
+/**
  * Construct a real rocketh environment against a mock provider. See
  * {@link CreateTestEnvironmentOptions} for what you can express.
  *
