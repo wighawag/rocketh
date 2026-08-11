@@ -56,7 +56,7 @@
     "docs:build": "pnpm prepare && vitepress build",
     "docs:preview": "vitepress preview",
     "typecheck": "pnpm -r --parallel exec tsc --noEmit && pnpm typecheck:tests",
-    "typecheck:tests": "for c in packages/*/tsconfig.test.json; do echo \"typecheck $c\" && npx tsc --noEmit -p \"$c\" || exit 1; done",
+    "typecheck:tests": "pnpm -r --parallel exec sh -c 'if [ -f tsconfig.test.json ]; then tsc --noEmit -p tsconfig.test.json; fi'",
     "test:getting-started": "lock=$(mktemp) && cp pnpm-lock.yaml \"$lock\" && ezx --verbose README.md -s 'Getting Started'; s=$?; rm -Rf my-rocketh-project; cp \"$lock\" pnpm-lock.yaml; rm -f \"$lock\"; exit $s",
     "test": "vitest run",
     "test:watch": "vitest",
