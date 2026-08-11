@@ -46,7 +46,10 @@
 	"devDependencies": {
 		"as-soon": "^0.1.6",
 		"rocketh": "workspace:*",
-		"typescript": "^6.0.3"
+		"typescript": "^6.0.3",
+		"vitest": "^4.1.10",
+		"@rocketh/test-utils": "workspace:*",
+		"@types/node": "^26.2.0"
 	},
 	"peerDependencies": {
 		"rocketh": "workspace:*"
@@ -54,6 +57,7 @@
 	"scripts": {
 		"prepublishOnly": "cp ../../LICENSE LICENSE",
 		"build": "tsc --project tsconfig.json",
-		"dev": "as-soon -w src pnpm build"
+		"dev": "as-soon -w src pnpm build",
+		"test": "vitest"
 	}
 }

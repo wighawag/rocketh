@@ -277,6 +277,9 @@ importers:
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
+      vitest:
+        specifier: ^4.1.10
+        version: 4.1.10(@types/node@26.2.0)(@vitest/coverage-v8@4.1.10)(vite@8.1.5(@types/node@26.2.0)(esbuild@0.28.2)(tsx@4.23.12)(yaml@2.9.0))
 
   packages/rocketh-export:
     dependencies:
@@ -323,6 +326,9 @@ importers:
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
+      vitest:
+        specifier: ^4.1.10
+        version: 4.1.10(@types/node@26.2.0)(@vitest/coverage-v8@4.1.10)(vite@8.1.5(@types/node@26.2.0)(esbuild@0.28.2)(tsx@4.23.12)(yaml@2.9.0))
 
   packages/rocketh-node:
     dependencies:
@@ -486,6 +492,12 @@ importers:
         specifier: ^2.55.13
         version: 2.55.13(typescript@6.0.3)(zod@4.4.3)
     devDependencies:
+      '@rocketh/test-utils':
+        specifier: workspace:*
+        version: link:../rocketh-test-utils
+      '@types/node':
+        specifier: ^26.2.0
+        version: 26.2.0
       as-soon:
         specifier: ^0.1.6
         version: 0.1.6
@@ -495,6 +507,9 @@ importers:
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
+      vitest:
+        specifier: ^4.1.10
+        version: 4.1.10(@types/node@26.2.0)(@vitest/coverage-v8@4.1.10)(vite@8.1.5(@types/node@26.2.0)(esbuild@0.28.2)(tsx@4.23.12)(yaml@2.9.0))
 
   packages/rocketh-signer:
     dependencies:
@@ -508,6 +523,9 @@ importers:
         specifier: ^0.1.1
         version: 0.1.1(typescript@6.0.3)
     devDependencies:
+      '@types/node':
+        specifier: ^26.2.0
+        version: 26.2.0
       as-soon:
         specifier: ^0.1.6
         version: 0.1.6
@@ -517,6 +535,9 @@ importers:
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
+      vitest:
+        specifier: ^4.1.10
+        version: 4.1.10(@types/node@26.2.0)(@vitest/coverage-v8@4.1.10)(vite@8.1.5(@types/node@26.2.0)(esbuild@0.28.2)(tsx@4.23.12)(yaml@2.9.0))
 
   packages/rocketh-test-utils:
     dependencies:
@@ -641,6 +662,12 @@ importers:
         specifier: ^0.4.1
         version: 0.4.1
     devDependencies:
+      '@rocketh/test-utils':
+        specifier: workspace:*
+        version: link:../rocketh-test-utils
+      '@types/node':
+        specifier: ^26.2.0
+        version: 26.2.0
       as-soon:
         specifier: ^0.1.6
         version: 0.1.6
@@ -653,6 +680,9 @@ importers:
       viem:
         specifier: ^2.55.13
         version: 2.55.13(typescript@6.0.3)(zod@4.4.3)
+      vitest:
+        specifier: ^4.1.10
+        version: 4.1.10(@types/node@26.2.0)(@vitest/coverage-v8@4.1.10)(vite@8.1.5(@types/node@26.2.0)(esbuild@0.28.2)(tsx@4.23.12)(yaml@2.9.0))
 
   packages/rocketh-web:
     dependencies:
@@ -666,6 +696,12 @@ importers:
         specifier: ^4.23.12
         version: 4.23.12
     devDependencies:
+      '@rocketh/test-utils':
+        specifier: workspace:*
+        version: link:../rocketh-test-utils
+      '@types/node':
+        specifier: ^26.2.0
+        version: 26.2.0
       as-soon:
         specifier: ^0.1.6
         version: 0.1.6
@@ -675,6 +711,9 @@ importers:
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
+      vitest:
+        specifier: ^4.1.10
+        version: 4.1.10(@types/node@26.2.0)(@vitest/coverage-v8@4.1.10)(vite@8.1.5(@types/node@26.2.0)(esbuild@0.28.2)(tsx@4.23.12)(yaml@2.9.0))
 
 packages:
 
