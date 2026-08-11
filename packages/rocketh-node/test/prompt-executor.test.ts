@@ -5,11 +5,12 @@ import {describe, it, expect, vi, beforeEach} from 'vitest';
  * actually reachable, so it is where the optional text ability is implemented (the
  * browser deliberately has none — ADR 0007).
  *
- * The `prompts` library keys its answer object BY the request's `name`. The confirm
- * implementation reads `.proceed` unconditionally and works only because both of its
- * call sites happen to pass `name: 'proceed'`; a text prompt named `txHash` written the
- * same way would silently receive `undefined`. These tests drive the text ability with a
- * name that is NOT `proceed` precisely so that mistake cannot come back.
+ * The `prompts` library keys its answer object BY the request's `name`. BOTH abilities
+ * therefore read the answer by name: the confirm used to read a fixed `.proceed` key and
+ * worked only because both of its call sites happen to pass `name: 'proceed'`, so a
+ * confirm named anything else silently received `undefined` and was treated as "do not
+ * proceed" (i.e. it exited the run). These tests drive both abilities with a name that is
+ * NOT `proceed` precisely so that mistake cannot come back.
  *
  * The ability is also GATED ON A TTY here rather than in `canPromptForText()`, because
  * `prompts` against a non-TTY stdin never settles at all (measured in
@@ -125,7 +126,38 @@ describe('@rocketh/node - prompt executor', () => {
 		it('still answers a confirm exactly as before', async () => {
 			promptsMock.mockResolvedValue({proceed: false});
 
-			const answer = await createNodePromptExecutor().prompt({
+			const answer = await interactiveExecutor().prompt({
+				type: 'confirm',
+				name: 'proceed',
+				message: 'Do you want to proceed?',
+			});
+
+			expect(answer).toEqual({proceed: false});
+		});
+
+		/**
+		 * THE DEFECT THIS PINS: a confirm named anything other than `proceed` used to read
+		 * `undefined` from the answer object and be treated as a refusal, so the run exited
+		 * without the human ever having declined anything. Both current call sites pass
+		 * `proceed`, which is why it was invisible.
+		 */
+		it('reads the answer keyed by the request name, not by a fixed key', async () => {
+			promptsMock.mockResolvedValue({overwrite: true});
+
+			const answer = await interactiveExecutor().prompt({
+				type: 'confirm',
+				name: 'overwrite',
+				message: 'Overwrite?',
+			});
+
+			expect(answer).toEqual({proceed: true});
+		});
+
+		/** Ctrl-C: `prompts` resolves with the key absent, which must read as "do not proceed". */
+		it('treats an aborted confirm as a refusal rather than as undefined', async () => {
+			promptsMock.mockResolvedValue({});
+
+			const answer = await interactiveExecutor().prompt({
 				type: 'confirm',
 				name: 'proceed',
 				message: 'Do you want to proceed?',

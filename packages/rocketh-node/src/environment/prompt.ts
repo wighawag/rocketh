@@ -35,8 +35,16 @@ export function createNodePromptExecutor(options?: {
 	const executor: PromptExecutor = {
 		async prompt(request: {type: 'confirm'; name: string; message: string}) {
 			const answer = await prompts<string>(request);
+			// `prompts` keys its answer object BY `request.name`, so read it by name — exactly as
+			// `promptText` below does. Reading a fixed `.proceed` key worked only because both
+			// call sites happen to pass `name: 'proceed'`; a confirm named anything else read
+			// `undefined` and was treated as "do not proceed", i.e. it silently called `exit()`.
+			//
+			// The `=== true` is the other half of that: an ABSENT key (the Ctrl-C abort, where
+			// `prompts` resolves with nothing rather than rejecting) must read as "do not
+			// proceed", and the declared return type says `boolean`, not `boolean | undefined`.
 			return {
-				proceed: answer.proceed,
+				proceed: answer[request.name] === true,
 			};
 		},
 		exit() {
