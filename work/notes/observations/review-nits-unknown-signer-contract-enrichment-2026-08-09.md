@@ -3,7 +3,7 @@ title: review-gate non-blocking nits for 'unknown-signer-contract-enrichment' (G
 date: 2026-08-09
 status: open
 reviewOf: unknown-signer-contract-enrichment
-needsAnswers: false
+needsAnswers: true
 ---
 
 ## Non-blocking review findings
