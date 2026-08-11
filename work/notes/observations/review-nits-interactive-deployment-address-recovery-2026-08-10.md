@@ -3,7 +3,7 @@ title: review-gate non-blocking nits for 'interactive-deployment-address-recover
 date: 2026-08-10
 status: open
 reviewOf: interactive-deployment-address-recovery
-needsAnswers: false
+needsAnswers: true
 ---
 
 ## Non-blocking review findings
