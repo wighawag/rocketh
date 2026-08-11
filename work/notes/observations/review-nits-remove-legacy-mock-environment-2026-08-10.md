@@ -3,7 +3,7 @@ title: review-gate non-blocking nits for 'remove-legacy-mock-environment' (Gate 
 date: 2026-08-10
 status: open
 reviewOf: remove-legacy-mock-environment
-needsAnswers: false
+needsAnswers: true
 ---
 
 ## Non-blocking review findings
