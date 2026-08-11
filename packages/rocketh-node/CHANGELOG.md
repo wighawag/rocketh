@@ -1,5 +1,18 @@
 # @rocketh/node
 
+## 0.19.14
+
+### Patch Changes
+
+- 0397afa: **New refusal:** the confirm prompt now fails with a clear message when stdin is not a terminal, instead of hanging. `prompts@2.4.2` against a non-TTY stdin never settles (`/dev/null` exits the process silently, an open pipe hangs for ever), which is why the text ability is already withheld without a TTY. The confirm could not take that route: nothing branches on `prompt` being present, and both call sites (the `--reset` confirmation and the gas-price confirmation, both behind `askBeforeProceeding`) read "not confirmed" as `exit()`, so silently answering would either destroy deployments nobody agreed to destroy or abort a run for a question nobody was asked. The error names the question it could not ask and points at `--skip-prompts`, which skips every confirmation.
+- 9b46130: `createNodePromptExecutor().prompt` now reads the confirm answer keyed by `request.name` (as its sibling `promptText` already did) instead of a fixed `.proceed` key. A confirm named anything other than `proceed` previously read `undefined` and was treated as "do not proceed", silently exiting the run. Both current call sites pass `proceed`, so this is behaviour-identical today. An aborted confirm (Ctrl-C, where `prompts` resolves with the key absent) now reports `{proceed: false}` rather than `{proceed: undefined}`.
+- 0692a33: The deploy-script EXECUTE path now builds its prompt executor per call, matching the environment-only loader, so both entry points into `@rocketh/node` decide the text capability from the stdin of the run rather than from stdin at import time. No behaviour change for the CLI or for hardhat-deploy's deploy task (a process's stdin does not become a terminal later, and both already call the same function); it matters for an embedder that imports the module and runs deployments in-process, which could previously observe one capability on the environment path and another on the execute path for the same stdin. A caller-supplied `ExecutionParams.promptExecutor` still wins over both.
+- Updated dependencies [6ea32f1]
+- Updated dependencies [1a583b2]
+- Updated dependencies [c833bda]
+  - rocketh@0.19.13
+  - @rocketh/core@0.19.9
+
 ## 0.19.13
 
 ### Patch Changes

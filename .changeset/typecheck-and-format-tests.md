@@ -1,4 +1,0 @@
----
----
-
-Repo tooling: test files are now type-checked and formatted, like `src`. Each package gains a `tsconfig.test.json` (extending its own config, `noEmit`, covering `src` + `test`) because the build config must keep `include: ["src/**/*.ts"]` or test files land in `dist`. `pnpm typecheck` runs both passes, `pnpm format:check` globs `packages/*/{src,test}/**/*.ts`, and the `verify` gate now runs `pnpm typecheck` (it previously ran no type check at all). This is what makes a `@ts-expect-error` in a test an enforced assertion rather than decoration. Turning it on surfaced 53 pre-existing type errors across six test files, all fixed: notably two tests reaching for `deterministicDeployment.create2` without narrowing the union `DeterministicDeploymentInfo` (right only because of what the harness supplies), and several transaction fixtures whose `to` was a plain `string`.

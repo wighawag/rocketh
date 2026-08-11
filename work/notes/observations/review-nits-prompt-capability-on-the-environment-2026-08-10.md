@@ -3,7 +3,7 @@ title: review-gate non-blocking nits for 'prompt-capability-on-the-environment' 
 date: 2026-08-10
 status: open
 reviewOf: prompt-capability-on-the-environment
-needsAnswers: true
+needsAnswers: false
 ---
 
 ## Non-blocking review findings
@@ -18,3 +18,15 @@ is their durable home for triage — promote-to-task / keep / delete.
   (packages/rocketh/src/executor/index.ts:418-420 builds executionParamsWithPrompt for createEnvironment, but lines 440 and 451 call promptExecutor.prompt / promptExecutor.exit on the constructor value)
 - The web-shaped case is covered by a locally fabricated confirm-only prompt rather than @rocketh/web's real object (unavoidable, since rocketh must not depend on web). Nothing therefore fails if @rocketh/web later gains promptText. Acceptable today; worth a note in impersonation-unsupported-hint-and-web-guidance so the deliberate absence stays deliberate.
   (packages/rocketh/test/prompt-capability.test.ts createConfirmOnlyPromptExecutor; packages/rocketh-web/src/index.ts:29-38)
+
+## Applied answers 2026-08-11
+
+### q1: What should become of this observation? Reply with a disposition and a reason: resolve (settle it, keep the note on record — say why), promote (mint a task / spec / adr — say which and why), delete (redundant or obsolete — say why), or duplicate (maps onto an existing item — name it).
+
+**Ratified - all findings in this note are accepted as-is; no reversal.** The task this reviews is in `work/tasks/done/`, so none of these block anything.
+
+The TTY-probe question this note raises has since been ANSWERED BY WHAT LANDED: the gate went into the runtime (`packages/rocketh-node/src/environment/prompt.ts` supplies `promptText` only when `process.stdin.isTTY`), not into `canPromptForText()`, which stays pure method presence per ADR 0007. A non-TTY CI run therefore has no capability at all and `'auto'` still resolves to `'throw'` there.
+
+Live residue: the narrower confirm-site scope is ratified as-is. A caller injecting a prompt through `ExecutionParams` overrides the environment's capability but NOT the `askBeforeProceeding` confirms, which still use the constructor-supplied executor. The decisions note reads broader than what landed and should be tightened when next touched.
+
+Keep the note until the residue above is either acted on or judged not worth acting on; it is the only record of these choices outside the code.

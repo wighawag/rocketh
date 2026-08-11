@@ -1,5 +1,17 @@
 # @rocketh/test-utils
 
+## 0.2.9
+
+### Patch Changes
+
+- 4904d9a: `createExampleArtifact` now varies the BYTECODE per template, not just the ABI. Templates that differed only in their ABI produced identical bytecode, so every deterministic (create2) deployment of them resolved to the SAME address: the multi-facet diamond example documented a diamond whose three differently-named facets were one contract, with three cuts pointing at one address and every assertion still green. Each template now carries a distinct `bytecode` and `deployedBytecode`. Note this CHANGES the addresses these example artifacts deploy to, so a test asserting a hard-coded create2 address for one of them will need updating.
+- e34ac95: Export `createNodeHeldEnvironment`, plus `STANDARD_NAMED_ACCOUNTS` and `NODE_HELD_ACCOUNTS`: the commonest test setup there is (three named accounts declared as bare addresses, all held by the node, so everything is signable). The same fixture triple was being redeclared verbatim in `@rocketh/deploy`'s, `@rocketh/proxy`'s and `@rocketh/diamond`'s suites. It is a PRESET, not a second builder: it takes no options and returns exactly what `createTestEnvironment` returns, so anything further from the default should keep calling `createTestEnvironment` directly and say so.
+- Updated dependencies [6ea32f1]
+- Updated dependencies [1a583b2]
+- Updated dependencies [c833bda]
+  - rocketh@0.19.13
+  - @rocketh/core@0.19.9
+
 ## 0.2.8
 
 ### Patch Changes

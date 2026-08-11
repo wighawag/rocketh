@@ -3,7 +3,7 @@ title: review-gate non-blocking nits for 'unknown-signer-broadcast-seam' (Gate 2
 date: 2026-08-09
 status: open
 reviewOf: unknown-signer-broadcast-seam
-needsAnswers: true
+needsAnswers: false
 ---
 
 ## Non-blocking review findings
@@ -22,3 +22,15 @@ is their durable home for triage — promote-to-task / keep / delete.
   (packages/rocketh-core/src/types.ts (Environment interface additions) vs packages/rocketh-test-utils/src/index.ts:618 (as unknown as Environment))
 - Acceptance criterion asks that the Signer union's members be enumerated where the seam branches AND named in the PR/done record. The code side is done well (an exhaustive switch over signerOnly/wallet/remote with the meanings spelled out), but the done record was moved with zero content changes and the commit body is a single line, so the union enumeration exists only as a code comment.
   (packages/rocketh/src/environment/index.ts signer.type switch; git diff shows work/tasks/{ready to done}/unknown-signer-broadcast-seam.md changed 0 lines)
+
+## Applied answers 2026-08-11
+
+### q1: What should become of this observation? Reply with a disposition and a reason: resolve (settle it, keep the note on record — say why), promote (mint a task / spec / adr — say which and why), delete (redundant or obsolete — say why), or duplicate (maps onto an existing item — name it).
+
+**Ratified - all findings in this note are accepted as-is; no reversal.** The task this reviews is in `work/tasks/done/`, so none of these block anything.
+
+Ratified: the unbalanced pop as a silent no-op (a mis-nested wrapper must not abort a run from inside a `finally`, where it would mask the real error), and `onUnknownSigner` staying OPTIONAL on the resolved `ChainConfig` so "absent" remains distinguishable from an explicit chain-level `'auto'`.
+
+The fourth finding is now DEAD: the legacy `createMockEnvironment` it warns about (typechecking through `as unknown as Environment` while lacking the two new required methods at runtime) has been removed from `@rocketh/test-utils`. The `nodeAccounts` interaction it flags is likewise spent, since every downstream harness-using task has landed.
+
+Keep the note until the residue above is either acted on or judged not worth acting on; it is the only record of these choices outside the code.
