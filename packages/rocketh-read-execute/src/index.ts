@@ -292,7 +292,22 @@ export function read(
 					throw error;
 				}
 
-				const deploymentInfo = env.fromAddressToNamedABIOrNull(deployment.address);
+				// `fromAddressToNamedABIOrNull` can THROW despite its name: it merges the ABIs of
+				// every deployment registered at this address, and `mergeArtifacts` throws
+				// `ABI conflict: ...` when two of them share a function selector. So it returns
+				// `null` for "no match" but throws for "several conflicting matches".
+				//
+				// Here that throw would REPLACE the decode error we are in the middle of handling,
+				// which is the error the caller actually needs: an address with a conflicting ABI
+				// registration would report a bookkeeping problem instead of "this call returned no
+				// data". A conflict is treated exactly like no match — we cannot tell whether the
+				// address is still a contract worth retrying — so the original error is rethrown.
+				let deploymentInfo: ReturnType<typeof env.fromAddressToNamedABIOrNull> = null;
+				try {
+					deploymentInfo = env.fromAddressToNamedABIOrNull(deployment.address);
+				} catch (lookupError) {
+					throw error;
+				}
 				if (!deploymentInfo) {
 					throw error;
 				}

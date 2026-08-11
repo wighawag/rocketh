@@ -94,6 +94,44 @@ describe('@rocketh/read-execute - Integration Tests', () => {
 			).rejects.toThrow();
 		});
 
+		it('surfaces the decode error, not an ABI conflict, when two deployments share the address', async () => {
+			/**
+			 * Example: a call returns no data at an address that has TWO deployments saved on it.
+			 *
+			 * The retry path asks `fromAddressToNamedABIOrNull` whether the address is a known
+			 * deployment worth retrying. Despite the `OrNull` name that helper THROWS when two
+			 * deployments registered at one address share a function selector, because it merges
+			 * their ABIs to answer. Unguarded, that throw would replace the error the caller is
+			 * actually being told about ("this call returned no data") with a bookkeeping
+			 * complaint about ABI registration.
+			 *
+			 * Both deployments below carry the default ABI, so both declare `getValue()` and the
+			 * merge conflicts. What the caller must still see is the DECODE failure.
+			 */
+			const {env, provider} = await createTestEnvironment();
+			const _read = read(env);
+
+			provider.setResponse('eth_call', '0x');
+
+			const sharedAddress = ('0x' + 'c'.repeat(40)) as `0x${string}`;
+			const deployment = await env.save('FirstAtAddress', {
+				address: sharedAddress,
+				...createMockArtifact('FirstAtAddress'),
+				argsData: '0x',
+			});
+			await env.save('SecondAtAddress', {
+				address: sharedAddress,
+				...createMockArtifact('SecondAtAddress'),
+				argsData: '0x',
+			});
+
+			// the lookup really does throw here — that is the hazard being guarded
+			expect(() => env.fromAddressToNamedABIOrNull(sharedAddress)).toThrow(/ABI conflict/);
+
+			await expect(_read(deployment, {functionName: 'getValue'})).rejects.toThrow(/returned no data|zero data/i);
+			await expect(_read(deployment, {functionName: 'getValue'})).rejects.not.toThrow(/ABI conflict/);
+		});
+
 		it('should throw after max retries exceeded', async () => {
 			/**
 			 * Example: Error thrown after max retry attempts
