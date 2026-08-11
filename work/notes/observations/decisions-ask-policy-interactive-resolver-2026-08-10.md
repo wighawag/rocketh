@@ -1,5 +1,5 @@
 ---
-needsAnswers: true
+needsAnswers: false
 ---
 
 # Decisions taken while building `ask-policy-interactive-resolver` (2026-08-10)
@@ -43,3 +43,13 @@ Two comments there said the dynamic-scope frame leak was "harmless while every p
 ## 8. NEW REFUSAL (requeue): a pasted hash this node does not know is reported as NOT FOUND
 
 `waitForPastedTransaction` (`packages/rocketh/src/environment/index.ts`) polls `eth_getTransactionByHash` for at most `PASTED_TRANSACTION_LOOKUP_ROUNDS` (10) rounds at the run's own polling interval before failing with a message naming the hash as not found and reprinting the transaction still to execute. The bound is on "this node has never heard of it" (a typo, a hash from another chain) and NOT on mining: once the node knows the transaction the wait is the ordinary unbounded one, confirmations included, because a Safe execution can legitimately take a while. Alternatives considered: a wall-clock timeout covering the whole wait (rejected: it would fail a legitimately slow mine, and the failure users actually hit is the unknown hash), and leaving it unbounded (rejected: that is the hang the requeue flagged). The receipt fetched here is then handed to `savePendingExecution`/`savePendingDeployment` through a one-shot map, so one pasted transaction is waited for once instead of twice. What it touches: `interactive-deployment-address-recovery` extends this same function with the address invariants and inherits both the bound and the handed-over receipt.
+
+## Applied answers 2026-08-11
+
+### q1: What should become of this observation? Reply with a disposition and a reason: resolve (settle it, keep the note on record — say why), promote (mint a task / spec / adr — say which and why), delete (redundant or obsolete — say why), or duplicate (maps onto an existing item — name it).
+
+**Ratified - all eight decisions accepted as-is; keep the note.** Nothing here is reopened, including the four with real user-visible weight: `'auto'` becoming interactive wherever a text prompt exists (narrowed by decision 7's TTY gate, so a run WITHOUT a terminal behaves exactly as before); the refusal on a pasted transaction whose receipt is not successful; the bounded re-ask (`MAX_HASH_PROMPT_ATTEMPTS` = 3, then defer); and the resolver NOT being gated to executions, so deployments resolve interactively too.
+
+One factual correction was applied to the note rather than ratified: decision 2 named `requireSuccessfulExecutedTransaction`, a symbol that does not exist. The function that landed is `waitForPastedTransaction` (the name decision 8 already used), which absorbed the successful-status check during the same requeue that added the unknown-hash bound. Corrected in place, with a dated note saying so, because a decision record whose cited symbol cannot be grepped fails the one reader it exists for.
+
+Live residue, not decided here: whether the runtime should ALSO withhold the text ability when `process.env.CI` is set (a CI runner that allocates a pty still gets `promptText`), and whether `PASTED_TRANSACTION_LOOKUP_ROUNDS` = 10 rounds at the polling interval is long enough for a hash pasted straight after a Safe execution against a load-balanced public RPC. Both are recorded on the matching review-nits note.
