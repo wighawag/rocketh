@@ -552,6 +552,40 @@ This applies to the interactive path only. A deployment rocketh broadcast itself
 
 ACCEPTED RESIDUAL RISK, stated rather than engineered around: for an EXECUTION, rocketh checks that the transaction you pasted succeeded, and nothing else. It does not decode MultiSend or Timelock payloads and does not try to match `to`/`data`, because a governed execution is routinely wrapped by the multisig into a different transaction shape. A successful-but-unrelated hash would therefore be accepted. This is the same trust boundary as hardhat-deploy v1 (where the run continued after you executed the transaction, with no check at all), only stricter, and it exists because an execution has no address to anchor on.
 
+#### In the browser, and on a fork: impersonation instead of interactivity
+
+`@rocketh/web` deliberately implements no text prompt, so a browser run can never ask you to paste a transaction hash: `'ask'` (and `'auto'`) take the `throw` path there, exactly as in CI. That is by design, not a missing feature, and it is not a dead end. On a FORK or a dev node the browser has a better answer than interactivity anyway: let the account be IMPERSONATED, which resolves it BEFORE the unknown-signer seam so no policy is ever consulted and nothing has to be executed out-of-band.
+
+```typescript
+// rocketh/config.ts
+export const config = {
+	accounts: {
+		deployer: {default: 0},
+		// the Safe / timelock / owner you want the fork to sign for MUST be named here
+		safeOwner: {default: '0x1111111111111111111111111111111111111111'},
+	},
+	data: {},
+} as const satisfies UserConfig;
+```
+
+```typescript
+// in the browser (@rocketh/web), against a fork or dev node
+import {setupEnvironment} from '@rocketh/web';
+
+const {loadAndExecuteDeploymentsFromModules} = setupEnvironment(config, {});
+await loadAndExecuteDeploymentsFromModules(modules, {provider, autoImpersonate: true});
+```
+
+Three constraints make this work, and none of them is a formality:
+
+- **Naming the addresses is MANDATORY, not merely convenient.** Only NAMED accounts are impersonation candidates. An address that appears nowhere in `accounts` (an unnamed account, or a bare `from` passed to a call) is never impersonated, however capable the node is, and still lands on the unknown-signer seam. Naming is necessary but not on its own sufficient: the candidates are the named accounts the NODE would otherwise have to sign for, so a named account that already resolves to its own signer (a private key, a wallet) signs directly and is never impersonated, which is what you want anyway.
+- **It needs a node that implements the impersonation RPC**, meaning a fork or a dev node (anvil, hardhat). Against a real chain the account simply stays unsignable and the run takes the throw-and-defer path, which is the CORRECT outcome: nothing should be able to fake a signature on mainnet.
+- **`autoImpersonate` is RUN-level, not per-transaction.** It is set for the whole run (execution parameter or chain config), like every other node capability. There is no per-call impersonation knob; a per-call variant is a separate, out-of-scope idea.
+
+If you enable it against a node that does NOT implement the RPC, the attempt is swallowed (that is what lets the switch be harmless on an ordinary provider), but the unknown-signer error you eventually get SAYS SO: it tells you auto-impersonation was enabled and `hardhat_impersonateAccount` was refused, or that this account was never a candidate at all (it is not one of the named accounts the node would have to sign for). With auto-impersonation off, the error says nothing about it at all.
+
+Note that this is a NODE CAPABILITY and `onUnknownSigner` is a POLICY: they are orthogonal, and there is no `'impersonate'` policy value. Impersonation runs first and, when it works, the policy is never reached. Conversely, `catchUnknownSigner` and `withUnknownSignerPolicy` never defeat impersonation: to exercise the unknown-signer path on a fork, set `autoImpersonate: false` for the run.
+
 ### Testing your deploy scripts
 
 The `@rocketh/test-utils` package provides `createTestEnvironment`, an async harness

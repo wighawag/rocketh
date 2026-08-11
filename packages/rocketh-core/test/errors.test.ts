@@ -84,6 +84,57 @@ describe('UnknownSignerError', () => {
 		}
 	});
 
+	it('adds an auto-impersonation note when impersonation was attempted for this account', () => {
+		// The impersonation helper deliberately SWALLOWS an unsupported/failed
+		//  `hardhat_impersonateAccount`, so a user who enabled the feature against a node that
+		//  does not implement it gets no signal at all. The error is where that silence is paid
+		//  back: it names WHAT was tried and WHY it did not resolve the account, rather than
+		//  repeating "could not sign", which the user already knew.
+		const err = new UnknownSignerError({from: FROM_ADDR, to: TO_ADDR, autoImpersonation: 'attempted'});
+		expect(err.message).toContain('auto-impersonation');
+		expect(err.message).toContain('hardhat_impersonateAccount');
+		expect(err.data.autoImpersonation).toBe('attempted');
+	});
+
+	it('adds a different note when the account was never an impersonation candidate', () => {
+		// Enabled but never tried FOR THIS ACCOUNT is a different diagnosis from tried-and-
+		//  refused, and it has a different fix (name the account in the config), so the two
+		//  shapes must not collapse into one message.
+		const err = new UnknownSignerError({from: FROM_ADDR, to: TO_ADDR, autoImpersonation: 'not-a-candidate'});
+		expect(err.message).toContain('auto-impersonation');
+		expect(err.message).toContain('NAMED');
+		expect(err.message).not.toContain('hardhat_impersonateAccount');
+	});
+
+	it('says nothing about impersonation when the field is absent', () => {
+		// The common path (auto-impersonation off) keeps EXACTLY the message it had: no new
+		//  noise for the mainnet Safe user, who never asked for impersonation at all.
+		const err = new UnknownSignerError({from: FROM_ADDR, to: TO_ADDR});
+		expect(err.message.toLowerCase()).not.toContain('impersonat');
+	});
+
+	it('puts the impersonation note ABOVE the transaction fields, where it is still read', () => {
+		// Position is load-bearing, not cosmetic. For a DEPLOYMENT `data` is the whole creation
+		//  bytecode, thousands of characters of hex, so a note appended after it lands far below
+		//  the point any human stops reading — precisely the case this hint exists for. It sits
+		//  directly under the header because it explains why the user is reading the error at all.
+		const err = new UnknownSignerError({
+			from: FROM_ADDR,
+			to: TO_ADDR,
+			data: '0x' + 'ff'.repeat(4000),
+			value: 1n,
+			contract: {name: 'MyProxy', method: 'upgradeTo', args: ['0xabc']},
+			autoImpersonation: 'attempted',
+		});
+		const lines = err.message.split('\n');
+		const noteIndex = lines.findIndex((l) => l.includes('auto-impersonation'));
+		expect(lines[1]).toContain('Execute the following transaction out-of-band');
+		expect(noteIndex).toBe(2);
+		for (const field of ['  contract: ', '  from: ', '  to: ', '  value: ', '  data: ']) {
+			expect(lines.findIndex((l) => l.startsWith(field))).toBeGreaterThan(noteIndex);
+		}
+	});
+
 	it('puts EVERY populated payload field in the default message', () => {
 		// The unwrapped throw is the primary deferral workflow (spec story 4): a user who
 		//  wrapped nothing reads this message, walks to their Safe, and executes it. A
