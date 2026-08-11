@@ -31,7 +31,7 @@
   },
   "packageManager": "pnpm@10.28.1",
   "pnpm": {
-    "comment": "Security floor for transitive DEV/TEST/DOCS tooling deps flagged by Dependabot. None are runtime deps of the published @rocketh/* packages; they arrive via vitepress, hardhat and lws. Only the entries that still regress to a vulnerable version WITHOUT the override are kept here (the rest are already satisfied by the resolved lockfile). The vite advisories were resolved structurally by moving to vitepress 2.x (vite 8), so no vite override is needed. The remaining floors come from hardhat/lws (ws, adm-zip, @koa/cors, @tootallnate/once) and vitepress peers (axios, esbuild); revisit when those ship patched dep trees.",
+    "comment": "Security floor for transitive DEV/TEST/DOCS tooling deps flagged by Dependabot. None are runtime deps of the published @rocketh/* packages; they arrive via vitepress, hardhat and lws. Only the entries that still regress to a vulnerable version WITHOUT the override are kept here (the rest are already satisfied by the resolved lockfile). The vite advisories were resolved structurally by moving to vitepress 2.x (vite 8), so no vite override is needed. The remaining floors come from hardhat/lws (ws, adm-zip, @koa/cors, @tootallnate/once, undici via hardhat-zod-utils) and vite/vitepress peers (axios, esbuild, postcss via vite 8); revisit when those ship patched dep trees.",
     "overrides": {
       "axios@>=1.0.0 <1.18.0": "^1.18.0",
       "esbuild@<0.25.0": "^0.25.0",
@@ -39,7 +39,9 @@
       "ws@>=8.0.0 <8.21.0": "^8.21.0",
       "adm-zip@<0.6.0": "^0.6.0",
       "@tootallnate/once@<2.0.1": "^2.0.1",
-      "@koa/cors@<5.0.0": "^5.0.0"
+      "@koa/cors@<5.0.0": "^5.0.0",
+      "undici@<6.28.0": "^6.28.0",
+      "postcss@<8.5.23": "^8.5.23"
     }
   },
   "scripts": {
