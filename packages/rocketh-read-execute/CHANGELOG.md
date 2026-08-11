@@ -1,5 +1,28 @@
 # @rocketh/deploy
 
+## 0.19.8
+
+### Patch Changes
+
+- e20634b: Name the function in an `UnknownSignerError` raised from a contract call. `execute` / `executeByName` now declare the call they encode through the new `options.contract` on `env.broadcastExecution` (`{method, args}`), and the seam at the broadcast choke point turns it into `contract: {name?, method, args}` on the error. A user whose proxy owner is a Safe therefore reads `contract: Proxy.upgradeTo("0x...")` and knows which function to run out-of-band, instead of only an address.
+
+  `contract.name` is resolved on the error path through the environment's existing `fromAddressToNamedABIOrNull`, so it is absent when the target address matches no deployment (the message then falls back to `to`), and enrichment can never replace the error with an unrelated one.
+
+  Non-contract paths are unchanged and leave `contract` unset: a plain `tx()`, a value transfer and a deploy have no function to name.
+
+  `@rocketh/test-utils` is a type-only touch, mirroring the widened `broadcastExecution` signature.
+
+- Updated dependencies [11ab414]
+- Updated dependencies [a5db88c]
+- Updated dependencies [aac0ca1]
+- Updated dependencies [9319520]
+- Updated dependencies [2797550]
+- Updated dependencies [43b9545]
+- Updated dependencies [e20634b]
+- Updated dependencies [d800333]
+- Updated dependencies [01d5bfb]
+  - @rocketh/core@0.19.8
+
 ## 0.19.7
 
 ### Patch Changes

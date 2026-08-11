@@ -1,5 +1,75 @@
 # rocketh
 
+## 0.19.12
+
+### Patch Changes
+
+- 11ab414: Expose `env.addressSignability`, a four-state (`local` / `node` / `impersonated` / `unsignable`) classification of whether rocketh can sign for a given address. Computed after auto-impersonation runs, keyed by lowercased address (like `addressSigners`), returns `'unsignable'` for an address never seen during setup. Additive — no existing behaviour changes and no transaction routing changes.
+
+  Also narrows the auto-impersonation candidate set to named accounts whose resolved signer is `remote` (matching the helper's own doc comment). Before, `hardhat_impersonateAccount` was also sent for `signerOnly` accounts (privateKey, hardware, protocol) that already sign locally, wasting RPC. Dev/fork-only, since `autoImpersonate` is enabled only on simulated networks; the accepted risk is that a script calling `eth_sendTransaction` directly from a privateKey-derived named account on a dev node (which worked by accident) will stop working — those calls should now go through `broadcastExecution`.
+
+- a5db88c: Add the `'ask'` unknown-signer policy and the interactive resolver at the broadcast seam.
+
+  `onUnknownSigner` is now `'throw' | 'ask' | 'auto'`, and `'auto'` (still the default) is CAPABILITY-AWARE: it resolves to `'ask'` where the run can ask a human for text (`env.canPromptForText()`, i.e. a `PromptExecutor` implementing `promptText`) and to `'throw'` where it cannot. Capability is a CEILING, so an explicit `'ask'` also degrades to `'throw'` without a prompt. `@rocketh/node` now supplies its `promptText` ONLY when stdin is a terminal, so a CI run (whose stdin is not) simply has no text capability and takes the throw path: it never prompts and never hangs. The gate lives in the runtime rather than in `canPromptForText()`, which stays pure method presence (ADR 0007), because `prompts` asked a question with no terminal behind it never settles and never rejects (measured in `docs/spikes/ask-policy-interactive-resolver/prompts-non-tty-behaviour.md`).
+
+  Under `'ask'`, a transaction whose `from` is unsignable PAUSES: rocketh presents the exact transaction (the undegraded `UnknownSignerError` message), the user executes it out-of-band on their Safe and pastes the resulting transaction hash, and the run CONTINUES through the same pending-transaction pipeline a normal broadcast uses, returning a real receipt with no send RPC attempted. Because the resolver resolves instead of throwing, a multi-step governed action pauses at each unsignable step and completes in ONE run. The pasted hash is registered with the transaction-hash tracker, so gas reporting does not omit an externally-executed transaction. A hash this node has never heard of is looked up for a bounded number of rounds and then reported as NOT FOUND rather than polled for ever, and a receipt without a successful status fails loudly, naming both the transaction and the pasted hash; neither saves anything. The receipt fetched to check that is handed to the pipeline, so one pasted transaction is waited for once.
+
+  Answering "cannot sign" (or pressing enter, aborting the prompt, or failing to paste a valid hash) degrades to the existing defer workflow: the full transaction is printed and the same `UnknownSignerError` is thrown, still caught by `catchUnknownSigner`. Signable accounts are entirely unaffected — the policy is still consulted only inside the `unsignable` branch, so `local`, `node` and `impersonated` accounts broadcast exactly as before, and a pre-signed `raw` transaction never reaches the seam. `@rocketh/unknown-signer` only gains doc-comment corrections now that `'ask'` exists.
+
+- aac0ca1: Tell the user when auto-impersonation was enabled but did not resolve the account.
+
+  The impersonation attempt deliberately SWALLOWS an unsupported or refused `hardhat_impersonateAccount`, which is what lets `autoImpersonate` be harmless on a provider that is not a dev node. The cost was silence: a user who switched it on against the wrong kind of node got an unknown-signer error later with nothing saying impersonation had ever been tried. `UnknownSignerErrorData` now carries an optional `autoImpersonation` outcome, and the error message says which of two things happened: `'attempted'` (this account WAS a candidate, `hardhat_impersonateAccount` was sent and the node did not accept it) or `'not-a-candidate'` (never attempted for this account, because the candidates are the NAMED accounts the node would otherwise have to sign for). The two shapes have different fixes, so they do not collapse into one message, and the note is printed directly under the error's header rather than after `data:`, which for a deployment is the whole creation bytecode.
+
+  With `autoImpersonate` off, the message is byte-for-byte unchanged: no new noise on the common path, where the user never asked for impersonation at all.
+
+  It is a MESSAGE detail and nothing more (ADR 0006). `autoImpersonate` remains a NODE CAPABILITY resolved BEFORE the seam and `onUnknownSigner` remains the POLICY afterwards: the outcome is recorded at setup and read only where the error is built, inside the `unsignable` branch, so no control flow, no signability classification and no policy decision changed. Documentation gains the browser/fork route: `@rocketh/web` implements no text prompt by design, so `'ask'` degrades to `throw` there, and the fork answer is impersonation rather than interactivity, with its three real constraints (naming the addresses is mandatory, it needs a node implementing the impersonation RPC, and it is run-level rather than per-transaction).
+
+- ef4a3b0: Recover and verify the deployed address when a DEPLOYMENT is resolved interactively.
+
+  A deployment from an unsignable `from` under `onUnknownSigner: 'ask'` already paused, took the hash of the transaction the user executed out-of-band, and inherited the successful-status check. It now also has to prove that the pasted transaction actually deployed something before anything is recorded: an ordinary deployment is saved at the address that transaction's OWN receipt reports as created, while a deterministic or factory deployment — whose address is computed from bytecode and salt before broadcast and is preferred over the receipt's — is saved only once there is CODE at that expected address. The confirmation is code-at-address, never transaction parsing, so the wrapper a multisig executed the deployment inside is irrelevant.
+
+  A receipt with no usable contract address (absent OR the zero address, which is truthy and so slipped through every `if (!contractAddress)` check), an expected address holding no code, or an unanswerable `eth_getCode`, all now FAIL LOUDLY and save nothing at all: no deployment record, no pending-transaction state, no gas-report entry. Each error names the deployment, the pasted hash and the transaction that still needs executing.
+
+  Normal broadcasts are untouched and gain NO new failure mode — in particular a deterministic deploy that rocketh sends itself is still recorded at its expected address without a code check. The invariants run at the shared broadcast choke point, which now requires each funnel to state whether it is broadcasting an execution or a deployment, so a future funnel cannot reach the seam without the deployment checks applying.
+
+- 9319520: Make the unknown-signer policy reachable from the shell and settable once for every chain.
+  - **New CLI option on both CLIs:** `rocketh --on-unknown-signer <throw|ask|auto>` and `hardhat deploy --on-unknown-signer <throw|ask|auto>`. Previously the only run-level lever was the programmatic `ExecutionParams.onUnknownSigner`, so there was no way to say "not interactive, just this once" from a terminal. An invalid value is rejected by name rather than silently passed through, and omitting the flag leaves config in charge.
+  - **Fix: `--skip-prompts` now also forces `throw`** on both CLIs. It is documented as "skip any prompts" but only ever silenced the reset and gas-price confirmations, which was harmless until the interactive resolver landed and made `'auto'` prompt by default on a TTY. It wins over an explicit `--on-unknown-signer ask`, since asking to be prompted and not prompted at once is a contradiction and not prompting is the safe half. (For hardhat-deploy this also covers an in-memory network, where `skipPrompts` is forced on and there is no Safe to execute anything on.)
+  - **New top-level `onUnknownSigner` in `UserConfig`**, so a repo-wide default is one line instead of one per `chains[id]` entry. Full precedence is now run parameter (including the CLI flag) > chain config > top-level config > the built-in `'auto'`; a more specific setting always wins.
+
+  Docs: `@rocketh/unknown-signer` is now documented primarily as an EXTENSION (spread it into `extensions` and call `catchUnknownSigner(() => …)` straight off the deploy-script environment, no `env` threading), with the curried `catchUnknownSigner(env)(…)` form shown for use outside a deploy script.
+
+- 2797550: Carry a text-prompt CAPABILITY on the environment, on every construction path. `PromptExecutor` gains an OPTIONAL `promptText` method (returning `{value}` or `{cancelled: true}`) whose ABSENCE is the capability signal, and the prompt now rides `ExecutionParams.promptExecutor` (and its resolved form) — the same road `autoImpersonate` travels — so it reaches `createEnvironment` from the executor, from `loadEnvironmentFromStore` (the path hardhat-deploy takes, where no executor is in scope) and from the shared test harness alike. Environments expose the per-CAPABILITY predicate `env.canPromptForText()`, true only when a text prompt genuinely exists: a prompt object being present is not enough, since `@rocketh/web`'s confirm returns `{proceed: true}` without asking anyone. See `docs/adr/0007-prompt-capability-on-the-environment-not-the-executor.md`.
+
+  `@rocketh/node` implements `promptText` (reading the answer keyed by `request.name`, as the `prompts` library returns it) and supplies its prompt on the hardhat-deploy path, so those runs carry the capability by default; a caller-supplied prompt still wins. `@rocketh/web` deliberately does not implement it. Purely additive and inert: nothing branches on the capability yet, and `onUnknownSigner` resolves and broadcasts exactly as before.
+
+- 43b9545: Throw a first-class `UnknownSignerError` at the single broadcast choke point when a transaction's `from` is unsignable, replacing the opaque `cannot get signer for ...` error there. Because `deploy`, `execute`, `tx` and the proxy upgrade path all funnel through `broadcastTransaction`, the mechanism is transaction-agnostic: a Safe/multisig owner, a hardware wallet left unplugged or any account rocketh cannot sign for now surfaces the exact transaction to execute out-of-band. The decision is made on `addressSignability`, so `local`, `node` and `impersonated` accounts broadcast exactly as before.
+
+  Add `onUnknownSigner: 'throw' | 'auto'`, resolved as execution param > chain config > default `'auto'`, mirroring how `autoImpersonate` is threaded. `'auto'` degrades to `'throw'` while no interactive resolver exists, so CI never prompts and never hangs. It is a POLICY, orthogonal to the `autoImpersonate` node-capability switch (which runs before the seam and is unchanged), and it deliberately has no `'impersonate'` value.
+
+  Add `env.pushUnknownSignerPolicy(frame)` / `env.popUnknownSignerPolicy()` to the `Environment` interface: a scoped policy-frame stack that `@rocketh/unknown-signer`'s `catchUnknownSigner` will use. A frame changes what happens to an `unsignable` account only — it never turns a `local`, `node` or `impersonated` account into a throw.
+
+  `@rocketh/test-utils` is a test-only touch: harness tests that broadcast from a named account the mock node did not list in `eth_accounts` now declare `nodeAccounts`, since such an account is (correctly) unsignable.
+
+- e20634b: Name the function in an `UnknownSignerError` raised from a contract call. `execute` / `executeByName` now declare the call they encode through the new `options.contract` on `env.broadcastExecution` (`{method, args}`), and the seam at the broadcast choke point turns it into `contract: {name?, method, args}` on the error. A user whose proxy owner is a Safe therefore reads `contract: Proxy.upgradeTo("0x...")` and knows which function to run out-of-band, instead of only an address.
+
+  `contract.name` is resolved on the error path through the environment's existing `fromAddressToNamedABIOrNull`, so it is absent when the target address matches no deployment (the message then falls back to `to`), and enrichment can never replace the error with an unrelated one.
+
+  Non-contract paths are unchanged and leave `contract` unset: a plain `tx()`, a value transfer and a deploy have no function to name.
+
+  `@rocketh/test-utils` is a type-only touch, mirroring the widened `broadcastExecution` signature.
+
+- Updated dependencies [11ab414]
+- Updated dependencies [a5db88c]
+- Updated dependencies [aac0ca1]
+- Updated dependencies [9319520]
+- Updated dependencies [2797550]
+- Updated dependencies [43b9545]
+- Updated dependencies [e20634b]
+- Updated dependencies [d800333]
+- Updated dependencies [01d5bfb]
+  - @rocketh/core@0.19.8
+
 ## 0.19.11
 
 ### Patch Changes

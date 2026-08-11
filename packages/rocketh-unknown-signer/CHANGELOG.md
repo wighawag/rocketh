@@ -1,0 +1,40 @@
+# @rocketh/unknown-signer
+
+## 0.19.1
+
+### Patch Changes
+
+- a5db88c: Add the `'ask'` unknown-signer policy and the interactive resolver at the broadcast seam.
+
+  `onUnknownSigner` is now `'throw' | 'ask' | 'auto'`, and `'auto'` (still the default) is CAPABILITY-AWARE: it resolves to `'ask'` where the run can ask a human for text (`env.canPromptForText()`, i.e. a `PromptExecutor` implementing `promptText`) and to `'throw'` where it cannot. Capability is a CEILING, so an explicit `'ask'` also degrades to `'throw'` without a prompt. `@rocketh/node` now supplies its `promptText` ONLY when stdin is a terminal, so a CI run (whose stdin is not) simply has no text capability and takes the throw path: it never prompts and never hangs. The gate lives in the runtime rather than in `canPromptForText()`, which stays pure method presence (ADR 0007), because `prompts` asked a question with no terminal behind it never settles and never rejects (measured in `docs/spikes/ask-policy-interactive-resolver/prompts-non-tty-behaviour.md`).
+
+  Under `'ask'`, a transaction whose `from` is unsignable PAUSES: rocketh presents the exact transaction (the undegraded `UnknownSignerError` message), the user executes it out-of-band on their Safe and pastes the resulting transaction hash, and the run CONTINUES through the same pending-transaction pipeline a normal broadcast uses, returning a real receipt with no send RPC attempted. Because the resolver resolves instead of throwing, a multi-step governed action pauses at each unsignable step and completes in ONE run. The pasted hash is registered with the transaction-hash tracker, so gas reporting does not omit an externally-executed transaction. A hash this node has never heard of is looked up for a bounded number of rounds and then reported as NOT FOUND rather than polled for ever, and a receipt without a successful status fails loudly, naming both the transaction and the pasted hash; neither saves anything. The receipt fetched to check that is handed to the pipeline, so one pasted transaction is waited for once.
+
+  Answering "cannot sign" (or pressing enter, aborting the prompt, or failing to paste a valid hash) degrades to the existing defer workflow: the full transaction is printed and the same `UnknownSignerError` is thrown, still caught by `catchUnknownSigner`. Signable accounts are entirely unaffected — the policy is still consulted only inside the `unsignable` branch, so `local`, `node` and `impersonated` accounts broadcast exactly as before, and a pre-signed `raw` transaction never reaches the seam. `@rocketh/unknown-signer` only gains doc-comment corrections now that `'ask'` exists.
+
+- 82ef614: Add `withUnknownSignerPolicy`, a PER-CALL override of the unknown-signer policy.
+
+  `withUnknownSignerPolicy(env)('ask', () => execute(...))` runs one action under the policy you name, overriding the run-level `onUnknownSigner` (itself resolved as run parameter > chain config > the default `'auto'`). It is the SAME policy frame `catchUnknownSigner` pushes, so precedence stays one rule — innermost override, then the run parameter, then the chain config, then the default — and the frame is popped in a `finally`, so an action that throws (the deferral itself does) cannot strand it on the stack. The action is a thunk for the same reason `catchUnknownSigner`'s is: a promise has already started before the frame could be pushed, so the override would silently not apply. It returns whatever the action returned and propagates whatever it threw, so wrapping it in `catchUnknownSigner` still defers.
+
+  CAPABILITY IS A CEILING, NOT A DEFAULT: an overridden `'ask'` degrades to `'throw'` wherever the run cannot ask a human for text (CI, a non-TTY shell, the browser), so a script that hardcodes the override still runs un-hangable in CI. And since it is the same frame, it is read only inside the seam's `unsignable` branch: a `local`, `node` or `impersonated` account broadcasts identically inside the scope, and a pre-signed `raw` transaction never reaches the seam at all.
+
+  `catchUnknownSigner` is unchanged in behaviour (it now shares the one push/pop site) and its deferral guarantee is finally ASSERTABLE: under an ambient `'ask'` with a working prompt, a wrapped action takes the throw path without the prompt being consulted at all, and the printed deferral message is byte-for-byte the one an ambient `'throw'` produces. The core slice could not test this, because both of its policy values resolved to `'throw'`.
+
+- 4383bb6: New package `@rocketh/unknown-signer`, providing the hardhat-deploy v1 `catchUnknownSigner` helper as a curried rocketh extension: `catchUnknownSigner(env)(action, options?)` runs the action with a `{policy: 'throw'}` unknown-signer frame pushed for its duration, catches the `UnknownSignerError` the broadcast seam throws for an unsignable `from`, prints the transaction to execute out-of-band, and returns `{from, to, value, data}` (or `null` when the action succeeded). Return parity with v1 is exact: every key is present even when `undefined`, `value` is a string, and `contract` is never returned. Nothing is persisted — idempotency is on-chain-state-driven, as in v1.
+
+  One deliberate divergence from v1: the action is a THUNK only (`() => execute(...)`), not `Promise | thunk`. A promise has already started executing before the wrapper can establish its policy scope, so accepting one would silently do nothing. The v1 promise form is a compile error, and a JavaScript caller gets a runtime error naming the fix.
+
+  The pushed frame forces `throw` over the interactive `ask` policy that ships later; it NEVER overrides impersonation. An account the node can sign for, including an impersonated one, still broadcasts inside a `catchUnknownSigner` block (ADR 0006).
+
+  `UnknownSignerError` is re-exported from the `@rocketh/unknown-signer/errors` subpath rather than the package root, because every runtime export of an extension package is called as `value(env)` when the package is spread into `extensions`.
+
+- Updated dependencies [11ab414]
+- Updated dependencies [a5db88c]
+- Updated dependencies [aac0ca1]
+- Updated dependencies [9319520]
+- Updated dependencies [2797550]
+- Updated dependencies [43b9545]
+- Updated dependencies [e20634b]
+- Updated dependencies [d800333]
+- Updated dependencies [01d5bfb]
+  - @rocketh/core@0.19.8

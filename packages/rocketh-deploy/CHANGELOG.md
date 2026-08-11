@@ -1,5 +1,24 @@
 # @rocketh/deploy
 
+## 0.19.13
+
+### Patch Changes
+
+- 2bacf9a: Let a deploy from an unsignable deployer reach the unknown-signer seam. `deploy` performed its own `env.addressSigners[address]` lookup and threw an opaque `cannot get signer for ...` before the transaction was built, so such a deploy died there instead of reaching the single `broadcastTransaction` choke point. It now surfaces the same `UnknownSignerError` (carrying the transaction to execute out-of-band) that a raw tx or an `execute` does, under the same effective `onUnknownSigner` policy. A signable deployer is unaffected, including the deterministic create2/create3 paths.
+
+  The removed lookup existed only to feed a `signer` argument to the module-private create2/create3 factory helpers, which never read it (every transaction they send goes through `env.broadcastExecution`, which resolves the signer at the choke point). That unused parameter is removed too; no public signature changes.
+
+- Updated dependencies [11ab414]
+- Updated dependencies [a5db88c]
+- Updated dependencies [aac0ca1]
+- Updated dependencies [9319520]
+- Updated dependencies [2797550]
+- Updated dependencies [43b9545]
+- Updated dependencies [e20634b]
+- Updated dependencies [d800333]
+- Updated dependencies [01d5bfb]
+  - @rocketh/core@0.19.8
+
 ## 0.19.12
 
 ### Patch Changes

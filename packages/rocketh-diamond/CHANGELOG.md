@@ -1,5 +1,23 @@
 # @rocketh/diamond
 
+## 0.19.15
+
+### Patch Changes
+
+- Updated dependencies [11ab414]
+- Updated dependencies [a5db88c]
+- Updated dependencies [2bacf9a]
+- Updated dependencies [aac0ca1]
+- Updated dependencies [9319520]
+- Updated dependencies [2797550]
+- Updated dependencies [43b9545]
+- Updated dependencies [e20634b]
+- Updated dependencies [d800333]
+- Updated dependencies [01d5bfb]
+  - @rocketh/core@0.19.8
+  - @rocketh/deploy@0.19.13
+  - @rocketh/read-execute@0.19.8
+
 ## 0.19.14
 
 ### Patch Changes
