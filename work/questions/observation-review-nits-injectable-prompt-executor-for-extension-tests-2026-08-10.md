@@ -16,6 +16,6 @@ Item: [`observation:review-nits-injectable-prompt-executor-for-extension-tests-2
 
 All four reconstructed decisions accepted: the omit-vs-empty-array capability shape, the hardcoded `{proceed: true}` confirm half, an exhausted script throwing (and therefore surfacing as an `UnknownSignerError` through the resolver's degrade path), and `MockTextAnswer` additionally accepting an `Error` entry.
 
-Live residue: the consumer-facing wording is genuinely misleading and should be tightened. The changeset (which becomes the published CHANGELOG) and `TESTING.md:77` both say "with no scripted answers", which a reader will apply to `textAnswers: []` too, but that gives a capability-PRESENT-but-exhausted prompt. Only OMITTING the option gives the capability-absent shape.
+Live residue: the consumer-facing wording is genuinely misleading and should be tightened. The changeset (which becomes the published CHANGELOG) and `TESTING.md:77` both say "with no scripted answers", which a reader will apply to `textAnswers: []` too, but that gives a capability-PRESENT-but-exhausted prompt. Only OMITTING the option gives the capability-absent shape. FIXED while executing this: the changeset half was already corrected in commit `0c93870`, and `TESTING.md` now states the omit-vs-empty distinction explicitly.
 
 Keep the note until the residue above is either acted on or judged not worth acting on; it is the only record of these choices outside the code.
