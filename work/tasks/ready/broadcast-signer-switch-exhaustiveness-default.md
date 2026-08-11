@@ -1,6 +1,6 @@
 ---
 promotedFrom: observation:broadcast-signer-switch-has-no-default-2026-08-09
-needsAnswers: false
+needsAnswers: true
 ---
 
 ## What to build
