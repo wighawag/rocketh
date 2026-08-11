@@ -1,5 +1,5 @@
 ---
-needsAnswers: true
+needsAnswers: false
 ---
 
 # Decisions taken while building `prompt-capability-on-the-environment` (2026-08-10)
@@ -29,3 +29,18 @@ No text implementation, and no comment either: the "browser has no text capabili
 ## 6. USER-VISIBLE: an EMPTY answer is a VALUE (`{value: ''}`), not a cancellation
 
 `createNodePromptExecutor().promptText` returns `{cancelled: true}` only when `prompts` gives back no string for `request.name` (the Ctrl-C abort); `''` comes back as `{value: ''}`, pinned by `packages/rocketh-node/test/prompt-executor.test.ts` ("treats an empty answer as a value"). Chosen because `promptText` is a GENERIC text primitive: only the caller knows what its prompt can accept, so the caller validates. Alternative considered: mapping `''` to `{cancelled: true}` inside the Node implementation, rejected because it bakes one caller's policy into the primitive, makes "the user pressed enter on an empty line" indistinguishable from "the user aborted", and would have to be re-litigated for any prompt where empty is legitimate. What it touches: `ask-policy-interactive-resolver` (and `per-call-ask-override-and-deferral-precedence`) must reject an empty paste THEMSELVES and decide whether that means re-ask, abort or defer; it must not read `''` as a cancellation. Recorded because the `TextPromptAnswer` JSDoc previously implied the opposite (Gate 2 flagged the doc/behaviour disagreement, Gate 3 blocked on it); the doc at `packages/rocketh-core/src/types.ts` and the choice site at `packages/rocketh-node/src/environment/prompt.ts` now both state it positively.
+
+## Applied answers 2026-08-11
+
+### q1: What should become of this observation? Reply with a disposition and a reason: resolve (settle it, keep the note on record — say why), promote (mint a task / spec / adr — say which and why), delete (redundant or obsolete — say why), or duplicate (maps onto an existing item — name it).
+
+**Ratified - all six decisions accepted as-is; keep the note.**
+
+Including the two with user-visible weight: the loader supplying `@rocketh/node`'s prompt to hardhat-deploy runs by default (decision 4), and an EMPTY answer being a VALUE rather than a cancellation (decision 6), which the interactive resolver's defer semantics rest on.
+
+Two things were checked while ratifying, and both hold:
+
+- The TTY question this note anticipated is settled by what landed: the gate lives in the RUNTIME (`packages/rocketh-node/src/environment/prompt.ts` supplies `promptText` only when `process.stdin.isTTY`), not in `canPromptForText()`, which stays pure method presence per ADR 0007.
+- Decision 4's asymmetry between the two entry points is FIXED rather than ratified. The environment loader built its prompt per call while the execute path used a module-level one built at import, so the two agreed only by coincidence (identical for a CLI process, divergent for an embedder running deployments in-process). Both now build per call, and a caller-supplied `ExecutionParams.promptExecutor` still wins over both. Note the CLI and hardhat-deploy's deploy task are the same code path - both call `loadAndExecuteDeploymentsFromFiles` - so this was never a CLI-vs-hardhat-deploy difference.
+
+Decided and closed alongside this: the runtime will NOT also withhold the text ability when `process.env.CI` is set. The guarantee rests on `process.stdin.isTTY` alone. A CI runner that allocates a pty therefore still gets a text prompt, which is the accepted residual: the docs are carefully qualified ("a CI run whose stdin is not a terminal"), and withholding on an env var would break someone deliberately running interactively in a CI-labelled environment.
