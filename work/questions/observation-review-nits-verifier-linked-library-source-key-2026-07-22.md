@@ -11,3 +11,9 @@ Item: [`observation:review-nits-verifier-linked-library-source-key-2026-07-22`](
 <!-- q1 fields: id=q1 -->
 
 **Your answer** (write below this line):
+
+**Ratified - all three findings accepted as-is; keep the note.** The task this reviews is in `work/tasks/done/` and this is the oldest note in the inbox (2026-07-22), so nothing here has proved urgent in practice.
+
+Accepted: the `library <Name>` regex fallback can match inside a comment or a string literal (low impact, since the AST path is preferred and the fallback only runs when it fails); the first hit wins arbitrarily when two sources declare a library of the same name; and the error path skips the deployment and continues rather than throwing, matching the file's existing convention.
+
+Live residue, in the order it would bite: the duplicate-name tie-break is the one with a plausible real trigger (test fixtures, forked dependency trees), and the cheapest improvement there is a WARNING naming both candidates rather than a full compilation-target-anchored resolution. The regex hardening (strip comments first) is a smaller win. Neither is scheduled.
