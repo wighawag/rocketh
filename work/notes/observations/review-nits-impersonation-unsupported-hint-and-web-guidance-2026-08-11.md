@@ -3,7 +3,7 @@ title: review-gate non-blocking nits for 'impersonation-unsupported-hint-and-web
 date: 2026-08-11
 status: open
 reviewOf: impersonation-unsupported-hint-and-web-guidance
-needsAnswers: false
+needsAnswers: true
 ---
 
 ## Non-blocking review findings
