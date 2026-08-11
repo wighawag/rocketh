@@ -59,6 +59,8 @@ function createMockProvider(options?: {
 	receipts?: Record<string, Record<string, unknown>>;
 	/** Code per address, as `eth_getCode` would answer. Anything absent has no code. */
 	code?: Record<string, `0x${string}`>;
+	/** Make `eth_getCode` FAIL, as a node having an outage would. */
+	codeLookupError?: string;
 }): {provider: EIP1193ProviderWithoutEvents; calls: Call[]} {
 	const calls: Call[] = [];
 	const code: Record<string, `0x${string}`> = {};
@@ -81,6 +83,9 @@ function createMockProvider(options?: {
 				case 'eth_sendTransaction':
 					return SENT_TX_HASH;
 				case 'eth_getCode':
+					if (options?.codeLookupError) {
+						throw new Error(options.codeLookupError);
+					}
 					return code[(args.params as string[])[0].toLowerCase()] ?? '0x';
 				case 'eth_getTransactionByHash': {
 					const hash = (args.params as string[])[0];
@@ -163,11 +168,13 @@ async function buildEnvironment(options: {
 	promptExecutor?: PromptExecutor;
 	receipts?: Record<string, Record<string, unknown>>;
 	code?: Record<string, `0x${string}`>;
+	codeLookupError?: string;
 }) {
 	const {provider, calls} = createMockProvider({
 		accounts: options.nodeAccounts,
 		receipts: options.receipts,
 		code: options.code,
+		codeLookupError: options.codeLookupError,
 	});
 	const {store, writes} = createInMemoryStore();
 	const config = resolveConfig({
@@ -319,6 +326,46 @@ describe('interactive deployment - a bad hash fails loudly and saves nothing', (
 	});
 
 	/**
+	 * The node could not ANSWER the code question. Unable to confirm is not the same as
+	 * confirmed, and this whole path exists so that an unconfirmed deployment is never
+	 * recorded — so an RPC failure fails the run rather than being read as "no code"
+	 * (which would blame the user's hash for the node's outage) or as "assume fine"
+	 * (which silently reopens the hole). The message names all three things needed to
+	 * work out what happened: the deployment, the address, and the RPC error itself.
+	 */
+	it('fails when the node cannot answer the code lookup', async () => {
+		const promptExecutor = createScriptedPrompt([{value: PASTED_HASH}]);
+		const {env, writes} = await buildEnvironment({
+			accounts: {admin: SAFE_ADDRESS},
+			onUnknownSigner: 'ask',
+			promptExecutor,
+			codeLookupError: 'upstream node unavailable',
+		});
+
+		const from = env.resolveAccount('admin');
+		const error = await env
+			.broadcastDeployment(DEPLOYMENT_NAME, deploymentTransaction(from), partialDeployment, {
+				expectedAddress: EXPECTED_ADDRESS,
+			})
+			.then(
+				() => undefined,
+				(e) => e,
+			);
+
+		expect(error).toBeInstanceOf(Error);
+		const message = (error as Error).message;
+		expect(message).toContain(DEPLOYMENT_NAME);
+		expect(message).toContain(EXPECTED_ADDRESS);
+		// the node's own error is carried through, so the outage is not misread as a bad paste
+		expect(message).toContain('upstream node unavailable');
+		// and nothing was recorded, exactly as with the other refusals
+		expect(deploymentWrites(writes)).toEqual([]);
+		expect(writes.filter((w) => w.name === '.pending_transactions.json')).toEqual([]);
+		expect(() => env.get(DEPLOYMENT_NAME)).toThrow(`no deployment named "${DEPLOYMENT_NAME}" found`);
+		expect(env.network.provider.transactionHashes).toEqual([]);
+	});
+
+	/**
 	 * The ordinary half, shape one: the pasted transaction created no contract at all,
 	 * so its receipt carries NO contract address.
 	 */
@@ -332,12 +379,10 @@ describe('interactive deployment - a bad hash fails loudly and saves nothing', (
 		});
 
 		const from = env.resolveAccount('admin');
-		const error = await env
-			.broadcastDeployment(DEPLOYMENT_NAME, deploymentTransaction(from), partialDeployment)
-			.then(
-				() => undefined,
-				(e) => e,
-			);
+		const error = await env.broadcastDeployment(DEPLOYMENT_NAME, deploymentTransaction(from), partialDeployment).then(
+			() => undefined,
+			(e) => e,
+		);
 
 		expect(error).toBeInstanceOf(Error);
 		expect((error as Error).message).toContain(DEPLOYMENT_NAME);
@@ -364,12 +409,10 @@ describe('interactive deployment - a bad hash fails loudly and saves nothing', (
 		});
 
 		const from = env.resolveAccount('admin');
-		const error = await env
-			.broadcastDeployment(DEPLOYMENT_NAME, deploymentTransaction(from), partialDeployment)
-			.then(
-				() => undefined,
-				(e) => e,
-			);
+		const error = await env.broadcastDeployment(DEPLOYMENT_NAME, deploymentTransaction(from), partialDeployment).then(
+			() => undefined,
+			(e) => e,
+		);
 
 		expect(error).toBeInstanceOf(Error);
 		expect((error as Error).message).toContain(DEPLOYMENT_NAME);
@@ -394,12 +437,10 @@ describe('interactive deployment - a bad hash fails loudly and saves nothing', (
 		});
 
 		const from = env.resolveAccount('admin');
-		const error = await env
-			.broadcastDeployment(DEPLOYMENT_NAME, deploymentTransaction(from), partialDeployment)
-			.then(
-				() => undefined,
-				(e) => e,
-			);
+		const error = await env.broadcastDeployment(DEPLOYMENT_NAME, deploymentTransaction(from), partialDeployment).then(
+			() => undefined,
+			(e) => e,
+		);
 
 		expect(error).toBeInstanceOf(Error);
 		expect((error as Error).message).toContain(PASTED_HASH);

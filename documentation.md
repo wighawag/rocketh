@@ -595,7 +595,7 @@ A DEPLOYMENT from an unsignable `from` pauses and asks in exactly the same way, 
 - **an ordinary deployment** is recorded at the address the pasted transaction's OWN receipt reports as created;
 - **a deterministic (or factory) deployment**, whose address was computed from bytecode and salt before broadcast, is recorded at that expected address only once rocketh has seen CODE at it on-chain. It confirms by looking for the code, never by parsing the transaction, so it does not matter what wrapper your multisig executed it inside.
 
-Anything else FAILS, saving nothing: a receipt that reports no created contract (or the zero address), an expected address with no code at it, or a transaction that did not succeed. The error names the deployment, the hash you pasted and the transaction that still needs executing, so a wrong hash cannot quietly leave you with a deployment record pointing at an address holding nothing.
+Anything else FAILS, saving nothing: a receipt that reports no created contract (or the zero address), an expected address with no code at it, a transaction that did not succeed, or a node that cannot answer the code lookup at all (unable to confirm is not the same as confirmed, so the run fails rather than recording a deployment nobody verified). The error names the deployment, the hash you pasted and the transaction that still needs executing, so a wrong hash cannot quietly leave you with a deployment record pointing at an address holding nothing.
 
 This applies to the interactive path only. A deployment rocketh broadcast itself is unaffected and gains no new check: it sent that transaction, so there is nothing to distrust.
 
