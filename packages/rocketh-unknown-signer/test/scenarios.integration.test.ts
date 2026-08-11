@@ -154,8 +154,12 @@ function vaultArtifact(version: 1 | 2): Artifact<typeof VAULT_ABI> {
 	return {
 		...createMockArtifact('Vault', VAULT_ABI),
 		bytecode: `0x6080604052348015600f57600080fd5b50${marker}` as `0x${string}`,
-		// trailing `0002` = "the last 2 bytes are CBOR metadata"
-		deployedBytecode: `0x6080604052${marker}0002` as `0x${string}`,
+		// The version MARKER has to sit in the CODE, ahead of the metadata, or the two
+		//  versions are indistinguishable once the metadata is stripped and no upgrade is
+		//  ever detected. Layout: <code><marker><2-byte blob><2-byte length of that blob>.
+		//  The trailing `0002` declares the blob length EXCLUDING itself, exactly as solc
+		//  writes it, so stripping removes `dead0002` and leaves the marker in place.
+		deployedBytecode: `0x6080604052${marker}dead0002` as `0x${string}`,
 	};
 }
 

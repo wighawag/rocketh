@@ -24,7 +24,13 @@
 
 import {describe, it, expect} from 'vitest';
 import {deployViaProxy} from '../src/index.js';
-import {createMockArtifact, createNodeHeldEnvironment, STANDARD_NAMED_ACCOUNTS} from '@rocketh/test-utils';
+import {
+	createMockArtifact,
+	createNodeHeldEnvironment,
+	createTestEnvironment,
+	STANDARD_NAMED_ACCOUNTS,
+	NODE_HELD_ACCOUNTS,
+} from '@rocketh/test-utils';
 
 /**
  * Named accounts in the real `UserConfig.accounts` shape, declared as bare addresses;
@@ -35,6 +41,27 @@ const NAMED_ACCOUNTS = STANDARD_NAMED_ACCOUNTS;
 
 /** The environment these tests deploy from: the standard named accounts, all held by the node. */
 const createEnv = createNodeHeldEnvironment;
+
+/**
+ * The SHARED-ADMIN proxy flavours (`SharedAdminOpenZeppelinTransparentProxy`,
+ * `SharedAdminOptimizedTransparentProxy`) are the only two that deploy a separate
+ * `DefaultProxyAdmin` contract and route the upgrade through it. Before using it,
+ * `deployViaProxy` READS `owner()` off that admin and refuses if it is not the expected
+ * owner - so unlike every other proxy flavour these need the node to answer an
+ * `eth_call`, which the default harness does not (it answers `0x`, i.e. no data, which
+ * the read path retries and then surfaces as a decode error).
+ *
+ * Answering it with the deployer's address, ABI-encoded as a 32-byte word, is what these
+ * two cases need and is why they get their own environment.
+ */
+function createSharedAdminEnv() {
+	const ownerWord = `0x${'0'.repeat(24)}${STANDARD_NAMED_ACCOUNTS.deployer.slice(2).toLowerCase()}` as `0x${string}`;
+	return createTestEnvironment({
+		accounts: STANDARD_NAMED_ACCOUNTS,
+		nodeAccounts: NODE_HELD_ACCOUNTS,
+		providerConfig: {responses: {eth_call: ownerWord}},
+	});
+}
 
 describe('@rocketh/proxy - Integration Tests', () => {
 	describe('ERC173 Proxy Pattern', () => {
@@ -264,22 +291,32 @@ describe('@rocketh/proxy - Integration Tests', () => {
 			 * });
 			 * ```
 			 */
-			// TODO
-			// const {env} = await createEnv();
-			// const _deployViaProxy = deployViaProxy(env);
-			// const artifact = createMockArtifact('TransparentLogic');
-			// const deployment = await _deployViaProxy(
-			// 	'TransparentContract',
-			// 	{
-			// 		account: 'deployer',
-			// 		artifact,
-			// 		args: [],
-			// 	},
-			// 	{
-			// 		proxyContract: 'SharedAdminOpenZeppelinTransparentProxy',
-			// 	},
-			// );
-			// expect(deployment).toBeDefined();
+			const {env} = await createSharedAdminEnv();
+			const _deployViaProxy = deployViaProxy(env);
+			const artifact = createMockArtifact('TransparentLogic');
+			const deployment = await _deployViaProxy(
+				'TransparentContract',
+				{
+					account: 'deployer',
+					artifact,
+					args: [],
+				},
+				{
+					proxyContract: 'SharedAdminOpenZeppelinTransparentProxy',
+				},
+			);
+			expect(deployment).toBeDefined();
+
+			// What makes this flavour different from the others: a SEPARATE DefaultProxyAdmin
+			//  contract is deployed and owns the upgrade rights, instead of the proxy owning
+			//  them itself. Asserted here because it is the only coverage of that path.
+			const proxyAdmin = env.get('DefaultProxyAdmin');
+			expect(proxyAdmin.address).toBeDefined();
+			const implementation = env.get('TransparentContract_Implementation');
+			const proxy = env.get('TransparentContract_Proxy');
+			expect(implementation.address).not.toBe(proxy.address);
+			expect(proxyAdmin.address).not.toBe(proxy.address);
+			expect(deployment.address).toBe(proxy.address);
 		});
 
 		it('should demonstrate Optimized Transparent Proxy', async () => {
@@ -300,22 +337,29 @@ describe('@rocketh/proxy - Integration Tests', () => {
 			 * });
 			 * ```
 			 */
-			// TODO
-			// const {env} = await createEnv();
-			// const _deployViaProxy = deployViaProxy(env);
-			// const artifact = createMockArtifact('OptimizedTransparentLogic');
-			// const deployment = await _deployViaProxy(
-			// 	'OptimizedTransparentContract',
-			// 	{
-			// 		account: 'deployer',
-			// 		artifact,
-			// 		args: [],
-			// 	},
-			// 	{
-			// 		proxyContract: 'SharedAdminOptimizedTransparentProxy',
-			// 	},
-			// );
-			// expect(deployment).toBeDefined();
+			const {env} = await createSharedAdminEnv();
+			const _deployViaProxy = deployViaProxy(env);
+			const artifact = createMockArtifact('OptimizedTransparentLogic');
+			const deployment = await _deployViaProxy(
+				'OptimizedTransparentContract',
+				{
+					account: 'deployer',
+					artifact,
+					args: [],
+				},
+				{
+					proxyContract: 'SharedAdminOptimizedTransparentProxy',
+				},
+			);
+			expect(deployment).toBeDefined();
+
+			// Same shared-admin shape as the OpenZeppelin flavour above; the difference is the
+			//  proxy artifact, not the admin arrangement.
+			expect(env.get('DefaultProxyAdmin').address).toBeDefined();
+			const implementation = env.get('OptimizedTransparentContract_Implementation');
+			const proxy = env.get('OptimizedTransparentContract_Proxy');
+			expect(implementation.address).not.toBe(proxy.address);
+			expect(deployment.address).toBe(proxy.address);
 		});
 	});
 
