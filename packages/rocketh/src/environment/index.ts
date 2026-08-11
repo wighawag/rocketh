@@ -64,6 +64,12 @@ export const PASTED_TRANSACTION_LOOKUP_ROUNDS = 10;
  * WHAT PRODUCED the transaction reaching the broadcast choke point, stated by the funnel
  * that is calling it.
  *
+ * NOT called `origin`, deliberately, even though that is the obvious word: `origin`
+ * already means something ELSE in this module — `PendingTransaction.transaction.origin`
+ * is the SENDER ADDRESS of a pending transaction (a persisted record field). Two
+ * meanings for one word inside one file is how the next reader mis-reads one of them,
+ * so the funnel-descriptor took a different word and the address field kept `origin`.
+ *
  * It is a DISCRIMINATED UNION and a REQUIRED parameter, not an optional bag, because the
  * deployment invariants (an interactively-pasted hash must actually have deployed
  * something) can only run when the choke point KNOWS it is looking at a deployment. Made
@@ -80,7 +86,7 @@ export const PASTED_TRANSACTION_LOOKUP_ROUNDS = 10;
  * receipt's contract address — so it is the address that would be recorded, and therefore
  * the one that has to be confirmed on-chain.
  */
-type BroadcastOrigin =
+type BroadcastSource =
 	| {type: 'execution'; contract?: Omit<UnknownSignerContractCall, 'name'>}
 	| {type: 'deployment'; name: string; expectedAddress?: `0x${string}`};
 
@@ -1027,7 +1033,7 @@ export async function createEnvironment<
 	 * `Environment` interface: it is reached only through `broadcastExecution` and
 	 * `broadcastDeployment`.
 	 *
-	 * `origin` says which funnel produced this transaction (see {@link BroadcastOrigin}).
+	 * `source` says which funnel produced this transaction (see {@link BroadcastSource}).
 	 * Its `contract` metadata is used ONLY to enrich an `UnknownSignerError`, and is
 	 * THREADED down here rather than caught-and-rethrown one level up in
 	 * `broadcastExecution`, deliberately: the error is then constructed ONCE, at the single
@@ -1043,7 +1049,7 @@ export async function createEnvironment<
 	 */
 	async function broadcastTransaction(
 		transaction: TransactionToBroadcast,
-		origin: BroadcastOrigin,
+		source: BroadcastSource,
 	): Promise<`0x${string}`> {
 		if (transaction.type === 'raw') {
 			const txHash = await env.network.provider.request({
@@ -1089,7 +1095,7 @@ export async function createEnvironment<
 				// its implementation record commonly share one); the first is used, since this
 				// is presentation-only enrichment and the unambiguous `to` is printed anyway.
 				let contract: UnknownSignerContractCall | undefined;
-				if (origin.type === 'execution' && origin.contract) {
+				if (source.type === 'execution' && source.contract) {
 					let name: string | undefined;
 					if (transactionData.to) {
 						try {
@@ -1102,7 +1108,7 @@ export async function createEnvironment<
 							logger.warn(`could not resolve a deployment name for ${transactionData.to}: ${e}`);
 						}
 					}
-					contract = name ? {name, ...origin.contract} : {...origin.contract};
+					contract = name ? {name, ...source.contract} : {...source.contract};
 				}
 				// The auto-impersonation note is attached HERE, on the error-building path only, and is
 				// presentation-only: it reports what a node capability did BEFORE this seam, and is not
@@ -1162,8 +1168,8 @@ export async function createEnvironment<
 				// A DEPLOYMENT is held to a stricter standard than an execution, because it HAS an
 				// address to anchor on. Checked here, at the same point as the status and before
 				// anything is saved or tracked, so a hash that deployed nothing leaves no state.
-				if (origin.type === 'deployment') {
-					await requireDeployedContract(origin, receipt, answer.hash, unknownSignerError);
+				if (source.type === 'deployment') {
+					await requireDeployedContract(source, receipt, answer.hash, unknownSignerError);
 				}
 
 				// The tracker only records hashes it OBSERVES on `eth_sendTransaction` /
