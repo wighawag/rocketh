@@ -3,7 +3,7 @@ title: review-gate non-blocking nits for 'deploy-unsignable-deployer-reaches-sea
 date: 2026-08-09
 status: open
 reviewOf: deploy-unsignable-deployer-reaches-seam
-needsAnswers: false
+needsAnswers: true
 ---
 
 ## Non-blocking review findings
