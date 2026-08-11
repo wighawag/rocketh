@@ -283,15 +283,19 @@ describe('@rocketh/read-execute - non-contract paths leave contract unset', () =
 		};
 
 		const error = await expectUnknownSignerError(() =>
-			env.broadcastDeployment('NewContract', {
-				type: 'object',
-				data: {
-					type: '0x2',
-					from: env.resolveAccount('safeOwner'),
-					data: '0x60016000',
-					chainId: `0x${env.network.chain.id.toString(16)}` as `0x${string}`,
+			env.broadcastDeployment(
+				'NewContract',
+				{
+					type: 'object',
+					data: {
+						type: '0x2',
+						from: env.resolveAccount('safeOwner'),
+						data: '0x60016000',
+						chainId: `0x${env.network.chain.id.toString(16)}` as `0x${string}`,
+					},
 				},
-			}, partialDeployment),
+				partialDeployment,
+			),
 		);
 
 		expect(error.data.contract).toBeUndefined();

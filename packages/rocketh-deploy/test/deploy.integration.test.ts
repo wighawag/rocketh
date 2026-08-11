@@ -13,6 +13,7 @@
 
 import {describe, it, expect} from 'vitest';
 import {deploy} from '../src/index.js';
+import type {Environment} from '@rocketh/core/types';
 import {
 	createTestEnvironment,
 	createMockArtifact,
@@ -32,6 +33,29 @@ const NAMED_ACCOUNTS = STANDARD_NAMED_ACCOUNTS;
 
 /** The environment these tests deploy from: the standard named accounts, all held by the node. */
 const createEnv = createNodeHeldEnvironment;
+
+/**
+ * The create2 factory info for the run, narrowed out of `DeterministicDeploymentInfo`.
+ *
+ * That type is a UNION of two shapes: the create2 info DIRECTLY (`{factory, deployer,
+ * funding, signedTx}`), or a wrapper carrying optional `create2` / `create3` members.
+ * `@rocketh/deploy` narrows it exactly this way, so a test asserting on the factory has
+ * to do the same rather than reaching for one member and being right only because of
+ * what the harness happens to supply.
+ */
+function create2Info(env: Environment): {factory: `0x${string}`; deployer: `0x${string}`} {
+	const info = env.network.deterministicDeployment as {
+		factory?: `0x${string}`;
+		deployer?: `0x${string}`;
+		create2?: {factory: `0x${string}`; deployer: `0x${string}`};
+	};
+	const create2 =
+		info.create2 ?? (info.factory && info.deployer ? {factory: info.factory, deployer: info.deployer} : undefined);
+	if (!create2) {
+		throw new Error('this run has no create2 deterministic deployment info');
+	}
+	return create2;
+}
 
 describe('@rocketh/deploy - Integration Tests', () => {
 	describe('Basic Contract Deployment', () => {
@@ -389,8 +413,7 @@ describe('@rocketh/deploy - Integration Tests', () => {
 			//  from bytecode + salt before broadcast, not one read off the receipt. Asserting the
 			//  dispatched `to` is what distinguishes this from an ordinary deployment; the
 			//  address assertion is what pins that the computed address is the one recorded.
-			const factory = env.network.deterministicDeployment;
-			const factoryAddress = ('create2' in factory ? factory.create2.factory : factory.factory).toLowerCase();
+			const factoryAddress = create2Info(env).factory.toLowerCase();
 			const deploymentSends = provider
 				.getRequests()
 				.filter((r) => r.method === 'eth_sendTransaction')

@@ -70,6 +70,29 @@ function lastSentTransaction(provider: {getRequests: () => {method: string; para
 	return sendRequest?.params?.[0] as Record<string, unknown> | undefined;
 }
 
+/**
+ * The create2 factory info for the run, narrowed out of `DeterministicDeploymentInfo`.
+ *
+ * That type is a UNION of two shapes: the create2 info DIRECTLY (`{factory, deployer,
+ * funding, signedTx}`), or a wrapper carrying optional `create2` / `create3` members.
+ * `@rocketh/deploy` narrows it exactly this way, so a test asserting on the factory has
+ * to do the same rather than reaching for one member and being right only because of
+ * what the harness happens to supply.
+ */
+function create2Info(env: Environment): {factory: `0x${string}`; deployer: `0x${string}`} {
+	const info = env.network.deterministicDeployment as {
+		factory?: `0x${string}`;
+		deployer?: `0x${string}`;
+		create2?: {factory: `0x${string}`; deployer: `0x${string}`};
+	};
+	const create2 =
+		info.create2 ?? (info.factory && info.deployer ? {factory: info.factory, deployer: info.deployer} : undefined);
+	if (!create2) {
+		throw new Error('this run has no create2 deterministic deployment info');
+	}
+	return create2;
+}
+
 describe('@rocketh/deploy - unsignable deployer reaches the unknown-signer seam', () => {
 	describe('Story 5: the mechanism fires for a deploy, not only for a proxy upgrade', () => {
 		it('raises UnknownSignerError carrying the deployment transaction', async () => {
@@ -140,9 +163,7 @@ describe('@rocketh/deploy - unsignable deployer reaches the unknown-signer seam'
 			);
 
 			expect(error.data.from.toLowerCase()).toBe(SAFE_ADDRESS);
-			expect(error.data.to?.toLowerCase()).toBe(
-				env.network.deterministicDeployment.create2.factory.toLowerCase() as `0x${string}`,
-			);
+			expect(error.data.to?.toLowerCase()).toBe(create2Info(env).factory.toLowerCase() as `0x${string}`);
 		});
 
 		it('surfaces the FUNDING transfer first when the create2 factory is missing and under-funded', async () => {
@@ -189,10 +210,8 @@ describe('@rocketh/deploy - unsignable deployer reaches the unknown-signer seam'
 
 			// it is the FUNDING transfer, not the factory call and not the deployment
 			expect(error.data.from.toLowerCase()).toBe(SAFE_ADDRESS);
-			expect(error.data.to?.toLowerCase()).toBe(
-				env.network.deterministicDeployment.create2.deployer.toLowerCase() as `0x${string}`,
-			);
-			expect(error.data.to?.toLowerCase()).not.toBe(env.network.deterministicDeployment.create2.factory.toLowerCase());
+			expect(error.data.to?.toLowerCase()).toBe(create2Info(env).deployer.toLowerCase() as `0x${string}`);
+			expect(error.data.to?.toLowerCase()).not.toBe(create2Info(env).factory.toLowerCase());
 			expect(BigInt(error.data.value ?? '0x0')).toBeGreaterThan(0n);
 			// nothing was recorded for the deployment the user actually asked for
 			expect(env.getOrNull('DeterministicContract')).toBeNull();
@@ -239,9 +258,7 @@ describe('@rocketh/deploy - unsignable deployer reaches the unknown-signer seam'
 			);
 
 			expect(error.data.from.toLowerCase()).toBe(UNDECLARED_SAFE_ADDRESS);
-			expect(error.data.to?.toLowerCase()).toBe(
-				env.network.deterministicDeployment.create2.factory.toLowerCase() as `0x${string}`,
-			);
+			expect(error.data.to?.toLowerCase()).toBe(create2Info(env).factory.toLowerCase() as `0x${string}`);
 		});
 	});
 
@@ -372,7 +389,7 @@ async function expectedCreate2Address(env: Environment, name: string): Promise<`
 	const {getCreate2Address, encodeDeployData, zeroHash} = await import('viem');
 	const artifact = createMockArtifact(name);
 	return getCreate2Address({
-		from: env.network.deterministicDeployment.create2.factory,
+		from: create2Info(env).factory,
 		salt: zeroHash,
 		bytecode: encodeDeployData({abi: artifact.abi, bytecode: artifact.bytecode, args: [42n]} as any),
 	});

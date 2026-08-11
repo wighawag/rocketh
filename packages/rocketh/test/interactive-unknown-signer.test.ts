@@ -36,7 +36,7 @@ const PRIVATE_KEY = '0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6
 const NODE_ACCOUNT = '0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266';
 /** Stands in for the Safe/multisig owner: a named account the node does not hold. */
 const SAFE_ADDRESS = '0x1111111111111111111111111111111111111111';
-const TARGET_CONTRACT = '0x0000000000000000000000000000000000000001';
+const TARGET_CONTRACT = '0x0000000000000000000000000000000000000001' as `0x${string}`;
 
 /** What the node would have returned had rocketh sent the transaction itself. */
 const SENT_TX_HASH = '0x0000000000000000000000000000000000000000000000000000000000000011' as `0x${string}`;

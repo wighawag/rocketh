@@ -242,7 +242,7 @@ describe('interactive deployment - the address comes from the pasted transaction
 		);
 
 		expect(deployment.address).toBe(DEPLOYED_ADDRESS);
-		expect(deployment.transaction.hash).toBe(PASTED_HASH);
+		expect(deployment.transaction?.hash).toBe(PASTED_HASH);
 		// saved under its name, through the normal pipeline
 		expect(JSON.parse(deploymentWrites(writes)[0].content).address).toBe(DEPLOYED_ADDRESS);
 		expect(env.get(DEPLOYMENT_NAME).address).toBe(DEPLOYED_ADDRESS);
@@ -496,7 +496,7 @@ describe('interactive deployment - a normally-broadcast deployment is untouched'
 		);
 
 		expect(deployment.address).toBe(DEPLOYED_ADDRESS);
-		expect(deployment.transaction.hash).toBe(SENT_TX_HASH);
+		expect(deployment.transaction?.hash).toBe(SENT_TX_HASH);
 		expect(calls.map((c) => c.method)).toContain('eth_sendRawTransaction');
 		expect(promptExecutor.promptText).not.toHaveBeenCalled();
 	});

@@ -70,6 +70,15 @@ pnpm test --watch
 pnpm test --coverage
 ```
 
+### Type-check and format the tests
+
+```bash
+pnpm typecheck   # src (each package's tsconfig.json) AND test (each package's tsconfig.test.json)
+pnpm format      # packages/*/{src,test}/**/*.ts
+```
+
+Test files are type-checked, and the `verify` gate runs `pnpm typecheck`. This matters beyond tidiness: a test that asserts a COMPILE-TIME contract with `@ts-expect-error` (for example that a wrapper's promise form must not compile) is only an assertion if something checks it. Vitest does not type-check, and each package's build `tsconfig.json` deliberately includes `src` only — widening it would emit test files into `dist` — so the checking lives in a sibling `tsconfig.test.json` per package.
+
 ## Test Utilities
 
 The integration tests share the helpers in `@rocketh/test-utils`: `createTestEnvironment` (async, `await` it) builds a REAL rocketh environment against a mock EIP-1193 provider, and `createMockArtifact` builds artifacts. There is no fabricated environment stand-in to reach for.

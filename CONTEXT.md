@@ -53,6 +53,8 @@ Standing per-change rules agents must follow in this repo.
 
   Use `patch` for fixes, `minor` for backwards-compatible features, `major` for breaking changes (flag a breaking change for human confirmation rather than deciding it alone). If the change touches a package but should **not** trigger a release (docs, internal refactor), write an **empty changeset** — the same file with empty frontmatter (`---` then `---`) and a summary. This is enforced by the `verify` gate (`changeset status --since=main` fails when packages changed but no changeset was added).
 
+- **Tests are type-checked and formatted, same as `src`.** Each package carries a `tsconfig.test.json` (extending its own `tsconfig.json`, `noEmit`, including `src` + `test`) because the build `tsconfig.json` must keep `include: ["src/**/*.ts"]` — widening it would emit test files into `dist`. `pnpm typecheck` runs both, `pnpm format:check` globs `packages/*/{src,test}/**/*.ts`, and the `verify` gate runs `pnpm typecheck`. This is what makes a type-level assertion in a test (a `@ts-expect-error` pinning that something must NOT compile) actually enforced; before it, such a directive read as an assertion while nothing checked it.
+
 ## Skills this repo uses
 
 - Required: `setup` (onboarding/migration), `to-spec`, `to-task`.

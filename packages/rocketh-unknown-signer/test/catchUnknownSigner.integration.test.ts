@@ -83,11 +83,14 @@ describe('@rocketh/unknown-signer - catchUnknownSigner', () => {
 			const admin = env.resolveAccount('admin');
 
 			const steps: string[] = [];
-			await _catchUnknownSigner(async () => {
-				steps.push('governance-call');
-				await upgradeCall(env, admin);
-				steps.push('never reached');
-			}, {log: false});
+			await _catchUnknownSigner(
+				async () => {
+					steps.push('governance-call');
+					await upgradeCall(env, admin);
+					steps.push('never reached');
+				},
+				{log: false},
+			);
 			steps.push('next-step');
 
 			expect(steps).toEqual(['governance-call', 'next-step']);
@@ -150,15 +153,21 @@ describe('@rocketh/unknown-signer - catchUnknownSigner', () => {
 			const {env} = await safeOwnerEnvironment();
 			const _catchUnknownSigner = catchUnknownSigner(env);
 
-			const bigintValue = await _catchUnknownSigner(() => {
-				throw new UnknownSignerError({from: SAFE_ADDRESS, to: TARGET_CONTRACT, value: 1000000000000000000n});
-			}, {log: false});
+			const bigintValue = await _catchUnknownSigner(
+				() => {
+					throw new UnknownSignerError({from: SAFE_ADDRESS, to: TARGET_CONTRACT, value: 1000000000000000000n});
+				},
+				{log: false},
+			);
 			expect(bigintValue?.value).toBe('1000000000000000000');
 			expect(typeof bigintValue?.value).toBe('string');
 
-			const stringValue = await _catchUnknownSigner(() => {
-				throw new UnknownSignerError({from: SAFE_ADDRESS, to: TARGET_CONTRACT, value: '0xde0b6b3a7640000'});
-			}, {log: false});
+			const stringValue = await _catchUnknownSigner(
+				() => {
+					throw new UnknownSignerError({from: SAFE_ADDRESS, to: TARGET_CONTRACT, value: '0xde0b6b3a7640000'});
+				},
+				{log: false},
+			);
 			expect(stringValue?.value).toBe('0xde0b6b3a7640000');
 		});
 
@@ -171,14 +180,17 @@ describe('@rocketh/unknown-signer - catchUnknownSigner', () => {
 			const {env} = await safeOwnerEnvironment();
 			const _catchUnknownSigner = catchUnknownSigner(env);
 
-			const deferred = await _catchUnknownSigner(() => {
-				throw new UnknownSignerError({
-					from: SAFE_ADDRESS,
-					to: TARGET_CONTRACT,
-					data: '0xdeadbeef',
-					contract: {name: 'MyProxy', method: 'upgradeTo', args: ['0xnewimpl']},
-				});
-			}, {log: false});
+			const deferred = await _catchUnknownSigner(
+				() => {
+					throw new UnknownSignerError({
+						from: SAFE_ADDRESS,
+						to: TARGET_CONTRACT,
+						data: '0xdeadbeef',
+						contract: {name: 'MyProxy', method: 'upgradeTo', args: ['0xnewimpl']},
+					});
+				},
+				{log: false},
+			);
 
 			expect(deferred).not.toHaveProperty('contract');
 			expect(Object.keys(deferred!).sort()).toEqual(['data', 'from', 'to', 'value']);
@@ -240,11 +252,14 @@ describe('@rocketh/unknown-signer - catchUnknownSigner', () => {
 
 			let pushedBeforeAction = 0;
 			let poppedBeforeAction = 0;
-			await _catchUnknownSigner(async () => {
-				pushedBeforeAction = push.mock.calls.length;
-				poppedBeforeAction = pop.mock.calls.length;
-				await upgradeCall(env, env.resolveAccount('admin'));
-			}, {log: false});
+			await _catchUnknownSigner(
+				async () => {
+					pushedBeforeAction = push.mock.calls.length;
+					poppedBeforeAction = pop.mock.calls.length;
+					await upgradeCall(env, env.resolveAccount('admin'));
+				},
+				{log: false},
+			);
 
 			expect(pushedBeforeAction).toBe(1);
 			expect(poppedBeforeAction).toBe(0);
@@ -333,12 +348,15 @@ describe('@rocketh/unknown-signer - catchUnknownSigner', () => {
 			const _catchUnknownSigner = catchUnknownSigner(env);
 
 			const broadcast: string[] = [];
-			const deferred = await _catchUnknownSigner(async () => {
-				await upgradeCall(env, env.resolveAccount('deployer'));
-				broadcast.push('deployer');
-				await upgradeCall(env, env.resolveAccount('admin'));
-				broadcast.push('admin');
-			}, {log: false});
+			const deferred = await _catchUnknownSigner(
+				async () => {
+					await upgradeCall(env, env.resolveAccount('deployer'));
+					broadcast.push('deployer');
+					await upgradeCall(env, env.resolveAccount('admin'));
+					broadcast.push('admin');
+				},
+				{log: false},
+			);
 
 			expect(broadcast).toEqual(['deployer']);
 			expect(deferred?.from).toBe(env.resolveAccount('admin'));
@@ -471,9 +489,12 @@ describe('@rocketh/unknown-signer - catchUnknownSigner', () => {
 				data: {from: SAFE_ADDRESS, to: TARGET_CONTRACT, data: '0xdeadbeef'},
 			});
 
-			const deferred = await _catchUnknownSigner(async () => {
-				throw foreign;
-			}, {log: false});
+			const deferred = await _catchUnknownSigner(
+				async () => {
+					throw foreign;
+				},
+				{log: false},
+			);
 
 			expect(deferred).toStrictEqual({
 				from: SAFE_ADDRESS,

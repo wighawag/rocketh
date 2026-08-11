@@ -117,7 +117,10 @@ describe('@rocketh/diamond - Integration Tests', () => {
 			//  So this is a shape assertion about the deployment graph the fresh path builds, not a
 			//  guard against a single-address receipt; it replaces a `toBeDefined()`-only case that
 			//  never checked the graph at all.
-			const facetAddresses = (deployment.facets ?? []).map((f) => f.facetAddress.toLowerCase());
+			// `facets` is extra data on the saved deployment record rather than a declared field on
+			//  `Deployment`, so it arrives untyped; named here so the shape being asserted is stated.
+			const savedFacets = (deployment as unknown as {facets?: {facetAddress: `0x${string}`}[]}).facets ?? [];
+			const facetAddresses = savedFacets.map((f) => f.facetAddress.toLowerCase());
 			expect(facetAddresses.length).toBe(4);
 			expect(new Set(facetAddresses).size).toBe(4);
 			expect(facetAddresses).toContain(env.get('MyFacet').address.toLowerCase());
@@ -328,7 +331,10 @@ describe('@rocketh/diamond - Integration Tests', () => {
 			const adminFacet = env.get('AdminFacet').address.toLowerCase();
 			expect(new Set([userFacet, paymentFacet, adminFacet]).size).toBe(3);
 
-			const facetAddresses = (deployment.facets ?? []).map((f) => f.facetAddress.toLowerCase());
+			// `facets` is extra data on the saved deployment record rather than a declared field on
+			//  `Deployment`, so it arrives untyped; named here so the shape being asserted is stated.
+			const savedFacets = (deployment as unknown as {facets?: {facetAddress: `0x${string}`}[]}).facets ?? [];
+			const facetAddresses = savedFacets.map((f) => f.facetAddress.toLowerCase());
 			expect(facetAddresses).toContain(userFacet);
 			expect(facetAddresses).toContain(paymentFacet);
 			expect(facetAddresses).toContain(adminFacet);

@@ -33,10 +33,10 @@ type Call = {method: string; params?: unknown};
  * `hardhat_impersonateAccount` succeeds or throws (so we can exercise both the
  * `impersonated` and `unsignable` classifications).
  */
-function createMockProvider(options?: {
-	accounts?: string[];
-	impersonate?: 'accept' | 'reject' | 'unsupported';
-}): {provider: EIP1193ProviderWithoutEvents; calls: Call[]} {
+function createMockProvider(options?: {accounts?: string[]; impersonate?: 'accept' | 'reject' | 'unsupported'}): {
+	provider: EIP1193ProviderWithoutEvents;
+	calls: Call[];
+} {
 	const calls: Call[] = [];
 	const impersonate = options?.impersonate ?? 'accept';
 	const provider = {
@@ -141,7 +141,7 @@ describe('createEnvironment - addressSignability', () => {
 	 * classify as `node`, NOT `unsignable`. Classifying them as `unsignable` would make the
 	 * later unknown-signer seam throw on perfectly ordinary sends from a node-known account.
 	 */
-	it('classifies the node\'s unnamed accounts as node', async () => {
+	it("classifies the node's unnamed accounts as node", async () => {
 		const {env} = await buildEnvironment({accounts: {}, nodeAccounts: [NODE_ACCOUNT]});
 		expect(env.unnamedAccounts).toContain(NODE_ACCOUNT);
 		expect(env.addressSignability[NODE_ACCOUNT.toLowerCase() as `0x${string}`]).toBe('node');

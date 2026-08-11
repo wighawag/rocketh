@@ -40,9 +40,9 @@ describe('createMockPromptExecutor', () => {
 		expect(await promptExecutor.promptText!({type: 'text', name: 'transactionHash', message: 'hash?'})).toEqual({
 			cancelled: true,
 		});
-		await expect(
-			promptExecutor.promptText!({type: 'text', name: 'transactionHash', message: 'hash?'}),
-		).rejects.toThrow('no tty');
+		await expect(promptExecutor.promptText!({type: 'text', name: 'transactionHash', message: 'hash?'})).rejects.toThrow(
+			'no tty',
+		);
 	});
 
 	it('records every request it received, in order', async () => {
@@ -90,9 +90,9 @@ describe('createMockPromptExecutor', () => {
 		const promptExecutor = createMockPromptExecutor({textAnswers: []});
 
 		expect(typeof promptExecutor.promptText).toBe('function');
-		await expect(
-			promptExecutor.promptText!({type: 'text', name: 'transactionHash', message: 'hash?'}),
-		).rejects.toThrow(/only 0 answer\(s\) were scripted/);
+		await expect(promptExecutor.promptText!({type: 'text', name: 'transactionHash', message: 'hash?'})).rejects.toThrow(
+			/only 0 answer\(s\) were scripted/,
+		);
 	});
 
 	it('does not consume a caller-owned answers array', async () => {
