@@ -184,6 +184,20 @@ function createScriptedPrompt(answers: (TextPromptAnswer | Error)[]): ScriptedPr
 	};
 }
 
+/**
+ * Collect what the run SHOWED the user. The interactive path announces the pause
+ * (`... is PAUSED`) before it asks anything, so this is how a test tells "never went
+ * interactive" apart from "went interactive and failed", which both end in an
+ * `UnknownSignerError`.
+ */
+function captureMessages(env: {showMessage: (message: string) => void}): string[] {
+	const messages: string[] = [];
+	vi.spyOn(env, 'showMessage').mockImplementation((message: string) => {
+		messages.push(message);
+	});
+	return messages;
+}
+
 /** What `@rocketh/web` ships: a prompt object with NO text ability at all. */
 function createConfirmOnlyPromptExecutor(): PromptExecutor {
 	return {
@@ -289,18 +303,30 @@ describe('interactive resolver - capability decides whether `auto` and `ask` pro
 	 * Capability is a CEILING, not a default: an EXPLICIT `'ask'` cannot conjure a
 	 * prompt where the run has none. It degrades to `'throw'` — it never prompts and
 	 * never hangs, so CI cannot block (story 5).
+	 *
+	 * THE ERROR ALONE IS NOT A DISCRIMINATING ASSERTION, which is why the shown messages
+	 * are asserted too: a run that ENTERS the interactive path without a usable
+	 * `promptText` fails inside it and ALSO ends in an `UnknownSignerError`, because the
+	 * resolver degrades a prompt it cannot call to the defer path. Only the absence of
+	 * the `... is PAUSED` presentation tells "the ceiling held" apart from "the ceiling
+	 * was gone and the interactive path crashed" — and it is the user-visible half
+	 * (a run with a removed ceiling shows the human a pause it cannot honour).
 	 */
 	it('`ask` degrades to `throw` with no text capability, and never hangs', async () => {
 		const {env} = await buildEnvironment({accounts: {admin: SAFE_ADDRESS}, onUnknownSigner: 'ask'});
+		const shown = captureMessages(env);
 
 		await expect(env.broadcastExecution(safeTransaction(env.resolveAccount('admin')))).rejects.toBeInstanceOf(
 			UnknownSignerError,
 		);
+		// the run never even started pausing
+		expect(shown.join('\n')).not.toContain('PAUSED');
 	});
 
 	/**
 	 * The load-bearing capability case (ADR 0007): a prompt object EXISTS but cannot
-	 * ask for text — exactly the shape `@rocketh/web` ships. `'ask'` still degrades.
+	 * ask for text — exactly the shape `@rocketh/web` ships. `'ask'` still degrades,
+	 * and again the absence of the pause is what makes the assertion discriminating.
 	 */
 	it('`ask` degrades to `throw` for a web-shaped, confirm-only prompt', async () => {
 		const {env} = await buildEnvironment({
@@ -308,10 +334,12 @@ describe('interactive resolver - capability decides whether `auto` and `ask` pro
 			onUnknownSigner: 'ask',
 			promptExecutor: createConfirmOnlyPromptExecutor(),
 		});
+		const shown = captureMessages(env);
 
 		await expect(env.broadcastExecution(safeTransaction(env.resolveAccount('admin')))).rejects.toBeInstanceOf(
 			UnknownSignerError,
 		);
+		expect(shown.join('\n')).not.toContain('PAUSED');
 	});
 });
 
