@@ -242,10 +242,10 @@ export async function readAndResolveConfig<
 }
 
 const deploymentStore = createFSDeploymentStore();
-// The CLI's prompt. Built once at import, which is fine here because a process's stdin does
-// not become a terminal later, and `createNodePromptExecutor` reads it to decide whether to
-// offer the text ability at all. The loader path below builds its own per call instead, so a
-// test can drive both sides of that gate.
+// The LAST-RESORT default prompt, built once at import. Both entry points below now put a
+// per-call prompt on the run parameters, which wins over this one, so it is reached only by
+// a caller that goes straight to `executor.executeDeployScriptModules` with no prompt of its
+// own. It is kept rather than removed so that path still has a prompt at all.
 const promptExecutor = createNodePromptExecutor();
 const executor = createExecutor(deploymentStore, promptExecutor);
 
@@ -328,6 +328,17 @@ async function loadAndExecuteDeploymentsFromFilesWithSpecificConfig<
 	config: UserConfig<NamedAccounts, Data>,
 	args?: ArgumentsType,
 ): Promise<Environment<NamedAccounts, Data, UnknownDeployments>> {
+	// The prompt is built PER CALL here, matching the environment-only loader below, so both
+	// entry points into `@rocketh/node` decide the text capability from the stdin of the RUN
+	// rather than from stdin at import time. The module-level `promptExecutor` handed to
+	// `createExecutor` remains as the last-resort default; a caller-supplied one still wins
+	// over both (`ExecutionParams.promptExecutor` beats the executor's default — the ratified
+	// precedence in `prompt-capability-on-the-environment`), which is what lets a test inject
+	// its own. Before this, the two paths agreed only by coincidence: a process's stdin does
+	// not usually become a terminal later, but an embedder that imports this module and runs
+	// deployments in-process could observe one capability on the environment path and another
+	// on the execute path, for the same stdin.
+	executionParams = {...executionParams, promptExecutor: executionParams.promptExecutor ?? createNodePromptExecutor()};
 	const userConfig = await resolveConfig<NamedAccounts, Data>(config, executionParams.config);
 	const {name: environmentName, fork} = getEnvironmentName(executionParams);
 	const chainId = await getChainIdForEnvironment(userConfig, environmentName, executionParams);
