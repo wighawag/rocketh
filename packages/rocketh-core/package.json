@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/core",
-	"version": "0.19.8",
+	"version": "0.19.9",
 	"description": "utilities for other rocketh packages",
 	"keywords": [
 		"rocketh",
