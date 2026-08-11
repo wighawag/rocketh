@@ -35,6 +35,16 @@ import {
  * console.log(enhancedEnv.myValue);
  * console.log(enhancedEnv.networkId);
  * ```
+ *
+ * EVERY entry must be a FUNCTION taking the environment. That is why an extension
+ * package's ROOT may export only curried `(env) => …` functions (plus `export type`s,
+ * which erase): the documented user idiom is a namespace spread
+ * (`{...deployExtension, ...myExtension}`), so any other runtime export lands here and
+ * is called as `value(env)`. A class and a plain constant are both rejected by name,
+ * because the raw failures (`Class constructor … cannot be invoked without 'new'` and
+ * `func is not a function`) say nothing about WHICH export is at fault, and this runs at
+ * deploy-script time rather than at build time. Put anything else on a subpath export —
+ * `@rocketh/unknown-signer` keeps `UnknownSignerError` on `./errors` for exactly this.
  */
 export function withEnvironment<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
@@ -54,6 +64,27 @@ export function withEnvironment<
 	const result = {} as CurriedFunctions<T>;
 
 	for (const [key, func] of Object.entries(functionsAndGetters)) {
+		// FAIL FAST, NAMING THE KEY. Both shapes below already crashed here before this guard
+		//  existed (`func is not a function` / `Class constructor … cannot be invoked without
+		//  'new'`), so no working configuration changes; what was missing was WHICH export is
+		//  at fault and what the rule is. Deliberately narrow: a GETTER (`(env) => value`) is a
+		//  supported shape and must keep working, so the check is on the ENTRY being callable,
+		//  never on what it returns.
+		if (typeof func !== 'function') {
+			throw new Error(
+				`extension entry "${key}" is a ${typeof func}, not a function. An extension package's root may export ` +
+					`only curried \`(env) => \u2026\` functions (or getters \`(env) => value\`). Move a constant or other value ` +
+					`to a subpath export.`,
+			);
+		}
+		if (/^class[\s{]/.test(Function.prototype.toString.call(func))) {
+			throw new Error(
+				`extension entry "${key}" is a class, which cannot be called with the environment. An extension ` +
+					`package's root may export only curried \`(env) => \u2026\` functions (or getters \`(env) => value\`). ` +
+					`Move the class to a subpath export, as \`@rocketh/unknown-signer\` does with \`UnknownSignerError\` ` +
+					`on \`./errors\`.`,
+			);
+		}
 		// Check if the function is a getter or a regular function
 		const value = func(env);
 
