@@ -468,13 +468,7 @@ export type UserDoc = {
 };
 
 export type JSONTypePlusBigInt =
-	| bigint
-	| string
-	| number
-	| boolean
-	| null
-	| JSONTypePlusBigInt[]
-	| {[key: string]: JSONTypePlusBigInt};
+	bigint | string | number | boolean | null | JSONTypePlusBigInt[] | {[key: string]: JSONTypePlusBigInt};
 export type LinkedDataProvided = Record<string, JSONTypePlusBigInt>;
 
 export type JSONType = string | number | boolean | null | JSONType[] | {[key: string]: JSONType};
@@ -681,8 +675,7 @@ export type ResolvedExecutionParams<Extra extends Record<string, unknown> = Reco
 };
 
 export type TransactionToBroadcast =
-	| {type: 'object'; data: EIP1193TransactionData}
-	| {type: 'raw'; from: `0x${string}`; raw: `0x${string}`};
+	{type: 'object'; data: EIP1193TransactionData} | {type: 'raw'; from: `0x${string}`; raw: `0x${string}`};
 
 export interface Environment<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
