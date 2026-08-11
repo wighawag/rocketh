@@ -488,10 +488,24 @@ export function deployViaProxy(
 				let currentOwner = `0x${ownerSlotData.substr(-40)}`;
 
 				if (currentOwner === zeroAddress) {
+					// FALLBACK, and the throw is SWALLOWED DELIBERATELY. An empty EIP-1967 admin slot
+					//  does not mean "no owner": a proxy may keep its owner somewhere else entirely
+					//  (ERC173 stores it in its own slot), so before concluding anything we ASK the
+					//  contract. That call legitimately fails for a proxy that has no `owner()` at all,
+					//  and "it has no such method" is an ANSWER here, not an error worth surfacing — the
+					//  question was only ever "can you tell me your owner?".
+					//
+					//  Nothing is hidden by swallowing it: `currentOwner` stays the zero address, and the
+					//  very next check turns that into either a clear refusal ("The Proxy belongs to
+					//  no-one. It cannot be upgraded anymore") or the no-admin path. Logging the RPC
+					//  failure would put a scary line in front of every user of an ownerless proxy for a
+					//  case the code handles by design.
 					try {
 						const owner = await _read(existingDeployment as any, {functionName: 'owner'});
 						currentOwner = (owner as string).toLowerCase() as `0x${string}`;
-					} catch (err) {}
+					} catch (err) {
+						// intentionally ignored — see above; the zero-address check below is the handler
+					}
 				}
 
 				if (currentOwner === zeroAddress) {
