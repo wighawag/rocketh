@@ -53,7 +53,12 @@ describe('@rocketh/node - prompt executor', () => {
 			expect(interactiveExecutor().promptText).toBeTypeOf('function');
 		});
 
-		/** A confirm prompt is unchanged by the gate: it is not the interactive capability. */
+		/**
+		 * The confirm is still SUPPLIED either way — its presence is not a capability signal,
+		 * nothing branches on it, and every runtime has one. What changes without a terminal
+		 * is that calling it REFUSES (see the `prompt (confirm)` block below) rather than
+		 * hanging on a `prompts` promise that never settles.
+		 */
 		it('still supplies the confirm prompt either way', () => {
 			expect(createNodePromptExecutor({isStdinInteractive: () => false}).prompt).toBeTypeOf('function');
 			expect(interactiveExecutor().prompt).toBeTypeOf('function');
@@ -151,6 +156,30 @@ describe('@rocketh/node - prompt executor', () => {
 			});
 
 			expect(answer).toEqual({proceed: true});
+		});
+
+		/**
+		 * THE NON-TTY CASE. `prompts` against a non-TTY stdin never settles, so asking is not
+		 * an option; and both call sites read "not confirmed" as `exit()`, so silently
+		 * answering for the user is not one either. It therefore fails loudly, naming the
+		 * question it could not ask and the flag that skips it. `prompts` is never called —
+		 * that is what makes the run terminate instead of hanging.
+		 */
+		it('REFUSES to confirm when stdin is not a terminal, instead of hanging', async () => {
+			const executor = createNodePromptExecutor({isStdinInteractive: () => false});
+
+			await expect(
+				executor.prompt({type: 'confirm', name: 'proceed', message: 'This will delete all deployments'}),
+			).rejects.toThrow(/stdin is not a terminal/);
+			await expect(
+				executor.prompt({type: 'confirm', name: 'proceed', message: 'This will delete all deployments'}),
+			).rejects.toThrow(/--skip-prompts/);
+			// the question itself is reprinted, so the operator knows WHAT was being asked
+			await expect(
+				executor.prompt({type: 'confirm', name: 'proceed', message: 'This will delete all deployments'}),
+			).rejects.toThrow(/This will delete all deployments/);
+
+			expect(promptsMock).not.toHaveBeenCalled();
 		});
 
 		/** Ctrl-C: `prompts` resolves with the key absent, which must read as "do not proceed". */

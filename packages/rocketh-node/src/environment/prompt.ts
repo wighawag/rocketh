@@ -22,6 +22,15 @@ import type {PromptExecutor} from '@rocketh/core/types';
  * the event loop drains, with no error and no output), and an open pipe with no data
  * hangs indefinitely. It never rejects, so a `try`/`catch` around the call cannot save
  * such a run: only not asking can.
+ *
+ * THE CONFIRM PROMPT SHARES THAT HAZARD AND ANSWERS IT DIFFERENTLY: it is still
+ * supplied without a terminal (its absence is not a capability signal — nothing
+ * branches on `prompt` being present, and every runtime has one), so it REFUSES
+ * instead, throwing a message that names the question it could not ask and the flag
+ * that skips it. Degrading silently is not available here: the two call sites
+ * (`--reset` and the gas-price confirmation, both behind `askBeforeProceeding`) treat
+ * "not confirmed" as `exit()`, so a guessed answer either destroys deployments nobody
+ * agreed to destroy or aborts a run for a question nobody was asked.
  */
 export function createNodePromptExecutor(options?: {
 	/**
@@ -34,6 +43,14 @@ export function createNodePromptExecutor(options?: {
 
 	const executor: PromptExecutor = {
 		async prompt(request: {type: 'confirm'; name: string; message: string}) {
+			if (!isStdinInteractive()) {
+				throw new Error(
+					`Cannot ask for confirmation: stdin is not a terminal, so there is nobody to answer.\n` +
+						`The question was:\n${request.message}\n\n` +
+						`Re-run with a terminal attached, or run non-interactively with \`--skip-prompts\`, ` +
+						`which skips every confirmation (and forces \`--on-unknown-signer throw\`).`,
+				);
+			}
 			const answer = await prompts<string>(request);
 			// `prompts` keys its answer object BY `request.name`, so read it by name — exactly as
 			// `promptText` below does. Reading a fixed `.proceed` key worked only because both
