@@ -3,7 +3,7 @@ title: review-gate non-blocking nits for 'verifier-linked-library-source-key' (G
 date: 2026-07-22
 status: open
 reviewOf: verifier-linked-library-source-key
-needsAnswers: false
+needsAnswers: true
 ---
 
 ## Non-blocking review findings
