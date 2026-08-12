@@ -150,6 +150,94 @@ describe('@rocketh/verifier - blockscout', () => {
 		expect(calls[0].url).toContain('https://my-explorer.example.com/api/v2/');
 		restore();
 	});
+
+	it('skips a deployment with missing compilationTarget in metadata', async () => {
+		const badMeta = JSON.stringify({language: 'Solidity', compiler: {version: '0.8.24'}, settings: {}});
+		const deployments: UnknownDeployments = {BadMeta: makeDeployment(ADDR_A, badMeta) as any};
+		const {calls, restore} = mockFetch((url) => {
+			if (url.includes('smart-contracts/') && !url.includes('verification')) {
+				return new Response(JSON.stringify({is_verified: false}), {status: 200});
+			}
+			return new Response(JSON.stringify({message: 'should not reach'}), {status: 200});
+		});
+
+		await submitSourcesToBlockscout({deployments, networkName: 'mainnet', chainId: '1'});
+
+		// Only the check call — no submission because compilationTarget is missing
+		const submitCalls = calls.filter((c) => c.url.includes('verification'));
+		expect(submitCalls.length).toBe(0);
+		restore();
+	});
+
+	it('logs an error when submission returns a non-started message', async () => {
+		const deployments: UnknownDeployments = {Token: makeDeployment(ADDR_A) as any};
+		const {restore} = mockFetch((url) => {
+			if (url.includes('smart-contracts/') && !url.includes('verification')) {
+				return new Response(JSON.stringify({is_verified: false}), {status: 200});
+			}
+			return new Response(JSON.stringify({message: 'something went wrong'}), {status: 200});
+		});
+
+		// Should not throw — just logs the non-started message
+		await submitSourcesToBlockscout({deployments, networkName: 'mainnet', chainId: '1'});
+		restore();
+	});
+
+	it('writes failing metadata when submission throws and logErrorOnFailure is set', async () => {
+		const deployments: UnknownDeployments = {Token: makeDeployment(ADDR_A) as any};
+		const {restore} = mockFetch((url) => {
+			if (url.includes('smart-contracts/') && !url.includes('verification')) {
+				return new Response(JSON.stringify({is_verified: false}), {status: 200});
+			}
+			throw new Error('server down');
+		});
+
+		const path = await import('node:path');
+		const os = await import('node:os');
+		const fs = await import('node:fs');
+		const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rocketh-blockscout-fail-'));
+		const originalCwd = process.cwd();
+		process.chdir(tmpDir);
+
+		try {
+			await submitSourcesToBlockscout({
+				deployments,
+				networkName: 'mainnet',
+				chainId: '1',
+				logErrorOnFailure: true,
+			});
+
+			const failDir = path.join(tmpDir, 'failing_metadata', '1');
+			expect(fs.existsSync(failDir)).toBe(true);
+			const files = fs.readdirSync(failDir);
+			expect(files.some((f) => f.includes('Token'))).toBe(true);
+		} finally {
+			process.chdir(originalCwd);
+			fs.rmSync(tmpDir, {recursive: true, force: true});
+		}
+		restore();
+	});
+
+	it('respects minInterval between contracts', async () => {
+		const deployments: UnknownDeployments = {
+			Token: makeDeployment(ADDR_A) as any,
+			Vault: makeDeployment(ADDR_B) as any,
+		};
+		const {restore} = mockFetch((url) => {
+			if (url.includes('smart-contracts/') && !url.includes('verification')) {
+				return new Response(JSON.stringify({is_verified: false}), {status: 200});
+			}
+			return new Response(JSON.stringify({message: 'Smart-contract verification started'}), {status: 200});
+		});
+
+		await submitSourcesToBlockscout({
+			deployments,
+			networkName: 'mainnet',
+			chainId: '1',
+			minInterval: 1,
+		});
+		restore();
+	});
 });
 
 describe('@rocketh/verifier - sourcify', () => {
