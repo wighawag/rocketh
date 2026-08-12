@@ -50,7 +50,7 @@ function writeRequestIfRequested(
 	}
 }
 
-function extractOneLicenseFromSourceFile(source: string): string | undefined {
+export function extractOneLicenseFromSourceFile(source: string): string | undefined {
 	const licenses = extractLicenseFromSources(source);
 	if (licenses.length === 0) {
 		return undefined;
@@ -58,7 +58,7 @@ function extractOneLicenseFromSourceFile(source: string): string | undefined {
 	return licenses[0]; // TODO error out on multiple SPDX ?
 }
 
-function extractLicenseFromSources(metadata: string): string[] {
+export function extractLicenseFromSources(metadata: string): string[] {
 	const regex = /\/\/\s*\t*SPDX-License-Identifier:\s*\t*(.*?)[\s\\]/g;
 	const matches = matchAll(metadata, regex).toArray();
 	const licensesFound: {[license: string]: boolean} = {};
@@ -74,7 +74,7 @@ function extractLicenseFromSources(metadata: string): string[] {
 	return licenses;
 }
 
-function getLicenseType(license: string): undefined | number {
+export function getLicenseType(license: string): undefined | number {
 	const licenseType = (() => {
 		if (license === 'None') {
 			return 1;
