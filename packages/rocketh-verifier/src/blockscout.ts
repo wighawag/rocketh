@@ -62,7 +62,9 @@ export async function submitSourcesToBlockscout(
 	const all = env.deployments;
 	const url = config.endpoint
 		? ensureTrailingSlash(config.endpoint)
-		: ensureTrailingSlash(defaultEndpoints[env.chainId]);
+		: defaultEndpoints[env.chainId]
+			? ensureTrailingSlash(defaultEndpoints[env.chainId])
+			: undefined;
 
 	if (!url) {
 		logError(`no endpoint provided and no default known for chainId ${env.chainId}`);
@@ -139,7 +141,7 @@ export async function submitSourcesToBlockscout(
 
 		if (!deployment.metadata) {
 			logError(`Contract ${name} was deployed without saving metadata. Cannot submit to sourcify, skipping.`);
-			return;
+			continue;
 		}
 
 		logInfo(`verifying ${name} (${deployment.address} on chain ${env.chainId}) ...`);
