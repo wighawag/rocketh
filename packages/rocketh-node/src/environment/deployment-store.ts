@@ -50,8 +50,13 @@ export function createFSDeploymentStore(): DeploymentStore {
 		fs.unlinkSync(getFile(deploymentsFolder, environmentName, name));
 	}
 
-	async function listFiles(deploymentsFolder: string, environmentName: string): Promise<string[]> {
-		return fs.readdirSync(getFolder(deploymentsFolder, environmentName));
+	async function listFiles(
+		deploymentsFolder: string,
+		environmentName: string,
+		filter?: (name: string) => boolean,
+	): Promise<string[]> {
+		const files = fs.readdirSync(getFolder(deploymentsFolder, environmentName));
+		return filter ? files.filter(filter) : files;
 	}
 	async function hasFile(deploymentsFolder: string, environmentName: string, name: string): Promise<boolean> {
 		return fs.existsSync(getFile(deploymentsFolder, environmentName, name));
