@@ -66,7 +66,10 @@ function createMockProvider(): EIP1193ProviderWithoutEvents & {transactionHashes
 	provider.request = new Proxy(provider.request, {
 		apply(target: any, thisArg: any, argArray: any[]) {
 			const result = Reflect.apply(target, thisArg, argArray);
-			if ((argArray[0] as any)?.method === 'eth_sendTransaction' || (argArray[0] as any)?.method === 'eth_sendRawTransaction') {
+			if (
+				(argArray[0] as any)?.method === 'eth_sendTransaction' ||
+				(argArray[0] as any)?.method === 'eth_sendRawTransaction'
+			) {
 				transactionHashes.push(result as `0x${string}`);
 			}
 			return result;

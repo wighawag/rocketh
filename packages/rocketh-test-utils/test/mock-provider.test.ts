@@ -17,7 +17,7 @@ import {
 describe('createMockProvider', () => {
 	it('returns canned responses for default methods', async () => {
 		const provider = createMockProvider() as any;
-		expect(await provider.request({method: "eth_chainId"} as any)).toBe('0x7a69');
+		expect(await provider.request({method: 'eth_chainId'} as any)).toBe('0x7a69');
 		expect(await provider.request({method: 'eth_blockNumber'})).toBe('0x1');
 		expect(await provider.request({method: 'eth_gasPrice'})).toBe('0x3b9aca00');
 	}) as any;
@@ -27,7 +27,7 @@ describe('createMockProvider', () => {
 		const warnings: string[] = [];
 		console.warn = (msg: string) => warnings.push(msg);
 		const provider = createMockProvider() as any;
-		const result = await provider.request({method: 'eth_unknown'}) as any;
+		const result = (await provider.request({method: 'eth_unknown'})) as any;
 		console.warn = originalWarn;
 		expect(result).toBeNull();
 		expect(warnings.some((w) => w.includes('eth_unknown'))).toBe(true);
@@ -43,21 +43,21 @@ describe('createMockProvider', () => {
 	it('setResponse overrides a single method', async () => {
 		const provider = createMockProvider() as any;
 		provider.setResponse('eth_chainId', '0x1');
-		expect(await provider.request({method: "eth_chainId"} as any)).toBe('0x1');
+		expect(await provider.request({method: 'eth_chainId'} as any)).toBe('0x1');
 	}) as any;
 
 	it('setConfig replaces all custom responses', async () => {
 		const provider = createMockProvider() as any;
 		provider.setConfig({responses: {eth_chainId: '0x89'}}) as any;
-		expect(await provider.request({method: "eth_chainId"} as any)).toBe('0x89');
+		expect(await provider.request({method: 'eth_chainId'} as any)).toBe('0x89');
 		// Default responses are still available for methods not in the custom config
 		expect(await provider.request({method: 'eth_blockNumber'})).toBe('0x1');
 	}) as any;
 
 	it('records all requests', async () => {
 		const provider = createMockProvider() as any;
-		await provider.request({method: "eth_chainId"} as any);
-		await provider.request({method: 'eth_blockNumber', params: ['latest']}) as any;
+		await provider.request({method: 'eth_chainId'} as any);
+		(await provider.request({method: 'eth_blockNumber', params: ['latest']})) as any;
 		const requests = provider.getRequests();
 		expect(requests.length).toBe(2);
 		expect(requests[0].method).toBe('eth_chainId');
@@ -66,7 +66,7 @@ describe('createMockProvider', () => {
 
 	it('clearRequests resets the request log', async () => {
 		const provider = createMockProvider() as any;
-		await provider.request({method: "eth_chainId"} as any);
+		await provider.request({method: 'eth_chainId'} as any);
 		provider.clearRequests();
 		expect(provider.getRequests().length).toBe(0);
 	}) as any;
@@ -80,8 +80,8 @@ describe('createMockProvider', () => {
 
 	it('eth_sendTransaction returns unique hashes per call', async () => {
 		const provider = createMockProvider() as any;
-		const hash1 = await provider.request({method: 'eth_sendTransaction', params: [{}]}) as any;
-		const hash2 = await provider.request({method: 'eth_sendTransaction', params: [{}]}) as any;
+		const hash1 = (await provider.request({method: 'eth_sendTransaction', params: [{}]})) as any;
+		const hash2 = (await provider.request({method: 'eth_sendTransaction', params: [{}]})) as any;
 		expect(hash1).not.toBe(hash2);
 	}) as any;
 
