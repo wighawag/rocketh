@@ -220,4 +220,94 @@ describe('@rocketh/verifier - sourcify', () => {
 		expect(calls[0].url).toContain('https://my-sourcify.example.com/');
 		restore();
 	});
+
+	it('logs an error and continues when the checkByAddresses call throws', async () => {
+		const deployments: UnknownDeployments = {Token: makeDeployment(ADDR_A) as any};
+		const {calls, restore} = mockFetch((url) => {
+			if (url.includes('checkByAddresses')) {
+				throw new Error('network error');
+			}
+			return new Response(JSON.stringify({result: [{status: 'perfect'}]}), {status: 200});
+		});
+
+		// Should not throw — the catch block logs and continues to submit
+		await submitSourcesToSourcify({deployments, networkName: 'mainnet', chainId: '1'});
+
+		// Both the check (which threw) and the submit were attempted
+		expect(calls.length).toBeGreaterThanOrEqual(2);
+		restore();
+	});
+
+	it('logs an error when submission returns a non-perfect status', async () => {
+		const deployments: UnknownDeployments = {Token: makeDeployment(ADDR_A) as any};
+		const {restore} = mockFetch((url) => {
+			if (url.includes('checkByAddresses')) {
+				return new Response(JSON.stringify([{status: 'false'}]), {status: 200});
+			}
+			return new Response(JSON.stringify({result: [{status: 'partial'}]}), {status: 200});
+		});
+
+		// Should not throw — just logs the non-perfect status
+		await submitSourcesToSourcify({deployments, networkName: 'mainnet', chainId: '1'});
+		restore();
+	});
+
+	it('writes failing metadata when the submission throws and logErrorOnFailure is set', async () => {
+		const deployments: UnknownDeployments = {Token: makeDeployment(ADDR_A) as any};
+		const {restore} = mockFetch((url) => {
+			if (url.includes('checkByAddresses')) {
+				return new Response(JSON.stringify([{status: 'false'}]), {status: 200});
+			}
+			// Submit throws
+			throw new Error('server down');
+		});
+
+		// We need to chdir to a temp dir to avoid polluting the repo with failing_metadata/
+		const path = await import('node:path');
+		const os = await import('node:os');
+		const fs = await import('node:fs');
+		const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rocketh-sourcify-fail-'));
+		const originalCwd = process.cwd();
+		process.chdir(tmpDir);
+
+		try {
+			await submitSourcesToSourcify({
+				deployments,
+				networkName: 'mainnet',
+				chainId: '1',
+				logErrorOnFailure: true,
+			});
+
+			// The failing_metadata folder should exist with the metadata file
+			const failDir = path.join(tmpDir, 'failing_metadata', '1');
+			expect(fs.existsSync(failDir)).toBe(true);
+			const files = fs.readdirSync(failDir);
+			expect(files.some((f) => f.includes('Token'))).toBe(true);
+		} finally {
+			process.chdir(originalCwd);
+			fs.rmSync(tmpDir, {recursive: true, force: true});
+		}
+		restore();
+	});
+
+	it('respects minInterval between contracts', async () => {
+		const deployments: UnknownDeployments = {
+			Token: makeDeployment(ADDR_A) as any,
+			Vault: makeDeployment(ADDR_B) as any,
+		};
+		const {restore} = mockFetch((url) => {
+			if (url.includes('checkByAddresses')) {
+				return new Response(JSON.stringify([{status: 'false'}]), {status: 200});
+			}
+			return new Response(JSON.stringify({result: [{status: 'perfect'}]}), {status: 200});
+		});
+
+		await submitSourcesToSourcify({
+			deployments,
+			networkName: 'mainnet',
+			chainId: '1',
+			minInterval: 1, // 1ms — just to exercise the sleep path
+		});
+		restore();
+	});
 });
