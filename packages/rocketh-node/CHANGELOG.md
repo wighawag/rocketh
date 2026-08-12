@@ -1,5 +1,12 @@
 # @rocketh/node
 
+## 0.19.16
+
+### Patch Changes
+
+- Updated dependencies [d41ff21]
+  - rocketh@0.19.15
+
 ## 0.19.15
 
 ### Patch Changes
