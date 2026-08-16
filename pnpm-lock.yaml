@@ -67,9 +67,6 @@ importers:
       '@nomicfoundation/hardhat-zod-utils':
         specifier: ^3.0.4
         version: 3.0.5(zod@3.25.76)
-      '@rocketh/node':
-        specifier: workspace:*
-        version: link:../rocketh-node
       commander:
         specifier: ^15.0.0
         version: 15.0.0
@@ -79,13 +76,13 @@ importers:
       named-logs-console:
         specifier: ^0.5.1
         version: 0.5.1
-      rocketh:
-        specifier: workspace:*
-        version: link:../rocketh
       zod:
         specifier: ^3.25.76
         version: 3.25.76
     devDependencies:
+      '@rocketh/node':
+        specifier: workspace:*
+        version: link:../rocketh-node
       '@types/node':
         specifier: ^26.2.0
         version: 26.2.0
@@ -98,6 +95,9 @@ importers:
       rimraf:
         specifier: ^6.1.3
         version: 6.1.3
+      rocketh:
+        specifier: workspace:*
+        version: link:../rocketh
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
