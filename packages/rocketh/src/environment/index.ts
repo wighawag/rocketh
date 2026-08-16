@@ -37,10 +37,162 @@ import {
 	EIP1193Transaction,
 	EIP1193TransactionData,
 	EIP1193TransactionReceipt,
+	EIP1193TransactionType0,
+	EIP1193TransactionType1,
+	EIP1193TransactionType2,
 } from 'eip-1193';
 import {logger, spin} from '../internal/logging.js';
 import {mergeArtifacts} from '@rocketh/core/artifacts';
 import {TransactionHashTracker, TransactionHashTrackerProvider} from '@rocketh/core/providers';
+import {getRoughGasPriceEstimate} from '../utils/eth.js';
+
+function toQuantity(value: bigint): `0x${string}` {
+	return `0x${value.toString(16)}`;
+}
+
+/**
+ * A receipt counts as successful only with an explicit status of 1. Absent or unparseable is
+ * NOT success: pre-Byzantium receipts have no status, and rocketh would rather refuse to record
+ * a deployment than record one it cannot prove worked.
+ */
+function receiptSucceeded(receipt: EIP1193TransactionReceipt): boolean {
+	try {
+		return receipt.status !== undefined && BigInt(receipt.status) === 1n;
+	} catch {
+		// an unparseable status is not a successful one
+		return false;
+	}
+}
+
+/**
+ * A transaction that was MINED but whose receipt does not report success.
+ *
+ * A distinct type rather than a plain `Error` because one caller has to tell this apart from
+ * every other failure: transaction RECOVERY must clear a pending entry whose transaction is
+ * resolved-but-unsuccessful (it is never coming back), while still refusing to clear one that
+ * failed for a transient reason like a dropped connection. Without the distinction, a single
+ * reverted transaction wedges every future run on the same hash.
+ */
+export class UnsuccessfulTransactionError extends Error {
+	constructor(
+		readonly hash: `0x${string}`,
+		readonly receipt: EIP1193TransactionReceipt,
+	) {
+		// Absent and zero are different diagnoses and must not share a message: zero means the
+		// EVM reverted it, absent means the node never told us either way (a pre-Byzantium
+		// receipt, or a node/mock that omits the field), and telling the second group their
+		// transaction "reverted" sends them looking for a bug that is not there.
+		super(
+			receipt.status === undefined
+				? `transaction ${hash} cannot be confirmed: its receipt has no "status" field, so rocketh ` +
+						`cannot tell whether it succeeded, and it will not record anything it cannot prove. ` +
+						`Pre-Byzantium chains and some mocks omit the field.`
+				: `transaction ${hash} did not succeed: its receipt reports status ${receipt.status}. ` +
+						`rocketh requires a successful status before it records anything, so nothing was saved.\n` +
+						`A transaction that was mined but reverted usually means it ran out of gas, or the call ` +
+						`itself reverted (a failed require/revert, or a constructor that threw).`,
+		);
+		this.name = 'UnsuccessfulTransactionError';
+	}
+}
+
+/**
+ * Fill the fields a LOCALLY-signing account has no other way to learn.
+ *
+ * The line drawn here is the same one viem draws in `sendTransaction`: a `json-rpc` account is
+ * passed through to `eth_sendTransaction` untouched, because the node or wallet is authoritative
+ * and is DEFINED to fill what the caller omitted; a `local` account goes through
+ * `prepareTransactionRequest` first, because once we sign it ourselves nobody else can. rocketh's
+ * `signerOnly` variant (what the `privateKey` protocol and hardware/HSM protocols return) is
+ * viem's `local`, and `remote` / `wallet` are its `json-rpc`.
+ *
+ * Preparing the json-rpc side too would be actively worse, not merely redundant: handing a wallet
+ * our own gas limit takes the estimate out of the user's hands, and an estimate taken at another
+ * block can be wrong by the time they confirm.
+ *
+ * The fields match viem's `defaultParameters` minus the ones rocketh already sets at the call
+ * site (`chainId`, `type`) and blob fields it does not support: nonce, fees, gas.
+ *
+ * Done with plain EIP-1193 calls rather than by importing viem, because `rocketh` deliberately
+ * depends only on `eip-1193` (ADR-0002): viem lives in the optional `@rocketh/viem` extension.
+ */
+async function prepareForLocalSigning(
+	provider: EIP1193ProviderWithoutEvents,
+	transactionData: EIP1193TransactionData,
+): Promise<EIP1193TransactionData> {
+	const prepared = {...transactionData} as EIP1193TransactionData & {
+		gas?: `0x${string}`;
+		nonce?: `0x${string}`;
+		gasPrice?: `0x${string}`;
+		maxFeePerGas?: `0x${string}`;
+		maxPriorityFeePerGas?: `0x${string}`;
+	};
+
+	if (prepared.nonce === undefined) {
+		prepared.nonce = await provider.request({
+			method: 'eth_getTransactionCount',
+			params: [prepared.from, 'pending'],
+		});
+	}
+
+	if (prepared.type === '0x2') {
+		if (prepared.maxFeePerGas === undefined || prepared.maxPriorityFeePerGas === undefined) {
+			// The same estimator the executor uses. It can fall back to `eth_gasPrice`, but only
+			// for a node whose `eth_feeHistory` error message matches one of two known strings
+			// (see `getGasPriceEstimate` in ../utils/eth.ts); a bare `-32601` still propagates.
+			const estimate = await getRoughGasPriceEstimate(provider);
+
+			// The estimator reports `maxFeePerGas` as (next block's base fee + average priority
+			// fee), so subtracting recovers the base-fee component.
+			const estimatedPriority = estimate.average.maxPriorityFeePerGas;
+			const estimatedBase = estimate.average.maxFeePerGas - estimatedPriority;
+
+			const suppliedCap = prepared.maxFeePerGas === undefined ? undefined : BigInt(prepared.maxFeePerGas);
+			const suppliedPriority =
+				prepared.maxPriorityFeePerGas === undefined ? undefined : BigInt(prepared.maxPriorityFeePerGas);
+
+			// The two fields are resolved TOGETHER, because `maxPriorityFeePerGas > maxFeePerGas`
+			// is not merely odd, it is an invalid pair that the node rejects. Filling either one
+			// in isolation can produce it: a caller who supplies a low cap and leaves the priority
+			// fee to us, or one who supplies a high priority fee and leaves the cap to us.
+			const priority =
+				suppliedPriority ??
+				(suppliedCap !== undefined && estimatedPriority > suppliedCap ? suppliedCap : estimatedPriority);
+
+			// Doubling the BASE-fee component (never the priority fee) buys headroom, the way viem
+			// multiplies it by 1.2. Without it the cap is exactly the next block's base fee plus a
+			// tip, so a transaction that misses that one block becomes unmineable as the base fee
+			// steps up (max +12.5% per block) and rocketh then polls for a receipt that can never
+			// arrive. `maxFeePerGas` is a ceiling, not a price: the excess is not spent.
+			const cap = suppliedCap ?? estimatedBase * 2n + priority;
+
+			prepared.maxPriorityFeePerGas = toQuantity(priority);
+			prepared.maxFeePerGas = toQuantity(cap);
+		}
+	} else if (prepared.gasPrice === undefined) {
+		prepared.gasPrice = await provider.request({method: 'eth_gasPrice'});
+	}
+
+	if (prepared.gas === undefined) {
+		// Only the fields that determine EXECUTION are sent. Passing the fee fields as well (as
+		// viem does) makes some nodes charge the estimate against the sender's balance and answer
+		// "insufficient funds" for a transaction that would in fact run. `to` is absent for a
+		// deployment, which `EIP1193CallParam` does not model, hence the cast.
+		prepared.gas = await provider.request({
+			method: 'eth_estimateGas',
+			params: [
+				{
+					from: prepared.from,
+					...(prepared.to === undefined ? {} : {to: prepared.to}),
+					...(prepared.data === undefined ? {} : {data: prepared.data}),
+					...(prepared.value === undefined ? {} : {value: prepared.value}),
+				} as never,
+			],
+		});
+	}
+
+	return prepared;
+}
 
 function wait(numSeconds: number): Promise<void> {
 	return new Promise((resolve) => {
@@ -93,17 +245,44 @@ type BroadcastSource =
 /** No contract ever lives here, so a receipt naming it created nothing. */
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 
+/**
+ * Narrow `EIP1193Transaction` (a CLOSED union of exactly three variants, see `eip-1193`:
+ * `EIP1193TransactionType0 | EIP1193TransactionType1 | EIP1193TransactionType2`) by the VALUES
+ * that distinguish them, never by key presence.
+ *
+ * Nodes differ on whether an inapplicable field is OMITTED or present as `null`: geth omits the
+ * 1559 fields on a legacy transaction, others send `maxFeePerGas: null`. A bare `'maxFeePerGas'
+ * in tx` treats the second kind as 1559 and then dies on `BigInt(null)`, which is how a purely
+ * cosmetic log line took down a whole deploy run.
+ */
+function isEIP1559Transaction(transaction: EIP1193Transaction): transaction is EIP1193TransactionType2 {
+	const tx = transaction as Partial<EIP1193TransactionType2>;
+	return typeof tx.maxFeePerGas === 'string' && typeof tx.maxPriorityFeePerGas === 'string';
+}
+
+function hasGasPrice(
+	transaction: EIP1193Transaction,
+): transaction is EIP1193TransactionType0 | EIP1193TransactionType1 {
+	const tx = transaction as Partial<EIP1193TransactionType0>;
+	return typeof tx.gasPrice === 'string';
+}
+
 function displayTransaction(transaction: EIP1193Transaction) {
-	if ('maxFeePerGas' in transaction) {
+	if (isEIP1559Transaction(transaction)) {
 		return `(type ${transaction.type}, maxFeePerGas: ${BigInt(
 			transaction.maxFeePerGas,
 		).toString()}, maxPriorityFeePerGas: ${BigInt(transaction.maxPriorityFeePerGas).toString()})`;
-	} else if ('gasPrice' in transaction) {
+	} else if (hasGasPrice(transaction)) {
 		return `(type ${transaction.type ? Number(transaction.type) : '0'}, gasPrice: ${BigInt(
 			transaction.gasPrice,
 		).toString()})`;
 	} else {
-		return `(tx with no gas pricing, type: ${Number((transaction as any).type)})`;
+		// TypeScript proves this unreachable: every variant of the union carries either
+		// `gasPrice` or the 1559 pair. It is kept because the union describes what a node is
+		// SUPPOSED to send, and this function's whole reason for existing is that real nodes
+		// send other shapes. Hence the cast off `never`.
+		const {type} = transaction as {type?: string};
+		return `(tx with no gas pricing, type: ${Number(type)})`;
 	}
 }
 
@@ -309,7 +488,20 @@ export async function createEnvironment<
 
 	const resolvedAccounts: {[name: string]: ResolvedAccount} = {};
 
-	const allRemoteAccounts = await provider.request({method: 'eth_accounts'});
+	// `eth_accounts` is optional in practice. Execution-only nodes (an in-browser EVM that
+	// accepts only signed raw transactions) and plenty of public RPC endpoints reject it, yet it
+	// is only NEEDED to resolve INDEX-based named accounts (`{default: 0}`). Failing here would
+	// make every such provider unusable even for a config that names accounts by private key or
+	// address, so the failure is remembered instead of thrown, and re-raised with its cause if an
+	// index-based account actually has to be resolved. Nothing is silently wrong either way: a
+	// config that needs remote accounts still fails, and says why.
+	let allRemoteAccounts: `0x${string}`[] = [];
+	let remoteAccountsError: unknown;
+	try {
+		allRemoteAccounts = await provider.request({method: 'eth_accounts'});
+	} catch (err) {
+		remoteAccountsError = err;
+	}
 	const accountCache: {[name: string]: ResolvedAccount} = {};
 
 	async function getAccount(
@@ -329,6 +521,24 @@ export async function createEnvironment<
 					address: accountPerIndex,
 					signer: provider,
 				};
+			} else if (remoteAccountsError) {
+				throw new Error(
+					`named account "${name}" is configured as index ${accountDef}, which requires the node to list ` +
+						`its accounts, but 'eth_accounts' failed on this provider. Give "${name}" an address or a ` +
+						`signer protocol (for example 'privateKey:0x...') instead of an index.`,
+					{cause: remoteAccountsError},
+				);
+			} else {
+				// An index that the node's list does not reach. Same diagnosis as the failure above
+				// and it deserves the same actionable message: a provider that answers `eth_accounts`
+				// with `[]` (most public RPC endpoints) is indistinguishable, to the user, from one
+				// that rejects the call.
+				throw new Error(
+					`named account "${name}" is configured as index ${accountDef}, but this provider lists ` +
+						`${allRemoteAccounts.length} account(s), so there is nothing at that index. Nodes that hold no ` +
+						`keys (most public RPC endpoints) answer 'eth_accounts' with an empty list. Give "${name}" an ` +
+						`address or a signer protocol (for example 'privateKey:0x...') instead of an index.`,
+				);
 			}
 		} else if (typeof accountDef === 'string') {
 			if (accountDef.startsWith('0x')) {
@@ -759,6 +969,38 @@ export async function createEnvironment<
 			existingPendingTansactions = [];
 		}
 		if (existingPendingTansactions.length > 0) {
+			// The entry being recovered has already been `shift`ed off, so writing the list back
+			// records "this one is dealt with". It must happen for a transaction that RESOLVED
+			// unsuccessfully as well as for one that succeeded: a reverted transaction is never
+			// coming back, so leaving it in the file makes every future run replay the same hash
+			// and fail identically, with no way out but hand-editing the file.
+			const persistRemaining = () =>
+				deploymentStore.writeFileWithChainInfo(
+					{chainId, genesisHash},
+					deploymentsFolder,
+					environmentName,
+					'.pending_transactions.json',
+					JSONToString(existingPendingTansactions, 2),
+				);
+
+			// A transient failure (a dropped connection, a node that is not answering) keeps the
+			// entry, because that transaction may still be found on the next run. Only a receipt
+			// that says the transaction is finished-and-unsuccessful clears it.
+			const handleRecoveryFailure = async (e: unknown, spinner: {fail: () => void}) => {
+				spinner.fail();
+				if (e instanceof UnsuccessfulTransactionError) {
+					await persistRemaining();
+					console.error(
+						`${e.message}\n` +
+							`It has been removed from the pending list, since its outcome is now known. ` +
+							`Nothing was recorded for it, so THIS run will attempt the work again when the deploy ` +
+							`scripts reach it (recovery happens before they run).`,
+					);
+					return;
+				}
+				throw e;
+			};
+
 			while (existingPendingTansactions.length > 0) {
 				const pendingTransaction = existingPendingTansactions.shift();
 				if (pendingTransaction) {
@@ -768,17 +1010,10 @@ export async function createEnvironment<
 						);
 						try {
 							await waitForDeploymentTransactionAndSave(pendingTransaction);
-							await deploymentStore.writeFileWithChainInfo(
-								{chainId, genesisHash},
-								deploymentsFolder,
-								environmentName,
-								'.pending_transactions.json',
-								JSONToString(existingPendingTansactions, 2),
-							);
+							await persistRemaining();
 							spinner.succeed();
 						} catch (e) {
-							spinner.fail();
-							throw e;
+							await handleRecoveryFailure(e, spinner);
 						}
 					} else {
 						const spinner = spin(`recovering execution's transaction ${pendingTransaction.transaction.hash}`);
@@ -791,17 +1026,10 @@ export async function createEnvironment<
 								transaction: transaction,
 								message: `  tx: {hash}\n      {transaction}`,
 							});
-							await deploymentStore.writeFileWithChainInfo(
-								{chainId, genesisHash},
-								deploymentsFolder,
-								environmentName,
-								'.pending_transactions.json',
-								JSONToString(existingPendingTansactions, 2),
-							);
+							await persistRemaining();
 							spinner.succeed();
 						} catch (e) {
-							spinner.fail();
-							throw e;
+							await handleRecoveryFailure(e, spinner);
 						}
 					}
 				}
@@ -899,7 +1127,16 @@ export async function createEnvironment<
 
 	async function waitForTransaction(
 		hash: `0x${string}`,
-		info?: {message?: string; transaction?: EIP1193Transaction | null},
+		info?: {
+			message?: string;
+			transaction?: EIP1193Transaction | null;
+			/**
+			 * Set by the ONE caller that raises its own, richer failure (the pasted-transaction
+			 * path, which also has to tell the user what still needs executing). Everyone else
+			 * gets the check below.
+			 */
+			ownStatusCheck?: boolean;
+		},
 	): Promise<EIP1193TransactionReceipt> {
 		let message = `  - Broadcasting tx:\n      ${hash}${
 			info?.transaction ? `\n      ${displayTransaction(info?.transaction)}` : ''
@@ -932,10 +1169,22 @@ export async function createEnvironment<
 			throw e;
 		}
 		if (!receipt) {
+			spinner.fail();
 			throw new Error(`receipt for ${hash} not found`);
-		} else {
-			spinner.succeed();
 		}
+
+		// A REVERTED transaction is not a completed one. This is the single choke point every
+		// normal-path receipt passes through, and until this check existed only the pasted-
+		// transaction path looked at the status at all: a deploy whose transaction reverted was
+		// recorded as a success, so (for example) a proxy could be saved pointing at an
+		// implementation that was never created, and the failure only surfaced later as a call
+		// returning "0x". Failing here means nothing is saved for a transaction that did not run.
+		if (!info?.ownStatusCheck && !receiptSucceeded(receipt)) {
+			spinner.fail();
+			throw new UnsuccessfulTransactionError(hash, receipt);
+		}
+
+		spinner.succeed();
 		return receipt;
 	}
 
@@ -1125,7 +1374,22 @@ export async function createEnvironment<
 				// The error is BUILT here whichever way this goes: it is what the throw path
 				// throws AND what the interactive path shows the human, so the two can never
 				// drift into showing different amounts of what has to be executed.
-				const unknownSignerError = new UnknownSignerError(unknownSignerData);
+				let unknownSignerError = new UnknownSignerError(unknownSignerData);
+				if (remoteAccountsError) {
+					// A provider whose `eth_accounts` failed has NO list of node-held accounts, so
+					// every address configured plainly (rather than with signing material) lands here
+					// looking like an account nobody can sign for. Without this note the user sees an
+					// unknown-signer error that never mentions the failure that actually caused it.
+					const reason =
+						remoteAccountsError instanceof Error ? remoteAccountsError.message : String(remoteAccountsError);
+					unknownSignerError = new UnknownSignerError(
+						unknownSignerData,
+						`${unknownSignerError.message}\n\n` +
+							`Note: this provider could not list its accounts ('eth_accounts' failed: ${reason}), so rocketh ` +
+							`does not know of ANY node-held account. If you expected the node to hold this one, that is the ` +
+							`likely cause; otherwise give the account signing material (for example 'privateKey:0x...').`,
+					);
+				}
 
 				// CAPABILITY IS A CEILING (ADR 0007): `'auto'` becomes `'ask'` only where a text
 				// prompt genuinely exists, and an explicit `'ask'` degrades to `'throw'` rather
@@ -1221,9 +1485,12 @@ export async function createEnvironment<
 					return txHash;
 				}
 				case 'signerOnly': {
+					// A local signer has no provider, so anything left unset here is signed as zero and
+					// the transaction is refused by any correct node ("intrinsic gas too low: have 0").
+					const preparedData = await prepareForLocalSigning(env.network.provider, transactionData);
 					const rawTx = await signer.signer.request({
 						method: 'eth_signTransaction',
-						params: [transactionData],
+						params: [preparedData],
 					});
 
 					const txHash = await env.network.provider.request({
@@ -1306,16 +1573,11 @@ export async function createEnvironment<
 		const receipt = await waitForTransaction(hash, {
 			transaction,
 			message: `  - Waiting for the transaction you pasted:\n      {hash}`,
+			// This path raises its own failure below, which also reports what still needs executing.
+			ownStatusCheck: true,
 		});
 
-		let succeeded = false;
-		try {
-			succeeded = receipt.status !== undefined && BigInt(receipt.status) === 1n;
-		} catch {
-			// an unparseable status is not a successful one
-			succeeded = false;
-		}
-		if (!succeeded) {
+		if (!receiptSucceeded(receipt)) {
 			throw new Error(
 				`The transaction you pasted (${hash}) did not succeed: its receipt reports status ` +
 					`${receipt.status === undefined ? '<absent>' : receipt.status}, and rocketh requires a successful ` +

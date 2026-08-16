@@ -645,6 +645,48 @@ describe('@rocketh/deploy - Integration Tests', () => {
 			expect(methods).not.toContain('eth_signTransaction');
 		});
 
+		it('refuses to record a deployment whose transaction reverted', async () => {
+			/**
+			 * A transaction that is MINED is not necessarily a transaction that RAN. A receipt with
+			 * status 0 means it reverted (a failed require, a throwing constructor, or simply out of
+			 * gas), and the contract it was supposed to create does not exist.
+			 *
+			 * rocketh refuses it rather than recording the address, because a recorded deployment
+			 * that has no code fails much later and much further away: a proxy saved over a missing
+			 * implementation, for instance, delegatecalls into empty space and simply answers "0x".
+			 */
+			const {env} = await createTestEnvironment({
+				accounts: NAMED_ACCOUNTS,
+				nodeAccounts: NODE_HELD_ACCOUNTS,
+				providerConfig: {
+					responses: {
+						eth_getTransactionReceipt: (params?: unknown[]) => ({
+							transactionHash: params?.[0] as `0x${string}`,
+							status: '0x0' as const,
+							blockHash: `0x${'b'.repeat(64)}` as `0x${string}`,
+							blockNumber: '0x1' as const,
+							transactionIndex: '0x0' as const,
+							contractAddress: `0x${'a'.repeat(40)}` as `0x${string}`,
+							gasUsed: '0x5208' as const,
+							logs: [],
+						}),
+					},
+				},
+			});
+			const _deploy = deploy(env);
+
+			await expect(
+				_deploy('RevertingContract', {
+					account: 'deployer',
+					artifact: createMockArtifact('RevertingContract'),
+					args: [42n],
+				}),
+			).rejects.toThrow(/did not succeed.*status 0x0/s);
+
+			// Nothing was recorded, so a later run still sees the contract as undeployed.
+			expect(env.getOrNull('RevertingContract')).toBe(null);
+		});
+
 		it('emits evm_mine right after the deployment transaction when autoMine is on', async () => {
 			/**
 			 * Example: on a dev node with automining disabled, `autoMine` makes rocketh mine

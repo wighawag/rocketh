@@ -188,6 +188,86 @@ describe('recoverTransactionsIfAny - deployment recovery', () => {
 	});
 });
 
+describe('recoverTransactionsIfAny - a transaction that resolved unsuccessfully', () => {
+	/**
+	 * A reverted transaction is RESOLVED: it is never going to succeed on a later run. If
+	 * recovery left it in `.pending_transactions.json`, every subsequent run would replay the
+	 * same hash and fail identically, and the only way out would be hand-editing the file.
+	 *
+	 * So the entry is dropped and the shortened list persisted, while nothing is recorded for
+	 * it: re-running the deploy scripts attempts the work again from scratch.
+	 */
+	const revertedReceipt = () => ({
+		contractAddress: CONTRACT_ADDRESS,
+		status: '0x0',
+		blockNumber: '0x1',
+		blockHash: '0x' + 'b'.repeat(64),
+		transactionHash: TX_HASH,
+		transactionIndex: '0x0',
+		gasUsed: '0x5208',
+	});
+
+	it('clears a reverted deployment instead of replaying it forever, and saves nothing', async () => {
+		const files: Record<string, string> = {
+			'.chain': JSON.stringify({chainId: '31337', genesisHash: GENESIS_HASH}),
+			'.pending_transactions.json': JSON.stringify([PENDING_DEPLOYMENT]),
+		};
+		const store = createInMemoryStore(files);
+
+		const {internal, env} = await buildEnvironment(true, store, {eth_getTransactionReceipt: revertedReceipt});
+
+		await expect(internal.recoverTransactionsIfAny()).resolves.toBeUndefined();
+
+		// Nothing recorded: the contract was never actually deployed.
+		expect(env.getOrNull('Token')).toBeNull();
+		// And the entry is gone, so the next run is not wedged on the same hash.
+		const remaining = files['.pending_transactions.json'];
+		expect(remaining === undefined || JSON.parse(remaining).length === 0).toBe(true);
+	});
+
+	it('clears a reverted execution too', async () => {
+		const files: Record<string, string> = {
+			'.chain': JSON.stringify({chainId: '31337', genesisHash: GENESIS_HASH}),
+			'.pending_transactions.json': JSON.stringify([PENDING_EXECUTION]),
+		};
+		const store = createInMemoryStore(files);
+
+		const {internal} = await buildEnvironment(true, store, {eth_getTransactionReceipt: revertedReceipt});
+
+		await expect(internal.recoverTransactionsIfAny()).resolves.toBeUndefined();
+
+		const remaining = files['.pending_transactions.json'];
+		expect(remaining === undefined || JSON.parse(remaining).length === 0).toBe(true);
+	});
+
+	it('KEEPS the entry when recovery fails for any OTHER reason', async () => {
+		// Only a receipt that reports the transaction finished-and-unsuccessful clears an entry.
+		// Here the transaction succeeded but the receipt names no contract, which is a different
+		// failure and must not be treated as "resolved, forget it".
+		const files: Record<string, string> = {
+			'.chain': JSON.stringify({chainId: '31337', genesisHash: GENESIS_HASH}),
+			'.pending_transactions.json': JSON.stringify([PENDING_DEPLOYMENT]),
+		};
+		const store = createInMemoryStore(files);
+
+		const {internal} = await buildEnvironment(true, store, {
+			eth_getTransactionReceipt: () => ({
+				status: '0x1',
+				blockNumber: '0x1',
+				blockHash: '0x' + 'b'.repeat(64),
+				transactionHash: TX_HASH,
+				transactionIndex: '0x0',
+				gasUsed: '0x5208',
+				// no contractAddress
+			}),
+		});
+
+		await expect(internal.recoverTransactionsIfAny()).rejects.toThrow(/no contract address/);
+
+		expect(JSON.parse(files['.pending_transactions.json']!)).toHaveLength(1);
+	});
+});
+
 describe('recoverTransactionsIfAny - execution recovery', () => {
 	it('recovers a pending execution: fetches tx, waits for receipt, cleans up', async () => {
 		const files: Record<string, string> = {

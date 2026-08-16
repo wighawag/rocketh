@@ -290,6 +290,15 @@ export async function createTestEnvironment(
 		eth_estimateGas: () => '0x5208' as `0x${string}`,
 		eth_getTransactionCount: () => '0x0' as `0x${string}`,
 		eth_gasPrice: () => '0x3b9aca00' as `0x${string}`,
+		// Needed by any `signerOnly` (locally signing) account: rocketh fills the fees itself
+		// before signing, because a local signer has no provider to ask. One entry per requested
+		// percentile, which is what the JSON-RPC spec requires and what the estimator indexes.
+		eth_feeHistory: () => ({
+			oldestBlock: '0x1' as `0x${string}`,
+			baseFeePerGas: ['0x3b9aca00', '0x3b9aca00'] as `0x${string}`[],
+			gasUsedRatio: [0.5],
+			reward: [['0x3b9aca00', '0x3b9aca00', '0x3b9aca00']] as `0x${string}`[][],
+		}),
 		eth_getBalance: () => `0x${BigInt('1000000000000000000000').toString(16)}` as `0x${string}`,
 		eth_getCode: () => '0x' as `0x${string}`,
 		evm_mine: () => null,

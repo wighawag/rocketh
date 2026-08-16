@@ -1,4 +1,5 @@
 import {describe, it, expect, vi} from 'vitest';
+import {LOCAL_SIGNING_RPC_RESPONSES} from './support/local-signing-responses.js';
 
 import {resolveConfig, getChainIdForEnvironment, resolveExecutionParams} from '../src/executor/index.js';
 import {createEnvironment} from '../src/environment/index.js';
@@ -70,8 +71,14 @@ function createMockProvider(options?: {accounts?: string[]}): {
 					};
 				case 'eth_blockNumber':
 					return '0x1';
-				default:
+				default: {
+					// A `signerOnly` account signs locally, so rocketh fills nonce/fees/gas itself
+					// before signing (nobody else can). Those answers are shared rather than
+					// re-pasted into every stub: see LOCAL_SIGNING_RPC_RESPONSES.
+					const prepared = LOCAL_SIGNING_RPC_RESPONSES[args.method];
+					if (prepared) return prepared();
 					throw new Error(`mock provider: unsupported method ${args.method}`);
+				}
 			}
 		}) as EIP1193ProviderWithoutEvents['request'],
 	};
