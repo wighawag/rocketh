@@ -68,9 +68,9 @@
 		"vitest": "^4.1.10"
 	},
 	"peerDependencies": {
-		"@rocketh/node": "workspace:*",
+		"@rocketh/node": "workspace:^",
 		"hardhat": "^3.6.0",
-		"rocketh": "workspace:*"
+		"rocketh": "workspace:^"
 	},
 	"dependencies": {
 		"@nomicfoundation/hardhat-zod-utils": "^3.0.4",

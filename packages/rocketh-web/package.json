@@ -52,7 +52,7 @@
 		"@types/node": "^26.2.0"
 	},
 	"peerDependencies": {
-		"rocketh": "workspace:*"
+		"rocketh": "workspace:^"
 	},
 	"scripts": {
 		"prepublishOnly": "cp ../../LICENSE LICENSE",

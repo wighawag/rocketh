@@ -61,8 +61,8 @@
 		"vitest": "^4.1.10"
 	},
 	"peerDependencies": {
-		"@rocketh/node": "workspace:*",
-		"rocketh": "workspace:*"
+		"@rocketh/node": "workspace:^",
+		"rocketh": "workspace:^"
 	},
 	"scripts": {
 		"prepublishOnly": "cp ../../LICENSE LICENSE",

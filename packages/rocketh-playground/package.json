@@ -72,7 +72,7 @@
 		"vitest": "^4.1.10"
 	},
 	"peerDependencies": {
-		"rocketh": "workspace:*"
+		"rocketh": "workspace:^"
 	},
 	"scripts": {
 		"prepublishOnly": "cp ../../LICENSE LICENSE",

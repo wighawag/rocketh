@@ -60,7 +60,7 @@
 		"vitest": "^4.1.10"
 	},
 	"peerDependencies": {
-		"@rocketh/node": "workspace:*"
+		"@rocketh/node": "workspace:^"
 	},
 	"scripts": {
 		"prepublishOnly": "cp ../../LICENSE LICENSE",

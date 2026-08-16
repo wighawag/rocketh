@@ -44,7 +44,7 @@
 		"viem": "^2.55.13"
 	},
 	"peerDependencies": {
-		"rocketh": "workspace:*"
+		"rocketh": "workspace:^"
 	},
 	"devDependencies": {
 		"@rocketh/signer": "workspace:*",
