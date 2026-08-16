@@ -1,23 +1,50 @@
 /**
  * Characterization tests for @rocketh/web - the browser runtime adapter.
  *
- * `@rocketh/web` is a runtime adapter that re-exports `rocketh`'s pipeline bound to a
- * no-op store (every method body is commented out — writes are swallowed, reads return
- * empty) and a text-less prompt (confirm auto-proceeds, `promptText` is absent, so
- * `canPromptForText()` is always false).
+ * `@rocketh/web` re-exports `rocketh`'s pipeline bound to a default deployment store and a
+ * text-less prompt (confirm auto-proceeds, `promptText` is absent, so `canPromptForText()`
+ * is always false).
  *
- * These tests document that behavior so a refactor that changes it is caught. They are
- * not asserting the behavior is CORRECT — they are pinning what IS, because the store
- * has no injection seam (module-level singleton).
+ * The default store is now `createVFSDeploymentStore()`, which retains what a deploy script
+ * saves for the lifetime of the page. `createEmptyDeploymentStore()` remains available as the
+ * explicit opt-out (writes discarded, reads empty) and is still pinned below, because it is
+ * exactly the behaviour a caller might now choose on purpose.
  */
 
 import {describe, it, expect} from 'vitest';
 import {createEmptyDeploymentStore} from '../src/deployment-store.js';
-import {loadDeploymentsFromIndexedDB, setupEnvironment} from '../src/index.js';
+import {
+	createVFSDeploymentStore,
+	getDefaultDeploymentStore,
+	loadDeploymentsFromIndexedDB,
+	setupEnvironment,
+} from '../src/index.js';
 import {createMockProvider} from '@rocketh/test-utils';
 import type {UserConfig} from '@rocketh/core/types';
 
-describe('@rocketh/web - createEmptyDeploymentStore (no-op store)', () => {
+describe('@rocketh/web - the default deployment store', () => {
+	it('is a retaining store, not the discarding one it replaced', async () => {
+		// Identity only. Writing into the default would mutate a module-level singleton that
+		// outlives this file within a module registry, which is precisely the cross-contamination
+		// its own doc comment warns about. The retaining BEHAVIOUR is asserted below against a
+		// private store, which is what the same constructor produces.
+		const store = getDefaultDeploymentStore();
+
+		expect(store.vfs).toBeDefined();
+		expect(await store.listFiles('deployments', 'never-written-to').catch(() => 'threw')).toBe('threw');
+	});
+
+	it('retains what is written to it, unlike the discarding store it replaced', async () => {
+		const store = createVFSDeploymentStore();
+		await store.writeFileWithChainInfo({chainId: '31337'}, 'deployments', 'default-store-test', 'Foo.json', '{}');
+
+		expect(await store.hasFile('deployments', 'default-store-test', 'Foo.json')).toBe(true);
+		expect(await store.readFile('deployments', 'default-store-test', 'Foo.json')).toBe('{}');
+		expect(store.vfs.paths()).toContain('deployments/default-store-test/Foo.json');
+	});
+});
+
+describe('@rocketh/web - createEmptyDeploymentStore (explicit opt-out, discards writes)', () => {
 	it('listFiles always returns an empty array', async () => {
 		const store = createEmptyDeploymentStore();
 		expect(await store.listFiles('any', 'env')).toEqual([]);
@@ -50,9 +77,10 @@ describe('@rocketh/web - createEmptyDeploymentStore (no-op store)', () => {
 });
 
 describe('@rocketh/web - loadDeploymentsFromIndexedDB', () => {
-	it('always returns empty deployments despite the name', async () => {
-		// Despite the name, this function never touches IndexedDB — it delegates to the
-		// no-op store which always returns empty.
+	it('reads the default store, not IndexedDB (hence deprecated)', async () => {
+		// The name has always been wrong: it delegates to whatever store this module binds.
+		// For real IndexedDB, build `createIndexedDBDeploymentStore()` and load through
+		// `loadDeploymentsFromStore`.
 		const result = await loadDeploymentsFromIndexedDB('deployments', 'mainnet');
 		expect(result.deployments).toEqual({});
 		expect(result.migrations).toEqual({});

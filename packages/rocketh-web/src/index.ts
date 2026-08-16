@@ -20,11 +20,46 @@ import {
 	resolveExecutionParams,
 } from 'rocketh';
 import {enhanceEnvIfNeeded} from '@rocketh/core/environment';
-import {createEmptyDeploymentStore} from './deployment-store.js';
+import {createVFSDeploymentStore} from './vfs-deployment-store.js';
 
 export type * from '@rocketh/core';
 
-const deploymentStore: DeploymentStore = createEmptyDeploymentStore();
+export {createEmptyDeploymentStore} from './deployment-store.js';
+export {createIndexedDBDeploymentStore, createVFSDeploymentStore} from './vfs-deployment-store.js';
+export type {IndexedDBDeploymentStoreOptions} from './vfs-deployment-store.js';
+export {createMemoryVFS, joinPath, normalizePath} from './vfs.js';
+export type {VFS, VFSChange, VFSListener} from './vfs.js';
+import type {VFS} from './vfs.js';
+export {createIndexedDBPersistence, createMemoryPersistence, createPersistentVFS} from './persistence.js';
+export type {
+	CreatePersistentVFSOptions,
+	IndexedDBPersistenceOptions,
+	PersistedFiles,
+	PersistentVFS,
+	VFSPersistence,
+} from './persistence.js';
+
+// The default store keeps deployments for the lifetime of the page. It is deliberately NOT
+// the discarding store (`createEmptyDeploymentStore`), which silently swallowed everything a
+// deploy script saved. For deployments that survive a reload, pass
+// `await createIndexedDBDeploymentStore()` to `setupEnvironment`.
+const deploymentStore = createVFSDeploymentStore();
+
+/**
+ * The store used when `setupEnvironment` is given no `deploymentStore`.
+ *
+ * Exposed so a caller can read back what a deploy script saved, or render its `vfs`, without
+ * having to construct and thread a store of its own.
+ *
+ * SHARED, and deliberately so: it is one instance for the page, which is what makes it
+ * reachable from here at all. That means two `setupEnvironment` calls that pass no store write
+ * into the SAME deployments (and so do two test files in one module registry). It did not
+ * matter while the default discarded everything; now that it retains, an environment that must
+ * not see another's deployments should be given its own `createVFSDeploymentStore()`.
+ */
+export function getDefaultDeploymentStore(): DeploymentStore & {vfs: VFS} {
+	return deploymentStore;
+}
 
 const promptExecutor: PromptExecutor = {
 	async prompt() {
@@ -39,6 +74,31 @@ const promptExecutor: PromptExecutor = {
 
 const executor = createExecutor(deploymentStore, promptExecutor);
 
+/**
+ * Options for {@link setupEnvironment}.
+ *
+ * Supply `deploymentStore` when this environment needs its OWN storage. Without it every
+ * `setupEnvironment` call in the page shares one module-level store (see
+ * {@link getDefaultDeploymentStore}), which is convenient for a single app and wrong for two
+ * independent environments, which would then read each other's deployments.
+ *
+ * Use `createVFSDeploymentStore()` for a private in-memory store, or
+ * `await createIndexedDBDeploymentStore()` for one that survives a reload.
+ */
+export type SetupEnvironmentOptions = {
+	deploymentStore?: DeploymentStore;
+};
+
+/**
+ * @deprecated Misnamed: this reads the store bound to this module (in-memory by default), not
+ * IndexedDB. Build the store you want and load through it instead:
+ *
+ * ```ts
+ * import {loadDeploymentsFromStore} from 'rocketh';
+ * const store = await createIndexedDBDeploymentStore();
+ * const {deployments} = await loadDeploymentsFromStore(store, 'deployments', 'sepolia');
+ * ```
+ */
 export function loadDeploymentsFromIndexedDB(
 	deploymentsPath: string,
 	networkName: string,
@@ -59,6 +119,7 @@ async function loadAndExecuteDeployments<
 	ArgumentsType = undefined,
 	Extra extends Record<string, unknown> = Record<string, unknown>,
 >(
+	scriptExecutor: typeof executor,
 	moduleObjects: ModuleObject<NamedAccounts, Data, ArgumentsType>[],
 	config: UserConfig<NamedAccounts, Data>,
 	executionParams: ExecutionParams<Extra>,
@@ -71,7 +132,7 @@ async function loadAndExecuteDeployments<
 	// console.log(JSON.stringify(options, null, 2));
 	// console.log(JSON.stringify(resolvedConfig, null, 2));
 
-	return executor.executeDeployScriptModules(moduleObjects, userConfig, resolvedExecutionParams, args);
+	return scriptExecutor.executeDeployScriptModules(moduleObjects, userConfig, resolvedExecutionParams, args);
 }
 
 export function setupEnvironment<
@@ -79,7 +140,13 @@ export function setupEnvironment<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 	Extra extends Record<string, unknown> = Record<string, unknown>,
->(config: UserConfig<NamedAccounts, Data>, extensions: Extensions) {
+>(config: UserConfig<NamedAccounts, Data>, extensions: Extensions, options?: SetupEnvironmentOptions) {
+	// A caller-supplied store needs its own executor, because the executor closes over the
+	// store at construction. Without one we keep the module-level pair, so existing callers
+	// (and their behaviour, no-op store included) are untouched.
+	const store = options?.deploymentStore ?? deploymentStore;
+	const scriptExecutor = options?.deploymentStore ? createExecutor(store, promptExecutor) : executor;
+
 	async function loadAndExecuteDeploymentsWithExtensions<
 		Extra extends Record<string, unknown> = Record<string, unknown>,
 		ArgumentsType = undefined,
@@ -89,6 +156,7 @@ export function setupEnvironment<
 		args?: ArgumentsType,
 	): Promise<EnhancedEnvironment<NamedAccounts, Data, UnknownDeployments, Extensions>> {
 		const env = await loadAndExecuteDeployments<NamedAccounts, Data, ArgumentsType, Extra>(
+			scriptExecutor,
 			moduleObjects,
 			config,
 			executionParams,
@@ -100,7 +168,7 @@ export function setupEnvironment<
 	async function loadEnvironmentWithExtensions(
 		executionParams: ExecutionParams<Extra>,
 	): Promise<EnhancedEnvironment<NamedAccounts, Data, UnknownDeployments, Extensions>> {
-		const env = await loadEnvironmentFromStore<NamedAccounts, Data, Extra>(config, executionParams, deploymentStore);
+		const env = await loadEnvironmentFromStore<NamedAccounts, Data, Extra>(config, executionParams, store);
 		return enhanceEnvIfNeeded(env, extensions);
 	}
 

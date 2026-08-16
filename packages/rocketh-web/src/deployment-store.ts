@@ -1,83 +1,31 @@
 import type {DeploymentStore} from 'rocketh/types';
 
+/**
+ * A `DeploymentStore` that DISCARDS everything: writes go nowhere, reads come back empty.
+ *
+ * This was once the only store `@rocketh/web` had, which meant a browser deploy silently lost
+ * whatever it saved. It is no longer the default (see `createVFSDeploymentStore`), and survives
+ * as an explicit opt-out for the case where discarding is what you actually want: a read-only
+ * environment, or a run that must leave no trace.
+ *
+ * It reports "nothing here" rather than throwing, deliberately differing from the fs-mirroring
+ * semantics of the real stores. `loadDeploymentsFromStore` reads an empty `listFiles` as an
+ * environment with no deployments, which is exactly what this store means.
+ */
 export function createEmptyDeploymentStore(): DeploymentStore {
-	// function getFolder(deploymentsFolder: string, environmentName: string) {
-	// 	return path.join(deploymentsFolder, environmentName);
-	// }
-	// function getFile(deploymentsFolder: string, environmentName: string, name: string) {
-	// 	return path.join(deploymentsFolder, environmentName, name);
-	// }
-
-	// async function ensureChainInfoRecorded(
-	// 	deploymentsFolder: string,
-	// 	environmentName: string,
-	// 	chainId: string,
-	// 	genesisHash?: string
-	// ) {
-	// 	if (!(await hasFile(deploymentsFolder, environmentName, '.chain'))) {
-	// 		await writeFile(
-	// 			deploymentsFolder,
-	// 			environmentName,
-	// 			'.chain',
-	// 			JSON.stringify({ chainId, genesisHash })
-	// 		);
-	// 	}
-	// }
-
-	async function writeFileWithChainInfo(
-		chaininfo: {chainId: string; genesisHash?: string},
-		deploymentsFolder: string,
-		environmentName: string,
-		name: string,
-		content: string,
-	): Promise<void> {
-		// await ensureChainInfoRecorded(
-		// 	deploymentsFolder,
-		// 	environmentName,
-		// 	chaininfo.chainId,
-		// 	chaininfo.genesisHash
-		// );
-		// fs.mkdirSync(getFolder(deploymentsFolder, environmentName), { recursive: true });
-		// fs.writeFileSync(getFile(deploymentsFolder, environmentName, name), content);
-	}
-
-	async function writeFile(
-		deploymentsFolder: string,
-		environmentName: string,
-		name: string,
-		content: string,
-	): Promise<void> {
-		// fs.mkdirSync(getFolder(deploymentsFolder, environmentName), { recursive: true });
-		// fs.writeFileSync(getFile(deploymentsFolder, environmentName, name), content);
-	}
-
-	async function readFile(deploymentsFolder: string, environmentName: string, name: string): Promise<string> {
-		// return fs.readFileSync(getFile(deploymentsFolder, environmentName, name), 'utf-8');
-		return '';
-	}
-	async function deleteFile(deploymentsFolder: string, environmentName: string, name: string): Promise<void> {
-		// fs.unlinkSync(getFile(deploymentsFolder, environmentName, name));
-	}
-
-	async function listFiles(deploymentsFolder: string, environmentName: string): Promise<string[]> {
-		// return fs.readdirSync(getFolder(deploymentsFolder, environmentName));
-		return [];
-	}
-	async function hasFile(deploymentsFolder: string, environmentName: string, name: string): Promise<boolean> {
-		// return fs.existsSync(getFile(deploymentsFolder, environmentName, name));
-		return false;
-	}
-	async function deleteAll(deploymentsFolder: string, environmentName: string): Promise<void> {
-		// fs.rmSync(getFolder(deploymentsFolder, environmentName), { recursive: true, force: true });
-	}
-
 	return {
-		writeFileWithChainInfo,
-		listFiles,
-		hasFile,
-		deleteAll,
-		readFile,
-		writeFile,
-		deleteFile,
+		async writeFileWithChainInfo(): Promise<void> {},
+		async writeFile(): Promise<void> {},
+		async deleteFile(): Promise<void> {},
+		async deleteAll(): Promise<void> {},
+		async listFiles(): Promise<string[]> {
+			return [];
+		},
+		async hasFile(): Promise<boolean> {
+			return false;
+		},
+		async readFile(): Promise<string> {
+			return '';
+		},
 	};
 }

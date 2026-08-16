@@ -5,7 +5,8 @@ Browser-compatible deployment execution for Rocketh. This package allows you to 
 ## Features
 
 - 🌐 **Browser-First** - Execute deploy scripts in any web browser
-- 💾 **IndexedDB Storage** - Load deployments from browser storage (planned)
+- 💾 **IndexedDB Storage** - Deployments that survive a page reload
+- 🌲 **Observable Deployments** - Watch deployment files appear as a script runs
 - 🔌 **Wallet Integration** - Works with browser wallet providers
 - 🔧 **Full Rocketh Compatibility** - Same API as Node.js environment
 
@@ -20,6 +21,47 @@ npm install @rocketh/web
 
 # Using yarn
 yarn add @rocketh/web
+```
+
+## Storing Deployments
+
+Where deployments go is the one thing a browser cannot inherit from Node, so it is a choice you make explicitly. `@rocketh/node` writes to the filesystem; here you pass a store to `setupEnvironment`.
+
+| Store                                        | Survives a reload | Use it for                                    |
+| -------------------------------------------- | ----------------- | --------------------------------------------- |
+| `createVFSDeploymentStore()` (**default**)   | no                | one-off runs, playgrounds, tests               |
+| `await createIndexedDBDeploymentStore()`     | yes               | apps that must remember what they deployed     |
+| `createEmptyDeploymentStore()`               | no (discards)     | read-only environments that must not persist   |
+
+```typescript
+import {setupEnvironment, createIndexedDBDeploymentStore} from '@rocketh/web';
+import {config, extensions} from './rocketh/config.js';
+
+// Async because it loads what IndexedDB already holds before returning,
+// so the environment sees previous deployments rather than racing them in.
+const deploymentStore = await createIndexedDBDeploymentStore();
+
+const {loadAndExecuteDeploymentsFromModules, loadEnvironment} = setupEnvironment(config, extensions, {
+	deploymentStore,
+});
+```
+
+Every store is backed by a small in-memory file system you can read and observe, which is how a UI renders a deployment tree that fills in as a script runs:
+
+```typescript
+deploymentStore.vfs.subscribe((change) => {
+	if (change.type === 'write') {
+		console.log(`wrote ${change.path}`); // deployments/localhost/MyContract.json
+	}
+});
+```
+
+To read deployments back without executing anything, load through the store:
+
+```typescript
+import {loadDeploymentsFromStore} from 'rocketh';
+
+const {deployments} = await loadDeploymentsFromStore(deploymentStore, 'deployments', 'sepolia');
 ```
 
 ## Usage
