@@ -1,5 +1,11 @@
 # @rocketh/doc
 
+## 0.19.17
+
+### Patch Changes
+
+- @rocketh/node@0.19.17
+
 ## 0.19.16
 
 ### Patch Changes

@@ -1,5 +1,11 @@
 # @rocketh/verifier
 
+## 0.19.18
+
+### Patch Changes
+
+- @rocketh/node@0.19.17
+
 ## 0.19.17
 
 ### Patch Changes
