@@ -153,7 +153,13 @@ const generateProject = (targetFolder: string, projectName?: string): void => {
 
 	const replacements: Record<string, string> = {
 		'template-hardhat-node-test-runner': `${folderName}`,
-		'workspace:*': hardhatDeployVersion,
+		// A CARET, not the bare version. This string lands in the scaffolded project's
+		//  package.json permanently, so an exact pin would hold that project on whichever
+		//  CLI version happened to create it and refuse every later patch, which is the
+		//  same staleness the template's own ranges are kept clear of (see
+		//  `scripts/sync-template-versions.ts`). `^` gives the newest compatible release at
+		//  scaffold time, and the generated lockfile pins it from then on.
+		'workspace:*': `^${hardhatDeployVersion}`,
 	};
 
 	console.log(`Generating project in: ${targetFolder}`);
