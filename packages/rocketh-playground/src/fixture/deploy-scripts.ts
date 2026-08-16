@@ -47,7 +47,7 @@ export const deployV1 = deployScript(
 				owner: admin,
 				linkedData: {prefix: PREFIX, admin},
 				// CREATE2, so the implementation lands at the same address on every chain. This
-				// is also the step that needs embedded-eth-node >= 0.4.0: an older
+				// is also the step that needs webevm >= 0.5.0: an older
 				// `eth_estimateGas` reported gas CONSUMED, and the inner CREATE2 reverted.
 				deterministicImplementation: true,
 			},

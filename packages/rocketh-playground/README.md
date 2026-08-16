@@ -114,7 +114,7 @@ A step is nothing but deploy-script modules, **including** the steps that only m
 Three things about that shape are worth knowing, because each one costs an afternoon to rediscover:
 
 - **`environment` must not be `memory`, `hardhat` or `default`.** rocketh treats those three as ephemeral and forces `saveDeployments` off, so the run would succeed and store nothing. `createPlayground` refuses them rather than let you find out from an empty widget.
-- **Accounts are private keys, not indices.** They are configured as `privateKey:0x…` through `@rocketh/signer`. An index-based account resolves through `eth_accounts`, which `embedded-eth-node` deliberately does not implement: it is execution-only, taking signed raw transactions and answering reads.
+- **Accounts are private keys, not indices.** They are configured as `privateKey:0x…` through `@rocketh/signer`. An index-based account resolves through `eth_accounts`, which `webevm` deliberately does not implement: it is execution-only, taking signed raw transactions and answering reads.
 - **`modules` are imported modules, not source text.** `@rocketh/web` takes `ModuleObject[]`, so deploy scripts are bundled at build time. Letting a reader edit a script needs a compiler in the page, which is a separate problem.
 
 ## The contracts it deploys
@@ -151,7 +151,7 @@ One lesson is baked into the tests themselves. A widget-level "run it twice" tes
 
 ## Requirements
 
-`embedded-eth-node` **0.4.0 or later**. Earlier versions answered `eth_estimateGas` with gas _consumed_ rather than a usable limit, which silently reverted the inner `CREATE2` and so broke exactly the deterministic deployment this demonstrates.
+`webevm` **0.5.0 or later**. This package was formerly published as `embedded-eth-node`, whose last release under the old name was 0.4.0; `webevm@0.5.0` continues that version line and is otherwise identical. Releases before that answered `eth_estimateGas` with gas _consumed_ rather than a usable limit, which silently reverted the inner `CREATE2` and so broke exactly the deterministic deployment this demonstrates.
 
 ## Related packages
 

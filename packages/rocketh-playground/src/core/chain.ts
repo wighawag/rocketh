@@ -1,15 +1,16 @@
-import {createNode, type SlimNode} from 'embedded-eth-node';
+import {createNode, type SlimNode} from 'webevm';
 import type {EIP1193ProviderWithoutEvents} from 'eip-1193';
 
 /**
  * A private EVM for one playground run, and the EIP-1193 provider rocketh talks to.
  *
- * `embedded-eth-node` is execution-only: no accounts, no signing, no mempool. It takes SIGNED
+ * `webevm` is execution-only: no accounts, no signing, no mempool. It takes SIGNED
  * raw transactions and answers reads. That constraint is the reason accounts here are
  * configured as `privateKey:0x…` (see `buildUserConfig`) rather than by index: index-based
  * accounts resolve through `eth_accounts`, which this node deliberately does not implement.
  *
- * Requires embedded-eth-node >= 0.4.0. Earlier versions answered `eth_estimateGas` with gas
+ * Requires webevm >= 0.5.0 (the package formerly published as `embedded-eth-node`, whose last
+ * release under the old name was 0.4.0). Earlier versions answered `eth_estimateGas` with gas
  * CONSUMED rather than a usable limit, which silently reverted any inner CREATE2 and so broke
  * exactly the deterministic-implementation deploy this widget demonstrates.
  */

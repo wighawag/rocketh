@@ -22,11 +22,11 @@ const EXTERNAL = [
 	'@rocketh/playground',
 	'viem',
 	'eip-1193',
-	'embedded-eth-node',
+	'webevm',
 	/^rocketh\//,
 	/^@rocketh\//,
 	/^viem\//,
-	/^embedded-eth-node\//,
+	/^webevm\//,
 ];
 
 export default defineConfig({

@@ -14,7 +14,7 @@
 	 * which is why the same behaviour is provable headlessly in `test/`.
 	 *
 	 * The core is imported LAZILY, on the first press, and that is not an optimisation detail:
-	 * `embedded-eth-node` is ~750KB unpacked and would otherwise be downloaded by every reader
+	 * `webevm` is ~750KB unpacked and would otherwise be downloaded by every reader
 	 * of a documentation page whether or not they ever press Run.
 	 */
 	import type {LogStream, Playground, PlaygroundDeployment, StepResult, StepState} from '@rocketh/playground';

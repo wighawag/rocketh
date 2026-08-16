@@ -2,7 +2,7 @@
  * Persistence for the deployment VFS.
  *
  * The adapter shape (`load` / `save`, `{db, store, key}` options) deliberately mirrors
- * `embedded-eth-node`'s `createIndexedDBPersistence()`, so a browser app that persists BOTH
+ * `webevm`'s `createIndexedDBPersistence()`, so a browser app that persists BOTH
  * its chain state and its deployments configures them the same way.
  *
  * Persistence is a whole-snapshot concern rather than a per-file one: a deployment set is a
@@ -26,8 +26,8 @@ export interface IndexedDBPersistenceOptions {
 	/**
 	 * Database name. Defaults to `'rocketh'`, deliberately NOT shared with any other library's
 	 * database: two openers of one name at different versions give whichever opened lower a
-	 * `VersionError`. `embedded-eth-node` defaults to `'embedded-eth-node'`, so the two do not
-	 * collide even though their adapter shapes match.
+	 * `VersionError`. `webevm` defaults to `'webevm'`, so the two do not collide even though
+	 * their adapter shapes match.
 	 */
 	db?: string;
 	store?: string;

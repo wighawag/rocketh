@@ -417,12 +417,12 @@ importers:
       eip-1193:
         specifier: ^0.6.5
         version: 0.6.5
-      embedded-eth-node:
-        specifier: ^0.4.0
-        version: 0.4.0
       viem:
         specifier: ^2.55.13
         version: 2.55.13(typescript@6.0.3)(zod@4.4.3)
+      webevm:
+        specifier: ^0.5.0
+        version: 0.5.0
     devDependencies:
       '@sveltejs/vite-plugin-svelte':
         specifier: ^6.2.1
@@ -2965,14 +2965,6 @@ packages:
   electron-to-chromium@1.5.404:
     resolution: {integrity: sha512-3WJtd7/lVq2Jnuz6wed1l9+1ZD2u2Tet1/1NBc4Iedkmgbu+I7YuAqdAQ8T+VZtnwysMsAf3IqSq9D1gyZjA2g==}
 
-  embedded-eth-node@0.4.0:
-    resolution: {integrity: sha512-xcAYq8A/3RilQndEsv6nnu3nSY13stbZR9hOT9JiGTnNjtkbwR+g0d+yESbOFkJctGD4SX3vV2ZrCCQeF2FOMQ==}
-    peerDependencies:
-      comlink: ^4.4.2
-    peerDependenciesMeta:
-      comlink:
-        optional: true
-
   emoji-regex@8.0.0:
     resolution: {integrity: sha512-MSjYzcWNOA0ewAHpz0MxpYFvwg6yjy1NG3xteoqz644VCo/RPgnr1/GGt+ic3iJTzQ8Eu3TdM14SawnVUmGE6A==}
 
@@ -4200,6 +4192,14 @@ packages:
 
   wcwidth@1.0.1:
     resolution: {integrity: sha512-XHPEwS0q6TaxcvG85+8EYkbiCux2XtWG2mkc47Ng2A77BQu9+DqIOJldST4HgPkuea7dvKSj5VgX3P1d4rW8Tg==}
+
+  webevm@0.5.0:
+    resolution: {integrity: sha512-vrcXT7rXSjZeH4tmlARciqlLcYniJy6opfCn+mmKNRLu4WhdCSHol1i0R0WQ4RQ2O2tZk05NldzVUEv53BG+jA==}
+    peerDependencies:
+      comlink: ^4.4.2
+    peerDependenciesMeta:
+      comlink:
+        optional: true
 
   which@2.0.2:
     resolution: {integrity: sha512-BLI3Tl1TW3Pvl70l3yq3Y64i+awpwXqsGBYWkkqMtnbXgrMD+yj7rhW0kuEDxzJaYXGjEW5ogapKNMEKNMjibA==}
@@ -6648,20 +6648,6 @@ snapshots:
 
   electron-to-chromium@1.5.404: {}
 
-  embedded-eth-node@0.4.0:
-    dependencies:
-      '@ethereumjs/block': 10.1.2
-      '@ethereumjs/common': 10.1.2
-      '@ethereumjs/evm': 10.1.2
-      '@ethereumjs/statemanager': 10.1.2
-      '@ethereumjs/tx': 10.1.2
-      '@ethereumjs/util': 10.1.2
-      '@ethereumjs/vm': 10.1.2
-      '@noble/hashes': 2.3.0
-      revm-wasm: 0.3.1
-    transitivePeerDependencies:
-      - supports-color
-
   emoji-regex@8.0.0: {}
 
   end-of-stream@1.4.5:
@@ -8022,6 +8008,20 @@ snapshots:
   wcwidth@1.0.1:
     dependencies:
       defaults: 1.0.4
+
+  webevm@0.5.0:
+    dependencies:
+      '@ethereumjs/block': 10.1.2
+      '@ethereumjs/common': 10.1.2
+      '@ethereumjs/evm': 10.1.2
+      '@ethereumjs/statemanager': 10.1.2
+      '@ethereumjs/tx': 10.1.2
+      '@ethereumjs/util': 10.1.2
+      '@ethereumjs/vm': 10.1.2
+      '@noble/hashes': 2.3.0
+      revm-wasm: 0.3.1
+    transitivePeerDependencies:
+      - supports-color
 
   which@2.0.2:
     dependencies:
