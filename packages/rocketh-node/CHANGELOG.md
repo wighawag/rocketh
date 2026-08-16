@@ -1,5 +1,26 @@
 # @rocketh/node
 
+## 0.19.18
+
+### Patch Changes
+
+- 7f9819e: Stop dropping a user-declared chain whose id viem does not know.
+
+  `readConfig` builds `config.chains` from viem's chain registry and replaces the user's map with it, so a chain id outside that registry (a private network, an in-house devnet, a new rollup) was discarded entirely: not only its `info`, but its `rpcUrl`, `tags`, `deterministicDeployment`, `onUnknownSigner`, `confirmationsRequired` and every other chain-level setting. Deploying to such a chain then either fell back to placeholder chain metadata (`name: 'unknown'`, `UNKNOWN`, which `@rocketh/export` baked into frontend exports) or failed outright with `chain with id <id> has no rpc url provided nor any provider to use`, for a chain that had been declared correctly.
+
+  User-declared ids are now merged in alongside viem's. For an id viem knows, the user's entry keeps layering over viem's metadata field by field, as before; for an id it does not, the user's entry is the whole truth and passes through untouched.
+
+  `mergeChainConfig` (exported) now accepts `undefined` as its `defaultInfo`, meaning "viem has no entry for this id". This widens the parameter type, so existing callers are unaffected.
+
+- 7f9819e: Remove the dead environment-injection block in `readConfig`.
+
+  It built an environment entry for every canonical viem chain name and then threw the result away: the returned config only ever overrode `chains`, so the map was never read. It has been unwired since it was introduced, so removing it changes no behaviour.
+
+  It is removed rather than finished because the design it implemented was rejected on purpose: an auto-injected environment carries viem's public default rpc, those endpoints go stale, and `@rocketh/export` serializes chain info into frontend builds, so a dead public endpoint ended up shipped inside a web app. The reason now lives next to the code and in `docs/adr/0010-environments-stay-explicit.md`, so that unwired code no longer reads as an oversight waiting to be completed.
+
+- Updated dependencies [5266a61]
+  - rocketh@0.19.17
+
 ## 0.19.17
 
 ### Patch Changes
