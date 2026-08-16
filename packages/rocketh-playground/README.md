@@ -94,6 +94,19 @@ Three things about that shape are worth knowing, because each one costs an after
 
 The script passes a `"proxy:"` prefix to the constructor and the message reads back **without** it. That is not a bug and it is deliberately not fixed: a constructor runs against the implementation's storage, never the proxy's, and this script passes no `execute: 'init'` to write the proxy's own slot. It is one of the most common proxy mistakes, it is pinned by a test, and it is good tutorial material.
 
+## Testing
+
+```bash
+pnpm test          # headless, node, runs in CI and in the root `pnpm test`
+pnpm test:browser  # real chromium; needs `pnpm exec playwright install chromium` first
+```
+
+The browser suite is opt-in and lives in its own `vitest.browser.config.ts`, which the root runner does not collect (it globs `packages/*/vitest.config.ts` by exact name). A default test command that fails until you download a browser is one people stop running.
+
+It earns its keep. Every bug this widget has had was found in a browser and none by the headless suite: a keyed-list crash that only appeared on the SECOND run, and a `console.error` from rocketh being painted as a failure.
+
+One lesson is baked into the tests themselves. A widget-level "run it twice" test is nearly worthless here, because both runs print identical text: when the keyed-list bug threw, the render froze on the first run's output and the assertions happily passed against the stale DOM. The regression is therefore pinned at the `Terminal` level, where the two runs say different things and a frozen render is detectable. That test was verified to fail with the bug reintroduced.
+
 ## Requirements
 
 `embedded-eth-node` **0.4.0 or later**. Earlier versions answered `eth_estimateGas` with gas _consumed_ rather than a usable limit, which silently reverted the inner `CREATE2` and so broke exactly the deterministic deployment this demonstrates.

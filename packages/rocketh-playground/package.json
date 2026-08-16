@@ -60,7 +60,9 @@
 	"devDependencies": {
 		"@sveltejs/vite-plugin-svelte": "^6.2.1",
 		"@types/node": "^26.2.0",
+		"@vitest/browser-playwright": "^4.1.10",
 		"as-soon": "^0.1.6",
+		"playwright": "^1.57.0",
 		"rocketh": "workspace:*",
 		"svelte": "^5.45.6",
 		"tsx": "^4.23.12",
@@ -76,6 +78,7 @@
 		"build": "tsc --project tsconfig.json && vite build",
 		"dev": "as-soon -w src pnpm build",
 		"test": "vitest",
+		"test:browser": "vitest run --config vitest.browser.config.ts",
 		"artifact:sync": "tsx scripts/sync-artifact.ts"
 	}
 }
