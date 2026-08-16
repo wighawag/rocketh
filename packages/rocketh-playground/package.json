@@ -1,0 +1,81 @@
+{
+	"name": "@rocketh/playground",
+	"version": "0.0.0",
+	"description": "Run a real rocketh deploy script against a real EVM, in the reader's browser",
+	"keywords": [
+		"rocketh",
+		"ethereum",
+		"deployment",
+		"documentation",
+		"playground"
+	],
+	"author": "Ronan Sandford",
+	"license": "MIT",
+	"homepage": "https://github.com/wighawag/rocketh/blob/main/packages/rocketh-playground/README.md",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/wighawag/rocketh.git",
+		"directory": "packages/rocketh-playground"
+	},
+	"bugs": {
+		"url": "https://github.com/wighawag/rocketh/issues"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"type": "module",
+	"main": "dist/index.js",
+	"module": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"exports": {
+		".": {
+			"import": {
+				"types": "./dist/index.d.ts",
+				"default": "./dist/index.js"
+			}
+		},
+		"./element": {
+			"import": {
+				"types": "./element.d.ts",
+				"default": "./dist/element/rocketh-playground.js"
+			}
+		}
+	},
+	"files": [
+		"dist",
+		"src",
+		"element.d.ts"
+	],
+	"dependencies": {
+		"@rocketh/core": "workspace:*",
+		"@rocketh/deploy": "workspace:*",
+		"@rocketh/proxy": "workspace:*",
+		"@rocketh/read-execute": "workspace:*",
+		"@rocketh/signer": "workspace:*",
+		"@rocketh/web": "workspace:*",
+		"eip-1193": "^0.6.5",
+		"embedded-eth-node": "^0.4.0",
+		"viem": "^2.55.13"
+	},
+	"devDependencies": {
+		"@sveltejs/vite-plugin-svelte": "^6.2.1",
+		"@types/node": "^26.2.0",
+		"as-soon": "^0.1.6",
+		"rocketh": "workspace:*",
+		"svelte": "^5.45.6",
+		"tsx": "^4.23.12",
+		"typescript": "^6.0.3",
+		"vite": "^7.2.6",
+		"vitest": "^4.1.10"
+	},
+	"peerDependencies": {
+		"rocketh": "workspace:*"
+	},
+	"scripts": {
+		"prepublishOnly": "cp ../../LICENSE LICENSE",
+		"build": "tsc --project tsconfig.json && vite build",
+		"dev": "as-soon -w src pnpm build",
+		"test": "vitest",
+		"artifact:sync": "tsx scripts/sync-artifact.ts"
+	}
+}

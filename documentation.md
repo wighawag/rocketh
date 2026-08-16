@@ -15,6 +15,20 @@ Key features of rocketh include:
 - Library linking
 - Support for various deployment strategies
 
+### Try it here
+
+"Deploy scripts that can run anywhere, including in the browser" is easy to claim, so here it is running. Press **Run** and this page will boot an EVM in your tab, execute a real deploy script, and show you what it printed and what it saved.
+
+The script deploys `GreetingsRegistry` behind a proxy, with the implementation deployed deterministically via `CREATE2`. It is the same script `template-ethereum-contracts` ships, and the same `@rocketh/deploy` and `@rocketh/proxy` packages you would use against a real network. Nothing is simulated: the contract really is compiled bytecode, executed by a real EVM, and the addresses you see really have code at them.
+
+<rocketh-playground></rocketh-playground>
+
+Nothing here talks to a network, so nothing is deployed anywhere but your own tab, and everything disappears when you reload.
+
+::: tip Look closely at the message
+The script passes a `"proxy:"` prefix to the contract's constructor, yet the message reads back with no prefix at all. That is not a bug in the demo. A constructor runs against the _implementation's_ storage, never the proxy's, so the proxy's own `prefix` slot was never written. Writing it needs an initializer call at proxy-deploy time. It is one of the most common proxy mistakes, and this is what it looks like.
+:::
+
 ### What is hardhat-deploy?
 
 hardhat-deploy is a plugin for the Hardhat Ethereum development environment that leverages rocketh to provide a comprehensive deployment system. It makes it easy to deploy contracts to any network, keeping track of them and replicating the same environment for testing.

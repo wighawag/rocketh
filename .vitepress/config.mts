@@ -28,6 +28,17 @@ export default defineConfig({
 			},
 		],
 	],
+	// The interactive widgets are custom elements, so the Vue compiler must be told to emit
+	// `<rocketh-playground>` as-is instead of failing to resolve it as a component. Matching on
+	// the `rocketh-` prefix rather than on one name, so a second widget needs no config change.
+	vue: {
+		template: {
+			compilerOptions: {
+				isCustomElement: (tag: string) => tag.startsWith('rocketh-'),
+			},
+		},
+	},
+
 	themeConfig: {
 		// https://vitepress.dev/reference/default-theme-config
 		nav: [
