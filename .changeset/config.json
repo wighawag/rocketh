@@ -8,5 +8,8 @@
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
   "ignore": [],
-  "privatePackages": false
+  "privatePackages": {
+    "version": true,
+    "tag": false
+  }
 }
