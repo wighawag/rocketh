@@ -103,6 +103,24 @@ export function withEnvironment<
 	return result;
 }
 
+/**
+ * Add extensions to an environment IN PLACE, skipping any already present.
+ *
+ * FIRST WRITER WINS, keyed by extension NAME. If this ever ran twice over one environment
+ * with two different versions of the same extension, the second would be silently dropped
+ * and that script would run against the first one's implementation. It is not reachable
+ * that way today: every call site (`@rocketh/node`'s executor, `@rocketh/web`,
+ * `hardhat-deploy`) calls it once on an environment freshly returned from a `load*`
+ * function, with a single extensions bag. The deploy-script path does NOT come through
+ * here at all: `setupDeployScripts` builds a fresh layered object per script, so two
+ * scripts carrying different extension versions coexist rather than clobbering.
+ *
+ * The `hasOwnProperty` test is deliberately a STRING KEY rather than a symbol brand or a
+ * module-level `WeakSet` of seen environments. `@rocketh/core` is a regular dependency, so
+ * a consumer can end up with several copies of it, and any identity-based check would
+ * disagree across them and fail silently. See
+ * `docs/adr/0011-duplicable-core-stays-identity-free.md`.
+ */
 export function enhanceEnvIfNeeded<
 	Extensions extends Record<string, (env: Environment<any, any, any>) => any> = {},
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
