@@ -1,5 +1,36 @@
 # @rocketh/playground
 
+## 0.0.4
+
+### Patch Changes
+
+- 42d7ff6: Publish internal peer dependencies as `^` ranges instead of exact versions.
+
+  Every internal peer was declared `workspace:*`, which pnpm replaces at publish time with the exact version of the peer as it stood at that moment. `@rocketh/export@0.19.19` therefore shipped `peerDependencies: {"@rocketh/node": "0.19.18", "rocketh": "0.19.17"}`, and upgrading that one package forced a consumer to move `@rocketh/node`, `rocketh`, and then everything else pinning the same pair (`hardhat-deploy`, the proxy, router and verifier packages) in a single lockstep step. They are now `workspace:^`, which publishes as `^0.19.18` / `^0.19.17`, meaning `>=0.19.17 <0.20.0`: patch drift inside the 0.19 line is allowed, 0.20.0 is still refused.
+
+  The floor is unchanged, and that is the point. An exact pin and a caret share the same lower bound; they differ only in the ceiling, and a ceiling of "exactly the version that happened to be newest when this package was published" encodes publish timing rather than a compatibility fact. `updateInternalDependencies: "patch"` re-pins these on every release, so the pinned number moved even when the peer's API did not. The caret keeps the lower bound that actually carries meaning (a package needing a fix from its peer still refuses anything older) and drops the upper bound that never did.
+
+  Nine entries across eight packages changed: `hardhat-deploy` (`@rocketh/node`, `rocketh`), `@rocketh/doc` (`@rocketh/node`), `@rocketh/export` (`@rocketh/node`, `rocketh`), `@rocketh/node` (`rocketh`), `@rocketh/playground` (`rocketh`), `@rocketh/test-utils` (`rocketh`), `@rocketh/verifier` (`@rocketh/node`), `@rocketh/web` (`rocketh`). Each consumes named function or type exports of its peer rather than subclassing it, checking `instanceof` against it, or sharing module-level state with it, so none of them requires a single exact peer build. `@rocketh/viem`'s `viem: ^2.45.0` is external and was already a range.
+
+  **What this does NOT do.** Already-published versions keep the exact pins baked into their published `package.json`, and nothing can retroactively widen them. This only takes effect for versions published from this release onward. A project currently stuck on the cascade does not get unstuck by this change alone: it has to re-resolve onto releases that carry the new ranges, which in practice means upgrading the affected rocketh packages once more, after which single-package upgrades within the 0.19 line stop dragging the rest along.
+
+  Two related exact pins are deliberately left alone here and reported separately, because both change installation rather than only the peer constraint. `hardhat-deploy` declares `@rocketh/node` and `rocketh` as regular `dependencies` as well as peers, and a regular dependency pinned exact still forces a specific build, so widening only its peer does not by itself remove `hardhat-deploy` from the cascade. `@rocketh/core` is a regular `workspace:*` dependency of nearly every package and likewise publishes exact, so packages of different vintages can pull in several copies of it.
+
+- c084d4a: Follow the `embedded-eth-node` rename to `webevm`.
+
+  The in-browser EVM the playground runs deploy scripts against was republished under a new name: `embedded-eth-node@0.4.0` is now `webevm@0.5.0`, from `github.com/wighawag/webevm`. The dependency, the import in `core/chain.ts`, the Vite external patterns and the prose references all move across.
+
+  It is a rename and nothing more, which was checked rather than assumed: normalising the package name in the published `dist/*.js` of both versions makes them byte-identical, the export subpaths (`.`, `./revm`, `./worker-entry`, `./worker-host`, `./worker-client`) match, `createNode` and `SlimNode` are still the entry points, and the `.d.ts` differences are confined to doc comments naming the package.
+
+  The one behavioural consequence is the default IndexedDB database name, which follows the package name from `'embedded-eth-node'` to `'webevm'`. That only matters to a browser app relying on the default, and `@rocketh/web` keeps its own default of `'rocketh'`, so the two still do not collide. The comment in `@rocketh/web`'s `createIndexedDBPersistence` that cited the old default is corrected.
+
+  The version floor is unchanged in substance: `webevm@0.5.0` continues the version line, so the `>= 0.4.0` requirement (for an `eth_estimateGas` that returns a usable gas limit rather than gas consumed, which the deterministic `CREATE2` deploy depends on) is now `>= 0.5.0`.
+
+- Updated dependencies [42d7ff6]
+  - @rocketh/web@0.19.18
+  - @rocketh/deploy@0.19.15
+  - @rocketh/proxy@0.19.21
+
 ## 0.0.3
 
 ### Patch Changes
