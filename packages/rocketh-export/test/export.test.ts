@@ -15,6 +15,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import {execFileSync} from 'node:child_process';
+import {createRequire} from 'node:module';
 
 const CHAIN_ID = '31337';
 const GENESIS_HASH = '0x0000000000000000000000000000000000000000000000000000000000000042';
@@ -239,14 +240,25 @@ describe('@rocketh/export - run', () => {
  * compile. Every consumer had to discover and re-solve that.
  */
 describe('@rocketh/export - the generated TypeScript compiles for real consumers', () => {
-	/** Type-check `consumer.ts` against the generated file, returning tsc's output. */
+	/**
+	 * Resolved from THIS FILE, never from `process.cwd()`.
+	 *
+	 * `path.resolve('node_modules/.bin/tsc')` passed locally and failed in CI: the root runner
+	 * (`pnpm test`) and the per-package runner have different cwds, and this machine happened to
+	 * have a hoisted `tsc` in the root `node_modules/.bin` that CI does not. Resolving through
+	 * the module system finds the compiler this package actually depends on, from anywhere.
+	 */
+	const TSC = createRequire(import.meta.url).resolve('typescript/bin/tsc');
+
+	/** Type-check `consumer.ts` against the generated file, returning tsc's own diagnostics. */
 	function typecheck(consumerSource: string): {ok: boolean; output: string} {
 		const consumerFile = path.join(tmpDir, 'consumer.ts');
 		fs.writeFileSync(consumerFile, consumerSource);
 		try {
 			execFileSync(
-				path.resolve('node_modules/.bin/tsc'),
+				process.execPath,
 				[
+					TSC,
 					'--noEmit',
 					'--strict',
 					'--target',
@@ -264,8 +276,15 @@ describe('@rocketh/export - the generated TypeScript compiles for real consumers
 			);
 			return {ok: true, output: ''};
 		} catch (err) {
-			const e = err as {stdout?: string; stderr?: string};
-			return {ok: false, output: `${e.stdout ?? ''}${e.stderr ?? ''}`};
+			const e = err as {stdout?: string; stderr?: string; status?: number | null; code?: unknown};
+			const output = `${e.stdout ?? ''}${e.stderr ?? ''}`;
+			// A compiler that never RAN is not a type error, and must not be reported as one:
+			// that is precisely how this suite failed in CI while passing here. tsc exits 1 or 2
+			// with diagnostics on stdout; a spawn failure has no exit status at all.
+			if (typeof e.status !== 'number') {
+				throw new Error(`could not run tsc at ${TSC} (${String(e.code)}). Output: ${output || '<none>'}`);
+			}
+			return {ok: false, output};
 		}
 	}
 
