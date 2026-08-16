@@ -14,6 +14,7 @@ import type {ResolvedUserConfig} from '@rocketh/core/types';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
+import {execFileSync} from 'node:child_process';
 
 const CHAIN_ID = '31337';
 const GENESIS_HASH = '0x0000000000000000000000000000000000000000000000000000000000000042';
@@ -225,5 +226,121 @@ describe('@rocketh/export - run', () => {
 		await run(config, ENV_NAME, {tojson: outFile as any});
 
 		expect(fs.existsSync(outFile)).toBe(true);
+	});
+});
+
+/**
+ * The generated TypeScript has to COMPILE, and has to compile for the things a real consumer
+ * does with it. String-containment assertions cannot see either.
+ *
+ * These tests were written because `jolly-roger` carries a hand-written cast to work around the
+ * output (`web/src/lib/deployments-store.ts`): `as const` pinned `rpcUrls.default.http` to
+ * `readonly []`, a type that accepts nothing, so injecting an RPC endpoint at run time did not
+ * compile. Every consumer had to discover and re-solve that.
+ */
+describe('@rocketh/export - the generated TypeScript compiles for real consumers', () => {
+	/** Type-check `consumer.ts` against the generated file, returning tsc's output. */
+	function typecheck(consumerSource: string): {ok: boolean; output: string} {
+		const consumerFile = path.join(tmpDir, 'consumer.ts');
+		fs.writeFileSync(consumerFile, consumerSource);
+		try {
+			execFileSync(
+				path.resolve('node_modules/.bin/tsc'),
+				[
+					'--noEmit',
+					'--strict',
+					'--target',
+					'esnext',
+					'--module',
+					'preserve',
+					'--moduleResolution',
+					'bundler',
+					// The package's own tsconfig.json would otherwise be refused (TS5112) and
+					// nothing would be checked at all, which the negative test below caught.
+					'--ignoreConfig',
+					consumerFile,
+				],
+				{encoding: 'utf-8', stdio: 'pipe'},
+			);
+			return {ok: true, output: ''};
+		} catch (err) {
+			const e = err as {stdout?: string; stderr?: string};
+			return {ok: false, output: `${e.stdout ?? ''}${e.stderr ?? ''}`};
+		}
+	}
+
+	beforeEach(async () => {
+		writeDeployment('Token', {
+			abi: [{type: 'function', name: 'getValue', inputs: [], outputs: [{type: 'uint256'}], stateMutability: 'view'}],
+			address: '0x' + 'a'.repeat(40),
+			receipt: {blockNumber: '0x10'},
+		});
+		await run(config, ENV_NAME, {tots: [path.join(tmpDir, 'exported.ts')]});
+	});
+
+	it('lets a consumer build a chain of the exported type carrying an injected RPC endpoint', () => {
+		/**
+		 * The exact thing that was impossible, in the exact shape it bites.
+		 *
+		 * Note what does NOT test this: reading `http` into a `readonly string[]`, or spreading
+		 * the chain and replacing `rpcUrls` with a fresh object. `readonly []` is perfectly
+		 * assignable TO `readonly string[]`, and a wholesale replacement never checks the
+		 * original field, so both pass with the bug fully present (verified). The failure only
+		 * appears when a value must be assignable to the EXPORTED chain type, which is what a
+		 * consumer holding `typeof deployments.chain` actually has to do.
+		 */
+		const result = typecheck(`
+			import deployments from './exported.js';
+			type Chain = typeof deployments.chain;
+			const withEndpoint: Chain = {
+				...deployments.chain,
+				rpcUrls: {default: {http: ['https://example.com']}},
+			};
+			export const endpoint: string | undefined = withEndpoint.rpcUrls.default.http[0];
+		`);
+
+		expect(result.output).toBe('');
+		expect(result.ok).toBe(true);
+	});
+
+	it('lets a consumer read a known chain property without casting', () => {
+		// `properties` is usually `{}`; pinned to `{}` even `undefined` was unreachable.
+		const result = typecheck(`
+			import deployments from './exported.js';
+			export const blockTime = deployments.chain.properties['averageBlockTimeMs'];
+		`);
+
+		expect(result.output).toBe('');
+		expect(result.ok).toBe(true);
+	});
+
+	it('still infers literal contract addresses and ABIs, which is why the output is TypeScript', () => {
+		/**
+		 * The widening is deliberately surgical. If it had been done by dropping `as const`,
+		 * this would fail, and the export would have lost the only thing that makes a
+		 * TypeScript output better than a JSON one.
+		 */
+		const result = typecheck(`
+			import deployments from './exported.js';
+			const address: '0x${'a'.repeat(40)}' = deployments.contracts.Token.address;
+			const fnName: 'getValue' = deployments.contracts.Token.abi[0].name;
+			const chainId: 31337 = deployments.chain.id;
+			export {address, fnName, chainId};
+		`);
+
+		expect(result.output).toBe('');
+		expect(result.ok).toBe(true);
+	});
+
+	it('reports an error for a genuinely wrong usage, so the check above is not vacuous', () => {
+		// If tsc were silently not running, or not resolving the generated file, every
+		// assertion above would pass for the wrong reason.
+		const result = typecheck(`
+			import deployments from './exported.js';
+			export const wrong: number = deployments.contracts.Token.address;
+		`);
+
+		expect(result.ok).toBe(false);
+		expect(result.output).toContain('not assignable');
 	});
 });

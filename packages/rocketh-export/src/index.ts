@@ -11,6 +11,42 @@ import {EIP1193ProviderWithoutEvents} from 'eip-1193';
 
 export const logger = logs('@rocketh/export');
 
+/**
+ * Type declarations prepended to every generated TypeScript output.
+ *
+ * WHY this exists: the generated file is emitted `as const`, which is exactly right for the
+ * CONTRACTS (literal addresses and ABIs are the whole value of exporting TypeScript) and wrong
+ * for the CHAIN, which is configuration a consumer legitimately overrides at run time.
+ *
+ * Two fields were unusable without a hand-written cast at every consumer:
+ *
+ * - `rpcUrls.*.http` — rocketh no longer bakes a public RPC endpoint into chain info, so this
+ *   is very often `[]`, which `as const` pins to `readonly []`. That type accepts NOTHING, so
+ *   any code injecting an endpoint at run time (from an env var, from the user's wallet) fails
+ *   to compile. Even a non-empty list was pinned to its own literal tuple, so replacing an
+ *   endpoint was equally impossible.
+ * - `properties` — usually `{}`, which `as const` pins to `{}`, so reading a known property
+ *   (`averageBlockTimeMs`, `finality`) is a type error rather than `undefined`.
+ *
+ * The alternative was to drop `as const` altogether, which would have thrown away literal
+ * inference on addresses and ABIs, the reason the TypeScript output exists at all. So the
+ * widening is surgical: `chain.id`, `chain.name` and `nativeCurrency` keep their literal types.
+ *
+ * These are local declarations rather than imports, deliberately: a generated deployments file
+ * must stay dependency-free so it can be dropped into any project, including one that has no
+ * rocketh packages installed at all.
+ */
+const CHAIN_TYPE_PRELUDE = `type JSONValue = string | number | boolean | null | JSONValue[] | {[key: string]: JSONValue};
+type ChainRpcUrl = {http: readonly string[]; webSocket?: readonly string[]};
+type ChainRpcUrls = {[key: string]: ChainRpcUrl; default: ChainRpcUrl};
+type WidenChain<C> = Omit<C, 'rpcUrls' | 'properties'> & {
+	rpcUrls: ChainRpcUrls;
+	properties: Record<string, JSONValue>;
+};
+type WidenChainOf<D extends {chain: unknown}> = Omit<D, 'chain'> & {chain: WidenChain<D['chain']>};
+
+`;
+
 export interface ContractExport {
 	address: `0x${string}`;
 	abi: Abi;
@@ -112,7 +148,10 @@ export async function run(
 	const jsmodule = typeof options.tojsm === 'string' ? [options.tojsm] : options.tojsm || [];
 
 	if (ts.length > 0) {
-		const newContent = `export default ${JSON.stringify(exportData, bigIntToStringReplacer, 2)} as const;`;
+		const newContent =
+			CHAIN_TYPE_PRELUDE +
+			`const _deployments = ${JSON.stringify(exportData, bigIntToStringReplacer, 2)} as const;\n` +
+			`export default _deployments as WidenChainOf<typeof _deployments>;\n`;
 		for (const tsFile of ts) {
 			const folderPath = path.dirname(tsFile);
 			fs.mkdirSync(folderPath, {recursive: true});
@@ -126,11 +165,10 @@ export async function run(
 			bigIntToStringReplacer,
 			2,
 		)});`;
-		const dtsContent = `declare const _default:  ${JSON.stringify(
-			exportData,
-			bigIntToStringReplacer,
-			2,
-		)};\nexport default _default;`;
+		const dtsContent =
+			CHAIN_TYPE_PRELUDE +
+			`type _Deployments = ${JSON.stringify(exportData, bigIntToStringReplacer, 2)};\n` +
+			`declare const _default: WidenChainOf<_Deployments>;\nexport default _default;`;
 		for (const jsFile of js) {
 			const folderPath = path.dirname(jsFile);
 			fs.mkdirSync(folderPath, {recursive: true});
@@ -149,7 +187,10 @@ export async function run(
 	}
 
 	if (tsmodule.length > 0) {
-		let newContent = `export const chain = ${JSON.stringify(chainInfo, bigIntToStringReplacer, 2)} as const;\n`;
+		let newContent =
+			CHAIN_TYPE_PRELUDE +
+			`const _chain = ${JSON.stringify(chainInfo, bigIntToStringReplacer, 2)} as const;\n` +
+			`export const chain = _chain as WidenChain<typeof _chain>;\n`;
 
 		for (const contractName of Object.keys(exportData.contracts)) {
 			newContent += `export const ${contractName} = ${JSON.stringify(
