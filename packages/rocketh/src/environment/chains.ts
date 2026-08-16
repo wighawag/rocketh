@@ -65,8 +65,21 @@ export function getChainConfigFromUserConfig(
 
 	const properties = chainConfig?.properties || config.defaultChainProperties || {};
 
+	// WARN, not error: the very next lines build `defaultChainInfo` and the run carries on, so
+	// this is a handled and expected condition (any chain nobody described). It stayed at error
+	// severity long enough for a docs widget that captures the console to paint a red failure
+	// line through a completely successful deploy.
+	//
+	// It stays on `console` rather than moving to the `named-logs` logger used elsewhere in this
+	// package: `logs()` returns a permanent no-op unless something has hooked a factory FIRST,
+	// and only the `@rocketh/node` CLI and `hardhat-deploy` do. Routing this through the logger
+	// would delete the message for every browser and programmatic consumer, which is exactly who
+	// reaches this branch. See `docs/adr/0009-user-facing-notices-stay-on-console.md`.
 	if (!chainConfig?.info) {
-		console.error(`chain with id ${id} ${chainConfig ? 'has a chain config but' : ''} has no public info`);
+		console.warn(
+			`chain with id ${id}${chainConfig ? ' has a chain config but' : ''} has no public info: ` +
+				`falling back to placeholder metadata (name 'unknown', symbol 'UNKNOWN')`,
+		);
 	}
 
 	const rpcUrl = chainConfig?.rpcUrl || chainConfig?.info?.rpcUrls.default.http[0];

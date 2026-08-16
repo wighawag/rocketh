@@ -149,11 +149,12 @@ export function buildUserConfig(definition: PlaygroundDefinition): UserConfig {
 	}
 
 	// Declaring the chain is not decoration. `getChainConfigFromUserConfig`
-	// (packages/rocketh/src/environment/chains.ts) writes
-	// `chain with id <id> has no public info` to console.ERROR for any chain it does not
-	// recognise, and the playground captures the console, so an undeclared chain would paint a
-	// red failure line in the middle of a successful run. The playground knows exactly what
-	// chain it just booted, so it says so rather than letting rocketh guess and complain.
+	// (packages/rocketh/src/environment/chains.ts) warns
+	// `chain with id <id> has no public info` for any chain it does not recognise, and the
+	// playground captures the console, so an undeclared chain would still put a warning line in
+	// the middle of a successful run (it was a red ERROR line until rocketh 0.19.x). The
+	// playground knows exactly what chain it just booted, so it says so rather than letting
+	// rocketh guess and complain.
 	const chains = {
 		[definition.chainId]: {
 			info: {

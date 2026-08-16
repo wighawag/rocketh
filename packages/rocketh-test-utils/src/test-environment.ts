@@ -327,7 +327,7 @@ export async function createTestEnvironment(
 	//    hanging (waitForTransactionReceipt recurses whenever the receipt lacks
 	//    `blockHash`, with no deadline);
 	//  - a chain entry with a `.info`, so `getChainConfigFromUserConfig` does not
-	//    console.error 'chain with id X has no public info'.
+	//    warn 'chain with id X has no public info'.
 	//  A caller-supplied `config.chains[chainId]` merges over the defaults.
 	const callerChain = options.config?.chains?.[chainId];
 	const defaultChainInfo = {
