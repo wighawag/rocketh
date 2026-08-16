@@ -1,22 +1,25 @@
 <script lang="ts">
 	/**
-	 * The Run control. Presentational on purpose: it owns no playground and no chain, so it can
+	 * The run control. Presentational on purpose: it owns no playground and no chain, so it can
 	 * sit above any core-driven snippet.
 	 */
 	let {
 		running = false,
 		hasRun = false,
+		label,
 		onrun,
-	}: {running?: boolean; hasRun?: boolean; onrun: () => void} = $props();
+	}: {running?: boolean; hasRun?: boolean; label?: string; onrun: () => void} = $props();
+
+	const text = $derived(label ?? (hasRun ? 'Run again' : 'Run'));
 </script>
 
 <button type="button" class="run" disabled={running} onclick={onrun} aria-busy={running}>
 	{#if running}
 		<span class="spinner" aria-hidden="true"></span>
-		Deploying…
+		Working…
 	{:else}
 		<span class="glyph" aria-hidden="true">▶</span>
-		{hasRun ? 'Run again' : 'Run'}
+		{text}
 	{/if}
 </button>
 
@@ -35,6 +38,8 @@
 		background: #2f6feb;
 		cursor: pointer;
 		transition: background 120ms ease;
+		/* The label carries a step name, which is long on a phone. */
+		text-align: left;
 	}
 
 	.run:hover:not(:disabled) {
@@ -62,6 +67,7 @@
 		border-top-color: #ffffff;
 		border-radius: 50%;
 		animation: spin 700ms linear infinite;
+		flex: none;
 	}
 
 	@keyframes spin {

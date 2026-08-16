@@ -14,13 +14,19 @@ export {createLogStream, formatConsoleArguments} from './core/log-stream.js';
 export type {LogChange, LogEntry, LogListener, LogSource, LogStream} from './core/log-stream.js';
 export {buildUserConfig, createPlayground} from './core/playground.js';
 export type {
+	DeploymentChange,
 	Playground,
 	PlaygroundAccounts,
 	PlaygroundDefinition,
 	PlaygroundDeployment,
 	PlaygroundExtensions,
-	PlaygroundRunResult,
+	PlaygroundStep,
+	StepResult,
+	StepState,
+	StepStatus,
 } from './core/playground.js';
 
 export {greetingsRegistryPlayground} from './fixture/greetings-registry-playground.js';
+export {extensions} from './fixture/deploy-scripts.js';
 export {GreetingsRegistry} from './fixture/greetings-registry.artifact.js';
+export {GreetingsRegistryV2} from './fixture/greetings-registry-v2.artifact.js';

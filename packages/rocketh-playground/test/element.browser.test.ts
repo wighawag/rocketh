@@ -2,8 +2,8 @@
  * `<rocketh-playground>` — Browser Tests
  *
  * The headless suite in `playground.integration.test.ts` proves the deploy PIPELINE. This
- * proves the RUNTIME: that the custom element registers, that a real click deploys, and that
- * what the reader sees matches what the run produced.
+ * proves the RUNTIME: that the custom element registers, that real clicks walk the tutorial,
+ * and that what the reader sees matches what the run produced.
  *
  * It is a separate, opt-in suite (see `vitest.browser.config.ts`) because it needs a
  * playwright chromium. It is worth its keep: both bugs this widget has had were invisible to a
@@ -15,7 +15,27 @@ import {createLogStream} from '../src/core/log-stream.js';
 import Terminal from '../src/ui/Terminal.svelte';
 import {ELEMENT_NAME} from '../src/ui/element.js';
 
-const DEPLOY_TIMEOUT = 120_000;
+const STEP_TIMEOUT = 120_000;
+
+/** The widget renders into a shadow root, so every query has to go through it. */
+function shadow(element: HTMLElement): ShadowRoot {
+	const root = element.shadowRoot;
+	if (!root) {
+		throw new Error(`${ELEMENT_NAME} has no shadow root: the element was never upgraded`);
+	}
+	return root;
+}
+
+async function waitFor(predicate: () => boolean, timeout = STEP_TIMEOUT): Promise<void> {
+	const deadline = Date.now() + timeout;
+	while (Date.now() < deadline) {
+		if (predicate()) {
+			return;
+		}
+		await new Promise((resolve) => setTimeout(resolve, 50));
+	}
+	throw new Error('timed out waiting for the widget');
+}
 
 /**
  * Append the element and wait for its first render.
@@ -32,13 +52,12 @@ async function mount(): Promise<HTMLElement> {
 	return element;
 }
 
-/** The widget renders into a shadow root, so every query has to go through it. */
-function shadow(element: HTMLElement): ShadowRoot {
-	const root = element.shadowRoot;
-	if (!root) {
-		throw new Error(`${ELEMENT_NAME} has no shadow root: the element was never upgraded`);
+function button(element: HTMLElement): HTMLButtonElement {
+	const found = shadow(element).querySelector('button.run');
+	if (!(found instanceof HTMLButtonElement)) {
+		throw new Error('no run button');
 	}
-	return root;
+	return found;
 }
 
 function lines(element: HTMLElement): {source: string; text: string}[] {
@@ -48,26 +67,13 @@ function lines(element: HTMLElement): {source: string; text: string}[] {
 	}));
 }
 
-async function waitFor(predicate: () => boolean, timeout = DEPLOY_TIMEOUT): Promise<void> {
-	const deadline = Date.now() + timeout;
-	while (Date.now() < deadline) {
-		if (predicate()) {
-			return;
-		}
-		await new Promise((resolve) => setTimeout(resolve, 50));
-	}
-	throw new Error('timed out waiting for the widget');
-}
+const doneCount = (element: HTMLElement) => shadow(element).querySelectorAll('.step.done').length;
 
-const succeeded = (element: HTMLElement) => lines(element).some((line) => line.source === 'success');
-
-async function runOnce(element: HTMLElement): Promise<void> {
-	const button = shadow(element).querySelector('button.run');
-	if (!(button instanceof HTMLButtonElement)) {
-		throw new Error('no run button');
-	}
-	button.click();
-	await waitFor(() => succeeded(element) && !button.disabled);
+/** Click the button and wait until one more step has completed. */
+async function runStep(element: HTMLElement): Promise<void> {
+	const before = doneCount(element);
+	button(element).click();
+	await waitFor(() => doneCount(element) > before && !button(element).disabled);
 }
 
 describe('<rocketh-playground> - Browser Tests', () => {
@@ -85,11 +91,11 @@ describe('<rocketh-playground> - Browser Tests', () => {
 			expect(customElements.get(ELEMENT_NAME)).toBeDefined();
 		});
 
-		it('should upgrade an element that was already in the DOM, and render a Run button', async () => {
+		it('should upgrade an element that was already in the DOM, and offer to start', async () => {
 			const element = await mount();
 
 			expect(element.shadowRoot).not.toBeNull();
-			expect(shadow(element).querySelector('button.run')?.textContent).toContain('Run');
+			expect(button(element).textContent).toContain('Start');
 		});
 
 		it('should keep its styles in a shadow root, so a host page cannot restyle it by accident', async () => {
@@ -102,26 +108,20 @@ describe('<rocketh-playground> - Browser Tests', () => {
 		});
 	});
 
-	describe('Deploying from a click', () => {
+	describe('Walking the tutorial', () => {
 		it(
-			'should deploy a real contract and show what the script printed',
+			'should deploy on the first step and show what the script printed',
 			async () => {
-				/**
-				 * The whole widget, driven the way a reader drives it.
-				 */
 				const element = await mount();
 
-				await runOnce(element);
+				await runStep(element);
 
 				const rendered = lines(element);
-				expect(rendered.some((line) => line.source === 'script' && line.text.includes('proxy deployed at 0x'))).toBe(
-					true,
-				);
-				// The reader sees the script's own words, not a synthetic success message.
-				expect(rendered.some((line) => line.text.includes('Current message for deployer: ""'))).toBe(true);
-				expect(rendered.at(-1)?.source).toBe('success');
+				expect(rendered.some((line) => line.source === 'script' && line.text.includes('proxy      -> 0x'))).toBe(true);
+				expect(rendered.some((line) => line.source === 'step' && line.text.includes('Step 1 of 4'))).toBe(true);
+				expect(doneCount(element)).toBe(1);
 			},
-			DEPLOY_TIMEOUT,
+			STEP_TIMEOUT,
 		);
 
 		it(
@@ -133,32 +133,80 @@ describe('<rocketh-playground> - Browser Tests', () => {
 				 */
 				const element = await mount();
 
-				await runOnce(element);
+				await runStep(element);
 
 				const deployed = shadow(element).querySelectorAll('.panel')[0]?.textContent ?? '';
 				expect(deployed).toContain('GreetingsRegistry');
-				expect(deployed).toMatch(/[1-9]\d*\s+bytes of code/);
-				expect(deployed).not.toMatch(/\b0 bytes of code/);
+				expect(deployed).toMatch(/[1-9]\d*\s+bytes/);
+				expect(deployed).not.toMatch(/\b0 bytes/);
 			},
-			DEPLOY_TIMEOUT,
+			STEP_TIMEOUT,
 		);
 
 		it(
-			'should list the deployment files the run wrote',
+			'should mark the proxy unchanged and the implementation replaced after the upgrade',
+			async () => {
+				/**
+				 * The payoff, as the reader sees it. Everything else in the widget is scaffolding
+				 * for these two words appearing next to the right addresses.
+				 */
+				const element = await mount();
+
+				await runStep(element); // deploy
+				await runStep(element); // greeting
+				await runStep(element); // upgrade
+
+				const rows = [...shadow(element).querySelectorAll('.panel')[0]!.querySelectorAll('li')].map(
+					(row) => row.textContent ?? '',
+				);
+				const proxyRow = rows.find((row) => row.startsWith('GreetingsRegistry0x') || /^GreetingsRegistry\b/.test(row));
+				const implementationRow = rows.find((row) => row.includes('GreetingsRegistry_Implementation'));
+
+				expect(proxyRow).toContain('same address');
+				expect(implementationRow).toContain('replaced');
+			},
+			STEP_TIMEOUT * 3,
+		);
+
+		it(
+			'should show the greeting gaining its prefix only after the upgrade',
+			async () => {
+				/**
+				 * The whole narrative, asserted through the DOM: bare before, prefixed after.
+				 */
+				const element = await mount();
+
+				await runStep(element);
+				await runStep(element);
+				const beforeUpgrade = lines(element).map((line) => line.text);
+				expect(beforeUpgrade.some((text) => text.includes('read back  -> "hello"'))).toBe(true);
+
+				await runStep(element);
+				await runStep(element);
+				const afterUpgrade = lines(element).map((line) => line.text);
+				expect(afterUpgrade.some((text) => text.includes('read back  -> "proxy:hello again"'))).toBe(true);
+			},
+			STEP_TIMEOUT * 4,
+		);
+
+		it(
+			'should offer to start again once every step is done',
 			async () => {
 				const element = await mount();
 
-				await runOnce(element);
+				for (let index = 0; index < 4; index++) {
+					await runStep(element);
+				}
 
-				const files = shadow(element).querySelectorAll('.panel')[1]?.textContent ?? '';
-				expect(files).toContain('deployments/browser/GreetingsRegistry.json');
-				expect(files).toContain('deployments/browser/.chain');
+				expect(doneCount(element)).toBe(4);
+				expect(button(element).textContent).toContain('Start again');
+				expect(button(element).disabled).toBe(false);
 			},
-			DEPLOY_TIMEOUT,
+			STEP_TIMEOUT * 4,
 		);
 
 		it(
-			'should not show an error line on a run that succeeded',
+			'should not show an error line while every step is succeeding',
 			async () => {
 				// rocketh writes `chain with id <id> has no public info` to console.error for a
 				// chain it does not recognise. The playground declares its chain so that never
@@ -166,54 +214,31 @@ describe('<rocketh-playground> - Browser Tests', () => {
 				// deploy.
 				const element = await mount();
 
-				await runOnce(element);
+				await runStep(element);
+				await runStep(element);
 
 				expect(lines(element).filter((line) => line.source === 'error')).toEqual([]);
 			},
-			DEPLOY_TIMEOUT,
+			STEP_TIMEOUT * 2,
 		);
 	});
 
-	describe('Running twice', () => {
+	describe('Starting again', () => {
 		it(
-			'should redeploy on a second press and show one run worth of lines',
-			async () => {
-				/**
-				 * Note what this can and cannot prove. Both runs print identical text, so if the
-				 * terminal froze on run 1's output this assertion would still hold: it confirms the
-				 * widget stays usable and does not visibly stack two runs, and nothing more.
-				 *
-				 * The `each_key_duplicate` regression is pinned by the Terminal test below, where the
-				 * two runs say different things and a stale render is therefore detectable. Keeping
-				 * that honest matters: this test as originally written asserted on a DOM that the
-				 * thrown error had frozen, and passed with the bug fully present.
-				 */
-				const element = await mount();
-
-				await runOnce(element);
-				const afterFirst = lines(element).length;
-
-				await runOnce(element);
-				const afterSecond = lines(element);
-
-				expect(afterSecond).toHaveLength(afterFirst);
-				expect(afterSecond.at(-1)?.source).toBe('success');
-			},
-			DEPLOY_TIMEOUT * 2,
-		);
-
-		it(
-			'should offer to run again rather than staying disabled',
+			'should reset every step and clear the transcript',
 			async () => {
 				const element = await mount();
 
-				await runOnce(element);
+				for (let index = 0; index < 4; index++) {
+					await runStep(element);
+				}
+				button(element).click(); // Start again
+				await waitFor(() => doneCount(element) === 0 && !button(element).disabled);
 
-				const button = shadow(element).querySelector('button.run');
-				expect(button?.textContent).toContain('Run again');
-				expect((button as HTMLButtonElement).disabled).toBe(false);
+				expect(lines(element)).toEqual([]);
+				expect(button(element).textContent).toContain('Start');
 			},
-			DEPLOY_TIMEOUT,
+			STEP_TIMEOUT * 5,
 		);
 	});
 
@@ -222,12 +247,13 @@ describe('<rocketh-playground> - Browser Tests', () => {
 			/**
 			 * REGRESSION, and the one that actually catches it.
 			 *
-			 * The terminal used to accumulate entries locally. `clear()` restarts `seq` at 0, so
-			 * a second run produced two entries keyed 0, Svelte threw `each_key_duplicate`, and
-			 * the render froze on the previous run's output.
+			 * The terminal used to accumulate entries locally. `clear()` restarts `seq` at 0,
+			 * so a reset produced two entries keyed 0, Svelte threw `each_key_duplicate`, and
+			 * the render froze on the previous transcript.
 			 *
 			 * The two runs here say DIFFERENT things, which is what makes a frozen render
-			 * detectable at all. Verified to fail when the accumulating subscriber is put back.
+			 * detectable at all. A widget-level assertion cannot do this job, because the
+			 * steps print the same text every time and a frozen render still satisfies it.
 			 */
 			const logs = createLogStream();
 			const target = document.createElement('div');
@@ -262,6 +288,33 @@ describe('<rocketh-playground> - Browser Tests', () => {
 			try {
 				await waitFor(() => target.textContent?.includes('PRINTED BEFORE MOUNT') ?? false, 5_000);
 				expect(target.querySelectorAll('.line')).toHaveLength(1);
+			} finally {
+				unmount(component);
+			}
+		});
+
+		it('should keep scrolling to the newest line as a long transcript grows', async () => {
+			/**
+			 * Four steps produce far more output than one, and the terminal is a fixed height,
+			 * so the tail has to stay visible without the reader chasing it. Untestable by
+			 * hand on a phone, which is exactly why it is asserted here.
+			 */
+			const logs = createLogStream();
+			const target = document.createElement('div');
+			document.body.appendChild(target);
+			const component = mountComponent(Terminal, {target, props: {logs}});
+
+			try {
+				for (let index = 0; index < 60; index++) {
+					logs.append('script', `line number ${index}`);
+				}
+				await waitFor(() => target.textContent?.includes('line number 59') ?? false, 5_000);
+
+				const scroller = target.querySelector('.terminal') as HTMLElement;
+				await waitFor(() => scroller.scrollHeight > scroller.clientHeight, 5_000);
+				await waitFor(() => Math.abs(scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight) < 4, 5_000);
+
+				expect(scroller.scrollHeight).toBeGreaterThan(scroller.clientHeight);
 			} finally {
 				unmount(component);
 			}

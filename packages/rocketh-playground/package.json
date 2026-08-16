@@ -79,6 +79,7 @@
 		"dev": "as-soon -w src pnpm build",
 		"test": "vitest",
 		"test:browser": "vitest run --config vitest.browser.config.ts",
-		"artifact:sync": "tsx scripts/sync-artifact.ts"
+		"artifact:sync": "tsx scripts/sync-artifact.ts",
+		"contracts:compile": "tsx scripts/compile-contracts.ts"
 	}
 }

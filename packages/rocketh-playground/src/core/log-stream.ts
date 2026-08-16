@@ -15,6 +15,8 @@
 export type LogSource =
 	/** The playground itself: "booting an EVM", "running 1 deploy script". */
 	| 'playground'
+	/** A step boundary in a multi-step tutorial, so the reader can see where they are. */
+	| 'step'
 	/** Written by the deploy script via `console.log` / `console.info` / `console.debug`. */
 	| 'script'
 	/** Written by the deploy script via `console.warn`. */

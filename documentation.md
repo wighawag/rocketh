@@ -17,16 +17,25 @@ Key features of rocketh include:
 
 ### Try it here
 
-"Deploy scripts that can run anywhere, including in the browser" is easy to claim, so here it is running. Press **Run** and this page will boot an EVM in your tab, execute a real deploy script, and show you what it printed and what it saved.
+"Deploy scripts that can run anywhere, including in the browser" is easy to claim, so here it is running. Press **Start** and this page boots an EVM in your tab and walks four real deploy scripts, one step at a time.
 
-The script deploys `GreetingsRegistry` behind a proxy, with the implementation deployed deterministically via `CREATE2`. It is the same script `template-ethereum-contracts` ships, and the same `@rocketh/deploy` and `@rocketh/proxy` packages you would use against a real network. Nothing is simulated: the contract really is compiled bytecode, executed by a real EVM, and the addresses you see really have code at them.
+Nothing is simulated. The contracts are compiled bytecode executed by a real EVM, the scripts are ordinary rocketh scripts using the same `@rocketh/deploy` and `@rocketh/proxy` you would use against mainnet, and every address you see really has code at it. Nothing talks to a network, so nothing is deployed anywhere but your own tab, and it all disappears when you reload.
 
 <rocketh-playground></rocketh-playground>
 
-Nothing here talks to a network, so nothing is deployed anywhere but your own tab, and everything disappears when you reload.
+#### What just happened
 
-::: tip Look closely at the message
-The script passes a `"proxy:"` prefix to the contract's constructor, yet the message reads back with no prefix at all. That is not a bug in the demo. A constructor runs against the _implementation's_ storage, never the proxy's, so the proxy's own `prefix` slot was never written. Writing it needs an initializer call at proxy-deploy time. It is one of the most common proxy mistakes, and this is what it looks like.
+The four steps are a story about upgradeable contracts, and the interesting part is step 2.
+
+1. **Deploy behind a proxy.** `GreetingsRegistry` goes up with a `CREATE2` implementation and a proxy in front of it. You get two addresses: the proxy is the one you hand out, the implementation is the code behind it.
+2. **Write a greeting.** You set `"hello"` and it reads back as `"hello"`, even though the script passed a `"proxy:"` prefix to the contract's constructor. This is the bug, and it is one of the most common proxy mistakes there is: a constructor runs against the _implementation's_ storage, never the proxy's, so the proxy's own `_prefix` slot was never written.
+3. **Upgrade the implementation.** The same proxy is pointed at `GreetingsRegistryV2`, which sets the prefix through a `postUpgrade` call instead of a constructor. Watch the two tags in the Deployed panel: the proxy is **same as before**, the implementation is **replaced**. Your greeting from step 2 is still there.
+4. **Write another greeting.** Now it comes back `"proxy:hello again"`. The greeting from step 2 keeps its old, unprefixed value.
+
+That last asymmetry is worth sitting with. An upgrade replaces **code**, not **storage**: it changes what happens next, it does not rewrite what already happened. It is also why `GreetingsRegistryV2` may only _append_ storage variables. Reordering them, or inserting one above `messages`, would leave the new code reading the old slots and silently reinterpret every greeting anyone had stored.
+
+::: tip Read the contracts
+Both implementations live in [`packages/rocketh-playground/contracts/`](https://github.com/wighawag/rocketh/tree/main/packages/rocketh-playground/contracts), and the four deploy scripts are in [`src/fixture/deploy-scripts.ts`](https://github.com/wighawag/rocketh/blob/main/packages/rocketh-playground/src/fixture/deploy-scripts.ts). They are compiled from that source, so what you read is what ran.
 :::
 
 ### What is hardhat-deploy?

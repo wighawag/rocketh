@@ -8,7 +8,7 @@
 
 <script lang="ts">
 	/**
-	 * The widget: a Run button, the deploy script's output, and what the run produced.
+	 * The widget: a stepped tutorial over one EVM.
 	 *
 	 * It holds no deployment logic. Everything below the `import()` is the framework-free core,
 	 * which is why the same behaviour is provable headlessly in `test/`.
@@ -17,21 +17,31 @@
 	 * `embedded-eth-node` is ~750KB unpacked and would otherwise be downloaded by every reader
 	 * of a documentation page whether or not they ever press Run.
 	 */
-	import type {LogStream, Playground, PlaygroundRunResult} from '@rocketh/playground';
+	import type {LogStream, Playground, PlaygroundDeployment, StepResult, StepState} from '@rocketh/playground';
 	import RunButton from './RunButton.svelte';
+	import Steps from './Steps.svelte';
 	import Terminal from './Terminal.svelte';
 
 	let {
-		heading = 'Deploy a contract, right here',
-		description = 'This runs a real rocketh deploy script against a real EVM inside this page. No wallet, no node, no network.',
+		heading = 'Deploy and upgrade a contract, right here',
+		description = 'Four steps against a real EVM running inside this page. No wallet, no node, no network.',
 	}: {heading?: string; description?: string} = $props();
 
 	let playground = $state<Playground | undefined>();
 	let logs = $state<LogStream | undefined>();
 	let running = $state(false);
-	let result = $state<PlaygroundRunResult | undefined>();
+	let steps = $state<readonly StepState[]>([]);
+	let activeIndex = $state(0);
+	let finished = $state(false);
+	let lastResult = $state<StepResult | undefined>();
 	let files = $state<string[]>([]);
 	let loadError = $state<string | undefined>();
+
+	function sync(active: Playground) {
+		steps = active.steps();
+		activeIndex = active.nextStepIndex();
+		finished = active.isFinished();
+	}
 
 	async function ensurePlayground(): Promise<Playground> {
 		if (playground) {
@@ -46,21 +56,36 @@
 		});
 		playground = created;
 		logs = created.logs;
+		sync(created);
 		return created;
 	}
 
-	async function run() {
+	async function runNext() {
 		running = true;
-		result = undefined;
 		loadError = undefined;
-		files = [];
 		try {
 			const active = await ensurePlayground();
-			result = await active.run();
+			lastResult = await active.runNextStep();
+			sync(active);
 		} catch (err) {
-			// `run()` reports a failed deploy as a result rather than throwing, so reaching here
-			// means the core itself could not be loaded or constructed.
+			// `runNextStep` reports a failed step as a result rather than throwing, so reaching
+			// here means the core itself could not be loaded or constructed.
 			loadError = err instanceof Error ? err.message : String(err);
+		} finally {
+			running = false;
+		}
+	}
+
+	async function restart() {
+		if (!playground) {
+			return;
+		}
+		running = true;
+		try {
+			await playground.reset();
+			lastResult = undefined;
+			files = [];
+			sync(playground);
 		} finally {
 			running = false;
 		}
@@ -69,6 +94,31 @@
 	function shorten(address: string): string {
 		return `${address.slice(0, 10)}…${address.slice(-8)}`;
 	}
+
+	/** The word next to an address. The proxy staying put is the entire lesson, so it is labelled. */
+	function changeLabel(change: PlaygroundDeployment['change']): string {
+		switch (change) {
+			case 'new':
+				return 'new';
+			case 'changed':
+				return 'replaced';
+			case 'unchanged':
+				return 'same address';
+		}
+	}
+
+	/**
+	 * Kept visible after the step that caused it, because `change` is relative to the previous
+	 * step only: without this the implementation reads "replaced" during the upgrade and loses
+	 * it on the very next click, taking the point of the tutorial with it.
+	 */
+	function sinceLabel(deployment: PlaygroundDeployment): string {
+		return deployment.change === 'unchanged' ? `since step ${deployment.changedAtStep}` : '';
+	}
+
+	const nextLabel = $derived(
+		finished ? 'Start again' : activeIndex === 0 ? 'Start' : `Step ${activeIndex + 1}: ${steps[activeIndex]?.step.label ?? ''}`,
+	);
 </script>
 
 <section class="playground" aria-label={heading}>
@@ -77,14 +127,24 @@
 			<h3>{heading}</h3>
 			<p>{description}</p>
 		</div>
-		<RunButton {running} hasRun={result !== undefined} onrun={run} />
+		<div class="controls">
+			{#if finished}
+				<RunButton {running} hasRun={true} label="Start again" onrun={restart} />
+			{:else}
+				<RunButton {running} hasRun={activeIndex > 0} label={nextLabel} onrun={runNext} />
+			{/if}
+		</div>
 	</header>
+
+	{#if steps.length > 0}
+		<Steps {steps} {activeIndex} {running} />
+	{/if}
 
 	{#if logs}
 		<Terminal {logs} />
 	{:else}
 		<div class="terminal-placeholder">
-			<p>Press Run to boot an EVM in this tab and deploy.</p>
+			<p>Press Start to boot an EVM in this tab and deploy.</p>
 		</div>
 	{/if}
 
@@ -92,21 +152,25 @@
 		<p class="load-error" role="alert">Could not start the playground: {loadError}</p>
 	{/if}
 
-	{#if result}
+	{#if lastResult}
 		<div class="results">
 			<div class="panel">
 				<h4>Deployed</h4>
-				{#if result.deployments.length === 0}
+				{#if lastResult.deployments.length === 0}
 					<p class="empty">Nothing was deployed.</p>
 				{:else}
 					<ul>
-						{#each result.deployments as deployment (deployment.name)}
+						{#each lastResult.deployments as deployment (deployment.name)}
 							<li>
 								<span class="name">{deployment.name}</span>
 								<code title={deployment.address}>{shorten(deployment.address)}</code>
+								<span class="tag {deployment.change}">{changeLabel(deployment.change)}</span>
+								{#if sinceLabel(deployment)}
+									<span class="meta">{sinceLabel(deployment)}</span>
+								{/if}
 								<!-- Code SIZE, not just an address: a proxy over a missing implementation
 								     would show an address here and answer 0x to every call. -->
-								<span class="meta">{deployment.codeSize} bytes of code</span>
+								<span class="meta">{deployment.codeSize} bytes</span>
 							</li>
 						{/each}
 					</ul>
@@ -158,6 +222,7 @@
 		align-items: flex-start;
 		justify-content: space-between;
 		gap: 1rem;
+		flex-wrap: wrap;
 		padding: 0.9rem 1rem;
 		border-bottom: 1px solid var(--rocketh-playground-border, #d0d7de);
 	}
@@ -172,6 +237,11 @@
 		margin: 0.2rem 0 0;
 		font-size: 0.8125rem;
 		color: var(--rocketh-playground-muted, #656d76);
+	}
+
+	.controls {
+		display: flex;
+		gap: 0.5rem;
 	}
 
 	.terminal-placeholder {
@@ -246,6 +316,32 @@
 
 	.empty {
 		margin: 0;
+	}
+
+	.tag {
+		font-size: 0.65rem;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+		padding: 0.05rem 0.35rem;
+		border-radius: 0.6rem;
+		font-weight: 700;
+	}
+
+	.tag.new {
+		background: #ddf4ff;
+		color: #0969da;
+	}
+
+	/* The one that carries the lesson: the implementation was replaced. */
+	.tag.changed {
+		background: #fff1e5;
+		color: #bc4c00;
+	}
+
+	/* And the other half of it: the proxy address did not move. */
+	.tag.unchanged {
+		background: #f0f1f3;
+		color: #57606a;
 	}
 
 	code {
