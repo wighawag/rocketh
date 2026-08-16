@@ -1,5 +1,52 @@
 # hardhat-deploy
 
+## 2.0.23
+
+### Patch Changes
+
+- 1fe61e3: Declare `rocketh` and `@rocketh/node` as peers only, not also as dependencies.
+
+  `hardhat-deploy` listed both in `dependencies` AND `peerDependencies`. Because `workspace:*` publishes as an exact version, the dependency entries shipped as `rocketh@0.19.17` and `@rocketh/node@0.19.18`, and a regular dependency pinned exact is more binding than a peer: it forces that specific build regardless of what the project already has. Widening the peers to `^` therefore did not, on its own, take `hardhat-deploy` out of the lockstep upgrade it was contributing to.
+
+  Worse, the exact dependency actively caused duplication. The documented install and the `init` template both give the user `rocketh` and `@rocketh/node` as their own direct dependencies at `^0.19.x`, so a project that had resolved to a newer patch got a SECOND, nested copy of each pinned to the older exact version, with `hardhat-deploy`'s helpers running against different module instances than the user's own deploy scripts and config.
+
+  Peers are the correct declaration here. The user provides these: `npm install -D hardhat-deploy rocketh @rocketh/node …` is the documented install, the scaffolded template lists both, and the user's own `rocketh/config.ts`, `rocketh/deploy.ts` and `rocketh/environment.ts` import from them directly. They must resolve to one shared instance, which is exactly what a peer expresses and what a dependency does not. This also brings `hardhat-deploy` in line with the other seven packages that declare an internal peer, all of which already use devDependency plus peerDependency; `hardhat-deploy` was the only one using dependency plus peerDependency. They are now devDependencies here, so the package still builds and tests in the workspace.
+
+  The `hardhat-deploy init` CLI and the postinstall notice are unaffected: both import only Node builtins and `commander`, so `npx hardhat-deploy init` still works standalone, before any project or peer exists.
+
+  Anyone following the documented install or using the template already declares both and sees no change. A project that installed `hardhat-deploy` alone and relied on the transitive copy will have the peers auto-installed by npm 7+ and pnpm 8+, but package managers that do not auto-install peers (Yarn Berry) will now report them as missing and need them added explicitly.
+
+- 5dedc2a: `hardhat-deploy init` now scaffolds `hardhat-deploy` as a `^` range rather than an exact pin.
+
+  The `init` CLI substitutes the template's `"hardhat-deploy": "workspace:*"` sentinel for its own version when it copies the project, and it wrote that version bare. A project scaffolded by `2.0.22` therefore got `"hardhat-deploy": "2.0.22"`, pinned exactly and refusing every later patch, so it silently stayed on whichever CLI version happened to create it until someone edited the range by hand. It now writes `^2.0.22`, matching how the template already declares the rocketh packages.
+
+  This affects newly scaffolded projects only. An existing project keeps whatever its `package.json` already says, and can widen the pin itself.
+
+- 42d7ff6: Publish internal peer dependencies as `^` ranges instead of exact versions.
+
+  Every internal peer was declared `workspace:*`, which pnpm replaces at publish time with the exact version of the peer as it stood at that moment. `@rocketh/export@0.19.19` therefore shipped `peerDependencies: {"@rocketh/node": "0.19.18", "rocketh": "0.19.17"}`, and upgrading that one package forced a consumer to move `@rocketh/node`, `rocketh`, and then everything else pinning the same pair (`hardhat-deploy`, the proxy, router and verifier packages) in a single lockstep step. They are now `workspace:^`, which publishes as `^0.19.18` / `^0.19.17`, meaning `>=0.19.17 <0.20.0`: patch drift inside the 0.19 line is allowed, 0.20.0 is still refused.
+
+  The floor is unchanged, and that is the point. An exact pin and a caret share the same lower bound; they differ only in the ceiling, and a ceiling of "exactly the version that happened to be newest when this package was published" encodes publish timing rather than a compatibility fact. `updateInternalDependencies: "patch"` re-pins these on every release, so the pinned number moved even when the peer's API did not. The caret keeps the lower bound that actually carries meaning (a package needing a fix from its peer still refuses anything older) and drops the upper bound that never did.
+
+  Nine entries across eight packages changed: `hardhat-deploy` (`@rocketh/node`, `rocketh`), `@rocketh/doc` (`@rocketh/node`), `@rocketh/export` (`@rocketh/node`, `rocketh`), `@rocketh/node` (`rocketh`), `@rocketh/playground` (`rocketh`), `@rocketh/test-utils` (`rocketh`), `@rocketh/verifier` (`@rocketh/node`), `@rocketh/web` (`rocketh`). Each consumes named function or type exports of its peer rather than subclassing it, checking `instanceof` against it, or sharing module-level state with it, so none of them requires a single exact peer build. `@rocketh/viem`'s `viem: ^2.45.0` is external and was already a range.
+
+  **What this does NOT do.** Already-published versions keep the exact pins baked into their published `package.json`, and nothing can retroactively widen them. This only takes effect for versions published from this release onward. A project currently stuck on the cascade does not get unstuck by this change alone: it has to re-resolve onto releases that carry the new ranges, which in practice means upgrading the affected rocketh packages once more, after which single-package upgrades within the 0.19 line stop dragging the rest along.
+
+  Two related exact pins are deliberately left alone here and reported separately, because both change installation rather than only the peer constraint. `hardhat-deploy` declares `@rocketh/node` and `rocketh` as regular `dependencies` as well as peers, and a regular dependency pinned exact still forces a specific build, so widening only its peer does not by itself remove `hardhat-deploy` from the cascade. `@rocketh/core` is a regular `workspace:*` dependency of nearly every package and likewise publishes exact, so packages of different vintages can pull in several copies of it.
+
+- b7ffdbe: Point the `hardhat-deploy init` template at current package versions, and keep it there automatically.
+
+  The template shipped inside `hardhat-deploy` (`templates/basic/package.json`, what `npx hardhat-deploy init` scaffolds) listed the rocketh packages at ranges nothing kept up to date, so they had drifted many patch releases behind: `rocketh` at `^0.19.4` against a published `0.19.17`, `@rocketh/proxy` at `^0.19.7` against `0.19.21`. They now name the current versions.
+
+  Worth being precise about the impact, because it is smaller than it looks and the real risk is elsewhere. Inside one 0.x minor the drift was invisible: `^0.19.4` already resolves to the newest `0.19.x` on the registry, so scaffolded projects were getting up-to-date packages regardless. It would have stopped being invisible at the next MINOR. Once `0.20.0` or `1.0.0` ships, `^0.19.4` refuses it and every newly scaffolded project silently starts on the abandoned line, with `init` still appearing to work perfectly. That is the failure this prevents.
+
+  `scripts/sync-template-versions.ts` now rewrites those ranges from the workspace, and it runs as part of `changeset:version`, which is the `version-script` the release workflow already invokes. The template is not a workspace member (`pnpm-workspace.yaml` covers `packages/*` and the template sits a level deeper), so neither pnpm nor changesets was maintaining it and an explicit step was needed. `pnpm sync:template:check` fails on drift if it is ever wanted as a gate.
+
+  Ranges are written as `^<version>` rather than `latest` or `*` on purpose: the specifier ends up in the user's own `package.json` permanently, so a floating one would make their project re-resolve differently on every install forever. `^` of the just-released version gives the newest compatible package at scaffold time and a lockfile pins it after that, with no network call during `init` and a set of versions that were released together. `"hardhat-deploy": "workspace:*"` is left alone, since the `init` CLI substitutes that exact sentinel for its own version when copying the template.
+
+- Updated dependencies [42d7ff6]
+  - @rocketh/node@0.19.19
+
 ## 2.0.22
 
 ### Patch Changes
