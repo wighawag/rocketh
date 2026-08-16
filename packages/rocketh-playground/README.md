@@ -33,19 +33,14 @@ Optional attributes: `heading`, `description`.
 
 The EVM and rocketh (~1.6MB) are behind a dynamic import that only runs on the first **Run** press, so a page carrying the widget does not make every reader download an EVM.
 
-## Not published to npm, deliberately
+## Publishing
 
-This package is `"private": true`. The docs site consumes it through the pnpm workspace, which needs no registry.
+Published as `@rocketh/playground`. The docs site does not go through the registry (it consumes the package through the pnpm workspace), so a release only matters for outside consumers embedding the widget.
 
-It is private for a mechanical reason and a judgement one. The mechanical one: this repo releases through npm **Trusted Publishing (OIDC)**, and npm ties a trusted publisher to an **already-existing** package, so OIDC cannot create a brand-new one. A first publish has to be done by hand, and until it is, `changeset publish` fails the whole release job with `E404 Not Found - PUT .../@rocketh%2fplayground` (which it did, on the first Version Packages merge, after successfully publishing the other eight packages). The judgement one: the API has already changed shape once (`run()` became `runNextStep()` plus `reset()`) and will change again for an editable step, so there is nothing here worth pinning for outside consumers yet.
+Two things about this repo's release flow bit us once each, and both are worth knowing before you touch versioning here:
 
-Changesets still **versions** it and keeps its `CHANGELOG.md` (`privatePackages: {version: true, tag: false}` in `.changeset/config.json`), so a normal changeset naming this package still works. It just never reaches the registry, and gets no git tag.
-
-**To publish it later**, in this order, or the release job will break again:
-
-1. `npm publish --access public` once from this directory, with a real npm login.
-2. Register this repo + `.github/workflows/release.yml` as a trusted publisher for `@rocketh/playground` on npmjs.com.
-3. Only then remove `"private": true` and restore `"publishConfig": {"access": "public"}`.
+- **npm Trusted Publishing (OIDC) cannot create a brand-new package.** npm ties a trusted publisher to an already-existing package, so the first publish of any new package in this repo has to be done by hand (`npm publish --access public`) and the trusted publisher registered on npmjs.com afterwards. Until that is done, `changeset publish` fails the entire release job with `E404 Not Found - PUT /@rocketh%2f<name>`, taking the other packages' release down with it.
+- **An empty changeset sitting on `main` silently blocks publishing.** `changesets/action` takes the version/PR path whenever any changeset file exists. If every one of them is empty it logs `All changesets are empty; not creating PR` and exits WITHOUT publishing, so a package whose version is ahead of the registry stays unpublished with a green release job. The publish path only runs when there are no changeset files at all. So an empty changeset needs a real one alongside it, or it has to be consumed, before anything can ship.
 
 ## How the docs site consumes it
 
