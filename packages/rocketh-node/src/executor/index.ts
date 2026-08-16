@@ -16,7 +16,6 @@ import {
 	type ChainInfo,
 	type ChainUserConfig,
 	Chains,
-	Environments,
 } from '@rocketh/core/types';
 import {
 	resolveConfig,
@@ -32,7 +31,7 @@ import {traverseMultipleDirectory} from '../utils/fs.js';
 import {createFSDeploymentStore} from '../environment/deployment-store.js';
 import {createNodePromptExecutor} from '../environment/prompt.js';
 import {logs} from 'named-logs';
-import {chainByCanonicalName, chainById} from '../environment/chains.js';
+import {chainById} from '../environment/chains.js';
 
 const logger = logs('@rocketh/node');
 
@@ -160,29 +159,37 @@ async function readConfig<
 
 	const includeDefaultRPCUrlsInChainInfos = configFile?.includeDefaultRPCUrlsInChainInfos === true;
 
-	const chainIds = Object.keys(chainById).map((v) => parseInt(v));
+	// The ids to produce an entry for: viem's registry PLUS every id the user declared.
+	// The second half is not optional. `chains` is REPLACED by this map below, so an id viem
+	// does not know (a private chain, a custom rollup) used to be dropped from the config
+	// outright: not just its `info`, but its `rpcUrl`, `tags`, `deterministicDeployment`,
+	// `onUnknownSigner`, `confirmationsRequired`, all of it. The run then either fell back to
+	// placeholder chain metadata or died with `has no rpc url provided nor any provider to use`,
+	// for a chain the user had declared correctly.
+	const chainIds = new Set<number>(
+		[...Object.keys(chainById), ...Object.keys(configFile?.chains ?? {})]
+			.map((v) => parseInt(v))
+			.filter((v) => Number.isInteger(v)),
+	);
 	for (const chainId of chainIds) {
 		newChainConfigs[chainId] = mergeChainConfig(
 			// TODO what do we do about further info?
 			//  for now, we just take the first one
-			chainById[chainId][0],
+			// `undefined` for a user-declared id viem has never heard of.
+			chainById[chainId]?.[0],
 			configFile?.chains?.[chainId],
 			includeDefaultRPCUrlsInChainInfos,
 		);
 	}
 
-	const newEnvironments: Mutable<Environments> = {};
-	const canonicalNames = Object.keys(chainByCanonicalName);
-	for (const canonicalName of canonicalNames) {
-		const existingConfig = configFile?.environments?.[canonicalName];
-
-		const defaultConfig = chainByCanonicalName[canonicalName];
-		newEnvironments[canonicalName] = {
-			chain: defaultConfig.id,
-			...existingConfig,
-		};
-	}
-
+	// NOTE: environments are NOT auto-populated from viem's chain registry, and deliberately so.
+	// Doing it (turning every canonical chain name into a ready-made environment) was tried and
+	// abandoned: each injected environment carries viem's PUBLIC default rpc, those endpoints go
+	// stale and stop answering, and the url does not stay put: `@rocketh/export` serializes chain
+	// info into frontend builds, so a dead public endpoint ended up shipped inside a web app.
+	// `includeDefaultRPCUrlsInChainInfos` (default off, see `mergeChainConfig`) is the other half
+	// of that same lesson. An environment therefore stays explicit: the user names it and says
+	// which chain it is. See `docs/adr/0010-environments-stay-explicit.md`.
 	const config: UserConfig<NamedAccounts, Data> = configFile
 		? {...configFile, chains: newChainConfigs}
 		: {chains: newChainConfigs};
@@ -207,12 +214,26 @@ async function readConfig<
  * Regardless of that flag, viem's default rpc is still exposed to the deploy
  * path via the top-level `rpcUrl` (unless the user set one), so deploying keeps
  * working with zero config while the default is never serialized into `info`.
+ *
+ * `defaultInfo` is `undefined` for a chain id viem does not know, which is the
+ * only kind of chain the user must describe themselves.
  */
 export function mergeChainConfig(
-	defaultInfo: ChainInfo,
+	defaultInfo: ChainInfo | undefined,
 	existingConfig: ChainUserConfig | undefined,
 	includeDefaultRPCUrls: boolean,
 ): ChainUserConfig {
+	// Nothing from viem to layer under: this chain is one only the user knows about, so their
+	// config IS the whole truth and passes through untouched.
+	//
+	// `info` deliberately stays ABSENT when they did not supply one, instead of becoming `{}`:
+	// an empty object is a TRUTHY `info`, which would satisfy the `!chainConfig?.info` check in
+	// `getChainConfigFromUserConfig` and defeat its placeholder fallback, yielding chain info
+	// with no id, name or nativeCurrency rather than the clearly-labelled 'unknown' placeholder.
+	if (!defaultInfo) {
+		return existingConfig ?? {};
+	}
+
 	const mergedInfo: ChainInfo = {
 		...defaultInfo,
 		...existingConfig?.info,

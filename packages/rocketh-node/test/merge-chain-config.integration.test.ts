@@ -76,7 +76,58 @@ describe('@rocketh/node - mergeChainConfig', () => {
 		});
 	});
 
-	it('handles a chain viem does not know a default rpc for (no rpcUrl, empty info)', () => {
+	/**
+	 * A chain id viem has never heard of: a private network, an in-house devnet, a fresh
+	 * rollup. There is no default to layer under, so the user's config is the whole truth and
+	 * must survive intact. Before this was handled, the caller dropped such an id from
+	 * `config.chains` altogether and the user's settings vanished silently.
+	 */
+	describe('a chain id viem does not know (defaultInfo === undefined)', () => {
+		const userDeclared: ChainUserConfig = {
+			rpcUrl: 'http://localhost:9999',
+			tags: ['private'],
+			onUnknownSigner: 'throw',
+			confirmationsRequired: 3,
+			info: {
+				id: 424242,
+				name: 'My Private Chain',
+				nativeCurrency: {name: 'Custom', symbol: 'CUS', decimals: 18},
+				rpcUrls: {default: {http: ['http://localhost:9999']}},
+			},
+		};
+
+		it("keeps the user's info verbatim", () => {
+			const merged = mergeChainConfig(undefined, userDeclared, false);
+			expect(merged.info).toEqual(userDeclared.info);
+		});
+
+		it('keeps every other chain-level setting the user declared', () => {
+			const merged = mergeChainConfig(undefined, userDeclared, false);
+			expect(merged.rpcUrl).toBe('http://localhost:9999');
+			expect(merged.tags).toEqual(['private']);
+			expect(merged.onUnknownSigner).toBe('throw');
+			expect(merged.confirmationsRequired).toBe(3);
+		});
+
+		/**
+		 * The important negative case. `info` must stay ABSENT rather than become `{}`, because
+		 * `getChainConfigFromUserConfig` branches on `!chainConfig?.info` to build its labelled
+		 * 'unknown' placeholder. An empty object is truthy and would sail past that check,
+		 * producing chain info with no id, name or nativeCurrency at all.
+		 */
+		it('leaves info absent (not {}) when the user supplied none', () => {
+			const merged = mergeChainConfig(undefined, {rpcUrl: 'http://localhost:9999'}, false);
+			expect(merged.info).toBeUndefined();
+			expect(merged.rpcUrl).toBe('http://localhost:9999');
+		});
+
+		it('does not invent an rpcUrl (there is no viem default to fall back to)', () => {
+			const merged = mergeChainConfig(undefined, {tags: ['private']}, false);
+			expect(merged.rpcUrl).toBeUndefined();
+		});
+	});
+
+	it('handles a chain viem does know but has no default rpc for (no rpcUrl, empty info)', () => {
 		const custom: ChainInfo = {
 			id: 987654321,
 			name: 'Custom',
