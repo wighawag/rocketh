@@ -1,5 +1,51 @@
 # @rocketh/export
 
+## 0.19.21
+
+### Patch Changes
+
+- a67cb72: Fail instead of silently doing nothing when no output file was asked for.
+
+  The sibling of the "no deployments" no-op, in the same function and with the same shape: `rocketh-export -e localhost` with no `--ts`/`--js`/`--json`/`--tsm`/`--jsm` printed `no filepath to export to are specified` on **stdout** and exited **0**. A chained `deploy && export && dev` therefore carried on with an output file that was never regenerated, which is the same failure the deployments fix addressed, reached by a different route.
+
+  It now throws `NoOutputPathError`, and the CLI prints on stderr and exits 1. The message names the environment that was being exported and the flags that would satisfy the request (with the `run()` option names alongside, since the same error reaches a programmatic caller):
+
+  ```
+  rocketh-export: no output file specified for the export of environment 'localhost'
+    pass at least one of --ts, --js, --json, --tsm, --jsm (tots, tojs, tojson, totsm, tojsm when calling run() directly)
+  ```
+
+  The check stays where it was, ahead of loading the environment, so this is reported before "no deployments" when both are true. That is deliberate: it is the caller's own arguments that are wrong, and that is the first thing they have to fix, whatever the deployments hold. A test pins the precedence.
+
+  Both failures now share an `ExportError` base class, which is what the CLI branches on: an `ExportError` is reported as a message with exit 1, anything else keeps its stack trace because it means something unexpected went wrong. A base class rather than a union of `instanceof` checks, so a failure added later joins that branch instead of silently falling through to the stack-trace path.
+
+  **Is this breaking?** Only for an invocation that passed no output flag, which produced no output before and produces none now; the difference is that it says so. The one caller in this repo that could reach it, `"export": "ldenv rocketh-export -n @@MODE @@"` in `demoes/hardhat-deploy/proxies`, already fails earlier and unrelatedly: it passes `-n`, which was renamed to `-e`, so commander refuses it with `required option '-e, --environment <value>' not specified`. That script needs fixing on its own account and is untouched here.
+
+- e985174: Fail instead of silently doing nothing when the named environment has no deployments.
+
+  `rocketh-export -e nosuchnet --ts ../web/src/lib/deployments.ts` printed `no deployments to export` on **stdout**, exited **0**, and wrote nothing. What made that dangerous is not the missing write on its own: the generated file is the consuming app's source of truth for addresses and ABIs, and it is normally ALREADY THERE from an earlier export against a different environment. So "write nothing and succeed" does not leave the app with no deployments, it leaves it with **another environment's** deployments, silently. The case that prompted this: a project ran `attach sepolia` against an environment with no records, the export no-opped, the dev server came up, and the app talked to localhost addresses while the developer believed they were on Sepolia. Nothing in that chain reported a problem. A typo in `-e` produces exactly the same silence and is the more common way to hit it.
+
+  Now `run()` throws `NoDeploymentsError` and the CLI prints a message on **stderr** and exits **1**. Two situations the old single branch collapsed together are now told apart, because the reader's next action differs:
+
+  - `reason: 'missing-folder'`: no deployment folder for that environment at all. The message names the path it looked at and lists the environments that DO exist, since a typo is the common cause. If the deployments folder itself is absent it says so, pointing at `-d` / the config's `deployments` rather than at the environment name.
+  - `reason: 'no-records'`: the folder is there but holds no deployment record. Not a typo, so the message says the folder exists and to deploy first.
+
+  Both are fatal, and the exit code is the same for both. They differ in cause but not in consequence: whichever one happened, the consumer is about to read a stale file, and there is nothing useful to write in either case. The message also names the output files that were left in place, because those holding a previous environment's addresses is the actual danger and nothing else in the chain reports it:
+
+  ```
+  rocketh-export: no deployments to export for environment 'nosuchnet'
+    no such deployment folder: /project/deployments/nosuchnet
+    environments found in /project/deployments: localhost, sepolia
+    check the name passed to -e, or deploy to 'nosuchnet' first
+    nothing was written: /project/web/src/lib/deployments.ts still holds the result of a previous export
+  ```
+
+  The failure is raised before any `mkdir` or write, so a failed export leaves every output file byte-identical and creates no directories: half-writing the file on the way to erroring would be worse than the bug being fixed. This is covered by a test, as is the CLI's exit code and stream, which `run()` alone cannot show.
+
+  **Is this breaking?** Yes for anyone relying on the silent no-op. It is declared `patch` only because this monorepo forces every pre-1.0 changeset to `patch` (see `scripts/force-patch-changesets.ts`, where a 0.x `minor` cascades peer-dependents to `1.0.0`), not because the change is compatible: an invocation that exited 0 now exits 1. In practice that caller has to be exporting an environment it does not require to exist, for example a loop over several environments in a build script that tolerates gaps. No such caller exists in this repo or in the documented flows: `-e/--environment` is a `requiredOption` and `run(config, environmentName, options)` takes the name as a required argument, so every invocation names exactly one environment and is therefore making a request that deserves an answer. If a tolerant caller does turn up, the fix is a flag to opt back into a warning, not a return to exiting 0 by default.
+
+  Also awaited in the CLI, which was calling `run()` without awaiting: any other failure (a missing `.chain` file, for instance) surfaced as an unhandled rejection rather than a reported error.
+
 ## 0.19.20
 
 ### Patch Changes
