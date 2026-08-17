@@ -47,6 +47,39 @@ type WidenChainOf<D extends {chain: unknown}> = Omit<D, 'chain'> & {chain: Widen
 
 `;
 
+/**
+ * Base of the failures that are a USER-FACING CONDITION rather than a bug.
+ *
+ * This is the seam the CLI branches on: an `ExportError` is reported as a message on stderr
+ * with exit 1, anything else keeps its stack trace because it means something unexpected went
+ * wrong. It exists as a base class rather than a union of `instanceof` checks at the call site
+ * so that a failure added here JOINS that branch instead of silently falling through to the
+ * stack-trace path.
+ */
+export abstract class ExportError extends Error {}
+
+/**
+ * Thrown when no output file was asked for, so there is nowhere to export TO.
+ *
+ * Same bug shape as `NoDeploymentsError` and fixed the same way: a request that cannot be
+ * satisfied used to print on stdout and exit 0. Here the caller passed no `--ts`/`--js`/
+ * `--json`/`--tsm`/`--jsm` at all, which no useful invocation does, and a chained
+ * `export && dev` would carry on with a file that was never regenerated.
+ */
+export class NoOutputPathError extends ExportError {
+	readonly environmentName: string;
+
+	constructor(environmentName: string) {
+		super(
+			`no output file specified for the export of environment '${environmentName}'\n` +
+				`  pass at least one of --ts, --js, --json, --tsm, --jsm ` +
+				`(tots, tojs, tojson, totsm, tojsm when calling run() directly)`,
+		);
+		this.name = 'NoOutputPathError';
+		this.environmentName = environmentName;
+	}
+}
+
 /** Why an export of an environment with nothing in it could not be satisfied. */
 export type NoDeploymentsReason =
 	/** No deployment folder for that environment at all: a typo, or a deploy that never ran. */
@@ -74,7 +107,7 @@ export type NoDeploymentsReason =
  * extension packages, see `@rocketh/unknown-signer`) because this package is not an extension:
  * its root already exports `run` and `logger`, so it is never spread into `withEnvironment`.
  */
-export class NoDeploymentsError extends Error {
+export class NoDeploymentsError extends ExportError {
 	readonly environmentName: string;
 	/** Absolute path of the folder that was looked in. */
 	readonly environmentPath: string;
@@ -205,9 +238,10 @@ export async function run(
 		includeBytecode?: boolean;
 	},
 ) {
+	// Checked before the environment is even looked up: this is about the caller's own arguments,
+	// and reporting a missing output path is actionable whatever state the deployments are in.
 	if (!options.tots && !options.tojs && !options.tojson && !options.tojsm && !options.totsm) {
-		console.log(`no filepath to export to are specified`);
-		return;
+		throw new NoOutputPathError(environmentName);
 	}
 
 	// Normalized here, above the load, so the failure below can name the files it did NOT write.

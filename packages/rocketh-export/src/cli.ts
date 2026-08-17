@@ -1,7 +1,7 @@
 #! /usr/bin/env node
 import {readAndResolveConfig} from '@rocketh/node';
 import type {ConfigOverrides} from '@rocketh/core/types';
-import {NoDeploymentsError, run} from './index.js';
+import {ExportError, run} from './index.js';
 import {Command} from 'commander';
 import pkg from '../package.json' with {type: 'json'};
 
@@ -42,10 +42,11 @@ try {
 		includeBytecode: options.bytecode,
 	});
 } catch (err) {
-	// An environment with nothing in it is a user-facing condition, not a bug: report it as a
-	// message on stderr with a non-zero exit, so a `deploy && export && dev` chain stops here
-	// instead of launching against whatever the output file happened to hold before.
-	if (err instanceof NoDeploymentsError) {
+	// A user-facing condition (nothing to export, or nowhere to export to) is not a bug: report
+	// it as a message on stderr with a non-zero exit, so a `deploy && export && dev` chain stops
+	// here instead of launching against whatever the output file happened to hold before.
+	// Anything else keeps its stack trace, which is what a reader of an unexpected failure needs.
+	if (err instanceof ExportError) {
 		console.error(`${commandName}: ${err.message}`);
 		process.exit(1);
 	}

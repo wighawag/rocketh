@@ -8,7 +8,7 @@
  */
 
 import {describe, it, expect, beforeEach, afterEach, beforeAll, afterAll} from 'vitest';
-import {NoDeploymentsError, run} from '../src/index.js';
+import {ExportError, NoDeploymentsError, NoOutputPathError, run} from '../src/index.js';
 import {resolveConfig} from 'rocketh';
 import type {ResolvedUserConfig} from '@rocketh/core/types';
 import * as fs from 'node:fs';
@@ -63,11 +63,41 @@ afterEach(() => {
 });
 
 describe('@rocketh/export - run', () => {
-	it('returns early when no output paths are specified', async () => {
+	it('rejects when no output path is specified, naming the environment and the flags to pass', async () => {
+		// Same bug shape as an environment with nothing in it: a request that cannot be satisfied
+		// used to print on stdout and exit 0, so a chained `export && dev` carried on with a file
+		// that was never regenerated.
 		writeDeployment('Token', {abi: [], address: '0x' + 'a'.repeat(40)});
-		await run(config, ENV_NAME, {});
-		// No output files should exist
+
+		const error = await run(config, ENV_NAME, {}).catch((err) => err);
+
+		expect(error).toBeInstanceOf(NoOutputPathError);
+		expect(error.environmentName).toBe(ENV_NAME);
+		expect(error.message).toContain(`'${ENV_NAME}'`);
+		expect(error.message).toContain('--ts');
 		expect(fs.readdirSync(tmpDir)).not.toContain('exported');
+	});
+
+	it('reports the missing output path even when the environment is also empty', async () => {
+		// Precedence, pinned: the caller's own arguments are wrong whatever the deployments hold,
+		// and that is the first thing they have to fix.
+		const error = await run(config, 'nosuchnet', {}).catch((err) => err);
+
+		expect(error).toBeInstanceOf(NoOutputPathError);
+	});
+
+	it('reports both user-facing failures through one base class, which is what the CLI branches on', () => {
+		// The CLI reports an `ExportError` as a message and keeps the stack trace for everything
+		// else, so a failure that forgets to extend it would regress to a stack trace unnoticed.
+		expect(new NoOutputPathError(ENV_NAME)).toBeInstanceOf(ExportError);
+		expect(
+			new NoDeploymentsError({
+				environmentName: ENV_NAME,
+				environmentPath: '/somewhere',
+				reason: 'missing-folder',
+				message: 'x',
+			}),
+		).toBeInstanceOf(ExportError);
 	});
 
 	it('throws when no .chain file is present but deployments exist', async () => {
@@ -366,6 +396,17 @@ describe('@rocketh/export - CLI exit code and streams', () => {
 		// A message, not an unhandled-rejection stack trace.
 		expect(result.stderr).not.toContain('at run (');
 		expect(fs.readFileSync(outFile).equals(before)).toBe(true);
+	});
+
+	it('exits non-zero with the message on stderr when no output flag was passed', () => {
+		writeDeployment('Token', {abi: [], address: '0x' + 'a'.repeat(40)});
+
+		const result = runCLI(['-e', ENV_NAME, '-d', deploymentsDir]);
+
+		expect(result.status).toBe(1);
+		expect(result.stdout).toBe('');
+		expect(result.stderr).toContain('--ts');
+		expect(result.stderr).toContain(ENV_NAME);
 	});
 
 	it('still exits 0 and writes when the environment does have deployments', () => {
