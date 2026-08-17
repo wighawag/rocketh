@@ -11,7 +11,7 @@
     "@nomicfoundation/hardhat-viem-assertions": "^3.0.5",
     "@rocketh/deploy": "^0.19.15",
     "@rocketh/doc": "^0.19.19",
-    "@rocketh/export": "^0.19.20",
+    "@rocketh/export": "^0.19.21",
     "@rocketh/node": "^0.19.19",
     "@rocketh/proxy": "^0.19.21",
     "@rocketh/read-execute": "^0.19.10",
