@@ -565,6 +565,8 @@ The `@rocketh/export` package allows you to export deployments for use in fronte
 npx rocketh-export -e sepolia --ts ./src/contracts.ts
 ```
 
+If the named environment has no deployments (a misspelled name, or a network you have not deployed to yet), the export fails with a non-zero exit code and writes nothing. That is deliberate: the generated file is your app's source of truth for addresses, and it is usually already there from an export against another network, so succeeding without writing would leave the app pointing at that other network's contracts without saying so.
+
 ### Generating Documentation
 
 The `@rocketh/doc` package generates documentation for your contracts:

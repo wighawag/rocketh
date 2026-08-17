@@ -47,6 +47,120 @@ type WidenChainOf<D extends {chain: unknown}> = Omit<D, 'chain'> & {chain: Widen
 
 `;
 
+/** Why an export of an environment with nothing in it could not be satisfied. */
+export type NoDeploymentsReason =
+	/** No deployment folder for that environment at all: a typo, or a deploy that never ran. */
+	| 'missing-folder'
+	/** The folder is there but holds no deployment record. */
+	| 'no-records';
+
+/**
+ * Thrown when the named environment has no deployments to export.
+ *
+ * WHY this is a failure and not a no-op. The generated file is the consuming app's source of
+ * truth for addresses and ABIs, and it is normally ALREADY THERE from an earlier export against
+ * a different environment. So "write nothing and succeed" does not leave the consumer with no
+ * deployments, it leaves them with ANOTHER environment's deployments, silently. The case that
+ * prompted this: `attach sepolia` on an environment with no records, export no-opped with exit
+ * 0, the dev server came up, and the app talked to localhost addresses while the developer
+ * believed they were on Sepolia. A typo in `-e` produces exactly the same silence, and is the
+ * more common way to hit it.
+ *
+ * Both reasons are fatal, and deliberately so: the harm to the consumer is identical either way.
+ * The reason is carried separately from the message so a programmatic caller can branch on the
+ * typo case without parsing prose.
+ *
+ * This lives on the ROOT export surface rather than a `./errors` subpath (the convention for
+ * extension packages, see `@rocketh/unknown-signer`) because this package is not an extension:
+ * its root already exports `run` and `logger`, so it is never spread into `withEnvironment`.
+ */
+export class NoDeploymentsError extends Error {
+	readonly environmentName: string;
+	/** Absolute path of the folder that was looked in. */
+	readonly environmentPath: string;
+	readonly reason: NoDeploymentsReason;
+
+	constructor(params: {
+		environmentName: string;
+		environmentPath: string;
+		reason: NoDeploymentsReason;
+		message: string;
+	}) {
+		super(params.message);
+		this.name = 'NoDeploymentsError';
+		this.environmentName = params.environmentName;
+		this.environmentPath = params.environmentPath;
+		this.reason = params.reason;
+	}
+}
+
+/** The environment folders sitting next to the one asked for, or `undefined` if the deployments folder itself is absent. */
+function listEnvironments(deploymentsFolder: string): string[] | undefined {
+	try {
+		return fs
+			.readdirSync(deploymentsFolder, {withFileTypes: true})
+			.filter((entry) => entry.isDirectory())
+			.map((entry) => entry.name);
+	} catch {
+		return undefined;
+	}
+}
+
+/**
+ * Build the failure for an environment with nothing to export.
+ *
+ * The message names WHAT was asked for and WHERE it was looked for, because the reader's next
+ * action differs completely between "you misspelled it" and "you have not deployed yet", and
+ * the old `no deployments to export` distinguished neither. It also names the output files that
+ * were left in place, since those holding a previous environment's addresses is the actual
+ * danger, and nothing else in the chain of events reports it.
+ */
+function noDeploymentsError(
+	deploymentsFolder: string,
+	environmentName: string,
+	outputFiles: string[],
+): NoDeploymentsError {
+	const deploymentsPath = path.resolve(deploymentsFolder);
+	const environmentPath = path.join(deploymentsPath, environmentName);
+	const folderExists = fs.statSync(environmentPath, {throwIfNoEntry: false})?.isDirectory() === true;
+
+	const lines: string[] = [];
+	if (folderExists) {
+		lines.push(`no deployments to export for environment '${environmentName}'`);
+		lines.push(`  its folder exists but holds no deployment record: ${environmentPath}`);
+		lines.push(`  deploy to '${environmentName}' first, or export an environment that has deployments`);
+	} else {
+		lines.push(`no deployments to export for environment '${environmentName}'`);
+		lines.push(`  no such deployment folder: ${environmentPath}`);
+		const siblings = listEnvironments(deploymentsPath);
+		if (siblings === undefined) {
+			lines.push(`  the deployments folder itself does not exist: ${deploymentsPath}`);
+			lines.push(`  check the deployments folder (-d, or 'deployments' in the config) and deploy first`);
+		} else if (siblings.length === 0) {
+			lines.push(`  no environment has been deployed yet under ${deploymentsPath}`);
+		} else {
+			lines.push(`  environments found in ${deploymentsPath}: ${siblings.join(', ')}`);
+			lines.push(`  check the name passed to -e, or deploy to '${environmentName}' first`);
+		}
+	}
+
+	// Resolved for display: the caller's path is usually relative to a cwd the reader of the
+	// message (a CI log, a chained script) cannot see, and every other path here is absolute.
+	const leftBehind = outputFiles.filter((file) => fs.existsSync(file)).map((file) => path.resolve(file));
+	if (leftBehind.length > 0) {
+		lines.push(
+			`  nothing was written: ${leftBehind.join(', ')} ${leftBehind.length > 1 ? 'still hold' : 'still holds'} the result of a previous export`,
+		);
+	}
+
+	return new NoDeploymentsError({
+		environmentName,
+		environmentPath,
+		reason: folderExists ? 'no-records' : 'missing-folder',
+		message: lines.join('\n'),
+	});
+}
+
 export interface ContractExport {
 	address: `0x${string}`;
 	abi: Abi;
@@ -96,11 +210,20 @@ export async function run(
 		return;
 	}
 
+	// Normalized here, above the load, so the failure below can name the files it did NOT write.
+	const js = typeof options.tojs === 'string' ? [options.tojs] : options.tojs || [];
+	const ts = typeof options.tots === 'string' ? [options.tots] : options.tots || [];
+	const json = typeof options.tojson === 'string' ? [options.tojson] : options.tojson || [];
+
+	const tsmodule = typeof options.totsm === 'string' ? [options.totsm] : options.totsm || [];
+	const jsmodule = typeof options.tojsm === 'string' ? [options.tojsm] : options.tojsm || [];
+
 	const {deployments, chainId, genesisHash} = await loadDeploymentsFromFiles(config.deployments, environmentName);
 
+	// Nothing to export is a failure, not a silent success (see `NoDeploymentsError`). It is
+	// raised BEFORE any mkdir or write, so a failed export leaves every output file byte-identical.
 	if (!deployments || Object.keys(deployments).length === 0) {
-		console.log(`no deployments to export`);
-		return;
+		throw noDeploymentsError(config.deployments, environmentName, [...ts, ...js, ...json, ...tsmodule, ...jsmodule]);
 	}
 
 	if (!chainId) {
@@ -139,13 +262,6 @@ export async function run(
 		}),
 		name: environmentName,
 	};
-
-	const js = typeof options.tojs === 'string' ? [options.tojs] : options.tojs || [];
-	const ts = typeof options.tots === 'string' ? [options.tots] : options.tots || [];
-	const json = typeof options.tojson === 'string' ? [options.tojson] : options.tojson || [];
-
-	const tsmodule = typeof options.totsm === 'string' ? [options.totsm] : options.totsm || [];
-	const jsmodule = typeof options.tojsm === 'string' ? [options.tojsm] : options.tojsm || [];
 
 	if (ts.length > 0) {
 		const newContent =

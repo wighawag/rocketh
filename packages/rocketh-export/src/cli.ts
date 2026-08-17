@@ -1,7 +1,7 @@
 #! /usr/bin/env node
 import {readAndResolveConfig} from '@rocketh/node';
 import type {ConfigOverrides} from '@rocketh/core/types';
-import {run} from './index.js';
+import {NoDeploymentsError, run} from './index.js';
 import {Command} from 'commander';
 import pkg from '../package.json' with {type: 'json'};
 
@@ -30,11 +30,24 @@ program
 
 const {environment, ...options} = program.opts();
 const resolvedConfig = await readAndResolveConfig({...(options as ConfigOverrides)});
-run(resolvedConfig, environment, {
-	tots: options.ts ? options.ts.split(',') : undefined,
-	tojson: options.json ? options.json.split(',') : undefined,
-	tojs: options.js ? options.js.split(',') : undefined,
-	totsm: options.tsm ? options.tsm.split(',') : undefined,
-	tojsm: options.jsm ? options.jsm.split(',') : undefined,
-	includeBytecode: options.bytecode,
-});
+try {
+	// Awaited, unlike before: an un-awaited rejection is an unhandled rejection, which is a
+	// stack trace on stderr rather than a message a user can act on.
+	await run(resolvedConfig, environment, {
+		tots: options.ts ? options.ts.split(',') : undefined,
+		tojson: options.json ? options.json.split(',') : undefined,
+		tojs: options.js ? options.js.split(',') : undefined,
+		totsm: options.tsm ? options.tsm.split(',') : undefined,
+		tojsm: options.jsm ? options.jsm.split(',') : undefined,
+		includeBytecode: options.bytecode,
+	});
+} catch (err) {
+	// An environment with nothing in it is a user-facing condition, not a bug: report it as a
+	// message on stderr with a non-zero exit, so a `deploy && export && dev` chain stops here
+	// instead of launching against whatever the output file happened to hold before.
+	if (err instanceof NoDeploymentsError) {
+		console.error(`${commandName}: ${err.message}`);
+		process.exit(1);
+	}
+	throw err;
+}

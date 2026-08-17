@@ -7,15 +7,16 @@
  * `<deployments>/<env>/<Name>.json` plus a `.chain` file.
  */
 
-import {describe, it, expect, beforeEach, afterEach} from 'vitest';
-import {run} from '../src/index.js';
+import {describe, it, expect, beforeEach, afterEach, beforeAll, afterAll} from 'vitest';
+import {NoDeploymentsError, run} from '../src/index.js';
 import {resolveConfig} from 'rocketh';
 import type {ResolvedUserConfig} from '@rocketh/core/types';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import {execFileSync} from 'node:child_process';
+import {execFileSync, spawnSync} from 'node:child_process';
 import {createRequire} from 'node:module';
+import {fileURLToPath} from 'node:url';
 
 const CHAIN_ID = '31337';
 const GENESIS_HASH = '0x0000000000000000000000000000000000000000000000000000000000000042';
@@ -67,14 +68,6 @@ describe('@rocketh/export - run', () => {
 		await run(config, ENV_NAME, {});
 		// No output files should exist
 		expect(fs.readdirSync(tmpDir)).not.toContain('exported');
-	});
-
-	it('returns early when there are no deployments', async () => {
-		// Remove the deployment file — only .chain exists, but listFiles returns ['.chain']
-		// which is > 0, so it checks .chain. No .json files means deployments is empty.
-		await run(config, ENV_NAME, {tots: [path.join(tmpDir, 'out.ts')]});
-		// Should not have written the output
-		expect(fs.existsSync(path.join(tmpDir, 'out.ts'))).toBe(false);
 	});
 
 	it('throws when no .chain file is present but deployments exist', async () => {
@@ -227,6 +220,164 @@ describe('@rocketh/export - run', () => {
 		await run(config, ENV_NAME, {tojson: outFile as any});
 
 		expect(fs.existsSync(outFile)).toBe(true);
+	});
+});
+
+/**
+ * An environment with nothing in it is a FAILURE, not a silent success.
+ *
+ * What made the old no-op dangerous was never the missing write on its own: it was that the
+ * output file is the consuming app's source of truth for addresses, and it is normally already
+ * there from an export against a DIFFERENT environment. Succeeding without writing therefore
+ * hands the app another network's addresses. These tests pin both halves: the failure is raised,
+ * and it is raised before anything on disk moves.
+ */
+describe('@rocketh/export - an environment with nothing to export fails', () => {
+	it('rejects when the environment folder does not exist at all, naming the environment and the path', async () => {
+		const outFile = path.join(tmpDir, 'out.ts');
+
+		const error = await run(config, 'nosuchnet', {tots: [outFile]}).catch((err) => err);
+
+		expect(error).toBeInstanceOf(NoDeploymentsError);
+		expect(error.reason).toBe('missing-folder');
+		expect(error.environmentName).toBe('nosuchnet');
+		expect(error.environmentPath).toBe(path.join(deploymentsDir, 'nosuchnet'));
+		// What was asked for, and where it was looked for: `no deployments to export` named neither.
+		expect(error.message).toContain(`'nosuchnet'`);
+		expect(error.message).toContain(path.join(deploymentsDir, 'nosuchnet'));
+		// The typo case is the common one, so the environments that DO exist are listed.
+		expect(error.message).toContain(ENV_NAME);
+	});
+
+	it('rejects with a different reason when the folder exists but holds no deployment record', async () => {
+		// `beforeEach` creates <deployments>/testenv with a .chain file and nothing else. This is
+		// a different situation from a typo (the environment is real, it just has no contracts),
+		// so it gets its own reason and its own message, but it is equally fatal: the consumer
+		// would otherwise keep reading a previous environment's addresses either way.
+		const error = await run(config, ENV_NAME, {tots: [path.join(tmpDir, 'out.ts')]}).catch((err) => err);
+
+		expect(error).toBeInstanceOf(NoDeploymentsError);
+		expect(error.reason).toBe('no-records');
+		expect(error.message).toContain(`'${ENV_NAME}'`);
+		expect(error.message).toContain(path.join(deploymentsDir, ENV_NAME));
+		expect(error.message).toContain('exists');
+	});
+
+	it('reports the deployments folder itself being absent, rather than only the environment', async () => {
+		const missingRoot = path.join(tmpDir, 'not-a-deployments-folder');
+		const configWithMissingRoot = resolveConfig({deployments: missingRoot, chains: {}});
+
+		const error = await run(configWithMissingRoot, 'sepolia', {tots: [path.join(tmpDir, 'out.ts')]}).catch(
+			(err) => err,
+		);
+
+		expect(error).toBeInstanceOf(NoDeploymentsError);
+		expect(error.reason).toBe('missing-folder');
+		expect(error.message).toContain(missingRoot);
+		expect(error.message).toContain('does not exist');
+	});
+
+	it('leaves an existing output file byte-identical and writes nothing new', async () => {
+		// The whole point of erroring is that the stale file is not trusted; half-writing it on
+		// the way to erroring would be worse than the bug being fixed.
+		const outFile = path.join(tmpDir, 'nested', 'deployments.ts');
+		const jsFile = path.join(tmpDir, 'nested', 'deployments.js');
+		fs.mkdirSync(path.dirname(outFile), {recursive: true});
+		const previousExport = `export default {chain: {id: 31337}, contracts: {Token: {}}} as const;\n`;
+		fs.writeFileSync(outFile, previousExport);
+		const before = fs.readFileSync(outFile);
+		const untouchedDir = path.join(tmpDir, 'never-created');
+
+		await expect(
+			run(config, 'nosuchnet', {
+				tots: [outFile],
+				tojs: [jsFile],
+				tojson: [path.join(untouchedDir, 'deployments.json')],
+			}),
+		).rejects.toBeInstanceOf(NoDeploymentsError);
+
+		expect(fs.readFileSync(outFile).equals(before)).toBe(true);
+		expect(fs.existsSync(jsFile)).toBe(false);
+		expect(fs.existsSync(jsFile.replace('.js', '.d.ts'))).toBe(false);
+		// Not even the directory: the writers mkdir before writing, so a check placed after them
+		// would still leave a trail.
+		expect(fs.existsSync(untouchedDir)).toBe(false);
+	});
+
+	it('names the output files it did not write, since those still hold the previous export', async () => {
+		const outFile = path.join(tmpDir, 'deployments.ts');
+		const neverWritten = path.join(tmpDir, 'absent.json');
+		fs.writeFileSync(outFile, 'previous export');
+
+		const error = await run(config, 'nosuchnet', {tots: [outFile], tojson: [neverWritten]}).catch((err) => err);
+
+		expect(error.message).toContain(outFile);
+		// A file that is not there cannot be stale, so it is not reported as such.
+		expect(error.message).not.toContain(neverWritten);
+	});
+});
+
+/**
+ * The CLI contract: exit code and stream.
+ *
+ * A `deploy && export && dev` chain only stops if the process exits non-zero, and a message on
+ * stdout is invisible to anything reading the failure. Both were wrong before (exit 0, stdout),
+ * and neither is observable from `run` alone, so this drives the real binary.
+ */
+describe('@rocketh/export - CLI exit code and streams', () => {
+	const packageDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+	/**
+	 * Compiled here rather than reused from `dist/`, so the test observes the CURRENT source
+	 * whether or not the package happens to have been built. It has to land inside the package
+	 * for `@rocketh/node` to resolve from it.
+	 */
+	const cliBuildDir = path.join(packageDir, '.cli-build-for-test');
+	const TSC = createRequire(import.meta.url).resolve('typescript/bin/tsc');
+
+	beforeAll(() => {
+		execFileSync(process.execPath, [TSC, '-p', path.join(packageDir, 'tsconfig.json'), '--outDir', cliBuildDir], {
+			encoding: 'utf-8',
+			stdio: 'pipe',
+		});
+	}, 120_000);
+
+	afterAll(() => {
+		fs.rmSync(cliBuildDir, {recursive: true, force: true});
+	});
+
+	function runCLI(args: string[]) {
+		return spawnSync(process.execPath, [path.join(cliBuildDir, 'cli.js'), ...args], {
+			cwd: tmpDir,
+			encoding: 'utf-8',
+		});
+	}
+
+	it('exits non-zero with the message on stderr, leaving the previous export untouched', () => {
+		const outFile = path.join(tmpDir, 'deployments.ts');
+		fs.writeFileSync(outFile, 'previous export');
+		const before = fs.readFileSync(outFile);
+
+		const result = runCLI(['-e', 'nosuchnet', '-d', deploymentsDir, '--ts', outFile]);
+
+		expect(result.status).toBe(1);
+		expect(result.stdout).toBe('');
+		expect(result.stderr).toContain('nosuchnet');
+		expect(result.stderr).toContain(path.join(deploymentsDir, 'nosuchnet'));
+		// A message, not an unhandled-rejection stack trace.
+		expect(result.stderr).not.toContain('at run (');
+		expect(fs.readFileSync(outFile).equals(before)).toBe(true);
+	});
+
+	it('still exits 0 and writes when the environment does have deployments', () => {
+		// Without this, the assertion above could hold for a reason unrelated to the change.
+		writeDeployment('Token', {abi: [], address: '0x' + 'a'.repeat(40)});
+		const outFile = path.join(tmpDir, 'ok.json');
+
+		const result = runCLI(['-e', ENV_NAME, '-d', deploymentsDir, '--json', outFile]);
+
+		expect(result.stderr).toBe('');
+		expect(result.status).toBe(0);
+		expect(JSON.parse(fs.readFileSync(outFile, 'utf-8')).contracts.Token).toBeDefined();
 	});
 });
 
