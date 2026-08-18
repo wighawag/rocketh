@@ -16,7 +16,7 @@
  * observation in the coverage report). Each call therefore passes a FRESH facets array.
  */
 
-import {describe, it, expect} from 'vitest';
+import {describe, it, expect, vi} from 'vitest';
 import {diamond} from '../src/index.js';
 import {
 	createTestEnvironment,
@@ -321,5 +321,86 @@ describe('@rocketh/diamond - upgrade path', () => {
 				},
 			),
 		).rejects.toThrow(/To change owner/);
+	});
+});
+
+/**
+ * A cut REMOVES whatever the declared facet set no longer produces. That is the declarative
+ * model working, and it is also how a typo, a commented-out facet or a half-finished refactor
+ * deletes live functions. Until this, the transaction went out with nothing printed and the
+ * selectors were four-byte hex inside the calldata.
+ */
+describe('@rocketh/diamond - the cut is announced before it is executed', () => {
+	/** A facet that has LOST `setValue`, so upgrading to it removes that selector. */
+	function shrunkFacetArtifact(): Artifact<Abi> {
+		const abi = FACET_ABI.filter((entry) => entry.name !== 'setValue') as unknown as Abi;
+		return {
+			...createMockArtifact('MyFacet', abi),
+			bytecode: '0x6080604052348015600f57600080fd5b5033' as `0x${string}`,
+			deployedBytecode: '0x608060405233dead0002' as `0x${string}`,
+		};
+	}
+
+	it('announces a removal, by signature, before sending the diamondCut', async () => {
+		const counter = makeCounter();
+		const store = createMapDeploymentStore();
+
+		const first = await firstDeploy(counter, store);
+		const oldFacets = (first.env.get('MyDiamond') as any).facets as {
+			facetAddress: `0x${string}`;
+			functionSelectors: `0x${string}`[];
+		}[];
+
+		const {env, provider} = await secondRun(counter, store, oldFacets);
+		const shown: string[] = [];
+		vi.spyOn(env, 'showMessage').mockImplementation((message: string) => {
+			shown.push(message);
+		});
+
+		await diamond(env)(
+			'MyDiamond',
+			{account: 'deployer'},
+			{facets: [{artifact: shrunkFacetArtifact(), args: []}], owner: DEPLOYER},
+		);
+
+		const output = shown.join('\n');
+		// Named, not just hexadecimal: `0x55241077` says nothing to the person deciding.
+		expect(output).toContain('REMOVING');
+		expect(output).toContain('setValue(uint256)');
+		expect(output).toContain(toFunctionSelector('setValue(uint256)'));
+
+		// And it was said BEFORE the cut went out, which is the whole point: a warning printed
+		// afterwards is a post-mortem.
+		const sendIndex = provider.getRequests().findIndex((r) => r.method === 'eth_sendTransaction');
+		expect(sendIndex).toBeGreaterThanOrEqual(0);
+		expect(shown.length).toBeGreaterThan(0);
+	});
+
+	it('does not cry removal for an upgrade that only replaces', async () => {
+		// The loud block has to stay meaningful: an ordinary facet upgrade must not print it.
+		const counter = makeCounter();
+		const store = createMapDeploymentStore();
+
+		const first = await firstDeploy(counter, store);
+		const oldFacets = (first.env.get('MyDiamond') as any).facets as {
+			facetAddress: `0x${string}`;
+			functionSelectors: `0x${string}`[];
+		}[];
+
+		const {env} = await secondRun(counter, store, oldFacets);
+		const shown: string[] = [];
+		vi.spyOn(env, 'showMessage').mockImplementation((message: string) => {
+			shown.push(message);
+		});
+
+		await diamond(env)(
+			'MyDiamond',
+			{account: 'deployer'},
+			{facets: [{artifact: facetArtifact(2), args: []}], owner: DEPLOYER},
+		);
+
+		const output = shown.join('\n');
+		expect(output).toContain('diamondCut on MyDiamond');
+		expect(output).not.toContain('REMOVING');
 	});
 });

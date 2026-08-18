@@ -8,6 +8,7 @@ import artifactDiamondCutFact from './hardhat-deploy-v1-artifacts/DiamondCutFace
 import artifactOwnershipFacet from './hardhat-deploy-v1-artifacts/OwnershipFacet.js';
 import artifactDiamondERC165Init from './hardhat-deploy-v1-artifacts/DiamondERC165Init.js';
 import {filterABI, mergeABIs, sigsFromABI} from './utils.js';
+import {formatDiamondCutPlan, selectorSignatures} from './report.js';
 import {deploy, DeployResult} from '@rocketh/deploy';
 
 import {read, execute} from '@rocketh/read-execute';
@@ -484,6 +485,20 @@ export function diamond(
 				}
 				if (currentOwner === zeroAddress) {
 					throw new Error('The Diamond belongs to no-one. It cannot be upgraded anymore');
+				}
+
+				// SAY WHAT THE CUT WILL DO, BEFORE DOING IT. The selector diff is declarative, so
+				//  anything the declared facet set does not produce is REMOVED: a typo, a
+				//  commented-out facet or a half-finished refactor deletes live functions, and the
+				//  worst case removes the only way to upgrade. Until now the transaction went out with
+				//  nothing printed and the selectors were four-byte hex inside the calldata.
+				//
+				//  The signatures come from BOTH ABIs on purpose: the merged new one names what is
+				//  arriving, and the old deployment's names what is leaving, which by definition is no
+				//  longer in the new one.
+				const plan = formatDiamondCutPlan(name, facetCuts, selectorSignatures([abi, oldDeployment.abi as Abi]));
+				if (plan) {
+					env.showMessage(plan);
 				}
 
 				await _execute(proxy as unknown as Deployment<DiamondCutABI>, {
