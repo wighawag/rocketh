@@ -77,7 +77,7 @@ function repoPathForMetadataSource(metadataSourcePath: string): string {
 	return path.join(MIRROR_ROOT, metadataSourcePath);
 }
 
-type BundledArtifact = {contractName?: string; metadata: string};
+type BundledArtifact = {contractName?: string; metadata: string; solcInput: string};
 
 function solidityFilesUnder(root: string): string[] {
 	const found: string[] = [];
@@ -133,22 +133,26 @@ describe('@rocketh/diamond - bundled artifact provenance', () => {
 		});
 	}
 
-	it('vendors no Solidity that no artifact accounts for', () => {
-		// The reverse direction: an orphan .sol would look authoritative while explaining no
-		//  deployed bytecode at all, which is exactly the confusion this vendoring exists to end.
-		const accountedFor = new Set<string>();
+	it('vendors exactly the compilation unit, no more and no less', () => {
+		// The reverse direction. A stray `.sol` here would look authoritative while explaining no
+		//  deployed bytecode at all, and a missing one would make regeneration impossible.
+		//
+		// The set is taken from `solcInput`, not from `metadata.sources`: metadata lists only what
+		//  each contract REACHES, whereas solcInput is the whole unit that was compiled, and the
+		//  unit is what `scripts/generate-artifacts.ts` has to reproduce byte for byte (it feeds
+		//  `solcInputHash`). `UsingDiamondOwner.sol` is the difference: it was part of the
+		//  compilation and is imported by no contract deployed here.
+		const solcInput = JSON.parse((ARTIFACTS[0] as {solcInput: string}).solcInput);
+		const compiledUnit = Object.keys(solcInput.sources).sort();
+
+		const vendored = solidityFilesUnder(MIRROR_ROOT).map((file) => path.relative(MIRROR_ROOT, file));
+		expect(vendored.sort()).toEqual(compiledUnit);
+
+		// And every artifact was built from the SAME unit, so one of them speaking for the mirror
+		//  above is legitimate rather than a sample.
 		for (const artifact of ARTIFACTS) {
-			for (const metadataSourcePath of Object.keys(JSON.parse(artifact.metadata).sources)) {
-				accountedFor.add(path.resolve(repoPathForMetadataSource(metadataSourcePath)));
-			}
+			expect((artifact as {solcInput: string}).solcInput).toBe((ARTIFACTS[0] as {solcInput: string}).solcInput);
 		}
-
-		const found = solidityFilesUnder(MIRROR_ROOT);
-		const orphans = found.filter((f) => !accountedFor.has(f)).map((f) => path.relative(packageRoot, f));
-
-		// The mirror is exactly the compilation inputs, nothing else. A stray file here would
-		//  look authoritative while explaining no deployed bytecode at all.
-		expect(orphans).toEqual([]);
 	});
 
 	it('keeps the public solc_0_8 import surface identical to the frozen mirror', () => {

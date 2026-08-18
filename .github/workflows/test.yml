@@ -7,6 +7,12 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Least privilege, matching verify.yml. Without this block the job inherits the
+# repository default, which is not necessarily read-only, for a job that only ever
+# needs to read the code it tests.
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -20,7 +26,10 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v3
+        # v4, matching release.yml and the dorfl-setup composite action. This job sat on
+        # v3 while everything else moved, so the version that actually ran the tests was
+        # not the version that ran the release.
+        uses: pnpm/action-setup@v4
         with:
           version: 10.28.1
 
@@ -38,6 +47,16 @@ jobs:
 
       - name: Run tests
         run: pnpm test
+
+      # The bundled Diamond artifacts are GENERATED from `packages/rocketh-diamond/
+      # hardhat-deploy-v1/` but COMMITTED, because they determine the CREATE2 addresses of
+      # the default facets and so must not be rebuilt during a release. This is what keeps
+      # the two in step: it recompiles the vendored sources with the pinned solc (an npm
+      # devDependency, no toolchain install needed) and fails if what is committed differs.
+      # Editing Solidity without regenerating changes nothing on chain, and this is what
+      # says so.
+      - name: Check the bundled artifacts still match their sources
+        run: pnpm --filter @rocketh/diamond verify:artifacts
 
       - name: Run Getting Started
         run: pnpm test:getting-started

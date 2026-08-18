@@ -60,13 +60,17 @@
 		"rimraf": "^6.1.3",
 		"tsx": "^4.23.12",
 		"typescript": "^6.0.3",
-		"vitest": "^4.1.10"
+		"vitest": "^4.1.10",
+		"solc": "0.8.10",
+		"murmur-128": "^0.2.1",
+		"prettier": "^3.6.2"
 	},
 	"scripts": {
 		"prepublishOnly": "cp ../../LICENSE LICENSE",
 		"build": "tsc --project tsconfig.json && tsx ../../scripts/ts-to-json --dir ./src/hardhat-deploy-v1-artifacts --output-dir ./artifacts",
 		"dev": "as-soon -w src pnpm build",
 		"test": "vitest",
-		"verify:artifacts": "tsx scripts/verify-artifacts.ts"
+		"verify:artifacts": "tsx scripts/generate-artifacts.ts --check",
+		"generate:artifacts": "tsx scripts/generate-artifacts.ts"
 	}
 }
