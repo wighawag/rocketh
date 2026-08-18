@@ -460,6 +460,23 @@ export default deployScript(
 );
 ```
 
+A diamond upgrade is DECLARATIVE: rocketh compares the selectors the diamond currently serves against the ones your declared facet set produces, and anything on chain that your facets no longer produce is REMOVED. That is what makes re-running a script converge on the state you described, and it is also the sharp edge: a commented-out facet, a typo in `facets`, or a half-finished refactor deletes live functions, and removing the cut function itself makes the diamond permanently un-upgradeable.
+
+So the cut is printed before it is sent, with removals in their own block and selectors resolved to signatures:
+
+```text
+  diamondCut on MyDiamond:
+  REMOVING 1 function from the diamond:
+    0x55241077  setValue(uint256)
+  A removed function stops existing at this address. If any of the above was not meant to go,
+  stop now: check that every facet you expect is in `facets`, since anything the declared set
+  does not produce is removed by design.
+  adding 2 functions:
+    0x20965255  getValue()  ->  0xaaa...
+```
+
+Nothing is refused: the removal block is there so an unintended one is visible while it is still cheap to stop. For a high-value diamond, rehearse the upgrade on a fork and read that block before running it for real.
+
 ### Linking Libraries
 
 rocketh supports linking libraries at deployment time:
@@ -567,6 +584,26 @@ npx rocketh-export -e sepolia --ts ./src/contracts.ts
 
 If the named environment has no deployments (a misspelled name, or a network you have not deployed to yet), the export fails with a non-zero exit code and writes nothing. That is deliberate: the generated file is your app's source of truth for addresses, and it is usually already there from an export against another network, so succeeding without writing would leave the app pointing at that other network's contracts without saying so.
 
+The module formats (`--tsm` / `--jsm`) emit one named export per deployment (`export const Token = ...`), so a deployment name has to be a valid JavaScript identifier there. A name like `Token-V2`, `My Registry` or `default` is refused with a message naming it, rather than writing a file that does not parse. The object formats (`--ts`, `--js`, `--json`) keep names exactly as they are and have no such constraint.
+
+#### Checking the export against the chain (`--verify`)
+
+Export reads files and writes files. It makes no network request, which is what lets it run in an offline CI build, and it also means it cannot tell that a deployment record is stale, that the chain it describes was reset, or that you are exporting an environment that is not the network your app will connect to. That failure usually surfaces much later, as a user's transaction reverting against an address holding no code.
+
+`--verify` asks the chain first:
+
+```bash
+npx rocketh-export -e sepolia --ts ./src/contracts.ts --verify
+```
+
+It checks that the chain id the RPC reports matches the one recorded for the environment, and that every exported address has code. On failure it writes nothing and leaves the previous output alone, naming every contract at fault. A wrong chain id is reported on its own, because on the wrong network every address also looks empty. An unreachable node fails the export rather than skipping the checks: you asked for verification, and "could not check" is not "checked".
+
+It is opt-in for exactly the reason above: an offline build must keep working, so verification is something you turn on before shipping, not something every build pays for. It needs an `rpcUrl` for the chain (or a provider passed to `run()` programmatically).
+
+#### `linkedData` is public
+
+Whatever you attach as `linkedData` on a deployment is stored in the deployment record and copied into every export, so it ends up in the frontend bundle you ship and in the repository if you commit your deployments. Treat it as public: it is a convenient place for a prefix, an admin address or a start block, and the wrong place for an API key, a private RPC URL with a token in it, or anything else you would not publish.
+
 ### Generating Documentation
 
 The `@rocketh/doc` package generates documentation for your contracts:
@@ -630,6 +667,21 @@ const deferred = await catchUnknownSigner(env)(() =>
 Both forms are the same function: an extension package's root exports only curried `(env) => …` functions, which is precisely what lets the spread above turn them into methods on the environment.
 
 It returns `null` when the action succeeded, and otherwise hardhat-deploy v1's exact shape: every key present even when `undefined`, `value` as a string. Pass `{log: false}` to suppress the printed block. Nothing is persisted — idempotency comes from on-chain state, so you execute the transaction on your Safe and re-run the idempotent script. One wrapper captures one transaction (the first unsignable one inside it), so deferring several steps means one `catchUnknownSigner` per step.
+
+#### `catchUnknownSigner` is not a "never send" switch
+
+It catches the case where rocketh CANNOT sign. It does not make a signable account unsignable: if the run holds a key for that account, or the node signs for it, or auto-impersonation took it on, the transaction is signable and it BROADCASTS inside the wrapper. That is what keeps a mixed run working, where most steps are yours to send and one belongs to a Safe.
+
+So a production run that unexpectedly has the admin key in its environment sends the admin transaction rather than deferring it. If that matters to you, assert it, rather than inferring it from the wrapper:
+
+```typescript
+const admin = env.resolveAccount('admin');
+if (env.addressSignability[admin.toLowerCase() as `0x${string}`] !== 'unsignable') {
+	throw new Error(`refusing to run: rocketh can sign for ${admin}, which must stay external`);
+}
+```
+
+`addressSignability` is computed after auto-impersonation runs, keyed by lowercase address, and answers `'local'`, `'node'`, `'impersonated'` or `'unsignable'` (an address never seen during setup answers `'unsignable'` rather than `undefined`, so there is no third case to handle). Rehearsing the whole flow on a fork remains the stronger check, since it proves the transaction works rather than only proving who could have sent it.
 
 #### Resolving it interactively instead (`onUnknownSigner: 'ask'`)
 
@@ -721,7 +773,18 @@ It accepts the whole policy vocabulary, `'auto'` included, not just `'ask'` and 
 
 The override chooses among what the run can do; it cannot exceed it. Asking for `'ask'` where the run cannot ask a human for text still takes the `throw` path and never prompts, so a script that hardcodes the override is still safe in CI. And since it is the same policy frame, it never turns a signable account into a throw and never defeats impersonation.
 
-ACCEPTED RESIDUAL RISK, stated rather than engineered around: for an EXECUTION, rocketh checks that the transaction you pasted succeeded, and nothing else. It does not decode MultiSend or Timelock payloads and does not try to match `to`/`data`, because a governed execution is routinely wrapped by the multisig into a different transaction shape. A successful-but-unrelated hash would therefore be accepted. This is the same trust boundary as hardhat-deploy v1 (where the run continued after you executed the transaction, with no check at all), only stricter, and it exists because an execution has no address to anchor on.
+For an EXECUTION there is no address to anchor on, so rocketh weighs whether the transaction you pasted looks like the one it asked for. It cannot simply compare `to` and `data`: a governed execution is routinely wrapped by the multisig into a different shape, so a mismatch is not evidence of a mistake. It ranks the evidence instead:
+
+| what it finds                                                                   | what that is                                     |
+| ------------------------------------------------------------------------------ | ------------------------------------------------ |
+| same `to`, `data` and `value`                                                    | the transaction itself                           |
+| sent TO the account rocketh needed to act as                                     | what every Safe execution looks like             |
+| your calldata appears verbatim inside the transaction's input                     | a Safe `execTransaction`, MultiSend, a timelock  |
+| none of the above                                                                | nothing linking the two                          |
+
+The first three are accepted, and the run says which one matched. The last one PAUSES and asks you to confirm before recording anything, because it is genuinely ambiguous: governance executed by proposal id (the payload was queued in an earlier transaction) carries no trace of your calldata, and so does an unrelated transaction you pasted by mistake. Anything but an explicit `yes` defers the transaction exactly as `cannot sign` does, saving nothing.
+
+ACCEPTED RESIDUAL RISK, stated rather than engineered around: no wallet ABI is decoded, so the evidence is structural rather than semantic, and a user who deliberately confirms the wrong transaction is believed. What is no longer possible is recording an unrelated transaction SILENTLY.
 
 #### In the browser, and on a fork: impersonation instead of interactivity
 
