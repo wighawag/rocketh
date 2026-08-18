@@ -420,13 +420,39 @@ export async function loadDeploymentsFromStore(
 		try {
 			migrations = JSON.parse(await deploymentStore.readFile(deploymentsPath, networkName, migrationsFileName));
 		} catch (err) {
-			console.error(`failed to parse .migrations.json`);
+			// Kept non-fatal (a run with no migration record still works, it just re-runs scripts
+			//  that are idempotent by design), but the message now names the environment and the
+			//  CONSEQUENCE. `failed to parse .migrations.json` told a reader neither which
+			//  environment's file was broken nor why their scripts had suddenly all re-run.
+			console.error(
+				`could not parse ${migrationsFileName} for environment '${networkName}' (${err}); continuing as if no ` +
+					`script had run yet, so scripts with tags already applied will run again.`,
+			);
 		}
 	}
 
 	for (const fileName of fileNames) {
 		if (fileName.substring(fileName.length - 5) === '.json' && fileName !== '.migrations.json') {
-			let deployment = JSON.parse(await deploymentStore.readFile(deploymentsPath, networkName, fileName));
+			// A record that cannot be read or parsed is FATAL, unlike the migrations file above, and
+			//  the difference is what is lost: a missing migration re-runs an idempotent script,
+			//  whereas a missing deployment makes rocketh believe a contract was never deployed and
+			//  deploy it AGAIN, at a new address, silently replacing what the record described.
+			//
+			// Wrapped because the raw failure is a `SyntaxError` reading
+			//  `Expected property name or '}' in JSON at position 2`, which names neither the file
+			//  nor the environment: the one question the reader has is WHICH record is broken.
+			let deployment: any;
+			try {
+				deployment = JSON.parse(await deploymentStore.readFile(deploymentsPath, networkName, fileName));
+			} catch (err) {
+				throw new Error(
+					`could not read the deployment record '${fileName}' of environment '${networkName}' in ` +
+						`${deploymentsPath}: ${err}\n` +
+						`  rocketh stops rather than continuing without it: a deployment it cannot see is one it would ` +
+						`deploy again, at a new address.`,
+					{cause: err},
+				);
+			}
 			if (onlyABIAndAddress) {
 				deployment = {
 					address: deployment.address,

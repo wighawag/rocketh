@@ -144,3 +144,52 @@ describe('loadDeploymentsFromStore - genesis hash mismatch policy', () => {
 		expect(store.deleteAll).not.toHaveBeenCalled();
 	});
 });
+
+/**
+ * A deployment record that cannot be read is FATAL, and the failure has to name it.
+ *
+ * The asymmetry with `.migrations.json` is deliberate and worth pinning, because it is a
+ * judgement about what each loss costs: a missing migration record re-runs a script that is
+ * idempotent by design, while a missing DEPLOYMENT record makes rocketh believe the contract
+ * was never deployed and deploy it AGAIN, at a new address, silently replacing what the
+ * unreadable file described.
+ */
+describe('loadDeploymentsFromStore - unreadable records', () => {
+	it('fails, naming the record and the environment, when a deployment cannot be parsed', async () => {
+		// The raw failure is `SyntaxError: Expected property name or '}' in JSON at position 2`,
+		// which answers neither "which file?" nor "which environment?", the only two questions
+		// the reader has.
+		const {store} = makeStore({'.chain': chainFile('31337'), 'Broken.json': '{ this is not json'});
+
+		const error = await loadDeploymentsFromStore(store, 'deployments', 'testenv').catch((err) => err);
+
+		expect(error).toBeInstanceOf(Error);
+		expect(error.message).toContain('Broken.json');
+		expect(error.message).toContain('testenv');
+		expect(error.message).toContain('deployments');
+		// The reason it stops rather than skipping the record.
+		expect(error.message).toContain('deploy again');
+		// The original parse failure is kept, not swallowed.
+		expect(error.cause).toBeInstanceOf(SyntaxError);
+	});
+
+	it('keeps going, loudly, when only .migrations.json is unreadable', async () => {
+		// Non-fatal on purpose: what is lost is the record of which scripts ran, and those are
+		// idempotent. The message still has to say so, or a reader sees every script re-run with
+		// no explanation.
+		const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+		const {store} = makeStore({
+			'.chain': chainFile('31337'),
+			'.migrations.json': 'not json either',
+			'MyContract.json': DEPLOYMENT_FILE,
+		});
+
+		const result = await loadDeploymentsFromStore(store, 'deployments', 'testenv');
+
+		expect(result.deployments.MyContract).toBeDefined();
+		expect(result.migrations).toEqual({});
+		expect(consoleError).toHaveBeenCalledWith(expect.stringContaining('testenv'));
+		expect(consoleError).toHaveBeenCalledWith(expect.stringContaining('will run again'));
+		consoleError.mockRestore();
+	});
+});

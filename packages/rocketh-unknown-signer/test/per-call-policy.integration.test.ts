@@ -395,3 +395,53 @@ describe('@rocketh/unknown-signer - the deferral guarantee', () => {
 		expect(promptExecutor.textRequests).toHaveLength(1);
 	});
 });
+
+/**
+ * THE POLICY STACK IS DYNAMIC SCOPE, AND CONCURRENCY LEAKS IT.
+ *
+ * A frame is pushed on the environment for the duration of an action and popped in a
+ * `finally`. That suits how rocketh runs deploy scripts, sequentially, one await at a time,
+ * and it is the reason precedence is a single rule rather than an option threaded through
+ * four packages (ADR 0006). The cost is that the frame is not per-action: two actions running
+ * CONCURRENTLY share it, so one action's scoped policy applies to the other.
+ *
+ * This is a known limitation, recorded in ADR 0006 and in the package's own documentation,
+ * and it is pinned here rather than left as prose for two reasons: prose does not fail when
+ * the behaviour changes, and if the stack is ever migrated to `AsyncLocalStorage`, this is
+ * the test that should flip from documenting the leak to forbidding it.
+ *
+ * A third-party review reported the same thing (RCK-005). Nothing here is a fix.
+ */
+describe('@rocketh/unknown-signer - concurrency and the policy frame', () => {
+	it('leaks a scoped policy into a CONCURRENT action, which is why actions must be sequential', async () => {
+		const promptExecutor = createMockPromptExecutor({textAnswers: [PASTED_HASH, PASTED_HASH]});
+		const {env} = await safeOwnerEnvironment({onUnknownSigner: 'ask', promptExecutor});
+
+		// The run's ambient policy is 'ask', so an unwrapped call PROMPTS and continues, which
+		// the sibling test above establishes. Started concurrently with an action scoped to
+		// 'throw', it takes the scoped policy instead and defers.
+		const results = await Promise.allSettled([
+			withUnknownSignerPolicy(env)('throw', () => upgradeCall(env, env.resolveAccount('admin'))),
+			upgradeCall(env, env.resolveAccount('admin')),
+		]);
+
+		expect(results[0].status).toBe('rejected');
+		// THE LEAK: under the ambient 'ask' this would have prompted and returned a receipt.
+		expect(results[1].status).toBe('rejected');
+		expect((results[1] as PromiseRejectedResult).reason).toBeInstanceOf(UnknownSignerError);
+	});
+
+	it('behaves as the ambient policy says once the actions are sequential', async () => {
+		// The same two calls, awaited one after the other, which is how a deploy script runs.
+		// This is the control: without it the test above could pass for an unrelated reason.
+		const promptExecutor = createMockPromptExecutor({textAnswers: [PASTED_HASH]});
+		const {env} = await safeOwnerEnvironment({onUnknownSigner: 'ask', promptExecutor});
+
+		await expect(
+			withUnknownSignerPolicy(env)('throw', () => upgradeCall(env, env.resolveAccount('admin'))),
+		).rejects.toBeInstanceOf(UnknownSignerError);
+
+		const receipt = await upgradeCall(env, env.resolveAccount('admin'));
+		expect(receipt.transactionHash).toBe(PASTED_HASH);
+	});
+});
