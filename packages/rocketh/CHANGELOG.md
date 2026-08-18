@@ -1,5 +1,102 @@
 # rocketh
 
+## 0.19.18
+
+### Patch Changes
+
+- 753705b: Document how to run rocketh against something valuable, in one place, and add a security policy.
+
+  The operational advice that decides whether a deployment tool is safe to point at mainnet was spread across an ADR, a changeset, three sections of the documentation and a rebuttal in a notes file. A reader with an upgrade to perform had no page to read, so `documentation.md` now has a **Production hardening** section that collects it and says which parts are defaults you should check rather than features you must install:
+
+  - keep the signing authority outside the deployment environment, and set `onUnknownSigner: 'throw'` when the run administers something live;
+  - `catchUnknownSigner` catches what rocketh CANNOT sign, and is not a "never broadcast" switch;
+  - `autoImpersonate` is off by default and belongs to fork testing, so the thing to check is that it is not switched on for a production chain;
+  - rehearse on a fork, and read the chain again afterwards, because a successful receipt says a transaction was mined, not that the intended state transition happened;
+  - read the diamond cut plan, especially the removals, since a declarative selector diff removes by design;
+  - pass `--verify` on the export that ships, and treat the generated file as a build artifact rather than a record;
+  - review a deployment-record address change like a code change, and pin the tooling exactly in a repository whose job is to administer live contracts.
+
+  `SECURITY.md` gives vulnerability reports a private channel (a GitHub security advisory) and, more usefully, states the boundary that decides what a vulnerability here even is: rocketh silently doing something other than what the script asked for is one, and a deploy script misusing an admin key it was handed is the deployment environment's design. It also lists the accepted, documented properties that are not worth reporting, so a reader can tell the difference between something already known and something new.
+
+  Also fixed: the deploy-script example under "Deploying Contracts" still imported from `#rocketh`, the subpath-imports alias that setup no longer uses. It reads `../rocketh/deploy.js`, like every other example on the page.
+
+- 7fdb319: Document what the interactive unknown-signer path now checks, that `catchUnknownSigner` is not a "never send" switch, and that `linkedData` is public.
+
+  Three gaps in `documentation.md`, all about the same thing: what a reader can rely on when a privileged transaction is involved.
+
+  **The stated residual risk was out of date.** It said an execution's pasted hash is checked for success "and nothing else", which stopped being true when the evidence check landed. It now describes what is actually weighed (the transaction itself, a Safe execution, a wrapper carrying the calldata, or nothing), that the last case pauses and asks rather than refusing, since governance executed by proposal id looks exactly like a wrong hash, and what remains accepted: no wallet ABI is decoded, so a user who deliberately confirms the wrong transaction is believed. What is gone is the silent case.
+
+  **`catchUnknownSigner` reads like a "never send" switch and is not one.** It catches the case where rocketh CANNOT sign; an account it CAN sign for still broadcasts inside the wrapper, which is what makes a mixed run work. A production run that unexpectedly holds the admin key therefore sends the admin transaction. The docs now say so and show the assertion to write instead, using `env.addressSignability`, which is public API and needed no new feature.
+
+  **`linkedData` is public.** It is stored in the deployment record and copied into every export, so it reaches the frontend bundle and the repository. Fine for a prefix, an admin address or a start block; the wrong place for an API key or an RPC URL with a token in it.
+
+  Also documented: the diamond cut plan (and why a declarative selector diff removes functions by design), `--verify` for exports, and the identifier constraint on the `--tsm` / `--jsm` module formats.
+
+- 400ece3: Weigh whether a pasted transaction is actually the one rocketh asked for, instead of accepting any successful hash.
+
+  When rocketh cannot sign, the interactive path prints the transaction, the user executes it out-of-band and pastes back a hash. For an EXECUTION, the whole of the check was that the hash existed on this network and its receipt reported success. Pasting the hash of an unrelated successful transaction therefore recorded that transaction as the requested proxy upgrade, diamond cut or ownership transfer. A deployment was already held to a stricter standard (`requireDeployedContract` proves code exists at the expected address); an execution had no anchor at all.
+
+  **Equality is not the fix.** A Safe execution is not the transaction rocketh described: it goes to the Safe, carries rocketh's call as an inner payload, and is signed by an owner who is not the `from` at all. A timelock adds another layer. So a mismatch cannot be refused and a match cannot be required.
+
+  The evidence is ranked instead, and the transaction is already in hand (it is fetched before waiting for the receipt), so this costs no extra RPC:
+
+  - **direct**: same `to`, `data` and `value`. It IS the transaction. Values compare numerically, since `0x0`, `0x00` and `0` are the same amount written by different tools.
+  - **account**: sent TO the account rocketh needed to act as, which is what every Safe execution looks like from outside. Deliberately outranks `embedded`: it names the executing account rather than merely finding bytes.
+  - **embedded**: rocketh's calldata appears verbatim inside the transaction's input, which is what a Safe `execTransaction`, a MultiSend batch or an OpenZeppelin `TimelockController.execute` payload looks like. Wallet-agnostic: no ABI is decoded and no wallet is recognised. Empty calldata is excluded, since `0x` is a substring of everything and a plain ETH transfer would otherwise match every transaction ever mined.
+  - **none**: nothing links the two.
+
+  The first three are accepted and the run now says WHICH one matched, because it is about to record a privileged operation as done on the strength of it.
+
+  **`none` asks rather than refuses**, and that is the load-bearing decision. Governance executed by identifier, such as Governor Bravo's `execute(uint256 proposalId)` where the payload was queued in an earlier transaction, carries no trace of the calldata: refusing would break a legitimate workflow. It is also exactly what pasting the wrong hash looks like, and rocketh cannot tell them apart, so it stops and says so. Only an explicit `yes` records it; anything else, including an empty line, a cancelled prompt or a prompt that cannot reach a human, defers the transaction with the same `UnknownSignerError` any other deferral raises, so `catchUnknownSigner` handles it identically and nothing is saved.
+
+  This narrows, but does not remove, the residual risk documented in "Handling unknown signers": a user who deliberately confirms the wrong transaction is still believed. What it removes is the silent case.
+
+  Two test mocks returned an `eth_getTransactionByHash` result with no `to`, `input` or `value`, which no node does; they now return the Safe-execution shape they were always meant to model.
+
+- ad03283: Fail with the name of the deployment record that could not be read, instead of a bare `SyntaxError`.
+
+  Every deployment record was parsed with no error handling, so a truncated or hand-edited JSON file surfaced as:
+
+  ```
+  SyntaxError: Expected property name or '}' in JSON at position 2
+  ```
+
+  That answers neither of the two questions the reader has, which file and which environment, and it reached users through every path that loads deployments: the `rocketh` CLI, hardhat-deploy, `rocketh-export` and `rocketh-doc`.
+
+  It now names the record, the environment and the folder, keeps the original parse error as `cause`, and says why it stops rather than skipping the file: a deployment rocketh cannot see is one it would **deploy again**, at a new address, silently replacing what the unreadable record described.
+
+  `.migrations.json` keeps its existing non-fatal handling, deliberately, and the asymmetry is now pinned by a test. What is lost there is the record of which scripts have run, and those are idempotent by design, so the run continues; the message just has to say so, or a reader watches every script re-run with no explanation. `failed to parse .migrations.json` named neither the environment nor the consequence, and now does both.
+
+- 8547e39: Replace `pushUnknownSignerPolicy` / `popUnknownSignerPolicy` on the environment with a single `runUnderUnknownSignerPolicy(frame, action)`.
+
+  ```ts
+  // before
+  env.pushUnknownSignerPolicy({policy: 'throw'});
+  try {
+  	await action();
+  } finally {
+  	env.popUnknownSignerPolicy();
+  }
+
+  // after
+  await env.runUnderUnknownSignerPolicy({policy: 'throw'}, () => action());
+  ```
+
+  Behaviour is unchanged: same precedence (innermost frame, else the run's `onUnknownSigner`), same capability ceiling degrading `'ask'` to `'throw'` where no human can be reached, same invariant that a frame never turns a signable account into a throw. `catchUnknownSigner` and `withUnknownSignerPolicy` are untouched at the surface, so no deploy script changes.
+
+  **Why one verb instead of two.** A stranded frame is no longer representable: the environment owns both ends of the scope, so a caller cannot forget the `finally`, and an unbalanced pop (a documented no-op, which meant a leaked policy announced itself only as changed behaviour much later) cannot be written at all.
+
+  **And it is what unblocks the concurrency limitation.** The policy scope is dynamic scope over a sequential run, so `Promise.all` of two actions inside one `catchUnknownSigner` shares one frame and leaks it between them, in both directions since `'ask'` landed (ADR 0006). Fixing that means a scope that follows the ASYNC CAUSAL CHAIN rather than wall-clock time, so that work started inside the wrapper inherits the frame and work started outside it does not: `AsyncLocalStorage` on Node, `AsyncContext` when it reaches browsers.
+
+  What stood in the way was not the storage, it was this API. Two independent verbs can only be backed by ambient mutable state, so the frame stack was part of the published contract of `@rocketh/core` and could not be swapped without a second breaking change. It is now an implementation detail of one method, and `AsyncLocalStorage` being Node-only is not a blocker either: ADR 0007 already established the pattern for a capability only some runtimes provide, injected on the environment by `@rocketh/node`, with a fallback elsewhere.
+
+  The leak itself is NOT fixed here, and the limitation stands until that work lands. This removes the reason it could not be fixed cheaply.
+
+  Only code that drove the seam directly is affected. Nothing in `@rocketh/deploy`, `@rocketh/proxy`, `@rocketh/diamond` or `@rocketh/read-execute` called these.
+
+- Updated dependencies [8547e39]
+  - @rocketh/core@0.19.11
+
 ## 0.19.17
 
 ### Patch Changes

@@ -1,5 +1,27 @@
 # @rocketh/deploy
 
+## 0.19.16
+
+### Patch Changes
+
+- 1973f4f: Fix the create3 "already deployed" check, which compared runtime code against creation code, and establish that a deterministic factory is the factory the chain config describes.
+
+  **The create3 check never matched.** When a create3 address already holds code, the deploy path asks whether that code is the contract it was told to deploy. It answered by comparing what `eth_getCode` returned (RUNTIME code) against `transactionData.data` (CREATION code plus constructor arguments), which are different artifacts of different lengths, so the comparison failed for every contract and the deployment threw `code (length: 5) already deployed ... but is not the expected bytecode (length: 49)`.
+
+  The branch is only reached when the local deployment record is missing but the chain still has the contract: a fresh clone with no `deployments/` folder, a reset, a lost machine. That is the recovery case an idempotent deploy script exists to survive, so the one path that had to recognise its own work was the one that could not.
+
+  It now compares runtime code with runtime code, against the artifact's `deployedBytecode`. The default comparison is the trailing CBOR METADATA BLOB rather than the whole code, because an `immutable` is written into the runtime code at construction time: the artifact carries zeros where the deployed contract carries values, so comparing the full code verbatim would call any contract with immutables a stranger. The metadata blob is a hash of the source and the compiler settings, including which contract in the file was compiled, so it identifies the contract while ignoring what the constructor wrote. `strictBytecodeMatch: true` asks for the verbatim comparison, and bytecode with no metadata blob falls back to it.
+
+  The check itself is worth keeping and only create3 needs it: a create2 address is derived from the creation bytecode, so code at the computed address can only have come from that bytecode, while a create3 address is derived from the deployer and the salt alone. Two contracts deployed with one salt therefore collide, and the error now says that is what happened and what to do about it.
+
+  **A factory address holding code is not proof of the right factory.** Every deterministic address this package computes is derived from the assumption that the configured factory address holds the factory the chain config describes, and the only thing previously established was that something had code there. The factory address, its deployer and its pre-signed deployment transaction are all user-supplied chain configuration, and a fork or an L2 can have anything at a given address.
+
+  - **create2**: when code is already at the factory address, it is compared against the runtime code the config's own `signedTx` creates. That expectation is derived, not hardcoded: the canonical factory's twelve-byte constructor returns a fixed slice of its own creation code, so the runtime code is readable from the configuration. A chain that configures a different factory is checked against ITS factory, and a factory whose constructor computes its runtime code cannot be predicted without an EVM, so the check skips rather than guesses.
+  - **create3**: the existing "is this the address this bytecode and salt produce" assertion now runs whether or not the factory is already deployed. It used to run only on the branch that DEPLOYS the factory, which is the branch where being wrong fails visibly anyway. On the other branch, a wrong address means `deployDeterministic` calls go to whatever contract sits there while rocketh records addresses from a formula that does not describe it. The create2 factory address it needs is read from configuration directly rather than through `getCreate2Factory`, since verifying a configuration must not deploy anything.
+
+- Updated dependencies [8547e39]
+  - @rocketh/core@0.19.11
+
 ## 0.19.15
 
 ### Patch Changes

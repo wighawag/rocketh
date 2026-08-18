@@ -1,5 +1,84 @@
 # @rocketh/diamond
 
+## 0.19.18
+
+### Patch Changes
+
+- 0eeafba: Print what a diamond cut will do, with removals called out separately, before executing it.
+
+  A cut is declarative: rocketh compares the selectors the diamond currently serves against the ones the declared facet set produces, and anything on chain but not declared goes into a Remove. That is the model working as designed, and it is also its sharp edge, because the same mechanism turns a typo, a commented-out facet or a half-finished refactor into the deletion of live functions. The worst case removes the only route to a future upgrade and makes the diamond permanently immutable.
+
+  Until now the `diamondCut` transaction went out with **nothing printed**: the selectors were four-byte hex inside the calldata, so the one moment where a mistake is still cheap to catch passed in silence.
+
+  The plan is now shown first:
+
+  ```
+    diamondCut on MyDiamond:
+    REMOVING 1 function from the diamond:
+      0x55241077  setValue(uint256)
+    A removed function stops existing at this address. If any of the above was not meant to go,
+    stop now: check that every facet you expect is in `facets`, since anything the declared set
+    does not produce is removed by design.
+    adding 2 functions:
+      0x20965255  getValue()  ->  0xaaa...
+  ```
+
+  Two things make it worth printing. **Removals get their own block, ahead of everything else**, because scanning one combined list is exactly how a removal gets missed. And **selectors are resolved to signatures**: `Remove 0x1f931c1c` tells a reader nothing, `Remove diamondCut(...)` tells them to stop. The names are looked up in both the new merged ABI and the previous deployment's, since what is leaving is by definition no longer in the new one, and those are precisely the lines that matter most.
+
+  An upgrade that only adds or replaces prints its summary without the removal block, so the loud part stays meaningful.
+
+  This is a report, not a policy: nothing is refused, and a protected-selector list that would block a removal outright remains a separate, larger feature.
+
+- a8d419d: Advertise the ERC-165 interfaces of the default facets, stop mutating the caller's `facets` array, and stop blaming `execute` for an unrelated bad template.
+
+  Three near-misses in the same file, each a condition or a value that was almost right.
+
+  **The default facets were installed but not advertised.** A default facet is installed when its option is `undefined` (omitted) or truthy, but the ERC-165 interface list read those same options for plain truthiness:
+
+  ```ts
+  if (options?.defaultCutFacet === undefined || options.defaultCutFacet) { /* install */ }
+  ...
+  if (options?.defaultCutFacet) { interfaceList.push('0x1f931c1c'); }
+  ```
+
+  So the DEFAULT configuration, which is every diamond that does not opt out, installed the cut and ownership facets and then advertised neither: `supportsInterface(0x1f931c1c)` and `supportsInterface(0x7f5828d0)` answered false on a diamond that has both. The two conditions are now one shared pair of booleans, so they cannot drift again, and the interface list is asserted against the constructor arguments the deploy actually encodes.
+
+  **`options.facets` was mutated.** The three default facets were pushed onto the caller's own array (`const facetsSet = options.facets`). Reusing one options object across two `diamond(...)` calls appended them twice, which puts the same selector in a single Add cut (a revert) or trips `mergeABIs({check: true})` first. It is a copy now.
+
+  **A diamond with no `execute` could be told `execute is set in option`.** `executeData` is the STRING `'0x'` when there is no initializer, and that is truthy, so the placeholder-substitution block ran unconditionally and could reach its "no `{init}` or `{initData}` found in list of args even though execute is set in option" throw for a caller who set no such option. Only the throw is conditional on there being a call now; the placeholders are still substituted either way, since an unreplaced `'{init}'` string would otherwise reach the constructor encoder.
+
+  **Removed: the `artifact` field on `DiamondDeploymentConstruction`.** It was accepted by the type and then ignored, because the base diamond deployed is always this package's bundled one. Passing it could make a caller believe they had replaced the diamond base (with an independently audited one, say) while the bundled implementation was what landed on chain. Supporting a user-provided base is a real feature and is recorded as an idea, along with the finding that the non-default `diamondContractArgs` placeholders (`{erc165}`, `{init}`, `{initAddress}`, `{initData}`) describe constructor shapes the bundled diamond does not have and are therefore unreachable until that feature exists.
+
+  **Not changed: an `execute` still only runs when a cut happens.** A review reported the initializer-only case (an `execute` with no selector change) as a bug. It is not: deploy scripts are re-run, so an initializer that fired on every re-run would not be idempotent. `@rocketh/proxy` gates its own `execute` the same way (nothing happens when the implementation is unchanged), and so did both of hardhat-deploy v1's diamond implementations. What is genuinely missing is the `{init, onUpgrade}` split the proxy already has, which is now recorded as an idea; `execute` is documented as the flat form of that option in the meantime.
+
+- a4de04d: Vendor the Solidity sources of the bundled Diamond artifacts, and prove they produce the shipped bytecode.
+
+  This package DEPLOYS prebuilt artifacts: the base `Diamond` and the default cut/loupe/ownership facets ship as compiled bytecode under `src/hardhat-deploy-v1-artifacts/`, and the package build (`tsc` plus `ts-to-json`) never invokes a Solidity compiler. Only the supporting sources were present (`LibDiamond`, the interfaces, `UsingDiamondOwner`); the six contracts actually deployed had none. Their metadata names `solc_0.8/diamond/Diamond.sol`, a path that exists in hardhat-deploy v1's tree and nowhere in this repository, so no reviewer, including the maintainer, could answer "what source produced the bytecode this package puts on chain?" without leaving the repo.
+
+  All six are now vendored, along with the interfaces and library they pull in, as a frozen mirror of hardhat-deploy v1's tree under `hardhat-deploy-v1/` (added to the published `files`, so consumers get them too), and two checks pin the chain from source to deployed bytecode:
+
+  ```
+  hardhat-deploy-v1/**/*.sol  ==  metadata.sources[*].content  ->  (solc 0.8.10)  ->  bundled bytecode
+  ```
+
+  **Why a separate folder from `solc_0_8/`.** That directory is a PUBLIC Solidity import surface: `package.json` exports `./solc_0_8/*` and the migration guide tells users to write `import '@rocketh/proxy/solc_0_8/ERC1967/Proxied.sol'` in their own contracts. It holds the few files a consumer inherits or imports, and the contracts this package DEPLOYS are not among them. Keeping the mirror separate also lets it reproduce v1's tree exactly, so a file's path relative to `hardhat-deploy-v1/` is literally its key in the artifact metadata (`solc_0.8/diamond/Diamond.sol`). That is load-bearing rather than tidy: solc hashes source paths into the metadata blob at the end of the bytecode, so these same bytes compiled under any other path produce different bytecode, and, because the default facets deploy with CREATE2, a different address for every user. A test asserts the overlapping files (LibDiamond, the interfaces) stay byte-identical between the two trees, since drift there would have a consumer compiling facets against a different interface than the deployed diamond was built with.
+
+  **The left link, hermetically, on every `pnpm test`.** These artifacts were compiled with `metadata.useLiteralContent: true`, so each one carries the FULL TEXT of every source it was built from, not merely a hash. `test/bundled-artifact-provenance.test.ts` asserts that every such source exists in the mirror and is byte-identical to the compiler's own copy, that the compiler was the pinned `0.8.10+commit.fc410830`, and, in the reverse direction, that no vendored `.sol` is left unaccounted for by any artifact. No compiler, no network, no fixtures.
+
+  **The right link, by regenerating them.** The artifacts are now GENERATED from the mirror by `pnpm --filter @rocketh/diamond generate:artifacts`, and `verify:artifacts` is the same generator in `--check` mode, run in CI. Regenerating today reproduces all six files BYTE FOR BYTE, which required matching three things hardhat-deploy v1 fed the compiler, each of which would otherwise change the output silently: the source paths (hashed into the metadata blob), the input shape and source order (`solcInput` is stored verbatim in each artifact and `solcInputHash` is `murmur128` over it), and the settings (`evmVersion` is deliberately absent, since v1 never passed one and 0.8.10 defaults to london).
+
+  The compiler is the npm `solc` package pinned to `0.8.10`, whose Emscripten build reproduces the native compiler's output exactly here, so the check needs no toolchain install. The generator refuses to run against any other version, because the compiler identity is hashed into the bytecode.
+
+  **They stay committed, and that is the point.** The default facets deploy with CREATE2, so their bytecode determines their ADDRESS. Compiling during `build` or during the release would let a different compiler, platform or path silently move every user's facets, and would put a Solidity toolchain in the job that holds the npm OIDC token. v1 committed its `extendedArtifacts/` for the same reason, with `hardhat compile` as a separate manual step. Generated-and-committed keeps the `.sol` as the single source of truth while leaving the addresses fixed: before this, editing a vendored source had no effect on anything deployed, and nothing said so. The check reports which half moved, since an unchanged bytecode with different packaging is harmless while a bytecode difference moves addresses.
+
+  No behaviour change: the artifacts are byte-identical to what shipped before.
+
+- Updated dependencies [1973f4f]
+- Updated dependencies [8547e39]
+  - @rocketh/deploy@0.19.16
+  - @rocketh/core@0.19.11
+  - @rocketh/read-execute@0.19.11
+
 ## 0.19.17
 
 ### Patch Changes
