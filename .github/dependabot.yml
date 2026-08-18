@@ -1,0 +1,42 @@
+# Version updates for the GitHub Actions this repo calls.
+#
+# WHY THIS FILE EXISTS: `release.yml` pins every action to a full commit SHA, and a
+# SHA never moves. That is the point (a `@v4` tag can be repointed at new code by
+# whoever owns it, a commit cannot), but it also means those pins would sit at the
+# commit they were introduced with forever, security fixes included, unless
+# something proposes bumps. Dependabot alerts do not cover this: they fire on a
+# published advisory, and "your pin is two years old" is not one. Version updates
+# are what turn a frozen pin into a reviewable PR, and they run ONLY for the
+# ecosystems declared here.
+#
+# Dependabot rewrites the trailing `# v4.4.0` comment alongside the SHA, so the
+# human-readable half stays in sync. It does NOT reliably fix a comment that was
+# already wrong, so keep them accurate when adding a pin (read the SHA from the
+# API, do not guess).
+#
+# NOT declared here: the `npm` ecosystem. Dependabot alerts already cover the
+# dependency tree (that is where the security floors in package.json's
+# `pnpm.overrides` come from), and routine npm version-bump PRs would collide with
+# `minimumReleaseAge: 10080` in pnpm-workspace.yaml: Dependabot would propose
+# releases that pnpm then refuses to install for a week. If it is ever wanted, add
+# a `cooldown` of 7 days to match the floor.
+version: 2
+updates:
+  - package-ecosystem: 'github-actions'
+    # '/' covers .github/workflows ONLY. Composite actions are separate manifests
+    # that Dependabot does not reach from the root, so the glob picks up
+    # .github/actions/dorfl-setup/action.yml (which calls pnpm/action-setup and
+    # actions/setup-node itself) and any composite action added later.
+    directories:
+      - '/'
+      - '/.github/actions/*'
+    schedule:
+      interval: 'weekly'
+    # One PR for all of them: these move together, and reviewing four separate
+    # SHA bumps a month is how the PRs start getting rubber-stamped.
+    groups:
+      github-actions:
+        patterns:
+          - '*'
+    commit-message:
+      prefix: 'chore(ci)'

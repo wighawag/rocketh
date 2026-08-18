@@ -26,20 +26,27 @@ permissions:
   pull-requests: write
   id-token: write # npm provenance
 
+# Every action here is pinned to a full commit SHA, with the release it belongs to
+# in the trailing comment. This is the workflow that PUBLISHES to npm, so an action
+# it runs can reach the OIDC token and the built artifacts: `@v4` is a MUTABLE tag
+# the upstream owner (or anyone who takes over that account) can repoint at new code
+# without us doing anything, and a SHA cannot be repointed. Pin the commit the tag
+# resolved to, not the newest release, so pinning changes nothing by itself; update
+# these deliberately, reading the diff between the two commits.
 jobs:
   release:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0 (what the v4 tag points at; v4.4.0 exists but v4 was never moved to it)
         with:
           version: 10.28.1
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24 # >= 22 required for npm OIDC trusted publishing
           cache: pnpm
@@ -59,7 +66,9 @@ jobs:
       # So: do not bump @changesets/cli across a major without checking this action,
       # and do not downgrade this action without downgrading the CLI.
       - name: Create Release PR or Publish
-        uses: changesets/action@v2
+        # v2 here is a BRANCH, not a tag, so it moved with every v2.x release. This is
+        # its head as of 2026-08-17, which is also the v2.1.0 release commit.
+        uses: changesets/action@198f833dd7d863100ea6e28967bc9a9fdefadb0a # v2.1.0
         with:
           # release:ci builds + format-checks then runs `changeset publish`.
           # No NPM_TOKEN: npm detects the OIDC environment and authenticates via

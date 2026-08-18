@@ -2,3 +2,81 @@ linkWorkspacePackages: true
 packages:
   - 'packages/*'
   - 'website'
+
+# ---------------------------------------------------------------------------
+# Supply-chain settings
+#
+# These live HERE and not in an .npmrc: pnpm reads only auth/registry settings
+# from .npmrc, and from v11 that is enforced. The package manager itself is
+# pinned in package.json (`packageManager: pnpm@10.28.1`), so the settings below
+# are the ones that version understands.
+# ---------------------------------------------------------------------------
+
+# Do not install a version published less than 7 days ago (value is in MINUTES).
+# Compromised releases are usually caught and unpublished within hours, so a
+# waiting period is the cheapest defence against being the first to install one.
+# It applies to transitive dependencies too, and only bites when something is
+# RESOLVED: `pnpm install --frozen-lockfile` (CI, and the release workflow) is
+# unaffected. If an urgent fix has to jump the queue, exempt exactly that
+# package/version through the exclude list below rather than lowering this number.
+minimumReleaseAge: 10080
+
+# OUR OWN packages are exempt, and they have to be. `pnpm test:getting-started`
+# walks the README's Getting Started, which runs `pnpm add -D ... rocketh
+# @rocketh/node ...` against the REGISTRY from a directory inside this workspace,
+# so the floor above applies to it. Measured on 2026-08-17: with the floor and no
+# exemption that resolves rocketh 0.19.10 while 0.19.17 is published, and it does
+# so SILENTLY. A release cadence of six versions in six days means the guide would
+# be verified against a week-old rocketh, exactly when a fresh release most needs
+# checking.
+#
+# The delay exists to protect us from packages whose publishing path we do not
+# control, which is not true of these: they leave CI through trusted publishing
+# from this repo. The cost is real and worth naming (if the npm account were
+# compromised, an install here would take the bad version at once instead of
+# waiting out the week) and it is accepted because the alternative is a
+# permanently stale getting-started test.
+minimumReleaseAgeExclude:
+  - 'rocketh'
+  - '@rocketh/*'
+  - 'hardhat-deploy'
+
+# Refuse a version whose TRUST EVIDENCE is weaker than that of earlier releases of
+# the same package. npm records how a version was published (trusted publishing via
+# OIDC, provenance attestation, or nothing), and the shape of a hijacked release is
+# precisely this: a package that always shipped from CI suddenly ships from
+# somewhere with no such evidence. `minimumReleaseAge` above only DELAYS such a
+# version and bets someone reports it in time; this refuses it outright, on a
+# structural difference rather than on the community's reaction time. Judged by
+# publish date, not semver, so a "patch" on an old branch cannot dodge it.
+trustPolicy: no-downgrade
+
+# ...but only for versions published within the last 30 days (value in MINUTES).
+# Most of the registry's history predates provenance entirely, so without this the
+# policy would demand a manual exemption for every old package in the tree. A
+# hijack is by nature a FRESH publish, so restricting the check to fresh publishes
+# keeps what the policy is for and drops the archaeology. Per-package escapes go in
+# `trustPolicyExclude` if one is ever needed.
+trustPolicyIgnoreAfter: 43200
+
+# Transitive dependencies must come from the registry: no git repositories and
+# no direct tarball URLs, which bypass the registry's release controls. Direct
+# dependencies of the root package.json are still allowed to use them. Verified
+# inert against the current lockfile, which resolves no exotic source at all.
+blockExoticSubdeps: true
+
+# Dependency lifecycle scripts (preinstall/install/postinstall) are the classic
+# arbitrary-code-execution surface of an install. pnpm blocks unreviewed ones by
+# default; `strictDepBuilds` turns that from a warning nobody reads into a failed
+# install, so a NEW dependency arriving with a build script has to be looked at.
+strictDepBuilds: true
+
+# Reviewed decisions for the packages in the current tree that want to run one.
+# All three are DENIED, which is what already happens today (nothing was ever
+# approved here) and what the test/build/release flows already run against, so
+# this records the status quo rather than changing behaviour. Add an entry, with
+# a reason, only for a package that genuinely cannot work unbuilt.
+allowBuilds:
+  '@parcel/watcher': false
+  esbuild: false
+  nx: false
