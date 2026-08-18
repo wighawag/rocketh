@@ -39,6 +39,8 @@
  * dependency v1 used to compute it.
  */
 
+/// <reference path="./externals.d.ts" />
+
 import fs from 'node:fs';
 import path from 'node:path';
 

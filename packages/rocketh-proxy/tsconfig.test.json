@@ -2,8 +2,17 @@
 	"extends": "./tsconfig.json",
 	"compilerOptions": {
 		"noEmit": true,
-		"rootDir": ".",
+		// The REPO root, not this package. `test/bundled-artifact-provenance.test.ts` and
+		// `scripts/generate-artifacts.ts` both import the shared artifact tooling from
+		// `<repo>/scripts`, which sits outside this package, and tsc refuses a program whose
+		// files escape `rootDir` (TS6059). Nothing is emitted from this config, so `rootDir`
+		// only decides which files tsc will accept, never any output layout.
+		"rootDir": "../..",
 		"types": ["node"]
 	},
-	"include": ["src/**/*.ts", "test/**/*.ts"]
+	// `scripts/` is included so the artifact generator is typechecked at all: it belongs to
+	// neither `tsconfig.json` (src only, and it must stay out of the published build) nor the
+	// test glob, so before this it was checked by nothing and editors fell back to a default
+	// config with no node types.
+	"include": ["src/**/*.ts", "test/**/*.ts", "scripts/**/*.ts"]
 }

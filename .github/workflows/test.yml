@@ -45,6 +45,13 @@ jobs:
       - name: build packages
         run: pnpm build
 
+      # BOTH halves: `pnpm typecheck` runs the per-package `tsc --noEmit` (src only) AND
+      # `typecheck:tests`, which is the one that covers `test/` and `scripts/`. Nothing here
+      # checked either before, so a test or a build script could reference a missing type
+      # (or a missing `@types/node`) and only an editor would ever say so.
+      - name: Typecheck
+        run: pnpm typecheck
+
       - name: Run tests
         run: pnpm test
 

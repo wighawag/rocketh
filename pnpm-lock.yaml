@@ -231,6 +231,9 @@ importers:
       '@rocketh/test-utils':
         specifier: workspace:*
         version: link:../rocketh-test-utils
+      '@types/node':
+        specifier: ^26.2.0
+        version: 26.2.0
       as-soon:
         specifier: ^0.1.6
         version: 0.1.6
@@ -491,6 +494,9 @@ importers:
       '@rocketh/test-utils':
         specifier: workspace:*
         version: link:../rocketh-test-utils
+      '@types/node':
+        specifier: ^26.2.0
+        version: 26.2.0
       as-soon:
         specifier: ^0.1.6
         version: 0.1.6
