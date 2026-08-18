@@ -344,7 +344,7 @@ The environment object is passed to each deploy function and contains:
 The `deploy` function from `@rocketh/deploy` is used to deploy contracts:
 
 ```typescript
-import {deployScript, artifacts} from '#rocketh';
+import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(
 	async ({deploy, namedAccounts}) => {
@@ -864,6 +864,64 @@ and inspect the calls the environment made (`provider.getRequests()`). The
 calls to assert that deployments persist. The full options — including a partial
 `UserConfig` / `ExecutionParams` pass-through, `autoImpersonate`, `autoMine`,
 custom signer protocols — are documented in the package source.
+
+## Production hardening
+
+Everything below is about one question: what stops a mistake, a stale file or a compromised dependency in the deployment environment from becoming a privileged change on a live chain. None of it is exotic, and most of it is a default you should check rather than a feature you must install.
+
+The short version: rocketh is an orchestration layer. Treat it as the thing that CONSTRUCTS and RECORDS operations, and keep the authority that APPROVES them somewhere rocketh cannot reach.
+
+### Keep the signing authority outside the deployment environment
+
+A deploy script runs in a Node process alongside every dependency your project has. Anything in that process can read the environment it runs in, so an admin private key present there is a key that every one of those packages could reach.
+
+For anything privileged (a proxy upgrade, a diamond cut, an ownership transfer, treasury administration) the deployment environment should not be able to sign at all. Use a Safe, a hardware wallet, a governance contract or an HSM as the account, let rocketh build the transaction, and approve it there. That is what [`@rocketh/unknown-signer`](#handling-unknown-signers-safe-multisig-owners) is for: `catchUnknownSigner` returns the exact transaction to execute out-of-band, and the next idempotent run reads the chain and continues from wherever the state now is.
+
+Set `onUnknownSigner: 'throw'` for such runs. `'auto'` (the default) degrades to `throw` when there is no interactive resolver, but saying it explicitly is what makes the intent survive a future change to how the run is invoked.
+
+### `catchUnknownSigner` is not a "never broadcast" switch
+
+It catches the case where rocketh CANNOT sign. An account it CAN sign for still broadcasts inside the wrapper, which is what lets a mixed run work: ordinary deployments proceed, the one privileged call is deferred.
+
+So a run that unexpectedly holds the admin key will send the admin transaction rather than defer it. If that matters, assert it rather than assume it, using the public `env.addressSignability` map shown [above](#handling-unknown-signers-safe-multisig-owners).
+
+### Check `autoImpersonate` is off
+
+`autoImpersonate` is a NODE CAPABILITY switch: it asks the node to sign as an account you do not hold the key for, which only a development node will do. It is **off by default** and belongs in fork and local testing, where it is genuinely useful for rehearsing an upgrade as the real admin.
+
+The thing to check is that it is not switched on for a production chain in a shared config, since an impersonated account is signable and therefore never reaches the unknown-signer path.
+
+### Rehearse on a fork, then verify the chain afterwards
+
+A fork of the real chain at a recent block is the strongest check available before a privileged change, and it is stronger than any assertion about who could have signed: it proves the transaction actually does what you believe against the state that actually exists. Run the same scripts, with `autoImpersonate` on so the admin account can act, and check the invariants you care about (ownership, facet mapping, balances, access control).
+
+After execution, read the chain again. A successful receipt says a transaction was mined, not that the intended state transition happened.
+
+### Read the diamond cut plan, especially the removals
+
+A diamond upgrade is declarative: whatever selector is on chain but absent from the declared facet set is REMOVED. That is the model working as designed, and it is also how a typo, a commented-out facet or a half-finished refactor turns into the removal of live functions. The worst case is removing the last path to `diamondCut` itself, which makes the diamond permanently immutable.
+
+Rocketh prints the plan before it executes, with removals in their own block and selectors resolved to signatures where it can name them. It does not refuse anything, because a legitimate upgrade removes functions too. Read that block before approving the transaction, and treat a removal you did not expect as a stop.
+
+### Verify what you export, and treat generated files as build artifacts
+
+`rocketh-export --verify` asks the chain whether the addresses you are about to hand to a frontend are really there, and whether the environment is the network you think it is. It is opt-in so that offline builds keep working, which means the moment it matters is exactly the moment nothing forces you to pass it: add it to the build that ships.
+
+The generated file is derived state. The deployment records are the primary record, and the chain is the authority above both.
+
+### Treat deployment records as security-sensitive configuration
+
+An address in a deployment record ends up in a frontend, in a verification call and in the next upgrade's target. A change to one deserves the same review as a change to contract code: commit them, protect the branch that holds the production environment, and read address changes in the diff rather than scrolling past them.
+
+### Pin the tooling in a deployment repository
+
+In a repository whose job is to administer live contracts, prefer exact versions of `rocketh` and the `@rocketh/*` packages over ranges, and update them in a deliberate pull request where the changelog and the lockfile diff are read. A library caret range is right for a library; it is not right for the thing that constructs your upgrade transactions.
+
+This repository's own supply-chain settings (a release-age floor, a publish-trust policy, refusal of git and tarball dependencies, dependency build scripts denied by default) are in `pnpm-workspace.yaml`, with the reasoning inline, and are a reasonable starting point to copy.
+
+### Do not put secrets in `linkedData`
+
+See [above](#linkeddata-is-public): it is copied into every export and therefore into the bundle you ship.
 
 ## Examples
 

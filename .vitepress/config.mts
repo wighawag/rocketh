@@ -139,6 +139,10 @@ export default defineConfig({
 		'AGENTS.md',
 		'CONTEXT.md',
 		'TESTING.md',
+		// GitHub reads this one from the repository root (it is what powers the "Report a
+		// vulnerability" button); it is not a docs page, and nothing in the sidebar links to it.
+		// The user-facing half of it lives in documentation.md under "Production hardening".
+		'SECURITY.md',
 	],
 
 	rewrites(id) {
