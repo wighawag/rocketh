@@ -85,7 +85,6 @@
 		"prepublishOnly": "cp ../../LICENSE LICENSE",
 		"build": "tsc --project tsconfig.json && cp src/v1-entry.cjs dist/",
 		"dev": "as-soon -w src pnpm build",
-		"test": "vitest",
-		"postinstall": "node -e \"require('fs').existsSync('./dist/postinstall.js') && require('child_process').spawnSync(process.execPath, ['./dist/postinstall.js'], {stdio: 'inherit'})\""
+		"test": "vitest"
 	}
 }
