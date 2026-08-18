@@ -717,19 +717,32 @@ export interface Environment<
 	readonly addressSignability: {[address: `0x${string}`]: Signability};
 
 	/**
-	 * Push a policy frame that overrides the resolved `onUnknownSigner` for the
-	 * duration of a scoped action, and pop it again. `@rocketh/unknown-signer`
-	 * calls these (it depends on `@rocketh/core` only, which is why they are typed
-	 * here rather than left as an untyped environment internal).
-	 *
-	 * ALWAYS pop in a `finally`, or the frame leaks into the rest of the run.
+	 * Run `action` with a policy frame that overrides the resolved `onUnknownSigner`
+	 * for its duration. `@rocketh/unknown-signer` calls this (it depends on
+	 * `@rocketh/core` only, which is why it is typed here rather than left as an
+	 * untyped environment internal).
 	 *
 	 * A frame changes what happens to an `unsignable` account ONLY. It never turns
 	 * a `local` / `node` / `impersonated` account into a throw: the frame is
 	 * consulted INSIDE the unsignable branch of the seam (ADR 0006).
+	 *
+	 * ONE VERB, NOT TWO. This used to be `pushUnknownSignerPolicy` /
+	 * `popUnknownSignerPolicy`, and two independent verbs can only ever be
+	 * implemented by ambient mutable state: the caller owned the `try`/`finally`, so
+	 * forgetting it stranded a frame over the rest of the run, and the frame stack
+	 * was part of the published contract rather than an implementation detail.
+	 * Scoping the action instead makes a stranded frame unrepresentable and leaves
+	 * HOW the scope is stored up to the environment.
+	 *
+	 * That freedom is the point. The current implementation is a stack, which is
+	 * DYNAMIC SCOPE over a sequential run: `Promise.all` of two actions inside one
+	 * scope leaks the frame between them, in both directions (ADR 0006). Fixing that
+	 * needs the scope to follow the async causal chain instead
+	 * (`AsyncLocalStorage` on Node, `AsyncContext` when it ships for browsers), and
+	 * with this signature that is a change of implementation behind one method
+	 * rather than another change to this interface.
 	 */
-	pushUnknownSignerPolicy(frame: UnknownSignerPolicyFrame): void;
-	popUnknownSignerPolicy(): void;
+	runUnderUnknownSignerPolicy<T>(frame: UnknownSignerPolicyFrame, action: () => Promise<T>): Promise<T>;
 
 	save<TAbi extends Abi = Abi>(
 		name: string,

@@ -17,3 +17,19 @@ The pre-guard tested for the PRESENCE of an `addressSigners` entry, not for sign
 `deploy-unsignable-deployer-reaches-seam` removed the guard, so both spellings now behave identically and reach the seam. The removal has one user-visible consequence, recorded here because nothing else states it: with the guard gone, a DETERMINISTIC deploy from an unsignable deployer can cause on-chain side effects before the `UnknownSignerError` surfaces. `getCreate2Factory` runs first, so a missing factory means the pre-signed factory-deployment raw transaction is broadcast (a `raw` transaction, which bypasses the seam entirely), and an under-funded factory deployer means a 21000-gas value transfer is attempted FROM the unsignable account first — so the first error the user sees names the funding transfer, not their deployment. This is absorbed by the idempotent re-run loop, and was accepted deliberately.
 
 Nothing is persisted by this mechanism (no unsigned-tx file, no state), mirroring hardhat-deploy v1 exactly. Idempotency is on-chain-state-driven: the user executes the deferred tx on their Safe, re-runs the idempotent script, and the on-chain state check skips the completed step. A persisted batch, if ever built, belongs downstream in a consumer package (see `explore-unknown-signer-adapters`), not in the core seam, keeping the "one choke point, zero side effects" property that makes the seam auditable.
+
+## Update (2026-08-18): the environment scopes the policy, it no longer publishes a push and a pop
+
+`Environment` used to expose `pushUnknownSignerPolicy(frame)` and `popUnknownSignerPolicy()`, and `@rocketh/unknown-signer` paired them in a `try`/`finally`. It now exposes one verb:
+
+```ts
+runUnderUnknownSignerPolicy<T>(frame: UnknownSignerPolicyFrame, action: () => Promise<T>): Promise<T>;
+```
+
+Nothing about precedence, capability ceilings or the impersonation invariant changes. Two things do.
+
+**A stranded frame is no longer representable.** The environment owns both ends of the scope, so a caller cannot forget the `finally`, and an unbalanced pop (a documented no-op that would have leaked a policy silently over the rest of the run) has no way to be written.
+
+**The storage stopped being part of the published contract.** Two independent verbs can only be backed by ambient mutable state, which is what pinned the implementation to the frame stack, and therefore pinned the concurrency limitation recorded above. With one scoping verb, replacing the stack with a scope that follows the async causal chain (`AsyncLocalStorage` on Node, `AsyncContext` when it reaches browsers) is a change to `environment/unknownSignerPolicy.ts` and its single caller, not another change to `@rocketh/core`'s `Environment`.
+
+That replacement is not done here, and the limitation above still stands: `Promise.all` of two actions inside one wrapper still shares one frame. What is done is removing the reason it could not be fixed without a second breaking change. The Node-only nature of `AsyncLocalStorage` is not a blocker either, since ADR 0007 already established the pattern for a capability that only some runtimes provide, injected on the environment by `@rocketh/node`, with a fallback for the browser.

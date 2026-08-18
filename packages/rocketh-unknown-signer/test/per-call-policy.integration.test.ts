@@ -139,7 +139,7 @@ describe('@rocketh/unknown-signer - per-call policy override', () => {
 	});
 
 	/**
-	 * Story 8, the `'throw'` direction, and the frame is popped afterwards: the ambient
+	 * Story 8, the `'throw'` direction, and the scope is retired afterwards: the ambient
 	 * `'ask'` is back in force for the next call, which is what makes the override
 	 * PER-CALL rather than a run-level switch in disguise.
 	 */
@@ -211,15 +211,20 @@ describe('@rocketh/unknown-signer - per-call policy override', () => {
 	});
 
 	/**
-	 * A THROWN action must not strand its frame on the stack. Asserted BEHAVIOURALLY
-	 * (the next call gets the ambient policy back, prompting where the stranded frame
-	 * would have thrown), not merely by counting `pop` calls — a stranded `'throw'`
-	 * frame would silently disable the interactive policy for the rest of the run.
+	 * A THROWN action must not strand its scope over the rest of the run. Asserted
+	 * BEHAVIOURALLY: the next call gets the ambient policy back, prompting where a
+	 * stranded `'throw'` frame would have thrown. Counting calls would not notice,
+	 * which is the whole risk, since a stranded frame silently disables the
+	 * interactive policy for everything that follows.
+	 *
+	 * Retiring the scope is the environment's job now (`runUnderUnknownSignerPolicy`
+	 * owns both ends of it), so this reads as a test of that contract rather than of
+	 * this package's bookkeeping. It is kept here because this is where the ambient
+	 * `'ask'` fixture lives, and because the contract is what callers depend on.
 	 */
-	it('pops the frame when the action throws, leaving the ambient policy in force', async () => {
+	it('retires the scope when the action throws, leaving the ambient policy in force', async () => {
 		const promptExecutor = createMockPromptExecutor({textAnswers: [PASTED_HASH]});
 		const {env} = await safeOwnerEnvironment({onUnknownSigner: 'ask', promptExecutor});
-		const pop = vi.spyOn(env, 'popUnknownSignerPolicy');
 
 		// the deferral throw itself: the scoped `'throw'` policy is what raised it
 		await expect(
@@ -232,8 +237,6 @@ describe('@rocketh/unknown-signer - per-call policy override', () => {
 				throw new Error('something else went wrong');
 			}),
 		).rejects.toThrow('something else went wrong');
-
-		expect(pop).toHaveBeenCalledTimes(2);
 
 		const receipt = await upgradeCall(env, env.resolveAccount('admin'));
 		expect(receipt.transactionHash).toBe(PASTED_HASH);
@@ -259,7 +262,7 @@ describe('@rocketh/unknown-signer - per-call policy override', () => {
 
 	/**
 	 * The action is a THUNK only, for exactly the reason `catchUnknownSigner`'s is: a
-	 * promise argument has ALREADY started before the frame can be pushed, so the
+	 * promise argument has ALREADY started before the policy can be established, so the
 	 * override would silently not apply. The type rejects it (`@ts-expect-error`
 	 * below); the runtime rejects it too, naming the fix, because JavaScript callers
 	 * and `as any` exist.
@@ -399,8 +402,9 @@ describe('@rocketh/unknown-signer - the deferral guarantee', () => {
 /**
  * THE POLICY STACK IS DYNAMIC SCOPE, AND CONCURRENCY LEAKS IT.
  *
- * A frame is pushed on the environment for the duration of an action and popped in a
- * `finally`. That suits how rocketh runs deploy scripts, sequentially, one await at a time,
+ * The environment runs the action under a policy frame and retires the frame afterwards,
+ * whatever the action did. That suits how rocketh runs deploy scripts, sequentially, one
+ * await at a time,
  * and it is the reason precedence is a single rule rather than an option threaded through
  * four packages (ADR 0006). The cost is that the frame is not per-action: two actions running
  * CONCURRENTLY share it, so one action's scoped policy applies to the other.

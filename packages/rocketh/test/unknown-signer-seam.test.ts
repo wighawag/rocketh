@@ -422,17 +422,14 @@ describe('broadcastTransaction seam - policy frames', () => {
 			autoImpersonate: false,
 		});
 
-		env.pushUnknownSignerPolicy({policy: 'throw'});
-		try {
+		await env.runUnderUnknownSignerPolicy({policy: 'throw'}, async () => {
 			await expect(
 				env.broadcastExecution({
 					type: 'object',
 					data: {type: '0x2', from: env.resolveAccount('admin'), to: TARGET_CONTRACT, chainId: '0x7a69'},
 				}),
 			).rejects.toBeInstanceOf(UnknownSignerError);
-		} finally {
-			env.popUnknownSignerPolicy();
-		}
+		});
 	});
 
 	/**
@@ -452,16 +449,13 @@ describe('broadcastTransaction seam - policy frames', () => {
 		});
 		expect(env.addressSignability[SAFE_ADDRESS.toLowerCase() as `0x${string}`]).toBe('impersonated');
 
-		env.pushUnknownSignerPolicy({policy: 'throw'});
-		try {
+		await env.runUnderUnknownSignerPolicy({policy: 'throw'}, async () => {
 			const receipt = await env.broadcastExecution({
 				type: 'object',
 				data: {type: '0x2', from: env.resolveAccount('admin'), to: TARGET_CONTRACT, chainId: '0x7a69'},
 			});
 			expect(receipt.transactionHash).toBe(TX_HASH);
-		} finally {
-			env.popUnknownSignerPolicy();
-		}
+		});
 
 		expect(calls.map((c) => c.method)).toContain('eth_sendTransaction');
 	});
@@ -470,16 +464,13 @@ describe('broadcastTransaction seam - policy frames', () => {
 	it('still broadcasts a local account while a `throw` frame is pushed', async () => {
 		const {env} = await buildEnvironment({accounts: {deployer: PRIVATE_KEY}, nodeAccounts: []});
 
-		env.pushUnknownSignerPolicy({policy: 'throw'});
-		try {
+		await env.runUnderUnknownSignerPolicy({policy: 'throw'}, async () => {
 			const receipt = await env.broadcastExecution({
 				type: 'object',
 				data: {type: '0x2', from: env.resolveAccount('deployer'), to: TARGET_CONTRACT, chainId: '0x7a69'},
 			});
 			expect(receipt.transactionHash).toBe(TX_HASH);
-		} finally {
-			env.popUnknownSignerPolicy();
-		}
+		});
 	});
 });
 

@@ -849,11 +849,18 @@ export async function createEnvironment<
 	 */
 	const pastedTransactionReceipts = new Map<`0x${string}`, EIP1193TransactionReceipt>();
 
-	function pushUnknownSignerPolicy(frame: UnknownSignerPolicyFrame): void {
+	/**
+	 * The environment side of the policy scope (see the doc on `Environment` in
+	 * `@rocketh/core/types`). The push and the pop are BOTH here, so no caller can strand a
+	 * frame, and the stack itself is private to this module.
+	 */
+	async function runUnderUnknownSignerPolicy<T>(frame: UnknownSignerPolicyFrame, action: () => Promise<T>): Promise<T> {
 		unknownSignerPolicyStack.push(frame);
-	}
-	function popUnknownSignerPolicy(): void {
-		unknownSignerPolicyStack.pop();
+		try {
+			return await action();
+		} finally {
+			unknownSignerPolicyStack.pop();
+		}
 	}
 
 	const perliminaryEnvironment = {
@@ -1932,8 +1939,7 @@ export async function createEnvironment<
 		save,
 		broadcastExecution,
 		broadcastDeployment,
-		pushUnknownSignerPolicy,
-		popUnknownSignerPolicy,
+		runUnderUnknownSignerPolicy,
 		canPromptForText,
 		get,
 		getOrNull,

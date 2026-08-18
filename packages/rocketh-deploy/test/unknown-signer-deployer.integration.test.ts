@@ -294,8 +294,7 @@ describe('@rocketh/deploy - unsignable deployer reaches the unknown-signer seam'
 			 * wrapper can catch it — that is what makes a deferred deploy work.
 			 */
 			const {env} = await setup();
-			env.pushUnknownSignerPolicy({policy: 'throw'});
-			try {
+			await env.runUnderUnknownSignerPolicy({policy: 'throw'}, async () => {
 				await expectUnknownSignerError(() =>
 					deploy(env)('SafeDeployedContract', {
 						account: 'safeDeployer',
@@ -303,9 +302,7 @@ describe('@rocketh/deploy - unsignable deployer reaches the unknown-signer seam'
 						args: [42n],
 					}),
 				);
-			} finally {
-				env.popUnknownSignerPolicy();
-			}
+			});
 		});
 
 		it('never turns a SIGNABLE deployer into a throw, even inside a pushed frame', async () => {
@@ -315,17 +312,14 @@ describe('@rocketh/deploy - unsignable deployer reaches the unknown-signer seam'
 			 * `ask`, NEVER over signability (ADR 0006).
 			 */
 			const {env} = await setup();
-			env.pushUnknownSignerPolicy({policy: 'throw'});
-			try {
+			await env.runUnderUnknownSignerPolicy({policy: 'throw'}, async () => {
 				const deployment = await deploy(env)('SignableContract', {
 					account: 'deployer',
 					artifact: createMockArtifact('SignableContract'),
 					args: [42n],
 				});
 				expect(deployment.newlyDeployed).toBe(true);
-			} finally {
-				env.popUnknownSignerPolicy();
-			}
+			});
 		});
 	});
 

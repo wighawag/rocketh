@@ -920,17 +920,14 @@ describe('interactive resolver - signable accounts are untouched', () => {
 			promptExecutor,
 		});
 
-		env.pushUnknownSignerPolicy({policy: 'throw'});
-		try {
+		await env.runUnderUnknownSignerPolicy({policy: 'throw'}, async () => {
 			await expect(env.broadcastExecution(safeTransaction(env.resolveAccount('admin')))).rejects.toBeInstanceOf(
 				UnknownSignerError,
 			);
-		} finally {
-			env.popUnknownSignerPolicy();
-		}
+		});
 		expect(promptExecutor.promptText).not.toHaveBeenCalled();
 
-		// and with the frame popped, the ambient `ask` is back in force
+		// and with the scope closed, the ambient `ask` is back in force
 		const receipt = await env.broadcastExecution(safeTransaction(env.resolveAccount('admin')));
 		expect(receipt.transactionHash).toBe(PASTED_HASH);
 	});

@@ -5,12 +5,18 @@ import type {UnknownSignerPolicy, UnknownSignerPolicyFrame} from '@rocketh/core/
  *
  * The effective policy at the broadcast seam is `top-of-stack?.policy ?? resolvedGlobal`,
  * where the global comes from `onUnknownSigner` (execution param > chain config > `'auto'`).
- * A frame is pushed by a scoped wrapper in `@rocketh/unknown-signer`: `catchUnknownSigner`
- * pushes `'throw'`, so its wrapped action reliably receives the error instead of popping an
+ * A frame comes from a scoped wrapper in `@rocketh/unknown-signer`: `catchUnknownSigner`
+ * scopes `'throw'`, so its wrapped action reliably receives the error instead of popping an
  * interactive prompt at a user who already said they would handle it, and
- * `withUnknownSignerPolicy` pushes whatever policy the caller chose for one action. Both go
+ * `withUnknownSignerPolicy` scopes whatever policy the caller chose for one action. Both go
  * through this one stack, so precedence is a single rule (innermost frame, else the
- * resolved global) rather than one rule per wrapper. What a frame ASKS for is still bounded
+ * resolved global) rather than one rule per wrapper.
+ *
+ * THIS STACK IS PRIVATE. Wrappers reach it through the environment's single
+ * `runUnderUnknownSignerPolicy(frame, action)`, never through a push and a pop of their own,
+ * so no caller can strand a frame and no caller depends on the storage being a stack. That
+ * is what leaves room to replace it with a per-async-task context (`AsyncLocalStorage`,
+ * `AsyncContext`) without changing `@rocketh/core`'s `Environment`. What a frame ASKS for is still bounded
  * by capability: {@link resolveUnknownSignerBehaviour} degrades `'ask'` to `'throw'` where
  * the run cannot reach a human, so an override can never make a run interactive that has no
  * way to be.
@@ -33,9 +39,22 @@ import type {UnknownSignerPolicy, UnknownSignerPolicyFrame} from '@rocketh/core/
  * the sole thing that pushed a frame.) The capability ceiling still applies to the
  * leaked frame, so a run that cannot reach a human cannot be made to prompt by one.
  * It remains a known limitation recorded in ADR 0006 rather than enforced here.
+ *
+ * The fix is a scope that follows the ASYNC CAUSAL CHAIN instead of wall-clock time, so
+ * that work started inside the wrapper inherits the frame and work started outside it does
+ * not: `AsyncLocalStorage` on Node, `AsyncContext` when it ships for browsers. What used to
+ * stand in the way was not the storage but the API, since `Environment` published a `push`
+ * and a `pop`, and two independent verbs can only be backed by ambient state. It publishes
+ * one scoping verb now, so that swap is a change to this file and its caller in
+ * `environment/index.ts`, with no further change to `@rocketh/core`.
  */
 export type UnknownSignerPolicyStack = {
-	/** Push a scoped override. ALWAYS pair with `pop` in a `finally`. */
+	/**
+	 * Push a scoped override. ALWAYS pair with `pop` in a `finally`.
+	 *
+	 * Module-internal: the only caller is the environment's `runUnderUnknownSignerPolicy`,
+	 * which owns both ends of the pair. Nothing outside `rocketh` can reach this.
+	 */
 	push(frame: UnknownSignerPolicyFrame): void;
 	/**
 	 * Pop the innermost frame. An unbalanced pop (more pops than pushes) is a caller

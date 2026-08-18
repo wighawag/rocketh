@@ -243,39 +243,47 @@ describe('@rocketh/unknown-signer - catchUnknownSigner', () => {
 	});
 
 	describe('Policy frame plumbing', () => {
-		/** The frame the seam reads is `{policy: 'throw'}`, pushed around the action only. */
-		it('pushes a {policy: "throw"} frame for the action and pops it', async () => {
+		/**
+		 * The frame the seam reads is `{policy: 'throw'}`, and it is in force for the action
+		 * and nothing else.
+		 *
+		 * The environment exposes ONE verb (`runUnderUnknownSignerPolicy`) rather than a push
+		 * and a pop, so "the scope is retired afterwards" is no longer something this package
+		 * can get wrong: it does not own the `finally` any more. What is still worth pinning
+		 * here is the frame's CONTENT and that the action really runs inside it.
+		 */
+		it('runs the action under a {policy: "throw"} scope', async () => {
 			const {env} = await safeOwnerEnvironment();
-			const push = vi.spyOn(env, 'pushUnknownSignerPolicy');
-			const pop = vi.spyOn(env, 'popUnknownSignerPolicy');
+			const runUnder = vi.spyOn(env, 'runUnderUnknownSignerPolicy');
 			const _catchUnknownSigner = catchUnknownSigner(env);
 
-			let pushedBeforeAction = 0;
-			let poppedBeforeAction = 0;
+			let scopesOpenDuringAction = 0;
 			await _catchUnknownSigner(
 				async () => {
-					pushedBeforeAction = push.mock.calls.length;
-					poppedBeforeAction = pop.mock.calls.length;
+					scopesOpenDuringAction = runUnder.mock.calls.length;
 					await upgradeCall(env, env.resolveAccount('admin'));
 				},
 				{log: false},
 			);
 
-			expect(pushedBeforeAction).toBe(1);
-			expect(poppedBeforeAction).toBe(0);
-			expect(push).toHaveBeenCalledWith({policy: 'throw'});
-			expect(pop).toHaveBeenCalledTimes(1);
+			expect(scopesOpenDuringAction).toBe(1);
+			expect(runUnder).toHaveBeenCalledTimes(1);
+			expect(runUnder.mock.calls[0][0]).toEqual({policy: 'throw'});
 		});
 
 		/**
-		 * The pop lives in a `finally`, so an action that throws something ELSE (a bug in
-		 * the deploy script, a reverted read, an RPC failure) cannot leak the frame into
-		 * the rest of the run.
+		 * An action that throws something ELSE (a bug in the deploy script, a reverted read,
+		 * an RPC failure) still leaves the run with its ambient policy back.
+		 *
+		 * That the scope is retired is asserted BEHAVIOURALLY, on an ambient `'ask'` run, in
+		 * `per-call-policy.integration.test.ts`: a stranded `'throw'` frame would silently
+		 * disable the interactive policy for the rest of the run, and counting calls would
+		 * not notice. What this one pins is that the foreign error propagates rather than
+		 * being swallowed as if it were a deferral.
 		 */
-		it('pops the frame when the action throws a non-UnknownSignerError', async () => {
+		it('lets a non-UnknownSignerError out of the scope', async () => {
 			const {env} = await safeOwnerEnvironment();
-			const push = vi.spyOn(env, 'pushUnknownSignerPolicy');
-			const pop = vi.spyOn(env, 'popUnknownSignerPolicy');
+			const runUnder = vi.spyOn(env, 'runUnderUnknownSignerPolicy');
 			const _catchUnknownSigner = catchUnknownSigner(env);
 
 			await expect(
@@ -284,15 +292,13 @@ describe('@rocketh/unknown-signer - catchUnknownSigner', () => {
 				}),
 			).rejects.toThrow('something else went wrong');
 
-			expect(push).toHaveBeenCalledTimes(1);
-			expect(pop).toHaveBeenCalledTimes(1);
+			expect(runUnder).toHaveBeenCalledTimes(1);
 		});
 
-		/** Balanced across a successful action too, and across nesting. */
-		it('keeps push and pop balanced on success', async () => {
+		/** One scope per call, including when one wrapper is nested inside another. */
+		it('opens exactly one scope per call, and nests', async () => {
 			const {env} = await safeOwnerEnvironment();
-			const push = vi.spyOn(env, 'pushUnknownSignerPolicy');
-			const pop = vi.spyOn(env, 'popUnknownSignerPolicy');
+			const runUnder = vi.spyOn(env, 'runUnderUnknownSignerPolicy');
 			const _catchUnknownSigner = catchUnknownSigner(env);
 
 			await _catchUnknownSigner(() => upgradeCall(env, env.resolveAccount('deployer')), {log: false});
@@ -301,8 +307,7 @@ describe('@rocketh/unknown-signer - catchUnknownSigner', () => {
 				{log: false},
 			);
 
-			expect(push.mock.calls.length).toBe(3);
-			expect(pop.mock.calls.length).toBe(3);
+			expect(runUnder.mock.calls.length).toBe(3);
 		});
 	});
 

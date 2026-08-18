@@ -18,9 +18,9 @@ import type {EIP1193ProviderWithoutEvents} from 'eip-1193';
  * fails if the precedence regresses. That is what the core slice could not do, since
  * both of its policy values resolved to `'throw'` and every such test was a tautology.
  *
- * The PER-CALL override is the frame, pushed here through the environment's own
- * `pushUnknownSignerPolicy` / `popUnknownSignerPolicy`. `@rocketh/unknown-signer`'s
- * `withUnknownSignerPolicy` is the user-facing wrapper over exactly this pair, and is
+ * The PER-CALL override is the frame, scoped here through the environment's own
+ * `runUnderUnknownSignerPolicy`. `@rocketh/unknown-signer`'s
+ * `withUnknownSignerPolicy` is the user-facing wrapper over exactly that, and is
  * tested there — `rocketh` cannot import it (nor `@rocketh/test-utils`) without closing
  * a cycle in the nx project graph, so these build a REAL environment
  * (`resolveConfig` → `getChainIdForEnvironment` → `resolveExecutionParams` →
@@ -248,16 +248,13 @@ describe('unknown-signer policy precedence - a pushed frame beats the run-level 
 		await expect(env.broadcastExecution(safeTransaction(admin))).rejects.toBeInstanceOf(UnknownSignerError);
 		expect(promptExecutor.promptText).not.toHaveBeenCalled();
 
-		env.pushUnknownSignerPolicy({policy: 'ask'});
-		try {
+		await env.runUnderUnknownSignerPolicy({policy: 'ask'}, async () => {
 			const receipt = await env.broadcastExecution(safeTransaction(admin));
 			expect(receipt.transactionHash).toBe(PASTED_HASH);
-		} finally {
-			env.popUnknownSignerPolicy();
-		}
+		});
 		expect(promptExecutor.promptText).toHaveBeenCalledTimes(1);
 
-		// popped: the run-level policy decides again
+		// scope closed: the run-level policy decides again
 		await expect(env.broadcastExecution(safeTransaction(admin))).rejects.toBeInstanceOf(UnknownSignerError);
 		expect(promptExecutor.promptText).toHaveBeenCalledTimes(1);
 	});
@@ -286,25 +283,23 @@ describe('unknown-signer policy precedence - a pushed frame beats the run-level 
 		expect(env.canPromptForText()).toBe(false);
 		const messages = captureMessages(env);
 
-		env.pushUnknownSignerPolicy({policy: 'ask'});
-		try {
+		await env.runUnderUnknownSignerPolicy({policy: 'ask'}, async () => {
 			await expect(env.broadcastExecution(safeTransaction(env.resolveAccount('admin')))).rejects.toBeInstanceOf(
 				UnknownSignerError,
 			);
-		} finally {
-			env.popUnknownSignerPolicy();
-		}
+		});
 
 		// the run never even started pausing
 		expect(messages.join('\n')).not.toContain('PAUSED');
 	});
 
 	/**
-	 * A frame pushed for an action that THROWS must still be popped, or the rest of the
+	 * A scope around an action that THROWS must still be retired, or the rest of the
 	 * run silently inherits a policy nobody asked for. Asserted behaviourally: after the
 	 * throwing action, the ambient `'ask'` is back in force and the next call pauses.
-	 * (An unbalanced pop is a documented no-op, so a stranded frame would not announce
-	 * itself — only the changed behaviour would.)
+	 * A stranded frame does not announce itself, only the changed behaviour would, which
+	 * is why `runUnderUnknownSignerPolicy` owns both ends of the scope rather than
+	 * leaving the retirement to whoever called it.
 	 */
 	it('leaves no frame stranded when the framed action throws', async () => {
 		const promptExecutor = createScriptedPrompt([PASTED_HASH]);
@@ -315,14 +310,8 @@ describe('unknown-signer policy precedence - a pushed frame beats the run-level 
 		});
 		const admin = env.resolveAccount('admin');
 
-		const runFramed = async (action: () => Promise<unknown>) => {
-			env.pushUnknownSignerPolicy({policy: 'throw'});
-			try {
-				return await action();
-			} finally {
-				env.popUnknownSignerPolicy();
-			}
-		};
+		const runFramed = (action: () => Promise<unknown>) =>
+			env.runUnderUnknownSignerPolicy({policy: 'throw'}, () => action());
 
 		await expect(runFramed(() => env.broadcastExecution(safeTransaction(admin)))).rejects.toBeInstanceOf(
 			UnknownSignerError,
@@ -413,16 +402,13 @@ describe('unknown-signer policy precedence - the policy is read only in the unsi
 			promptExecutor,
 		});
 
-		env.pushUnknownSignerPolicy({policy: 'ask'});
-		try {
+		await env.runUnderUnknownSignerPolicy({policy: 'ask'}, async () => {
 			const receipt = await env.broadcastExecution({
 				type: 'object',
 				data: {type: '0x2', from: env.resolveAccount('deployer'), to: TARGET_CONTRACT, chainId: '0x7a69'},
 			});
 			expect(receipt.transactionHash).toBe(SENT_TX_HASH);
-		} finally {
-			env.popUnknownSignerPolicy();
-		}
+		});
 
 		expect(calls.map((c) => c.method)).toContain('eth_sendRawTransaction');
 		expect(promptExecutor.promptText).not.toHaveBeenCalled();
@@ -444,13 +430,10 @@ describe('unknown-signer policy precedence - the policy is read only in the unsi
 		});
 		expect(env.addressSignability[SAFE_ADDRESS.toLowerCase() as `0x${string}`]).toBe('impersonated');
 
-		env.pushUnknownSignerPolicy({policy: 'ask'});
-		try {
+		await env.runUnderUnknownSignerPolicy({policy: 'ask'}, async () => {
 			const receipt = await env.broadcastExecution(safeTransaction(env.resolveAccount('admin')));
 			expect(receipt.transactionHash).toBe(SENT_TX_HASH);
-		} finally {
-			env.popUnknownSignerPolicy();
-		}
+		});
 
 		expect(calls.map((c) => c.method)).toContain('eth_sendTransaction');
 		expect(promptExecutor.promptText).not.toHaveBeenCalled();
@@ -469,16 +452,13 @@ describe('unknown-signer policy precedence - the policy is read only in the unsi
 			promptExecutor,
 		});
 
-		env.pushUnknownSignerPolicy({policy: 'ask'});
-		try {
+		await env.runUnderUnknownSignerPolicy({policy: 'ask'}, async () => {
 			const receipt = await env.broadcastExecution({
 				type: 'object',
 				data: {type: '0x2', from: env.resolveAccount('deployer'), to: TARGET_CONTRACT, chainId: '0x7a69'},
 			});
 			expect(receipt.transactionHash).toBe(SENT_TX_HASH);
-		} finally {
-			env.popUnknownSignerPolicy();
-		}
+		});
 
 		expect(calls.map((c) => c.method)).toContain('eth_sendTransaction');
 		expect(promptExecutor.promptText).not.toHaveBeenCalled();
@@ -497,17 +477,14 @@ describe('unknown-signer policy precedence - the policy is read only in the unsi
 			promptExecutor,
 		});
 
-		env.pushUnknownSignerPolicy({policy: 'ask'});
-		try {
+		await env.runUnderUnknownSignerPolicy({policy: 'ask'}, async () => {
 			const receipt = await env.broadcastExecution({
 				type: 'raw',
 				from: env.resolveAccount('admin'),
 				raw: '0xf86b',
 			});
 			expect(receipt.transactionHash).toBe(SENT_TX_HASH);
-		} finally {
-			env.popUnknownSignerPolicy();
-		}
+		});
 
 		expect(calls.map((c) => c.method)).toContain('eth_sendRawTransaction');
 		expect(promptExecutor.promptText).not.toHaveBeenCalled();

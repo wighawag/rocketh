@@ -201,24 +201,23 @@ function assertIsThunk(action: unknown, wrapperName: string, callShape: string):
 }
 
 /**
- * Run `action` with `policy` in force, and pop the frame again whatever happens.
+ * Run `action` with `policy` in force.
  *
- * The SINGLE push/pop site of this package, so the two public wrappers cannot drift
- * into different scoping rules. The pop is in a `finally`: an action that throws (the
- * deferral itself does) must not strand its frame on the stack, or the rest of the run
- * would silently inherit a policy nobody asked for.
+ * The SINGLE scoping site of this package, so the two public wrappers cannot drift into
+ * different scoping rules. Establishing and retiring the scope belong to the environment
+ * (`runUnderUnknownSignerPolicy`), which is what makes it impossible for this package to
+ * strand a frame over the rest of the run when an action throws, and the deferral itself
+ * always throws.
+ *
+ * The one thing this adds is accepting a SYNCHRONOUS action, since `catchUnknownSigner`
+ * accepts any thunk and a user's `() => execute(...)` need not be declared `async`.
  */
 async function runUnderPolicyFrame<T>(
 	env: Environment,
 	policy: UnknownSignerPolicy,
 	action: () => Promise<T> | T,
 ): Promise<T> {
-	env.pushUnknownSignerPolicy({policy});
-	try {
-		return await action();
-	} finally {
-		env.popUnknownSignerPolicy();
-	}
+	return env.runUnderUnknownSignerPolicy({policy}, async () => action());
 }
 
 export type WithUnknownSignerPolicyFunction = <T>(
