@@ -127,6 +127,114 @@ export class NoDeploymentsError extends ExportError {
 	}
 }
 
+/**
+ * Thrown when a deployment name cannot be a JavaScript identifier, for the MODULE output
+ * modes (`--tsm` / `--jsm`) that turn each name into one.
+ *
+ * Those modes emit `export const <DeploymentName> = {...}`, so the deployment name stops
+ * being data and becomes SOURCE. A name that is a perfectly good file name (`Token-V2`,
+ * `My Registry`, `default`) then produces a generated file that does not parse, and the
+ * failure surfaces in the consuming app's build, pointing at generated code, with nothing
+ * naming the deployment that caused it.
+ *
+ * WHY THIS THROWS RATHER THAN SANITISING THE NAME. Rewriting `Token-V2` to `Token_V2`
+ * would emit a file that parses, at the cost of an export name the consumer cannot predict
+ * from their own deploy script, and one that no longer matches the key the `--json` /
+ * `--ts` object modes use for the same deployment. Silently renaming the thing the caller
+ * has to `import` is worse than refusing, because it fails later and somewhere else. The
+ * object modes have no such constraint, so the message names them as the way out.
+ */
+export class InvalidModuleExportNameError extends ExportError {
+	readonly environmentName: string;
+	/** Every offending deployment name, not just the first, so one run fixes them all. */
+	readonly deploymentNames: string[];
+
+	constructor(params: {environmentName: string; deploymentNames: string[]}) {
+		super(
+			`cannot export environment '${params.environmentName}' as a module: ` +
+				`${params.deploymentNames.length === 1 ? 'a deployment name is' : 'some deployment names are'} ` +
+				`not valid JavaScript identifiers\n` +
+				params.deploymentNames.map((name) => `  - ${JSON.stringify(name)}`).join('\n') +
+				`\n  --tsm/--jsm emit \`export const <name> = ...\`, so each deployment name becomes an identifier.\n` +
+				`  either rename the deployment, or export with --ts/--js/--json, which keep names as object keys`,
+		);
+		this.name = 'InvalidModuleExportNameError';
+		this.environmentName = params.environmentName;
+		this.deploymentNames = params.deploymentNames;
+	}
+}
+
+/**
+ * Identifiers the module output modes can safely emit.
+ *
+ * Deliberately ASCII-only, though JavaScript accepts far more: the point is not to police
+ * what the language allows, it is to guarantee the generated file parses everywhere it is
+ * consumed, including by tooling with a narrower idea of an identifier than the spec's.
+ */
+const JS_IDENTIFIER = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
+
+/**
+ * Words that pass the identifier shape but cannot follow `export const`.
+ *
+ * Reserved words plus the few contextual ones that break in a module (`await` at module top
+ * level, `let` in a `const` declaration). `undefined`, `NaN` and `Infinity` are omitted:
+ * they are shadowable bindings, so `export const undefined = ...` is legal, and refusing a
+ * legal name would be the same overreach as silently renaming one.
+ */
+const RESERVED_WORDS = new Set([
+	'break',
+	'case',
+	'catch',
+	'class',
+	'const',
+	'continue',
+	'debugger',
+	'default',
+	'delete',
+	'do',
+	'else',
+	'enum',
+	'export',
+	'extends',
+	'false',
+	'finally',
+	'for',
+	'function',
+	'if',
+	'implements',
+	'import',
+	'in',
+	'instanceof',
+	'interface',
+	'let',
+	'new',
+	'null',
+	'package',
+	'private',
+	'protected',
+	'public',
+	'return',
+	'static',
+	'super',
+	'switch',
+	'this',
+	'throw',
+	'true',
+	'try',
+	'typeof',
+	'var',
+	'void',
+	'while',
+	'with',
+	'yield',
+	'await',
+]);
+
+/** Whether a deployment name can be emitted as `export const <name>`. */
+function isValidModuleExportName(name: string): boolean {
+	return JS_IDENTIFIER.test(name) && !RESERVED_WORDS.has(name);
+}
+
 /** The environment folders sitting next to the one asked for, or `undefined` if the deployments folder itself is absent. */
 function listEnvironments(deploymentsFolder: string): string[] | undefined {
 	try {
@@ -333,6 +441,16 @@ export async function run(
 			const folderPath = path.dirname(jsonFile);
 			fs.mkdirSync(folderPath, {recursive: true});
 			fs.writeFileSync(jsonFile, newContent);
+		}
+	}
+
+	// Checked ONCE for both module modes, and ahead of writing either: a name that cannot be an
+	//  identifier makes the generated file unparseable, and half-writing an output the consumer
+	//  cannot load is the silent-stale-file failure this package already refuses elsewhere.
+	if (tsmodule.length > 0 || jsmodule.length > 0) {
+		const invalidNames = Object.keys(exportData.contracts).filter((name) => !isValidModuleExportName(name));
+		if (invalidNames.length > 0) {
+			throw new InvalidModuleExportNameError({environmentName, deploymentNames: invalidNames});
 		}
 	}
 

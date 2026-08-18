@@ -8,7 +8,7 @@
  */
 
 import {describe, it, expect, beforeEach, afterEach, beforeAll, afterAll} from 'vitest';
-import {ExportError, NoDeploymentsError, NoOutputPathError, run} from '../src/index.js';
+import {ExportError, InvalidModuleExportNameError, NoDeploymentsError, NoOutputPathError, run} from '../src/index.js';
 import {resolveConfig} from 'rocketh';
 import type {ResolvedUserConfig} from '@rocketh/core/types';
 import * as fs from 'node:fs';
@@ -241,6 +241,54 @@ describe('@rocketh/export - run', () => {
 		expect(content).toContain('export const chain');
 		expect(content).toContain('export const Token');
 		expect(content).toContain('export const Vault');
+	});
+
+	it('refuses to write a module file when a deployment name is not a JS identifier', async () => {
+		// The module modes turn each deployment name into SOURCE (`export const <name> = ...`), so a
+		// name that is a fine file name is not necessarily a fine identifier. Left unchecked this
+		// wrote a file that does not parse, and the error surfaced in the consuming app's build,
+		// pointing at generated code, naming no deployment.
+		writeDeployment('Token', {abi: [], address: '0x' + 'a'.repeat(40)});
+		writeDeployment('Token-V2', {abi: [], address: '0x' + 'b'.repeat(40)});
+
+		const outFile = path.join(tmpDir, 'exported.tsm');
+		const error = await run(config, ENV_NAME, {totsm: [outFile]}).catch((err) => err);
+
+		expect(error).toBeInstanceOf(InvalidModuleExportNameError);
+		expect(error).toBeInstanceOf(ExportError);
+		expect(error.deploymentNames).toEqual(['Token-V2']);
+		expect(error.environmentName).toBe(ENV_NAME);
+		// It names the offender and the way out, since renaming a deployment is not always an option.
+		expect(error.message).toContain('Token-V2');
+		expect(error.message).toContain('--ts/--js/--json');
+		// Nothing half-written: the file the consumer would import must not exist at all.
+		expect(fs.existsSync(outFile)).toBe(false);
+	});
+
+	it('reports every offending deployment name, and reserved words among them', async () => {
+		writeDeployment('Token', {abi: [], address: '0x' + 'a'.repeat(40)});
+		writeDeployment('My Registry', {abi: [], address: '0x' + 'b'.repeat(40)});
+		writeDeployment('default', {abi: [], address: '0x' + 'c'.repeat(40)});
+
+		const error = await run(config, ENV_NAME, {tojsm: [path.join(tmpDir, 'exported.jsm')]}).catch((err) => err);
+
+		expect(error).toBeInstanceOf(InvalidModuleExportNameError);
+		// `default` has an identifier's SHAPE but cannot follow `export const`; one run should
+		// surface every name to fix, not just the first.
+		expect(error.deploymentNames.sort()).toEqual(['My Registry', 'default']);
+	});
+
+	it('still exports such a deployment through the object modes, which have no identifier constraint', async () => {
+		writeDeployment('Token-V2', {abi: [], address: '0x' + 'b'.repeat(40)});
+
+		const jsonFile = path.join(tmpDir, 'exported.json');
+		const tsFile = path.join(tmpDir, 'exported.ts');
+		await run(config, ENV_NAME, {tojson: [jsonFile], tots: [tsFile]});
+
+		// The name stays EXACT as an object key: this is the escape hatch the error points at, so
+		// it has to keep working, and it must not quietly rename anything either.
+		expect(JSON.parse(readOutput(jsonFile)).contracts['Token-V2']).toBeDefined();
+		expect(readOutput(tsFile)).toContain('"Token-V2"');
 	});
 
 	it('accepts a string instead of an array for output paths', async () => {
