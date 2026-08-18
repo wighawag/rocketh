@@ -37,6 +37,8 @@ const PRIVATE_KEY = '0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6
 const NODE_ACCOUNT = '0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266';
 /** Stands in for the Safe/multisig owner: a named account the node does not hold. */
 const SAFE_ADDRESS = '0x1111111111111111111111111111111111111111';
+/** Whoever pressed the button on the Safe: not the `from` rocketh asked for, by design. */
+const SAFE_OWNER = '0x9999999999999999999999999999999999999999';
 const TARGET_CONTRACT = '0x0000000000000000000000000000000000000001' as `0x${string}`;
 
 /** What the node would have returned had rocketh sent the transaction itself. */
@@ -71,6 +73,15 @@ function createMockProvider(options?: {
 	unknownHashes?: string[];
 	/** Hashes the node knows but has not mined yet: no receipt for the first N asks. */
 	pendingReceiptRounds?: Record<string, number>;
+	/**
+	 * Per-hash overrides of the TRANSACTION a lookup returns.
+	 *
+	 * The default below models the case these tests are about: the user executed the deferred
+	 * call on their Safe, so the transaction goes TO the Safe (the account rocketh could not
+	 * sign for) and carries the real call inside it. Override this to model a paste that has
+	 * nothing to do with what was asked for.
+	 */
+	transactions?: Record<string, Record<string, unknown>>;
 }): {provider: EIP1193ProviderWithoutEvents; calls: Call[]} {
 	const calls: Call[] = [];
 	const unknownHashes = new Set((options?.unknownHashes ?? []).map((h) => h.toLowerCase()));
@@ -97,7 +108,21 @@ function createMockProvider(options?: {
 					if (unknownHashes.has(hash.toLowerCase())) {
 						return null;
 					}
-					return {hash, nonce: '0x3', from: SAFE_ADDRESS, gasPrice: '0x1', type: '0x0'};
+					// `to`, `input` and `value` are always present on a real `eth_getTransactionByHash`
+					//  result, and rocketh now weighs them to decide whether the pasted transaction is
+					//  the one it asked for. `to: SAFE_ADDRESS` is what a Safe execution looks like from
+					//  the outside: the transaction is sent to the Safe, which then makes the inner call.
+					return {
+						hash,
+						nonce: '0x3',
+						from: SAFE_OWNER,
+						to: SAFE_ADDRESS,
+						input: '0x6a761202',
+						value: '0x0',
+						gasPrice: '0x1',
+						type: '0x0',
+						...options?.transactions?.[hash.toLowerCase()],
+					};
 				}
 				case 'eth_getTransactionReceipt': {
 					const hash = (args.params as string[])[0];
@@ -225,12 +250,14 @@ async function buildEnvironment(options: {
 	receipts?: Record<string, Record<string, unknown>>;
 	unknownHashes?: string[];
 	pendingReceiptRounds?: Record<string, number>;
+	transactions?: Record<string, Record<string, unknown>>;
 }) {
 	const {provider, calls} = createMockProvider({
 		accounts: options.nodeAccounts,
 		receipts: options.receipts,
 		unknownHashes: options.unknownHashes,
 		pendingReceiptRounds: options.pendingReceiptRounds,
+		transactions: options.transactions,
 	});
 	const {store, writes, deletes} = createInMemoryStore();
 	const config = resolveConfig({
@@ -906,5 +933,117 @@ describe('interactive resolver - signable accounts are untouched', () => {
 		// and with the frame popped, the ambient `ask` is back in force
 		const receipt = await env.broadcastExecution(safeTransaction(env.resolveAccount('admin')));
 		expect(receipt.transactionHash).toBe(PASTED_HASH);
+	});
+});
+
+/**
+ * IS THE PASTED TRANSACTION THE ONE ROCKETH ASKED FOR?
+ *
+ * A successful receipt used to be the whole of the check for an execution, so the hash of an
+ * unrelated successful transaction was recorded as the privileged operation the run had
+ * asked for. Equality cannot be required either, because a Safe execution goes TO the Safe
+ * and carries rocketh's call inside it. So the evidence is ranked, and only its total
+ * absence involves the human.
+ *
+ * `TARGET_CONTRACT` / `0xdeadbeef` / `0x1f4` below are what `safeTransaction` asks for, and
+ * `SAFE_ADDRESS` is the account rocketh cannot sign for.
+ */
+describe('interactive resolver - the pasted transaction must look like the requested one', () => {
+	it('accepts a Safe execution without asking anything further', async () => {
+		// The default mock: sent TO the Safe by one of its owners. Neither `to` nor `data`
+		// matches the request, and it must still go through unchallenged, or the common case
+		// gains a prompt for no reason.
+		const promptExecutor = createScriptedPrompt([{value: PASTED_HASH}]);
+		const {env} = await buildEnvironment({accounts: {admin: SAFE_ADDRESS}, onUnknownSigner: 'ask', promptExecutor});
+		const shown = captureMessages(env);
+
+		const receipt = await env.broadcastExecution(safeTransaction(env.resolveAccount('admin')));
+
+		expect(receipt.transactionHash).toBe(PASTED_HASH);
+		// ONE prompt: the hash. No confirmation was needed.
+		expect(promptExecutor.promptText).toHaveBeenCalledTimes(1);
+		expect(shown.join('\n')).toContain('the account this transaction had to come from');
+	});
+
+	it('accepts the exact transaction, and says so', async () => {
+		const promptExecutor = createScriptedPrompt([{value: PASTED_HASH}]);
+		const {env} = await buildEnvironment({
+			accounts: {admin: SAFE_ADDRESS},
+			onUnknownSigner: 'ask',
+			promptExecutor,
+			transactions: {[PASTED_HASH]: {to: TARGET_CONTRACT, input: '0xdeadbeef', value: '0x1f4'}},
+		});
+		const shown = captureMessages(env);
+
+		await env.broadcastExecution(safeTransaction(env.resolveAccount('admin')));
+
+		expect(promptExecutor.promptText).toHaveBeenCalledTimes(1);
+		expect(shown.join('\n')).toContain('matched the requested transaction exactly');
+	});
+
+	it('accepts a wrapper carrying the requested calldata, and says so', async () => {
+		// A MultiSend/timelock payload: unrelated `to`, but rocketh's calldata is in there.
+		const promptExecutor = createScriptedPrompt([{value: PASTED_HASH}]);
+		const {env} = await buildEnvironment({
+			accounts: {admin: SAFE_ADDRESS},
+			onUnknownSigner: 'ask',
+			promptExecutor,
+			transactions: {
+				[PASTED_HASH]: {
+					to: '0x8888888888888888888888888888888888888888',
+					input: '0x8d80ff0a0000deadbeef0000',
+					value: '0x0',
+				},
+			},
+		});
+		const shown = captureMessages(env);
+
+		await env.broadcastExecution(safeTransaction(env.resolveAccount('admin')));
+
+		expect(promptExecutor.promptText).toHaveBeenCalledTimes(1);
+		expect(shown.join('\n')).toContain('carries the requested calldata inside its own input');
+	});
+
+	it('asks before recording a transaction with nothing linking it to the request', async () => {
+		// The realistic accident: a successful hash that has nothing to do with the request.
+		// It is NOT refused (governance executed by proposal id looks identical), but it is no
+		// longer recorded silently: the second scripted answer is the confirmation.
+		const promptExecutor = createScriptedPrompt([{value: PASTED_HASH}, {value: 'yes'}]);
+		const {env} = await buildEnvironment({
+			accounts: {admin: SAFE_ADDRESS},
+			onUnknownSigner: 'ask',
+			promptExecutor,
+			transactions: {
+				[PASTED_HASH]: {to: '0x8888888888888888888888888888888888888888', input: '0xa9059cbb', value: '0x0'},
+			},
+		});
+		const shown = captureMessages(env);
+
+		const receipt = await env.broadcastExecution(safeTransaction(env.resolveAccount('admin')));
+
+		expect(receipt.transactionHash).toBe(PASTED_HASH);
+		expect(promptExecutor.promptText).toHaveBeenCalledTimes(2);
+		expect(shown.join('\n')).toContain('cannot tell that it is the one it asked for');
+	});
+
+	it('defers instead of recording when the confirmation is declined', async () => {
+		// Anything but an explicit yes means defer, and deferring must be indistinguishable
+		// from any other deferral: the same UnknownSignerError, so `catchUnknownSigner` handles
+		// it identically.
+		const promptExecutor = createScriptedPrompt([{value: PASTED_HASH}, {value: ''}]);
+		const {env, writes} = await buildEnvironment({
+			accounts: {admin: SAFE_ADDRESS},
+			onUnknownSigner: 'ask',
+			promptExecutor,
+			transactions: {
+				[PASTED_HASH]: {to: '0x8888888888888888888888888888888888888888', input: '0xa9059cbb', value: '0x0'},
+			},
+		});
+
+		await expect(env.broadcastExecution(safeTransaction(env.resolveAccount('admin')))).rejects.toBeInstanceOf(
+			UnknownSignerError,
+		);
+		// NOTHING was recorded for a transaction the user would not vouch for.
+		expect(writes).toHaveLength(0);
 	});
 });

@@ -125,3 +125,68 @@ export async function askForExecutedTransactionHash(params: {
 
 	return {type: 'cannot-sign', reason: 'no-valid-hash'};
 }
+
+/** What a human types to accept a transaction rocketh could not tie to the request. */
+export const CONFIRM_UNRELATED_ANSWER = 'yes';
+
+/**
+ * Ask whether to accept a pasted transaction that carries NO evidence of being the requested
+ * one (see `pastedTransactionIntent.ts` for what counts as evidence).
+ *
+ * WHY ASK RATHER THAN REFUSE. Executing governance by identifier, such as Governor Bravo's
+ * `execute(uint256 proposalId)` where the payload was queued earlier, leaves no trace of the
+ * calldata in the executing transaction. That is a legitimate workflow and refusing it would
+ * break it. What is NOT legitimate is recording it silently, which is what happened before:
+ * a successful receipt was the whole of the check, so pasting an unrelated successful hash
+ * was accepted at face value.
+ *
+ * WHY ASK RATHER THAN WARN. The run is about to record a privileged operation as done, and a
+ * warning scrolls past while the deployment record keeps the consequence. The default is
+ * therefore NO: anything but an explicit yes defers the transaction, which loses nothing but
+ * the pause.
+ */
+export async function confirmUnrelatedTransaction(params: {
+	promptText: NonNullable<PromptExecutor['promptText']>;
+	showMessage: (message: string) => void;
+	/** What rocketh looked for and did not find, in words a human can act on. */
+	finding: string;
+	hash: `0x${string}`;
+}): Promise<{type: 'accepted'} | {type: 'rejected'; reason: 'declined' | 'cancelled' | 'prompt-failed'}> {
+	const {promptText, showMessage, finding, hash} = params;
+
+	showMessage(
+		[
+			SEPARATOR,
+			`The transaction you pasted SUCCEEDED, but rocketh cannot tell that it is the one it asked for.`,
+			`  ${hash}`,
+			`  ${finding}`,
+			'',
+			'That is expected for governance executed by proposal id, where the payload was queued',
+			'earlier and this transaction only references it. It is also what pasting the wrong hash',
+			'looks like. rocketh cannot tell those apart, so it is your call.',
+			SEPARATOR,
+		].join('\n'),
+	);
+
+	let answer: TextPromptAnswer;
+	try {
+		answer = await promptText({
+			type: 'text',
+			name: 'confirmUnrelatedTransaction',
+			message: `Record this transaction as the requested execution? ("${CONFIRM_UNRELATED_ANSWER}" to accept, anything else to defer)`,
+		});
+	} catch (err) {
+		showMessage(`could not ask for confirmation (${err}); deferring the transaction instead.`);
+		return {type: 'rejected', reason: 'prompt-failed'};
+	}
+
+	if ('cancelled' in answer) {
+		return {type: 'rejected', reason: 'cancelled'};
+	}
+
+	// Only an explicit yes accepts. A blank line, a stray keystroke or an unattended prompt all
+	//  mean "do not record it", which is the safe direction: the transaction can be re-pasted.
+	return normaliseAnswer(answer.value.trim()) === CONFIRM_UNRELATED_ANSWER
+		? {type: 'accepted'}
+		: {type: 'rejected', reason: 'declined'};
+}

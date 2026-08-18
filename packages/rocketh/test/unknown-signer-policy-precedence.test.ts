@@ -70,7 +70,19 @@ function createMockProvider(options?: {accounts?: string[]}): {
 					return SENT_TX_HASH;
 				case 'eth_getTransactionByHash': {
 					const hash = (args.params as string[])[0];
-					return {hash, nonce: '0x3', from: SAFE_ADDRESS, gasPrice: '0x1', type: '0x0'};
+					// `to`/`input`/`value` are always present on a real lookup, and rocketh weighs them
+					//  to decide whether a pasted transaction is the one it asked for. `to: SAFE_ADDRESS`
+					//  is what a Safe execution looks like: sent to the Safe, which makes the inner call.
+					return {
+						hash,
+						nonce: '0x3',
+						from: '0x9999999999999999999999999999999999999999',
+						to: SAFE_ADDRESS,
+						input: '0x6a761202',
+						value: '0x0',
+						gasPrice: '0x1',
+						type: '0x0',
+					};
 				}
 				case 'eth_getTransactionReceipt': {
 					const hash = (args.params as string[])[0];

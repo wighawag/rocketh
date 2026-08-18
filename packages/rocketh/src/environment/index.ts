@@ -26,7 +26,8 @@ import type {
 } from '@rocketh/core/types';
 import {UnknownSignerError, type UnknownSignerContractCall} from '@rocketh/core';
 import {createUnknownSignerPolicyStack, resolveUnknownSignerBehaviour} from './unknownSignerPolicy.js';
-import {askForExecutedTransactionHash} from './interactiveUnknownSigner.js';
+import {askForExecutedTransactionHash, confirmUnrelatedTransaction} from './interactiveUnknownSigner.js';
+import {classifyPastedTransaction, describeEvidence} from './pastedTransactionIntent.js';
 import {Abi, Address} from 'abitype';
 import {InternalEnvironment} from '../internal/types.js';
 import {JSONToString, stringToJSON} from '@rocketh/core/json';
@@ -1427,13 +1428,46 @@ export async function createEnvironment<
 				// The transaction has to be FOUND on this network and have SUCCEEDED before the
 				// run records anything: checked BEFORE anything is saved or tracked, so a failed,
 				// or simply non-existent, transaction leaves no state behind at all.
-				const receipt = await waitForPastedTransaction(answer.hash, unknownSignerError);
+				const {receipt, transaction: pastedTransaction} = await waitForPastedTransaction(
+					answer.hash,
+					unknownSignerError,
+				);
 
 				// A DEPLOYMENT is held to a stricter standard than an execution, because it HAS an
 				// address to anchor on. Checked here, at the same point as the status and before
 				// anything is saved or tracked, so a hash that deployed nothing leaves no state.
 				if (source.type === 'deployment') {
 					await requireDeployedContract(source, receipt, answer.hash, unknownSignerError);
+				} else {
+					// IS IT THE TRANSACTION WE ASKED FOR? A successful receipt used to be the whole of
+					//  the check for an execution, so an unrelated successful hash was taken at face
+					//  value. It cannot be a straight comparison either: a Safe execution goes TO the
+					//  Safe carrying our call inside it, so `to` and `data` legitimately differ. The
+					//  classifier ranks the evidence instead, and only a total absence of it involves the
+					//  human (see `pastedTransactionIntent.ts` for the tiers and why `none` must not be a
+					//  refusal).
+					const evidence = classifyPastedTransaction(unknownSignerError.data, pastedTransaction);
+					const finding = describeEvidence(evidence, unknownSignerError.data);
+
+					if (evidence.tier === 'none') {
+						const confirmation = await confirmUnrelatedTransaction({
+							promptText: promptExecutor!.promptText!,
+							showMessage: (message) => env.showMessage(message),
+							finding,
+							hash: answer.hash,
+						});
+						if (confirmation.type === 'rejected') {
+							// DEGRADES to the defer path, exactly as "cannot sign" does: the same error,
+							//  undegraded, so `catchUnknownSigner` handles it identically and nothing is saved
+							//  for a transaction the user would not vouch for.
+							logger.debug(`pasted transaction ${answer.hash} not confirmed (${confirmation.reason})`);
+							throw unknownSignerError;
+						}
+					} else {
+						// Say WHY it was believed: the run is about to record a privileged operation as
+						//  done on the strength of this.
+						env.showMessage(`  - accepted: the transaction you pasted ${finding}`);
+					}
 				}
 
 				// The tracker only records hashes it OBSERVES on `eth_sendTransaction` /
@@ -1543,7 +1577,7 @@ export async function createEnvironment<
 	async function waitForPastedTransaction(
 		hash: `0x${string}`,
 		unknownSignerError: UnknownSignerError,
-	): Promise<EIP1193TransactionReceipt> {
+	): Promise<{receipt: EIP1193TransactionReceipt; transaction: EIP1193Transaction}> {
 		const lookupSpinner = spin(`  - Looking for the transaction you pasted:\n      ${hash}`);
 		let transaction: EIP1193Transaction | null = null;
 		for (let round = 1; !transaction; round++) {
@@ -1585,7 +1619,10 @@ export async function createEnvironment<
 					`The transaction that still needs executing:\n${unknownSignerError.message}`,
 			);
 		}
-		return receipt;
+		// The TRANSACTION travels with the receipt because the caller has to weigh whether this is
+		//  the transaction it asked for, and only the transaction carries `to` / `input` / `value`.
+		//  It was fetched above anyway, so this costs no extra call.
+		return {receipt, transaction};
 	}
 
 	/**
