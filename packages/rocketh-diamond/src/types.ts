@@ -78,6 +78,21 @@ export type DiamondDeployOptions<
 	DeployMutuallyExclusiveOptions & {
 		facets: DiamondFacets;
 		owner?: EIP1193Account;
+		/**
+		 * The initialization call attached to a cut: the `_init` / `_calldata` pair of
+		 * EIP-2535's `diamondCut`, delegatecalled in the diamond's storage context.
+		 *
+		 * IT RIDES A CHANGE, IT IS NOT A CALL YOU SCHEDULE. A run that produces no facet
+		 * cut performs no `diamondCut`, so this is not executed. Deploy scripts are
+		 * re-run, and an initializer that fired on every re-run would not be idempotent.
+		 * `@rocketh/proxy` gates its own `execute` the same way (nothing happens when the
+		 * implementation is unchanged), and this is the flat form of that option: the call
+		 * is made on the fresh deploy AND on every later cut, with the same args.
+		 *
+		 * A migration that must run exactly once, or only on upgrades, is therefore NOT
+		 * expressible yet: that is the `{init, onUpgrade}` split `@rocketh/proxy` already
+		 * has. See `work/notes/ideas/diamond-execute-init-on-upgrade.md`.
+		 */
 		execute?: ExecuteOptions<TAbi, TFunctionName, TArgs> | {type: 'facet'; functionName: string; args: any[]};
 		defaultCutFacet?: boolean;
 		defaultOwnershipFacet?: boolean;
@@ -89,13 +104,18 @@ export type DiamondDeployOptions<
 		deterministicSalt?: `0x${string}`;
 	};
 
+/**
+ * NO `artifact`: the base diamond deployed here is always this package's bundled one.
+ *
+ * This type used to accept an optional `artifact` that the deploy path then IGNORED (it
+ * always passes the bundled `artifactDiamond`), so a caller could believe they had
+ * replaced the diamond base (with an independently audited one, say) while the
+ * bundled implementation was what landed on chain. Supporting a user-provided base is a
+ * real feature, tracked in `work/notes/ideas/custom-diamond-base-artifact.md`; until it
+ * exists the type does not promise it.
+ */
 // TODO omit nonce ? // TODO omit chain ? same for rocketh-deploy
-export type DiamondDeploymentConstruction<TAbi extends Abi> = Omit<
-	DeploymentConstruction<TAbi>,
-	'artifact' | 'args'
-> & {
-	artifact?: Artifact;
-};
+export type DiamondDeploymentConstruction<TAbi extends Abi> = Omit<DeploymentConstruction<TAbi>, 'artifact' | 'args'>;
 
 export type DeployViaDiamondFunction = <TAbi extends Abi>(
 	name: string,

@@ -9,6 +9,7 @@
  */
 
 import {describe, it, expect} from 'vitest';
+import {AbiEncodingLengthMismatchError} from 'viem';
 import {diamond} from '../src/index.js';
 import {
 	createTestEnvironment,
@@ -96,6 +97,30 @@ describe('@rocketh/diamond - diamondContractArgs placeholders', () => {
 				},
 			),
 		).rejects.toThrow(/\{initializations\} found but also/);
+	});
+
+	it('does not blame `execute` for a bad template when no execute was set', async () => {
+		const {env} = await setup();
+
+		// `executeData` is the STRING '0x' when there is no `execute`, and that is truthy, so
+		//  this template used to reach the throw below and tell the caller "execute is set in
+		//  option" about an option they never set.
+		//
+		// The template IS invalid and still fails: the bundled diamond's constructor takes
+		//  THREE arguments, so a two-placeholder template cannot encode. Asserting the
+		//  encoder's own error (by class, not by message text) rather than merely "not the
+		//  old throw" is what pins the fix: a bare `.rejects.not.toThrow(...)` would also pass
+		//  if this failed for some unrelated reason.
+		await expect(
+			diamond(env)(
+				'MyDiamond',
+				{account: 'deployer'},
+				{
+					facets: [{artifact: createExampleArtifact('MyFacet', 0), args: []}],
+					diamondContractArgs: ['{owner}', '{facetCuts}'],
+				},
+			),
+		).rejects.toThrowError(AbiEncodingLengthMismatchError);
 	});
 
 	it('throws when execute is set but {init}/{initData} is missing from the template', async () => {

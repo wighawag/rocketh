@@ -72,11 +72,6 @@ export function diamond(
 			!alwaysOverride && options && 'strictBytecodeMatch' in options && options.strictBytecodeMatch;
 		const skipIfAlreadyDeployed = alwaysOverride ? false : true;
 
-		// TODO
-		// if (options.diamondContract) {
-		// 	diamondArtifact = options.diamondContract;
-		// }
-
 		const expectedOwner = options?.owner || deployerAddress;
 
 		const newSelectors: string[] = [];
@@ -89,8 +84,20 @@ export function diamond(
 		}
 		// console.log({ oldFacets: JSON.stringify(oldFacets, null, "  ") });
 
-		const facetsSet = options.facets;
-		if (options?.defaultCutFacet === undefined || options.defaultCutFacet) {
+		// A COPY: the default facets are appended below, and appending them to the caller's own
+		//  array mutates the options object they passed. Reusing one options object across two
+		//  `diamond(...)` calls then appends the defaults twice, which puts the same selector in
+		//  one Add cut twice and reverts on chain (`mergeABIs({check: true})` may throw first).
+		const facetsSet = [...options.facets];
+
+		// A default facet is installed unless the caller EXPLICITLY opted out, so `undefined`
+		//  means installed. The ERC-165 interface list further down must use the SAME rule:
+		//  reading these flags for plain truthiness there advertised neither interface under the
+		//  default (omitted) config while installing both facets.
+		const withDefaultCutFacet = options?.defaultCutFacet === undefined || options.defaultCutFacet;
+		const withDefaultOwnershipFacet = options?.defaultOwnershipFacet === undefined || options.defaultOwnershipFacet;
+
+		if (withDefaultCutFacet) {
 			facetsSet.push({
 				name: '_DefaultDiamondCutFacet',
 				artifact: artifactDiamondCutFact,
@@ -98,7 +105,7 @@ export function diamond(
 				deterministic: true,
 			});
 		}
-		if (options?.defaultOwnershipFacet === undefined || options.defaultOwnershipFacet) {
+		if (withDefaultOwnershipFacet) {
 			facetsSet.push({
 				name: '_DefaultDiamondOwnershipFacet',
 				artifact: artifactOwnershipFacet,
@@ -337,10 +344,10 @@ export function diamond(
 				// TODO option to add more to the list
 				// else mechanism to set it up differently ? LoupeFacet without supportsInterface
 				const interfaceList: `0x${string}`[] = ['0x48e2b093'];
-				if (options?.defaultCutFacet) {
+				if (withDefaultCutFacet) {
 					interfaceList.push('0x1f931c1c');
 				}
-				if (options?.defaultOwnershipFacet) {
+				if (withDefaultOwnershipFacet) {
 					interfaceList.push('0x7f5828d0');
 				}
 
@@ -389,29 +396,33 @@ export function diamond(
 					throw new Error(`diamond constructor needs a {facetCuts} argument`);
 				}
 
-				if (executeData) {
-					if (initializationsArgIndex >= 0) {
-						if (executeData !== '0x') {
-							diamondConstructorArgs[initializationsArgIndex].push({
-								initContract: executeAddress,
-								initData: executeData,
-							});
-						}
-					} else {
-						if (initArgIndex >= 0) {
-							diamondConstructorArgs[initArgIndex] = {
-								initContract: executeAddress,
-								initData: executeData,
-							};
-						} else if (initDataArgIndex >= 0) {
-							diamondConstructorArgs[initDataArgIndex] = executeData;
-							if (initAddressArgIndex >= 0) {
-								diamondConstructorArgs[initAddressArgIndex] = executeAddress;
-							}
-						} else {
-							throw new Error(`no {init} or {initData} found in list of args even though execute is set in option`);
-						}
+				// `executeData` is the STRING '0x' when there is no `execute`, and that is truthy: the
+				//  guard here used to be `if (executeData)`, so a diamond with no `execute` at all still
+				//  entered this block and, given custom `diamondContractArgs` carrying no init
+				//  placeholder, threw "even though execute is set in option" at a caller who had set no
+				//  such option. The placeholders must still be SUBSTITUTED when there is no call (an
+				//  unreplaced '{init}' string would reach the constructor encoder), so only the throw
+				//  hangs off there actually being one.
+				const hasInitCall = executeData !== '0x';
+				if (initializationsArgIndex >= 0) {
+					if (hasInitCall) {
+						diamondConstructorArgs[initializationsArgIndex].push({
+							initContract: executeAddress,
+							initData: executeData,
+						});
 					}
+				} else if (initArgIndex >= 0) {
+					diamondConstructorArgs[initArgIndex] = {
+						initContract: executeAddress,
+						initData: executeData,
+					};
+				} else if (initDataArgIndex >= 0) {
+					diamondConstructorArgs[initDataArgIndex] = executeData;
+					if (initAddressArgIndex >= 0) {
+						diamondConstructorArgs[initAddressArgIndex] = executeAddress;
+					}
+				} else if (hasInitCall) {
+					throw new Error(`no {init} or {initData} found in list of args even though execute is set in option`);
 				}
 
 				let salt = '0x0000000000000000000000000000000000000000000000000000000000000000';
