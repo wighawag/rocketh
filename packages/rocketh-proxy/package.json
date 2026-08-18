@@ -67,7 +67,7 @@
 	},
 	"scripts": {
 		"prepublishOnly": "cp ../../LICENSE LICENSE",
-		"build": "tsc --project tsconfig.json && tsx ../../scripts/ts-to-json --dir ./src/hardhat-deploy-v1-artifacts --output-dir ./artifacts",
+		"build": "tsc --project tsconfig.build.json && tsx ../../scripts/ts-to-json --dir ./src/hardhat-deploy-v1-artifacts --output-dir ./artifacts",
 		"dev": "as-soon -w src pnpm build",
 		"test": "vitest",
 		"generate:artifacts": "tsx scripts/generate-artifacts.ts",

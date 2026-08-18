@@ -1,10 +1,9 @@
 {
-	"extends": "../../tsconfig.base.json",
+	"extends": "./tsconfig.build.json",
 	"compilerOptions": {
-		"lib": ["ESNext", "dom"],
-		"types": ["node"],
-		"rootDir": "./src",
-		"outDir": "./dist"
+		"noEmit": true,
+		"rootDir": ".",
+		"types": ["node"]
 	},
-	"include": ["src/**/*.ts"]
+	"include": ["src/**/*.ts", "test/**/*.ts"]
 }

@@ -67,7 +67,7 @@
 	},
 	"scripts": {
 		"prepublishOnly": "cp ../../LICENSE LICENSE",
-		"build": "tsc --project tsconfig.json",
+		"build": "tsc --project tsconfig.build.json",
 		"dev": "as-soon -w src pnpm build",
 		"test": "vitest"
 	}

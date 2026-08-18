@@ -83,7 +83,7 @@
 	},
 	"scripts": {
 		"prepublishOnly": "cp ../../LICENSE LICENSE",
-		"build": "tsc --project tsconfig.json && cp src/v1-entry.cjs dist/",
+		"build": "tsc --project tsconfig.build.json && cp src/v1-entry.cjs dist/",
 		"dev": "as-soon -w src pnpm build",
 		"test": "vitest"
 	}

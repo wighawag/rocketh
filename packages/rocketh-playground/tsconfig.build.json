@@ -1,0 +1,12 @@
+{
+	"extends": "../../tsconfig.base.json",
+	"compilerOptions": {
+		"rootDir": "./src",
+		"outDir": "./dist"
+	},
+	// `src/ui` is built by vite, not tsc: it imports `.svelte` files, which tsc cannot resolve.
+	// The split is deliberate and is the package's seam. Everything tsc compiles here is
+	// framework-free and runs under node, which is what makes the core headlessly testable.
+	"include": ["src/**/*.ts"],
+	"exclude": ["src/ui/**"]
+}

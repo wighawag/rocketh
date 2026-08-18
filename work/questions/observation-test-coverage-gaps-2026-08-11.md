@@ -4,7 +4,9 @@ Item: [`observation:test-coverage-gaps-2026-08-11`](../notes/observations/test-c
 
 ## Q1
 
-**For the six zero-test packages (signer, viem, router, web, export, doc), is it approved to add the required vitest wiring (vitest.config.ts, tsconfig.test.json, test script, vitest devDep) to each?**
+**For the six zero-test packages (signer, viem, router, web, export, doc), is it approved to add the required vitest wiring (vitest.config.ts, test script, vitest devDep) to each?**
+
+> Note (2026-08-18): the TS-config half of this wiring is no longer a separate step. Each package now carries a broad checking `tsconfig.json` (`noEmit`, `types: ["node"]`, covering `src` + `test`) alongside the emitting `tsconfig.build.json`, so `test/` is type-checked as soon as it exists. The `tsconfig.test.json` this question originally named no longer exists; see `CONTEXT.md`.
 
 > AGENTS.md flags adding new package dependencies as an 'ask first' item. The observation's §1 lists this wiring as a prerequisite before any tests can be written for these packages.
 

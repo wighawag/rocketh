@@ -76,7 +76,7 @@
 	},
 	"scripts": {
 		"prepublishOnly": "cp ../../LICENSE LICENSE",
-		"build": "tsc --project tsconfig.json && vite build",
+		"build": "tsc --project tsconfig.build.json && vite build",
 		"dev": "as-soon -w src pnpm build",
 		"test": "vitest",
 		"test:browser": "vitest run --config vitest.browser.config.ts",

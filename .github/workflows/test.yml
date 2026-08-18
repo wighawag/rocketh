@@ -45,10 +45,11 @@ jobs:
       - name: build packages
         run: pnpm build
 
-      # BOTH halves: `pnpm typecheck` runs the per-package `tsc --noEmit` (src only) AND
-      # `typecheck:tests`, which is the one that covers `test/` and `scripts/`. Nothing here
-      # checked either before, so a test or a build script could reference a missing type
-      # (or a missing `@types/node`) and only an editor would ever say so.
+      # `pnpm typecheck` runs the per-package `tsc --noEmit`, which picks up each package's
+      # `tsconfig.json` and so covers `src/`, `test/` and `scripts/` in one pass. Nothing here
+      # checked any of them before, so a test or a build script could reference a missing type
+      # (or a missing `@types/node`) and only an editor would ever say so. Declaration EMIT is
+      # gated by the `build packages` step above, which is what runs each `tsconfig.build.json`.
       - name: Typecheck
         run: pnpm typecheck
 

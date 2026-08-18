@@ -415,12 +415,16 @@ describe('@rocketh/export - CLI exit code and streams', () => {
 	 * Compiled here rather than reused from `dist/`, so the test observes the CURRENT source
 	 * whether or not the package happens to have been built. It has to land inside the package
 	 * for `@rocketh/node` to resolve from it.
+	 *
+	 * `tsconfig.build.json`, NOT `tsconfig.json`: the latter is the checking config, which sets
+	 * `noEmit` and would silently produce no `cli.js` at all, and which also pulls in `test/`.
+	 * This needs the emitting, src-only config that `pnpm build` uses.
 	 */
 	const cliBuildDir = path.join(packageDir, '.cli-build-for-test');
 	const TSC = createRequire(import.meta.url).resolve('typescript/bin/tsc');
 
 	beforeAll(() => {
-		execFileSync(process.execPath, [TSC, '-p', path.join(packageDir, 'tsconfig.json'), '--outDir', cliBuildDir], {
+		execFileSync(process.execPath, [TSC, '-p', path.join(packageDir, 'tsconfig.build.json'), '--outDir', cliBuildDir], {
 			encoding: 'utf-8',
 			stdio: 'pipe',
 		});

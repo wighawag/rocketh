@@ -32,6 +32,8 @@ Split by test strategy: `router`, `viem`, `web` are pure harness tests (no files
 
 Each package needs a `vitest.config.ts`, a `tsconfig.test.json`, a `"test": "vitest"` script and a `vitest` devDep (an _ask first_ item per `AGENTS.md`).
 
+> Superseded (2026-08-18), TS-config half only: `tsconfig.test.json` no longer exists. The per-package configs were renamed so the BROAD checking config owns the name `tsconfig.json` (`tsserver` resolves a file only to a config literally named that, so `test/` and `scripts/` files previously belonged to no project in the editor), and the emitting src-only config became `tsconfig.build.json`. A package's `test/` is therefore type-checked by its plain `tsconfig.json`; the rest of this paragraph still stands.
+
 ---
 
 ## 2. The executor: what runs, in what order, and what happens when one fails

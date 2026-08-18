@@ -76,13 +76,15 @@ pnpm test --coverage
 
 ```bash
 pnpm build       # REQUIRED FIRST on a clean checkout — see below
-pnpm typecheck   # src (each package's tsconfig.json) AND test (each package's tsconfig.test.json)
+pnpm typecheck   # src + test + scripts, via each package's tsconfig.json
 pnpm format      # packages/*/{src,test}/**/*.ts
 ```
 
 **`pnpm typecheck` needs `pnpm build` to have run at least once.** Cross-package imports resolve through the workspace link to `packages/*/dist/*.d.ts`, which only exists after a build, so on a clean checkout `typecheck` fails with `Cannot find module '@rocketh/core'` and similar. This is invisible day to day (your `dist/` is already there) and bites only a fresh clone or a fresh gate worktree — which is why the `verify` gate runs `typecheck` AFTER `build`, not before.
 
-Test files are type-checked, and the `verify` gate runs `pnpm typecheck`. This matters beyond tidiness: a test that asserts a COMPILE-TIME contract with `@ts-expect-error` (for example that a wrapper's promise form must not compile) is only an assertion if something checks it. Vitest does not type-check, and each package's build `tsconfig.json` deliberately includes `src` only — widening it would emit test files into `dist` — so the checking lives in a sibling `tsconfig.test.json` per package.
+Test files are type-checked, and the `verify` gate runs `pnpm typecheck`. This matters beyond tidiness: a test that asserts a COMPILE-TIME contract with `@ts-expect-error` (for example that a wrapper's promise form must not compile) is only an assertion if something checks it. Vitest does not type-check.
+
+Each package therefore carries two configs. `tsconfig.build.json` is the emitting one that `pnpm build` names, and it deliberately includes `src` only, since widening it would emit test files into `dist`. `tsconfig.json` is the checking one: `noEmit`, `types: ["node"]`, covering `src` + `test` (+ `scripts` where one exists). The broad config is the one called `tsconfig.json` on purpose, because that is the only filename `tsserver` looks for when deciding which project a file belongs to. With the names the other way round, `test/` and `scripts/` files landed in an editor-only inferred project and showed spurious `Cannot find name 'node:fs'` errors that CI never saw.
 
 ## Test Utilities
 

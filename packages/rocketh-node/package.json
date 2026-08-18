@@ -69,7 +69,7 @@
 	},
 	"scripts": {
 		"prepublishOnly": "cp ../../LICENSE LICENSE",
-		"build": "tsc --project tsconfig.json",
+		"build": "tsc --project tsconfig.build.json",
 		"dev": "as-soon -w src pnpm build",
 		"gen-docs": "typedoc --out docs src",
 		"serve-docs": "ipfs-emulator --only -d docs -p 8080",
