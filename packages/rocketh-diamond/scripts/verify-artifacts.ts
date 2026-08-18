@@ -9,7 +9,7 @@
  * to the sources embedded in each artifact's metadata). This script pins the second half,
  * the one that needs the exact compiler:
  *
- *     solc_0_8/*.sol  ->  (solc 0.8.10+commit.fc410830)  ->  the bundled bytecode
+ *     hardhat-deploy-v1/**\/*.sol  ->  (solc 0.8.10+commit.fc410830)  ->  the bundled bytecode
  *
  * WHY A SCRIPT AND NOT A TEST: it needs a specific solc binary that `pnpm test` cannot
  * assume, and downloading one silently during a test run is exactly the kind of implicit
@@ -56,9 +56,14 @@ const ARTIFACTS: BundledArtifact[] = [
 	artifactDiamondERC165Init,
 ];
 
-/** Metadata paths are v1's compilation-unit paths; this repo vendors them under `solc_0_8/`. */
+/**
+ * The mirror reproduces v1's tree exactly, so a metadata source key IS the relative path.
+ * That is load-bearing rather than tidy: solc hashes source paths into the metadata blob at
+ * the end of the bytecode, so the same bytes compiled under a different path produce
+ * different bytecode and, under CREATE2, a different address for every user.
+ */
 function repoPathForMetadataSource(metadataSourcePath: string): string {
-	return path.join(packageRoot, 'solc_0_8', metadataSourcePath.replace(/^solc_0\.8\/diamond\//, ''));
+	return path.join(packageRoot, 'hardhat-deploy-v1', metadataSourcePath);
 }
 
 /** The compiler to use, in order of decreasing explicitness. */
@@ -186,7 +191,7 @@ function main(): void {
 	}
 
 	if (failures > 0) {
-		console.error(`\n${failures} of ${ARTIFACTS.length} artifacts could not be reproduced from solc_0_8/.`);
+		console.error(`\n${failures} of ${ARTIFACTS.length} artifacts could not be reproduced from hardhat-deploy-v1/.`);
 		process.exit(1);
 	}
 

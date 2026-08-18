@@ -42,7 +42,8 @@
 		"dist",
 		"src",
 		"artifacts",
-		"solc_0_8"
+		"solc_0_8",
+		"hardhat-deploy-v1"
 	],
 	"dependencies": {
 		"@rocketh/core": "workspace:*",
