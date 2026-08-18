@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/unknown-signer",
-	"version": "0.19.3",
+	"version": "0.19.4",
 	"description": "provide catchUnknownSigner function for rocketh",
 	"keywords": [
 		"rocketh",
