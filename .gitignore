@@ -1,7 +1,11 @@
 node_modules
 
+# The editor settings this repo actually wants shared (prettier on save) are COMMITTED as
+# .vscode/settings.json. They used to be a `settings.json.default` copied into place by a
+# `prepare` script, which meant a third-party package ran on every install to write a file
+# with four lines in it.
 .vscode/*
-!*.default
+!.vscode/settings.json
 
 *.local
 tmp

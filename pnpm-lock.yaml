@@ -51,9 +51,6 @@ importers:
       prettier:
         specifier: ^3.9.6
         version: 3.9.6
-      set-defaults:
-        specifier: ^0.0.5
-        version: 0.0.5
       solc:
         specifier: 0.8.10
         version: 0.8.10
@@ -2896,10 +2893,6 @@ packages:
   command-exists@1.2.9:
     resolution: {integrity: sha512-LTQ/SGc+s0Xc0Fu5WaKnR0YiygZkm9eKFvyS+fRsU7/ZWFF8ykFM6Pc9aCVf1+xasOOZpO3BAVgVrKvsqKHV7w==}
 
-  commander@10.0.1:
-    resolution: {integrity: sha512-y4Mg2tXshplEbSGzx7amzPwKKOCGuoSRP/CjEdwwk0FOGlUbq6lKuoyDZTNZkmxHdJtp54hdfY/JUrdL7Xfdug==}
-    engines: {node: '>=14'}
-
   commander@14.0.2:
     resolution: {integrity: sha512-TywoWNNRbhoD0BXs1P3ZEScW8W5iKrnbithIl0YH+uCmBd0QpPOA8yc82DS3BIE5Ma6FnBVUsJ7wVUDz4dvOWQ==}
     engines: {node: '>=20'}
@@ -3941,10 +3934,6 @@ packages:
   semver@7.8.5:
     resolution: {integrity: sha512-Y7/KDsb8LjooZpwaqGyulO6DQlksgCncchHGk+sZIY4SBvUocMBEFH5Ur1fI4dV+Jvl0w6cjvucaIi40puRioA==}
     engines: {node: '>=10'}
-    hasBin: true
-
-  set-defaults@0.0.5:
-    resolution: {integrity: sha512-6RyyX2exSRCqJVQtjwyDQHLtVkntNbaoraPuJuUTviUT7k1+Zewhg8yAnlR4c0VDZuFm8RNu0MiK1p5C42MbEQ==}
     hasBin: true
 
   shebang-command@2.0.0:
@@ -6680,8 +6669,6 @@ snapshots:
 
   command-exists@1.2.9: {}
 
-  commander@10.0.1: {}
-
   commander@14.0.2: {}
 
   commander@14.0.3: {}
@@ -7825,10 +7812,6 @@ snapshots:
   semver@7.8.4: {}
 
   semver@7.8.5: {}
-
-  set-defaults@0.0.5:
-    dependencies:
-      commander: 10.0.1
 
   shebang-command@2.0.0:
     dependencies:
