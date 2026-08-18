@@ -52,6 +52,23 @@ function perAddressCode(deployedAddresses: Set<string>) {
 	};
 }
 
+/**
+ * Per-address eth_getCode returning a CHOSEN runtime code, for the create3 checks below.
+ *
+ * `perAddressCode` above answers with an arbitrary non-empty string, which is all the
+ * create2 path needs (it only asks whether an address is occupied). create3 asks a second
+ * question (whether the code sitting there is OURS), so these tests have to control the
+ * exact bytes.
+ */
+function perAddressRuntimeCode(codeByAddress: Map<string, `0x${string}`>) {
+	return {
+		eth_getCode: (params?: unknown[]) => {
+			const addr = (params?.[0] as string)?.toLowerCase();
+			return codeByAddress.get(addr) || '0x';
+		},
+	};
+}
+
 describe('@rocketh/deploy - deterministic redeploy', () => {
 	it('reuses an already-deployed deterministic contract and returns newlyDeployed: false', async () => {
 		const {env} = await createTestEnvironment({
@@ -133,6 +150,89 @@ describe('@rocketh/deploy - deterministic redeploy', () => {
 
 		expect(result.newlyDeployed).toBe(false);
 		expect(result.address).toBe(first.address);
+	});
+
+	/**
+	 * A create3 address is derived from the DEPLOYER and the SALT alone, never from the
+	 * bytecode, which is the whole point of create3 (the address survives a code change).
+	 * So, unlike create2, finding code at the expected address does not by itself prove the
+	 * code is the contract we were asked to deploy, and the deploy path checks.
+	 *
+	 * This pair pins both halves of that check. It matters most on the RECOVERY path: a
+	 * clone with no `deployments/` folder, or a reset, where the local record is gone but
+	 * the chain still has the contract. That is exactly when an idempotent re-run has to
+	 * recognise its own deployment instead of failing.
+	 */
+	it('reuses an already-deployed create3 contract when the on-chain runtime code is ours', async () => {
+		const artifact = createMockArtifact('Create3Token', ABI);
+		const salt = ('0x' + 'ef'.repeat(32)) as `0x${string}`;
+
+		const {env} = await createTestEnvironment({
+			accounts: STANDARD_NAMED_ACCOUNTS,
+			nodeAccounts: NODE_HELD_ACCOUNTS,
+			providerConfig: {responses: uniqueReceipts()},
+		});
+		const first = await deploy(env)(
+			'Create3Token',
+			{account: 'deployer', artifact, args: [42n]},
+			{deterministic: {type: 'create3', salt}},
+		);
+		expect(first.newlyDeployed).toBe(true);
+
+		// Second run, fresh store (the local record is gone), with the contract's own runtime
+		//  code at the address create3 computes.
+		const codeByAddress = new Map<string, `0x${string}`>([
+			[first.address.toLowerCase(), artifact.deployedBytecode as `0x${string}`],
+		]);
+		const {env: env2} = await createTestEnvironment({
+			accounts: STANDARD_NAMED_ACCOUNTS,
+			nodeAccounts: NODE_HELD_ACCOUNTS,
+			deploymentStore: (await import('@rocketh/test-utils')).createMapDeploymentStore(),
+			providerConfig: {responses: {...uniqueReceipts(), ...perAddressRuntimeCode(codeByAddress)}},
+		});
+
+		const second = await deploy(env2)(
+			'Create3Token',
+			{account: 'deployer', artifact, args: [42n]},
+			{deterministic: {type: 'create3', salt}},
+		);
+
+		expect(second.newlyDeployed).toBe(false);
+		expect(second.address).toBe(first.address);
+	});
+
+	it('refuses a create3 address already holding a DIFFERENT contract', async () => {
+		const artifact = createMockArtifact('Create3Token', ABI);
+		const salt = ('0x' + 'fe'.repeat(32)) as `0x${string}`;
+
+		const {env} = await createTestEnvironment({
+			accounts: STANDARD_NAMED_ACCOUNTS,
+			nodeAccounts: NODE_HELD_ACCOUNTS,
+			providerConfig: {responses: uniqueReceipts()},
+		});
+		const first = await deploy(env)(
+			'Create3Token',
+			{account: 'deployer', artifact, args: [42n]},
+			{deterministic: {type: 'create3', salt}},
+		);
+
+		// Same deployer, same salt, but some other contract got there first: the salt was
+		//  reused across two contracts, which create3 cannot distinguish by address.
+		const codeByAddress = new Map<string, `0x${string}`>([[first.address.toLowerCase(), '0xdeadbeef']]);
+		const {env: env2} = await createTestEnvironment({
+			accounts: STANDARD_NAMED_ACCOUNTS,
+			nodeAccounts: NODE_HELD_ACCOUNTS,
+			deploymentStore: (await import('@rocketh/test-utils')).createMapDeploymentStore(),
+			providerConfig: {responses: {...uniqueReceipts(), ...perAddressRuntimeCode(codeByAddress)}},
+		});
+
+		await expect(
+			deploy(env2)(
+				'Create3Token',
+				{account: 'deployer', artifact, args: [42n]},
+				{deterministic: {type: 'create3', salt}},
+			),
+		).rejects.toThrow(/already holds code that is not "Create3Token"/);
 	});
 
 	it('throws for an unknown deterministic type', async () => {
