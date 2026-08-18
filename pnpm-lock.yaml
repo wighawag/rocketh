@@ -40,6 +40,9 @@ importers:
       ezx:
         specifier: ^0.0.18
         version: 0.0.18
+      murmur-128:
+        specifier: ^0.2.1
+        version: 0.2.1
       nx:
         specifier: ^23.1.1
         version: 23.1.1
@@ -49,6 +52,9 @@ importers:
       set-defaults:
         specifier: ^0.0.5
         version: 0.0.5
+      solc:
+        specifier: 0.8.10
+        version: 0.8.10
       tsx:
         specifier: ^4.23.12
         version: 4.23.12
@@ -228,18 +234,9 @@ importers:
       as-soon:
         specifier: ^0.1.6
         version: 0.1.6
-      murmur-128:
-        specifier: ^0.2.1
-        version: 0.2.1
-      prettier:
-        specifier: ^3.6.2
-        version: 3.9.6
       rimraf:
         specifier: ^6.1.3
         version: 6.1.3
-      solc:
-        specifier: 0.8.10
-        version: 0.8.10
       tsx:
         specifier: ^4.23.12
         version: 4.23.12

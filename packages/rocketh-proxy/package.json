@@ -44,7 +44,8 @@
 		"solc_0_6",
 		"solc_0_7",
 		"solc_0_8",
-		"artifacts"
+		"artifacts",
+		"hardhat-deploy-v1"
 	],
 	"dependencies": {
 		"@rocketh/core": "workspace:*",
@@ -67,6 +68,8 @@
 		"prepublishOnly": "cp ../../LICENSE LICENSE",
 		"build": "tsc --project tsconfig.json && tsx ../../scripts/ts-to-json --dir ./src/hardhat-deploy-v1-artifacts --output-dir ./artifacts",
 		"dev": "as-soon -w src pnpm build",
-		"test": "vitest"
+		"test": "vitest",
+		"generate:artifacts": "tsx scripts/generate-artifacts.ts",
+		"verify:artifacts": "tsx scripts/generate-artifacts.ts --check"
 	}
 }

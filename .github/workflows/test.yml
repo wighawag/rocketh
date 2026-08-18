@@ -56,7 +56,7 @@ jobs:
       # Editing Solidity without regenerating changes nothing on chain, and this is what
       # says so.
       - name: Check the bundled artifacts still match their sources
-        run: pnpm --filter @rocketh/diamond verify:artifacts
+        run: pnpm verify:artifacts
 
       - name: Run Getting Started
         run: pnpm test:getting-started
