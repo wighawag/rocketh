@@ -235,6 +235,147 @@ function isValidModuleExportName(name: string): boolean {
 	return JS_IDENTIFIER.test(name) && !RESERVED_WORDS.has(name);
 }
 
+/**
+ * Thrown when `--verify` asked the chain about the deployments and the chain disagreed.
+ *
+ * The generated file is the consuming app's source of truth for addresses, and the failure
+ * it cannot survive is pointing at an address that holds nothing on the network the user
+ * connects to: a frontend that ships localhost addresses, or a stale record for a chain that
+ * was reset. Nothing in the export path could notice that, because export reads FILES.
+ */
+export class OnChainVerificationError extends ExportError {
+	readonly environmentName: string;
+	/** Every problem found, not just the first: fixing addresses one round-trip at a time is worse. */
+	readonly problems: string[];
+
+	constructor(params: {environmentName: string; problems: string[]}) {
+		super(
+			`on-chain verification failed for environment '${params.environmentName}'\n` +
+				params.problems.map((problem) => `  - ${problem}`).join('\n') +
+				`\n  the export was NOT written`,
+		);
+		this.name = 'OnChainVerificationError';
+		this.environmentName = params.environmentName;
+		this.problems = params.problems;
+	}
+}
+
+/**
+ * Ask the chain whether the deployments about to be exported are really there.
+ *
+ * OPT-IN, and it has to be. Export reads files and writes files, so it works with no network
+ * at all, which is what a CI web build depends on: adding an RPC round trip to the default
+ * path would make every offline build fail. `--verify` is for the moment before shipping,
+ * not for every build.
+ *
+ * Two checks, both cheap and both catching a whole class of mistake:
+ *
+ *   - the CHAIN ID the RPC reports matches the one recorded for this environment, which
+ *     catches exporting `localhost` while pointed at a testnet, and vice versa;
+ *   - every exported address HAS CODE, which catches a record kept from a chain that was
+ *     since reset, a deployment that never landed, and an address copied by hand.
+ *
+ * Deliberately NOT compared: the deployed bytecode against the record's. Immutables and
+ * library links legitimately differ from the artifact, so that check needs its own design and
+ * a tolerance model; a false alarm there would teach people to pass `--verify` never.
+ */
+async function verifyOnChain(params: {
+	provider: EIP1193ProviderWithoutEvents;
+	environmentName: string;
+	expectedChainId: string;
+	contracts: {name: string; address: string}[];
+}): Promise<void> {
+	const {provider, environmentName, expectedChainId, contracts} = params;
+	const problems: string[] = [];
+
+	let actualChainId: string;
+	try {
+		actualChainId = await provider.request({method: 'eth_chainId'});
+	} catch (err) {
+		// Unable to ASK is not the same as verified. `--verify` was requested explicitly, so an
+		//  unreachable node fails the export rather than silently downgrading to no checks.
+		throw new OnChainVerificationError({
+			environmentName,
+			problems: [`could not reach the node to verify the export (${err})`],
+		});
+	}
+
+	// Compared NUMERICALLY: the recorded id is decimal ('31337') and the RPC answers hex
+	//  ('0x7a69'), so a string comparison would fail every single time.
+	if (BigInt(actualChainId) !== BigInt(expectedChainId)) {
+		problems.push(
+			`the node reports chain ${BigInt(actualChainId)} but environment '${environmentName}' holds deployments ` +
+				`for chain ${BigInt(expectedChainId)}: the RPC and the environment are not the same network`,
+		);
+		// Returning here on purpose: on the wrong chain EVERY address would also report no code,
+		//  and a page of consequences buries the one cause.
+		throw new OnChainVerificationError({environmentName, problems});
+	}
+
+	for (const contract of contracts) {
+		let code: string;
+		try {
+			code = await provider.request({method: 'eth_getCode', params: [contract.address as `0x${string}`, 'latest']});
+		} catch (err) {
+			problems.push(`could not check ${contract.name} at ${contract.address} (${err})`);
+			continue;
+		}
+		if (!code || code === '0x') {
+			problems.push(
+				`${contract.name} is recorded at ${contract.address}, but that address holds no code on this chain`,
+			);
+		}
+	}
+
+	if (problems.length > 0) {
+		throw new OnChainVerificationError({environmentName, problems});
+	}
+}
+
+/**
+ * A provider able to answer `eth_chainId` and `eth_getCode` for the environment's chain.
+ *
+ * The chain config yields either a caller-supplied provider or an rpcUrl, and `--verify`
+ * needs one of them: an environment configured with neither cannot be verified, and saying so
+ * is better than exporting unverified output while the user believes it was checked.
+ */
+async function resolveVerificationProvider(
+	config: ResolvedUserConfig,
+	chainId: number,
+	environmentName: string,
+	supplied: EIP1193ProviderWithoutEvents | undefined,
+): Promise<EIP1193ProviderWithoutEvents> {
+	// A programmatic caller (a test, `@rocketh/web`, a script that already has a connection)
+	//  passes its own. Chain CONFIG has no provider field, only an `rpcUrl`, so for the CLI there
+	//  is exactly one place an endpoint can come from.
+	if (supplied) {
+		return supplied;
+	}
+
+	let rpcUrl: string | undefined;
+	try {
+		const chainConfig = getChainConfigFromUserConfig(config, chainId);
+		rpcUrl = 'rpcUrl' in chainConfig ? chainConfig.rpcUrl : undefined;
+	} catch {
+		// It throws its own "no rpc url provided nor any provider" error, which is true but
+		//  phrased for the deployment path. Swallowed so the message below can say what to do
+		//  about it HERE, including that not verifying is a legitimate answer.
+	}
+
+	if (rpcUrl) {
+		const {JSONRPCHTTPProvider} = await import('eip-1193-jsonrpc-provider');
+		return new JSONRPCHTTPProvider(rpcUrl) as EIP1193ProviderWithoutEvents;
+	}
+
+	throw new OnChainVerificationError({
+		environmentName,
+		problems: [
+			`no RPC endpoint is configured for chain ${chainId}, so there is nothing to verify against: ` +
+				`give that chain an \`rpcUrl\` in your config, pass a provider to run(), or export without --verify`,
+		],
+	});
+}
+
 /** The environment folders sitting next to the one asked for, or `undefined` if the deployments folder itself is absent. */
 function listEnvironments(deploymentsFolder: string): string[] | undefined {
 	try {
@@ -344,6 +485,21 @@ export async function run(
 		totsm?: string[];
 		tojsm?: string[];
 		includeBytecode?: boolean;
+		/**
+		 * Ask the chain whether these deployments are really there, before writing anything.
+		 *
+		 * OFF by default, and that is not laziness: export reads files and writes files, so it
+		 * runs with no network at all, which a CI web build depends on. Turning this on makes the
+		 * export require a reachable RPC for the environment's chain.
+		 */
+		verify?: boolean;
+		/**
+		 * The provider `verify` should ask. Defaults to one built from the chain's `rpcUrl`.
+		 *
+		 * Present because a programmatic caller often HAS a connection already, and because the
+		 * alternative for anyone testing this path is intercepting HTTP.
+		 */
+		provider?: EIP1193ProviderWithoutEvents;
 	},
 ) {
 	// Checked before the environment is even looked up: this is about the caller's own arguments,
@@ -376,6 +532,14 @@ export async function run(
 	const chainConfig = getChainConfigFromUserConfig(config, idToFetch, {} as EIP1193ProviderWithoutEvents);
 	const chainInfo = {...chainConfig.info, genesisHash, properties: chainConfig.properties};
 
+	// The dummy provider above is passed only so `getChainConfigFromUserConfig` returns the
+	//  metadata this export needs (`info`, `properties`), and it takes the `provider` branch
+	//  because ANY truthy value does. For verification a REAL one is needed, so the same lookup
+	//  runs again with no provider, which lets the config's own provider (or its rpcUrl) through.
+	const providerForVerification = options.verify
+		? await resolveVerificationProvider(config, idToFetch, environmentName, options.provider)
+		: undefined;
+
 	const exportData: ExportedDeployments = {
 		chain: chainInfo,
 		contracts: objectMap<Deployment<Abi>, ContractExport>(deployments, (d) => {
@@ -404,6 +568,21 @@ export async function run(
 		}),
 		name: environmentName,
 	};
+
+	// BEFORE any file is written, and after the export data is assembled so the addresses checked
+	//  are exactly the ones about to be shipped. A failure here must leave the previous output
+	//  untouched: a half-verified file is worse than an old one, because it looks current.
+	if (providerForVerification) {
+		await verifyOnChain({
+			provider: providerForVerification,
+			environmentName,
+			expectedChainId: chainId,
+			contracts: Object.entries(exportData.contracts).map(([name, contract]) => ({
+				name,
+				address: (contract as {address: string}).address,
+			})),
+		});
+	}
 
 	if (ts.length > 0) {
 		const newContent =

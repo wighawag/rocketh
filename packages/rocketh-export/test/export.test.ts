@@ -8,7 +8,14 @@
  */
 
 import {describe, it, expect, beforeEach, afterEach, beforeAll, afterAll} from 'vitest';
-import {ExportError, InvalidModuleExportNameError, NoDeploymentsError, NoOutputPathError, run} from '../src/index.js';
+import {
+	ExportError,
+	InvalidModuleExportNameError,
+	NoDeploymentsError,
+	NoOutputPathError,
+	OnChainVerificationError,
+	run,
+} from '../src/index.js';
 import {resolveConfig} from 'rocketh';
 import type {ResolvedUserConfig} from '@rocketh/core/types';
 import * as fs from 'node:fs';
@@ -601,5 +608,153 @@ describe('@rocketh/export - the generated TypeScript compiles for real consumers
 
 		expect(result.ok).toBe(false);
 		expect(result.output).toContain('not assignable');
+	});
+});
+
+/**
+ * `--verify` asks the chain whether the deployments about to be exported are really there.
+ *
+ * The reason it is OPT-IN is the first test here: export reads files and writes files, so it
+ * runs with no network at all, and a CI web build depends on that. A default that reached for
+ * an RPC would break every offline build.
+ *
+ * What it catches is the failure export cannot otherwise see: the generated file is the app's
+ * source of truth for addresses, and pointing it at an address that holds nothing on the
+ * network the user connects to only surfaces when someone's transaction reverts.
+ */
+describe('@rocketh/export - run with --verify', () => {
+	/** A provider that answers canned responses and records what it was asked. */
+	function recordingProvider(responses: Record<string, unknown | ((params?: unknown[]) => unknown)>) {
+		const calls: {method: string; params?: unknown[]}[] = [];
+		const provider = {
+			request: async (args: {method: string; params?: unknown[]}) => {
+				calls.push(args);
+				const response = responses[args.method];
+				return typeof response === 'function' ? (response as (p?: unknown[]) => unknown)(args.params) : response;
+			},
+		} as never;
+		return {provider, calls};
+	}
+
+	it('makes NO network request when --verify is not passed', async () => {
+		// The property the flag exists to protect. A provider that throws on any call stands in
+		// for "there is no network here at all", which is the CI web build case.
+		const {provider, calls} = recordingProvider({
+			eth_chainId: () => {
+				throw new Error('the export must not touch the network');
+			},
+		});
+		writeDeployment('Token', {abi: [], address: '0x' + 'a'.repeat(40)});
+
+		const outFile = path.join(tmpDir, 'exported.json');
+		await run(config, ENV_NAME, {tojson: [outFile], provider});
+
+		expect(fs.existsSync(outFile)).toBe(true);
+		expect(calls).toHaveLength(0);
+	});
+
+	it('writes the export when the chain agrees', async () => {
+		const {provider, calls} = recordingProvider({
+			eth_chainId: '0x7a69', // 31337, as hex: the recorded id is decimal
+			eth_getCode: '0x6080604052',
+		});
+		writeDeployment('Token', {abi: [], address: '0x' + 'a'.repeat(40)});
+
+		const outFile = path.join(tmpDir, 'exported.json');
+		await run(config, ENV_NAME, {tojson: [outFile], verify: true, provider});
+
+		expect(fs.existsSync(outFile)).toBe(true);
+		expect(calls.map((c) => c.method)).toEqual(['eth_chainId', 'eth_getCode']);
+	});
+
+	it('refuses, and writes nothing, when an exported address holds no code', async () => {
+		// The realistic case: a record kept from a chain that was reset, or a deployment that
+		// never landed. Every offender is named, since fixing them one round-trip at a time is
+		// how a five-contract export takes five runs.
+		const {provider} = recordingProvider({
+			eth_chainId: '0x7a69',
+			eth_getCode: (params?: unknown[]) => ((params as string[])[0].endsWith('bbbb') ? '0x' : '0x6080604052'),
+		});
+		writeDeployment('Token', {abi: [], address: '0x' + 'a'.repeat(40)});
+		writeDeployment('Vault', {abi: [], address: '0x' + 'b'.repeat(40)});
+
+		const outFile = path.join(tmpDir, 'exported.json');
+		const error = await run(config, ENV_NAME, {tojson: [outFile], verify: true, provider}).catch((err) => err);
+
+		expect(error).toBeInstanceOf(OnChainVerificationError);
+		expect(error).toBeInstanceOf(ExportError);
+		expect(error.message).toContain('Vault');
+		expect(error.message).toContain('holds no code');
+		expect(error.message).not.toContain('Token is recorded');
+		// The previous output must survive a failed verification: a half-verified file is worse
+		// than an old one, because it looks current.
+		expect(fs.existsSync(outFile)).toBe(false);
+	});
+
+	it('reports the wrong chain as ONE cause, not as every address failing', async () => {
+		// On the wrong network every address also reports no code. Listing all of them buries
+		// the single thing that is actually wrong.
+		const {provider} = recordingProvider({
+			eth_chainId: '0x1', // mainnet, while the environment holds 31337 deployments
+			eth_getCode: '0x',
+		});
+		writeDeployment('Token', {abi: [], address: '0x' + 'a'.repeat(40)});
+		writeDeployment('Vault', {abi: [], address: '0x' + 'b'.repeat(40)});
+
+		const error = await run(config, ENV_NAME, {
+			tojson: [path.join(tmpDir, 'exported.json')],
+			verify: true,
+			provider,
+		}).catch((err) => err);
+
+		expect(error).toBeInstanceOf(OnChainVerificationError);
+		expect(error.problems).toHaveLength(1);
+		expect(error.message).toContain('not the same network');
+	});
+
+	it('fails rather than silently skipping when the node cannot be reached', async () => {
+		// `--verify` was asked for explicitly. "Could not check" is not "checked".
+		const {provider} = recordingProvider({
+			eth_chainId: () => {
+				throw new Error('ECONNREFUSED');
+			},
+		});
+		writeDeployment('Token', {abi: [], address: '0x' + 'a'.repeat(40)});
+
+		const error = await run(config, ENV_NAME, {
+			tojson: [path.join(tmpDir, 'exported.json')],
+			verify: true,
+			provider,
+		}).catch((err) => err);
+
+		expect(error).toBeInstanceOf(OnChainVerificationError);
+		expect(error.message).toContain('could not reach the node');
+	});
+
+	it('says so when the chain has no RPC configured at all', async () => {
+		// Exporting unverified output while the user believes it was checked is the one outcome
+		// worth avoiding here. This config declares the chain but gives it nowhere to ask.
+		const configWithoutRpc = resolveConfig({
+			deployments: deploymentsDir,
+			chains: {
+				[31337]: {
+					info: {
+						id: 31337,
+						name: 'hardhat',
+						nativeCurrency: {name: 'Ether', symbol: 'ETH', decimals: 18},
+						rpcUrls: {default: {http: []}},
+					},
+				},
+			},
+		});
+		writeDeployment('Token', {abi: [], address: '0x' + 'a'.repeat(40)});
+
+		const error = await run(configWithoutRpc, ENV_NAME, {
+			tojson: [path.join(tmpDir, 'exported.json')],
+			verify: true,
+		}).catch((err) => err);
+
+		expect(error).toBeInstanceOf(OnChainVerificationError);
+		expect(error.message).toContain('no RPC endpoint is configured');
 	});
 });

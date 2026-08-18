@@ -25,6 +25,10 @@ program
 		'list of filepath where the javascript export  with individual exportwill be written, separated by commas',
 	)
 	.option('-b, --bytecode', 'if set, the bytecode will also be part of the output')
+	.option(
+		'--verify',
+		'ask the chain whether the deployments are really there before writing (needs an RPC; export is offline by default)',
+	)
 	.requiredOption('-e, --environment <value>', 'environment context to use')
 	.parse(process.argv);
 
@@ -40,6 +44,7 @@ try {
 		totsm: options.tsm ? options.tsm.split(',') : undefined,
 		tojsm: options.jsm ? options.jsm.split(',') : undefined,
 		includeBytecode: options.bytecode,
+		verify: options.verify,
 	});
 } catch (err) {
 	// A user-facing condition (nothing to export, or nowhere to export to) is not a bug: report
