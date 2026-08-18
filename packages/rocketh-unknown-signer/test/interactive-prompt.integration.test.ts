@@ -63,10 +63,17 @@ async function askingSafeOwnerEnvironment(promptExecutor: PromptExecutor) {
 		executionParams: {autoImpersonate: false, onUnknownSigner: 'ask', promptExecutor},
 		providerConfig: {
 			responses: {
+				// The shape a real node returns, `to`/`input`/`value` included: rocketh weighs them
+				// to decide whether the pasted transaction is the one it asked for. `to:
+				// SAFE_ADDRESS` is what a Safe execution looks like from outside (an owner sends
+				// TO the Safe, which makes the inner call), which is the case these tests model.
 				eth_getTransactionByHash: (params?: unknown[]) => ({
 					hash: params?.[0] as `0x${string}`,
 					nonce: '0x3',
-					from: SAFE_ADDRESS,
+					from: '0x9999999999999999999999999999999999999999',
+					to: SAFE_ADDRESS,
+					input: '0x6a761202',
+					value: '0x0',
 					gasPrice: '0x1',
 					type: '0x0',
 				}),
