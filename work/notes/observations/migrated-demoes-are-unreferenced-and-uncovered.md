@@ -3,6 +3,7 @@ title: 'The migrated demoes are linked to the OLD repo, are outside the workspac
 type: observation
 status: spotted
 spotted: 2026-08-18
+needsAnswers: true
 ---
 
 # The demoes came into the monorepo but nothing points at them or runs them
