@@ -44,3 +44,15 @@ Leaving it as-is means a reader of `checkUpgradeIndex` cannot tell that half of 
 
 - `work/notes/observations/numdeployments-is-persisted-only-by-accident.md`, the input that was broken.
 - `work/tasks/done/record-tracks-the-chain-not-this-run.md`, where the persistence fix and the integration test landed.
+
+## Update, 2026-08-19: decided, removed
+
+The maintainer chose **delete, not reinstate**: `numDeployments` is the sole mechanism.
+
+`checkUpgradeIndex` collapsed to a single comparison as a result, because the two-source shape was the only thing making it complicated. `numDeployments` is how many steps of the story have run, so it is also the index of the step due next, and there are exactly three outcomes: more steps recorded than the index asked for means the step already ran (skip), exactly that many means it is due (proceed), fewer means its predecessors have not run (throw). The former special cases for `upgradeIndex === 0` and `=== 1` fall out of that rule rather than needing their own branches.
+
+Behaviour is unchanged for every reachable case. Verified by hand against the old implementation across the whole matrix (no record, record with counter 1..N, counter absent, index 0/1/2+), including that a record with no `numDeployments` still counts as exactly one step, which is what carries records written before the counter was persisted.
+
+The error messages DID change, necessarily: the old ones advertised `history`, a field users had no way to produce. They now name the index asked for, how many steps have actually run, and which step is missing. This is a deliberate divergence from v1's strings, on the grounds that matching v1 word for word is worth less than not lying.
+
+Removed with it: the four unit tests covering unreachable branches, and the commented-out `// TODO reenable history with options` block in `@rocketh/diamond` (`src/index.ts`). One test was ADDED in their place, asserting that a leftover `history` field, hand-written or inherited from a v1 project, is now ignored rather than quietly changing the answer.

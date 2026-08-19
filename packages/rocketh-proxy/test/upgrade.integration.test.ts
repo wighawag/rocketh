@@ -474,12 +474,10 @@ describe('@rocketh/proxy - the record tracks the chain, not this run', () => {
  * will be executed only once, only if the current upgradeIndex is one less". The same
  * property is what lets a TEST replay an upgrade sequence from scratch.
  *
- * "The current upgradeIndex" is read from the stored record, `history` first and
- * `numDeployments` second. rocketh never writes `history` (v1 does; the diamond has it
- * commented out with a TODO), so `numDeployments` is the only live source, and until it
- * was persisted this feature could not work across runs at all: on the second run
- * `upgradeIndex: 1` would redo the upgrade and `upgradeIndex: 2` would throw
- * "expects Deployments history to exists, or numDeployments to be greater than 1".
+ * "The current upgradeIndex" is `numDeployments`, the number of times the record has
+ * been written, which is the sole mechanism. Until that field was persisted this feature
+ * could not work across runs at all: on the second run `upgradeIndex: 1` would redo the
+ * upgrade and `upgradeIndex: 2` would throw.
  *
  * The unit tests in `utils.test.ts` cover the decision function thoroughly and could
  * not have caught that, because they hand it a fabricated record. This is the test that

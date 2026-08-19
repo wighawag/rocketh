@@ -525,13 +525,6 @@ export function diamond(
 					execute: options.execute, // TODO add receipt + tx hash
 				};
 
-				// // TODO reenable history with options
-				// if (oldDeployment.history && oldDeployment.history) {
-				// 	diamondDeployment.history = diamondDeployment.history
-				// 		? diamondDeployment.history.concat([oldDeployment])
-				// 		: [oldDeployment];
-				// }
-
 				await env.save(name, diamondDeployment);
 			}
 

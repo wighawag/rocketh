@@ -1,6 +1,43 @@
 import {DeployResult} from '@rocketh/deploy';
 import type {Abi, Deployment} from '@rocketh/core/types';
 
+/**
+ * Decide whether an `upgradeIndex` step has already run.
+ *
+ * `upgradeIndex` exists so a deploy script can TELL THE STORY OF AN UPGRADE and stay
+ * idempotent while doing it. Every step stays in the script forever:
+ *
+ * ```typescript
+ * deployViaProxy('Vault', {artifact: V1}, {upgradeIndex: 0});
+ * deployViaProxy('Vault', {artifact: V2}, {upgradeIndex: 1});
+ * deployViaProxy('Vault', {artifact: V3}, {upgradeIndex: 2});
+ * ```
+ *
+ * On a fresh chain all three run in order. On a chain already at V3 all three are
+ * no-ops. The same property lets a TEST replay an upgrade sequence from scratch, which
+ * is the only way to exercise an upgrade path that has already happened in production.
+ *
+ * `numDeployments` IS THE MECHANISM, and the only one. It counts how many times this
+ * record has been written, so it is exactly "how many steps of the story have run", and
+ * therefore also the index of the step that runs next. Three outcomes:
+ *
+ * - more steps recorded than this index: this step already ran, hand back the existing
+ *   deployment as not-newly-deployed;
+ * - exactly this many: this step is the next one, proceed;
+ * - fewer: the script is being asked to run a step whose predecessors have not run, so
+ *   throw rather than silently apply an upgrade out of order.
+ *
+ * A record with no `numDeployments` counts as one step, which is what it is: written
+ * once, never upgraded. That also carries records written before the counter was
+ * persisted, where the field is simply absent.
+ *
+ * NO `history`. hardhat-deploy v1 consults a `history` array first and falls back to
+ * this counter, and that shape was ported here, but rocketh has never written `history`
+ * anywhere, so those branches could not run and the error messages advertised a field
+ * users could not produce. Removed rather than reinstated, deliberately: one mechanism
+ * that works beats two where one is decoration. See
+ * `work/notes/observations/history-is-never-written-so-half-of-checkupgradeindex-is-dead.md`.
+ */
 export function checkUpgradeIndex<TAbi extends Abi>(
 	oldDeployment: Deployment<TAbi> | null,
 	upgradeIndex?: number,
@@ -8,48 +45,24 @@ export function checkUpgradeIndex<TAbi extends Abi>(
 	if (typeof upgradeIndex === 'undefined') {
 		return;
 	}
-	if (upgradeIndex === 0) {
-		if (oldDeployment) {
-			return {...oldDeployment, newlyDeployed: false};
-		}
-	} else if (upgradeIndex === 1) {
-		if (!oldDeployment) {
-			throw new Error('upgradeIndex === 1 : expects Deployments to already exists');
-		}
-		const history: any[] | undefined = oldDeployment.history as any[] | undefined;
-		const numDeployments: number | undefined = oldDeployment.numDeployments as number | undefined;
-		if ((history && history.length > 0) || (numDeployments && numDeployments > 1)) {
-			return {...oldDeployment, newlyDeployed: false};
-		}
-	} else {
-		if (!oldDeployment) {
-			throw new Error(`upgradeIndex === ${upgradeIndex} : expects Deployments to already exists`);
-		}
 
-		const history: any[] | undefined = oldDeployment.history as any[] | undefined;
-		const numDeployments: number | undefined = oldDeployment.numDeployments as number | undefined;
-		if (!history) {
-			if (numDeployments && numDeployments > 1) {
-				if (numDeployments > upgradeIndex) {
-					return {...oldDeployment, newlyDeployed: false};
-				} else if (numDeployments < upgradeIndex) {
-					throw new Error(
-						`upgradeIndex === ${upgradeIndex} : expects Deployments numDeployments to be at least ${upgradeIndex}`,
-					);
-				}
-			} else {
-				throw new Error(
-					`upgradeIndex > 1 : expects Deployments history to exists, or numDeployments to be greater than 1`,
-				);
-			}
-		} else if (history.length > upgradeIndex - 1) {
-			return {...oldDeployment, newlyDeployed: false};
-		} else if (history.length < upgradeIndex - 1) {
-			throw new Error(
-				`upgradeIndex === ${upgradeIndex} : expects Deployments history length to be at least ${upgradeIndex - 1}`,
-			);
-		}
+	// No record at all means no step has run. An existing record with no counter has
+	//  had exactly one: it was deployed and never upgraded.
+	const stepsRun = oldDeployment ? (oldDeployment.numDeployments as number | undefined) || 1 : 0;
+
+	if (stepsRun > upgradeIndex) {
+		return {...(oldDeployment as Deployment<TAbi>), newlyDeployed: false};
 	}
+
+	if (stepsRun < upgradeIndex) {
+		throw new Error(
+			`upgradeIndex ${upgradeIndex}: this deployment has been recorded ${stepsRun} time(s), so step ${stepsRun} has not run yet. ` +
+				`Steps must run in order, so run the earlier ones first.`,
+		);
+	}
+
+	// stepsRun === upgradeIndex: this is the step that is due. Proceed.
+	return;
 }
 
 export function replaceTemplateArgs(

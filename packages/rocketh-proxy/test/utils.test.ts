@@ -6,10 +6,13 @@ import type {Deployment, Abi} from '@rocketh/core/types';
 /**
  * `checkUpgradeIndex` and `replaceTemplateArgs` are the two pure helpers behind
  * `deployViaProxy`. `checkUpgradeIndex` decides, from an `upgradeIndex` and the
- * existing deployment's `history` / `numDeployments`, whether the proxy should skip
- * the upgrade (return an existing `DeployResult`) or proceed (return `undefined`),
- * throwing when the index is ahead of recorded history. It is consumed at
- * `src/index.ts:205-208`. `replaceTemplateArgs` expands the `{implementation}`,
+ * existing deployment's `numDeployments`, whether the proxy should skip the step
+ * (return an existing `DeployResult`), proceed with it (return `undefined`), or throw
+ * because earlier steps have not run. It is consumed at `src/index.ts:205-208`.
+ *
+ * `numDeployments` is the SOLE mechanism. v1 consults a `history` array first, and that
+ * shape was ported here, but rocketh has never written `history`, so those branches were
+ * unreachable and the tests covering them exercised dead code. Removed. `replaceTemplateArgs` expands the `{implementation}`,
  * `{admin}`, `{data}` and `{proxy}` placeholders in a proxy-constructor args template
  * into concrete values; it is the only place a custom `proxyContract.args` template
  * is interpreted.
@@ -28,103 +31,68 @@ function deployment(fields: Partial<Deployment<Abi>> = {}): Deployment<Abi> {
 }
 
 describe('checkUpgradeIndex', () => {
-	describe('upgradeIndex undefined', () => {
-		it('returns undefined (no opinion — the caller proceeds with its own logic)', () => {
-			expect(checkUpgradeIndex(null, undefined)).toBeUndefined();
-			expect(checkUpgradeIndex(deployment(), undefined)).toBeUndefined();
-		});
+	it('has no opinion when no upgradeIndex was given, so the caller proceeds', () => {
+		expect(checkUpgradeIndex(null, undefined)).toBeUndefined();
+		expect(checkUpgradeIndex(deployment(), undefined)).toBeUndefined();
 	});
 
-	describe('upgradeIndex === 0', () => {
-		it('returns the existing deployment as not-newly-deployed when one exists', () => {
-			const old = deployment({numDeployments: 1});
-			const result = checkUpgradeIndex(old, 0);
-			expect(result).toBeDefined();
-			expect(result!.newlyDeployed).toBe(false);
-			expect(result!.address).toBe(old.address);
-		});
-
-		it('returns undefined when there is no existing deployment', () => {
+	/**
+	 * The whole rule, in one place: `numDeployments` is how many steps of the story have
+	 * run, so it is also the index of the step that is due next.
+	 */
+	describe('comparing steps run against the index asked for', () => {
+		it('proceeds when this step is the one that is due', () => {
+			// Nothing deployed yet, so step 0 is next.
 			expect(checkUpgradeIndex(null, 0)).toBeUndefined();
-		});
-	});
-
-	describe('upgradeIndex === 1', () => {
-		it('throws when no deployment exists yet', () => {
-			expect(() => checkUpgradeIndex(null, 1)).toThrow('upgradeIndex === 1 : expects Deployments to already exists');
-		});
-
-		it('returns the existing deployment when history is non-empty', () => {
-			const old = deployment({history: [{}] as any[]});
-			expect(checkUpgradeIndex(old, 1)?.newlyDeployed).toBe(false);
-		});
-
-		it('returns the existing deployment when numDeployments > 1', () => {
-			const old = deployment({numDeployments: 2});
-			expect(checkUpgradeIndex(old, 1)?.newlyDeployed).toBe(false);
-		});
-
-		it('returns undefined (proceed with upgrade) when history is empty and numDeployments <= 1', () => {
+			// Deployed once, so step 1 (the first upgrade) is next.
 			expect(checkUpgradeIndex(deployment({numDeployments: 1}), 1)).toBeUndefined();
-			expect(checkUpgradeIndex(deployment({history: [] as any[]}), 1)).toBeUndefined();
+			// Deployed and upgraded once, so step 2 is next.
+			expect(checkUpgradeIndex(deployment({numDeployments: 2}), 2)).toBeUndefined();
+		});
+
+		it('skips, returning the existing deployment, when this step already ran', () => {
+			expect(checkUpgradeIndex(deployment({numDeployments: 1}), 0)?.newlyDeployed).toBe(false);
+			expect(checkUpgradeIndex(deployment({numDeployments: 2}), 1)?.newlyDeployed).toBe(false);
+			expect(checkUpgradeIndex(deployment({numDeployments: 5}), 2)?.newlyDeployed).toBe(false);
+		});
+
+		it('throws rather than apply a step whose predecessors have not run', () => {
+			expect(() => checkUpgradeIndex(null, 1)).toThrow('upgradeIndex 1: this deployment has been recorded 0 time(s)');
+			expect(() => checkUpgradeIndex(null, 3)).toThrow('upgradeIndex 3: this deployment has been recorded 0 time(s)');
+			expect(() => checkUpgradeIndex(deployment({numDeployments: 1}), 2)).toThrow(
+				'upgradeIndex 2: this deployment has been recorded 1 time(s)',
+			);
+		});
+
+		it('says which step is missing, not just that something is wrong', () => {
+			expect(() => checkUpgradeIndex(deployment({numDeployments: 2}), 4)).toThrow(
+				'so step 2 has not run yet. Steps must run in order, so run the earlier ones first.',
+			);
 		});
 	});
 
-	describe('upgradeIndex > 1', () => {
-		it('throws when no deployment exists yet', () => {
-			expect(() => checkUpgradeIndex(null, 2)).toThrow('upgradeIndex === 2 : expects Deployments to already exists');
-		});
+	/**
+	 * A record written before `numDeployments` was persisted has no counter at all.
+	 * Treating that as one step is what it is: deployed once, never upgraded. Getting
+	 * this wrong would either redo the first upgrade on every run or throw on step 1
+	 * for every project that predates the fix.
+	 */
+	it('counts a record with no numDeployments as exactly one step', () => {
+		expect(checkUpgradeIndex(deployment(), 0)?.newlyDeployed).toBe(false);
+		expect(checkUpgradeIndex(deployment(), 1)).toBeUndefined();
+		expect(() => checkUpgradeIndex(deployment(), 2)).toThrow('has been recorded 1 time(s)');
+	});
 
-		describe('with no history, relying on numDeployments', () => {
-			it('returns the existing deployment when numDeployments > upgradeIndex', () => {
-				const old = deployment({numDeployments: 3});
-				expect(checkUpgradeIndex(old, 2)?.newlyDeployed).toBe(false);
-			});
-
-			it('throws when numDeployments < upgradeIndex', () => {
-				const old = deployment({numDeployments: 2});
-				expect(() => checkUpgradeIndex(old, 3)).toThrow(
-					'upgradeIndex === 3 : expects Deployments numDeployments to be at least 3',
-				);
-			});
-
-			it('returns undefined when numDeployments === upgradeIndex (proceed)', () => {
-				const old = deployment({numDeployments: 2});
-				expect(checkUpgradeIndex(old, 2)).toBeUndefined();
-			});
-
-			it('throws when numDeployments is not greater than 1', () => {
-				const old = deployment({numDeployments: 1});
-				expect(() => checkUpgradeIndex(old, 2)).toThrow(
-					'upgradeIndex > 1 : expects Deployments history to exists, or numDeployments to be greater than 1',
-				);
-			});
-
-			it('throws when neither history nor numDeployments is present', () => {
-				expect(() => checkUpgradeIndex(deployment(), 2)).toThrow(
-					'upgradeIndex > 1 : expects Deployments history to exists, or numDeployments to be greater than 1',
-				);
-			});
-		});
-
-		describe('with history', () => {
-			it('returns the existing deployment when history.length > upgradeIndex - 1', () => {
-				const old = deployment({history: [{}, {}, {}] as any[]});
-				expect(checkUpgradeIndex(old, 2)?.newlyDeployed).toBe(false);
-			});
-
-			it('throws when history.length < upgradeIndex - 1', () => {
-				const old = deployment({history: [{}] as any[]});
-				expect(() => checkUpgradeIndex(old, 3)).toThrow(
-					'upgradeIndex === 3 : expects Deployments history length to be at least 2',
-				);
-			});
-
-			it('returns undefined when history.length === upgradeIndex - 1 (proceed)', () => {
-				const old = deployment({history: [{}] as any[]});
-				expect(checkUpgradeIndex(old, 2)).toBeUndefined();
-			});
-		});
+	/**
+	 * `history` used to be consulted first and is gone. Anything that still carries the
+	 * field, hand-written or left over from a v1 project, must be ignored rather than
+	 * quietly changing the answer.
+	 */
+	it('ignores a leftover history field entirely', () => {
+		const withHistory = deployment({history: [{}, {}, {}]} as Partial<Deployment<Abi>>);
+		// v1 would have skipped here on history.length alone. The counter says step 1 is due.
+		expect(checkUpgradeIndex(withHistory, 1)).toBeUndefined();
+		expect(() => checkUpgradeIndex(withHistory, 2)).toThrow('has been recorded 1 time(s)');
 	});
 });
 
