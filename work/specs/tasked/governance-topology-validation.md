@@ -38,30 +38,7 @@ The two gaps this exposes are NOT fixed here. This spec's job is to make them vi
 9. As an evaluator, I want the demo's scenarios selectable by tag, so I can run just the one that matches my governance shape.
 10. As a maintainer, I want the two known-bad shapes pinned by tests that assert TODAY's behaviour with a comment naming the desired behaviour, so the fix flips a test rather than discovering an untested path.
 
-## Implementation Decisions
-
-- **Two homes, on purpose.** The matrix lives in `packages/rocketh-unknown-signer/test/` because that runs in CI on every change. The demo lives in `demoes/hardhat-deploy/governance/` alongside the existing demoes, which are standalone projects NOT in the pnpm workspace and therefore NOT covered by `pnpm test`. Neither can substitute for the other: the demo would rot silently if it were the only proof, and the tests would not convince anyone who wants to see it run.
-- **The demo's multisig is a minimal stand-in, and says so.** A contract with owners and an `execTransaction(to, value, data)` is enough to prove `from = <a contract that can be made to send>`; pulling in the real Gnosis Safe contracts would add a large dependency for no additional evidence. The README must state this plainly so nobody reads the demo as a Safe integration.
-- **The Timelock in the demo is OpenZeppelin's `TimelockController`**, not a bespoke one, because the point is to exercise a shape users actually deploy.
-- **Scenarios are tag-selected** (rocketh already filters deploy scripts by tag), so one demo project can hold the whole matrix without the scenarios interfering with each other.
-- **Gaps are pinned, not fixed.** The handoff case and the call-through case get tests asserting current behaviour, each with a comment stating what the behaviour should become and pointing at `unsignable-routes`.
-
-## Testing Decisions
-
-The matrix, each entry an integration test written as documentation:
-
-1. Single multisig-owned ProxyAdmin upgrade: implementation deploy is signed and broadcast, the `upgrade` call is deferred.
-2. N proxies behind one multisig-owned admin: N deferred transactions, ordered, deduped, all `from` the multisig.
-3. Upgrade plus a dependent follow-up call from the same owner: both deferred, order preserved.
-4. Mixed run: signable steps broadcast, governance steps deferred, records consistent.
-5. Idempotent re-run before execution: identical surfaced set, no double broadcast.
-6. Idempotent re-run after execution: on-chain state check skips the step, returns `null`, no throw.
-7. Deployer-to-multisig handoff: pins the current hard error, comments the intended behaviour.
-8. Timelock-owned ProxyAdmin: pins the currently-unexecutable surfaced transaction, comments the intended `schedule`/`execute` translation.
-
-Prior art: `packages/rocketh-unknown-signer/test/scenarios.integration.test.ts` already covers the single-proxy, mixed-run and re-run stories, so several entries extend existing describes rather than starting fresh. `createTestEnvironment` from `@rocketh/test-utils` is the environment builder; do not hand-build one.
-
-Demo verification is manual and documented as a numbered walkthrough in its README, since the demo is outside CI.
+> Implementation and testing detail moved to the tasks in `work/tasks/` (matrix entries in `packages/rocketh-unknown-signer/test/`; demo verification in `demoes/hardhat-deploy/governance/`).
 
 ## Out of Scope
 
