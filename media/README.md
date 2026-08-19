@@ -7,13 +7,17 @@ Brand sources for the rocketh site. Everything published under `public/` is eith
 | `logo.svg` | `public/logo.svg` | straight copy |
 | `logo.svg` + `build.py` | `public/preview.png` | `python3 media/build.py preview` |
 | `logo.svg` + `build.py` | `public/icon.png` | `python3 media/build.py icon` |
+| `logo.svg` + `hardhat-pilot.svg` | `public/hardhat-deploy-logo.svg` | `python3 media/build.py hd-logo` |
+| `hardhat-deploy-logo.svg` + `build.py` | `public/hardhat-deploy-preview.png` | `python3 media/build.py hd-preview` |
 
 ## Regenerating
 
 ```bash
-python3 media/build.py            # everything
-python3 media/build.py preview    # social card only
-python3 media/build.py icon       # favicon only
+python3 media/build.py              # everything
+python3 media/build.py preview      # rocketh social card
+python3 media/build.py icon         # favicon
+python3 media/build.py hd-logo      # hardhat-deploy mark
+python3 media/build.py hd-preview   # hardhat-deploy social card
 ```
 
 Requires Python with [Pillow](https://python-pillow.org/), and Inkscape on `PATH` (used only to raster `logo.svg`). Fonts are loaded by path from `media/fonts/`, so nothing needs to be installed system-wide and the output does not depend on the machine's font configuration. The script is deterministic: repeated runs produce a byte-identical PNG.
@@ -27,6 +31,16 @@ An Ethereum mark as a rocket nose, with faceted fins and a three-layer exhaust p
 - **The ETH mark keeps its own nested transform** so the six upstream Ethereum paths stay byte-identical to the canonical artwork and remain easy to re-sync. Flattening it would obscure that provenance.
 
 If the geometry changes, the fit and the optical nudge need re-deriving rather than eyeballing.
+
+## hardhat-deploy
+
+`hardhat-deploy` is no longer built as a separate site; its docs live in `hardhat-deploy/` in this repo and are served by this VitePress site. Its assets are therefore generated here too.
+
+`public/hardhat-deploy-logo.svg` is **generated, not authored**. It is the rocketh mark plus a porthole holding the Hardhat mascot. The rocket geometry is *read from* `logo.svg` at build time rather than copied, so the two marks cannot drift apart; only the porthole is additive. Edit `logo.svg` and both marks change together.
+
+`hardhat-pilot.svg` holds the porthole. Read the warning inside it before touching it: the character is clipped by a `clipPath`, and that clip is the whole reason she reads as being *inside* the rocket. A dangling `clip-path` url is not an error in SVG, it is silently ignored, so dropping the definition renders her whole body with no warning. `build.py` fails loudly if the clip goes missing, and checks the generated file for dangling `url(#)` references.
+
+The previous mark also had a second, male mascot standing on the ground outside the rocket. He was dropped: he sat outside the composition and unbalanced it.
 
 ## Fonts
 

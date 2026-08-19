@@ -1,5 +1,5 @@
 <div align="center">
-<img alt="Rocketh Logo" src="./public/logo.svg" width="100" /><br/>
+<img alt="rocketh logo" src="https://rocketh.dev/logo.svg" width="100" /><br/>
   <a href="https://rocketh.dev">Rocketh</a>
 <hr/>
 

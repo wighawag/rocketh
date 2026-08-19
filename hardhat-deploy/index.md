@@ -7,8 +7,8 @@ hero:
   text: "A Hardhat Plugin For Replicable Deployments And Easy Testing"
   tagline: Easy And Flexible Deployment for both development and production
   image:
-    dark: /logo.svg
-    light: /logo.svg
+    dark: /hardhat-deploy-logo.svg
+    light: /hardhat-deploy-logo.svg
     alt: hardhat-deploy logo
   actions:
     - theme: brand
@@ -25,4 +25,21 @@ features:
     details: Reuse your deployments in test or for other networks
   - title: Modular
     details: At its core, hardhat-deploy only provide a save and read function for deployment, everything else is an external module
+
+# Without this, sharing a hardhat-deploy page falls back to the site-wide card in
+# .vitepress/config.mts, which shows the rocketh mark and the rocketh tagline.
+# Keys use `name` rather than `property` to match the site-wide convention.
+head:
+  - - meta
+    - name: 'og:image'
+      content: 'https://rocketh.dev/hardhat-deploy-preview.png'
+  - - meta
+    - name: 'twitter:image'
+      content: 'https://rocketh.dev/hardhat-deploy-preview.png'
+  - - meta
+    - name: 'og:title'
+      content: 'hardhat-deploy'
+  - - meta
+    - name: 'og:description'
+      content: 'A Hardhat Plugin For Replicable Deployments And Easy Testing'
 ---
