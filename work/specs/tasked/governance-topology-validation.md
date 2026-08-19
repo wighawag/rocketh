@@ -38,30 +38,16 @@ The two gaps this exposes are NOT fixed here. This spec's job is to make them vi
 9. As an evaluator, I want the demo's scenarios selectable by tag, so I can run just the one that matches my governance shape.
 10. As a maintainer, I want the two known-bad shapes pinned by tests that assert TODAY's behaviour with a comment naming the desired behaviour, so the fix flips a test rather than discovering an untested path.
 
-## Implementation Decisions
+> Implementation and testing detail moved to the tasks in `work/tasks/` (matrix entries in `packages/rocketh-unknown-signer/test/`; demo verification in `demoes/hardhat-deploy/governance/`).
 
-- **Two homes, on purpose.** The matrix lives in `packages/rocketh-unknown-signer/test/` because that runs in CI on every change. The demo lives in `demoes/hardhat-deploy/governance/` alongside the existing demoes, which are standalone projects NOT in the pnpm workspace and therefore NOT covered by `pnpm test`. Neither can substitute for the other: the demo would rot silently if it were the only proof, and the tests would not convince anyone who wants to see it run.
-- **The demo's multisig is a minimal stand-in, and says so.** A contract with owners and an `execTransaction(to, value, data)` is enough to prove `from = <a contract that can be made to send>`; pulling in the real Gnosis Safe contracts would add a large dependency for no additional evidence. The README must state this plainly so nobody reads the demo as a Safe integration.
-- **The Timelock in the demo is OpenZeppelin's `TimelockController`**, not a bespoke one, because the point is to exercise a shape users actually deploy.
-- **Scenarios are tag-selected** (rocketh already filters deploy scripts by tag), so one demo project can hold the whole matrix without the scenarios interfering with each other.
-- **Gaps are pinned, not fixed.** The handoff case and the call-through case get tests asserting current behaviour, each with a comment stating what the behaviour should become and pointing at `unsignable-routes`.
-
-## Testing Decisions
-
-The matrix, each entry an integration test written as documentation:
-
-1. Single multisig-owned ProxyAdmin upgrade: implementation deploy is signed and broadcast, the `upgrade` call is deferred.
-2. N proxies behind one multisig-owned admin: N deferred transactions, ordered, deduped, all `from` the multisig.
-3. Upgrade plus a dependent follow-up call from the same owner: both deferred, order preserved.
-4. Mixed run: signable steps broadcast, governance steps deferred, records consistent.
-5. Idempotent re-run before execution: identical surfaced set, no double broadcast.
-6. Idempotent re-run after execution: on-chain state check skips the step, returns `null`, no throw.
-7. Deployer-to-multisig handoff: pins the current hard error, comments the intended behaviour.
-8. Timelock-owned ProxyAdmin: pins the currently-unexecutable surfaced transaction, comments the intended `schedule`/`execute` translation.
-
-Prior art: `packages/rocketh-unknown-signer/test/scenarios.integration.test.ts` already covers the single-proxy, mixed-run and re-run stories, so several entries extend existing describes rather than starting fresh. `createTestEnvironment` from `@rocketh/test-utils` is the environment builder; do not hand-build one.
-
-Demo verification is manual and documented as a numbered walkthrough in its README, since the demo is outside CI.
+> **Story coverage: 8 of the 10 stories became tasks, and the other two were REUSED rather than dropped.** Recorded here because an omission and a deliberate reuse look identical in a diff, and the next reader counting `covers:` would otherwise find a hole.
+>
+> - **Story 3** (a mixed run broadcasts the signable steps and defers only the governance ones) is already covered by `Story 6: a run that mixes signable and Safe-only steps` in `packages/rocketh-unknown-signer/test/scenarios.integration.test.ts`, including the wrapper variant that keeps broadcasting signable steps up to the deferred one.
+> - **Story 5** (a re-run AFTER governance executed detects the completed upgrade, skips it and returns `null` rather than throwing) is already covered by `Story 7: execute on the Safe, then re-run the script`, whose first case asserts exactly that, alongside a case pinning that nothing is persisted between the two runs.
+>
+> Story 4 (a re-run BEFORE execution) has prior art in that same describe and IS tasked anyway, because the matrix entry extends it to the many-proxies-one-admin topology, where the property at stake is that the surfaced SET is identical rather than that a single call defers again.
+>
+> Verified against the file at tasking-merge time. If those describes are ever renamed or removed, these two stories lose their coverage silently, so a change there should re-check this note.
 
 ## Out of Scope
 
