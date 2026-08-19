@@ -1,0 +1,17 @@
+{
+	"compilerOptions": {
+		"lib": ["es2023"],
+		// The deploy scripts and the operator script use node builtins (`node:fs`,
+		//  `process`, `console`, `import.meta.url`). Without this, `tsc --noEmit` cannot
+		//  see any of them. The sibling demoes omit it and have the same latent errors.
+		"types": ["node"],
+		"module": "node16",
+		"target": "es2022",
+		"strict": true,
+		"esModuleInterop": true,
+		"skipLibCheck": true,
+		"moduleResolution": "node16",
+		"outDir": "dist",
+		"rootDir": "."
+	}
+}
