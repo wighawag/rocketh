@@ -3,6 +3,7 @@ title: '`save()` counts `numDeployments` into memory but writes the uncounted ar
 type: observation
 status: spotted
 spotted: 2026-08-19
+needsAnswers: true
 ---
 
 # `numDeployments` is computed for the in-memory record and dropped from the file
