@@ -1,7 +1,6 @@
 /node_modules
 
-.vscode/*
-!*.default
+.vscode/
 *.local
 
 # rocketh
@@ -19,6 +18,3 @@ _metadata
 cache
 artifacts
 docs
-
-.vscode/*
-!*.default

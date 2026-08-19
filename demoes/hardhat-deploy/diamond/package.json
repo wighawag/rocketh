@@ -23,7 +23,6 @@
 		"prettier": "^3.8.3",
 		"prettier-plugin-solidity": "^2.3.1",
 		"rocketh": "workspace:*",
-		"set-defaults": "^0.0.5",
 		"tsx": "^4.21.0",
 		"typescript": "^6.0.3",
 		"viem": "^2.48.11",
@@ -31,7 +30,6 @@
 		"zellij-launcher": "^0.0.1"
 	},
 	"scripts": {
-		"prepare": "set-defaults .vscode && pnpm compile",
 		"local_node": "hardhat node",
 		"compile": "hardhat compile",
 		"compile:watch": "as-soon -w src pnpm compile",
