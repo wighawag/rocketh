@@ -3,6 +3,7 @@ title: 'A deferred proxy upgrade never updates the proxy deployment record, so i
 type: observation
 status: spotted
 spotted: 2026-08-19
+needsAnswers: true
 ---
 
 # `deployViaProxy` saves the merged ABI only on the run that performs the upgrade, and the deferral path never has one
