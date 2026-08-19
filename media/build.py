@@ -29,6 +29,7 @@ Layout notes worth keeping:
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 import re
 import subprocess
+import xml.etree.ElementTree as ET
 import sys
 from pathlib import Path
 
@@ -122,6 +123,8 @@ def render_svg(src, px):
     img = Image.open(tmp).convert("RGBA")
     img.load()
     tmp.unlink()
+    if img.getchannel("A").getbbox() is None:
+        sys.exit(f"{src} rendered to a fully transparent image - malformed SVG?")
     return img
 
 
@@ -268,6 +271,10 @@ def build_hd_logo():
     vb = re.search(r'viewBox="([\d.\-\s]+)"', praw).group(1).split()
     pw, ph = float(vb[2]), float(vb[3])
     pbody = re.search(r"<svg[^>]*>(.*)</svg>", praw, re.S).group(1)
+    # Strip comments FIRST. hardhat-pilot.svg's own warning text contains the
+    # literal "<defs>", and matching that instead of the real element splits the
+    # file mid-comment and produces invalid XML.
+    pbody = re.sub(r"<!--.*?-->", "", pbody, flags=re.S)
     pdefs = "".join(re.findall(r"<defs\b.*?</defs>", pbody, re.S))
     pbody = re.sub(r"<defs\b.*?</defs>", "", pbody, flags=re.S)
     if "clipPath" not in pdefs:
@@ -285,6 +292,10 @@ def build_hd_logo():
         f'    <g transform="translate({tx:.3f},{ty:.3f}) scale({scale:.6f})">\n'
         f"{pbody}\n    </g>\n  </g>\n</svg>\n"
     )
+    try:
+        ET.fromstring(out)
+    except ET.ParseError as exc:
+        sys.exit(f"generated {OUT_HD_LOGO.name} is not well-formed XML: {exc}")
     OUT_HD_LOGO.write_text(out)
     refs = set(re.findall(r"url\(#([^)]+)\)", out))
     defined = set(re.findall(r'<\w+[^>]*\bid="([^"]+)"', out))
