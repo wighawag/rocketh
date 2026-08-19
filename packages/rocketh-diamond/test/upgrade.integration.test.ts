@@ -404,3 +404,96 @@ describe('@rocketh/diamond - the cut is announced before it is executed', () => 
 		expect(output).not.toContain('REMOVING');
 	});
 });
+
+/**
+ * THE RECORD MUST DESCRIBE WHAT IS ON CHAIN, not what this run happened to do.
+ *
+ * Same defect as `@rocketh/proxy` had, same cause. `diamond` writes its record only
+ * inside `if (changesDetected)`, so a cut performed SOMEWHERE ELSE is never recorded:
+ * the run that wanted the cut throws at the seam before saving, and the run after it
+ * reads the loupe, sees the facets already correct, and skips the branch entirely.
+ * The record keeps the old facet addresses and the old merged ABI indefinitely.
+ *
+ * Worth noting that the change DETECTION here was always right: `oldFacets` comes
+ * from the on-chain loupe, not from the record, so a deferred cut does converge. It
+ * is only the record that was left behind.
+ */
+describe('@rocketh/diamond - the record tracks the chain, not this run', () => {
+	it('refreshes the facet snapshot when the cut happened out-of-band', async () => {
+		const counter = makeCounter();
+		const store = createMapDeploymentStore();
+
+		const first = await firstDeploy(counter, store);
+		const beforeRecord = first.env.get('MyDiamond') as any;
+		const snapshotV1 = beforeRecord.facets as {
+			facetAddress: `0x${string}`;
+			functionSelectors: `0x${string}`[];
+		}[];
+
+		// Deploy the v2 facet so we know the address the out-of-band cut would target.
+		const {env: envDeploy} = await secondRun(counter, store, snapshotV1);
+		const {deploy} = await import('@rocketh/deploy');
+		const facetV2 = await deploy(envDeploy)('MyFacet', {account: 'deployer', artifact: facetArtifact(2), args: []});
+
+		// The world as it is AFTER someone else performed the cut: identical to the
+		//  original snapshot except our facet now points at v2.
+		const snapshotAfterOutOfBandCut = snapshotV1.map((facet) =>
+			facet.facetAddress.toLowerCase() === first.facetAddress.toLowerCase()
+				? {...facet, facetAddress: facetV2.address}
+				: facet,
+		);
+
+		// Now re-run asking for exactly that. There is nothing to cut.
+		const {env, provider} = await secondRun(counter, store, snapshotAfterOutOfBandCut);
+		await diamond(env)(
+			'MyDiamond',
+			{account: 'deployer'},
+			{facets: [{artifact: facetArtifact(2), args: []}], owner: DEPLOYER},
+		);
+
+		const record = env.get('MyDiamond') as any;
+		const recordedAddresses = (record.facets as {facetAddress: string}[]).map((f) => f.facetAddress.toLowerCase());
+
+		// No cut was sent: the chain was already where it should be.
+		const cuts = provider
+			.getRequests()
+			.filter((r) => r.method === 'eth_sendTransaction')
+			.map((r) => r.params?.[0] as any)
+			.filter((tx) =>
+				tx?.data?.startsWith?.(toFunctionSelector('diamondCut((address,uint8,bytes4[])[],address,bytes)')),
+			);
+		expect(cuts.length).toBe(0);
+
+		// ...but the record now names the facet the diamond actually runs.
+		expect(recordedAddresses).toContain(facetV2.address.toLowerCase());
+		expect(recordedAddresses).not.toContain(first.facetAddress.toLowerCase());
+		// An out-of-band cut IS a change as far as the record is concerned.
+		expect(record.numDeployments).toBeGreaterThan(beforeRecord.numDeployments);
+	});
+
+	it('does not rewrite the record, or move the counter, when nothing changed', async () => {
+		const counter = makeCounter();
+		const store = createMapDeploymentStore();
+
+		const first = await firstDeploy(counter, store);
+		const snapshot = (first.env.get('MyDiamond') as any).facets;
+
+		const {env: envA} = await secondRun(counter, store, snapshot);
+		await diamond(envA)(
+			'MyDiamond',
+			{account: 'deployer'},
+			{facets: [{artifact: facetArtifact(1), args: []}], owner: DEPLOYER},
+		);
+		const afterA = envA.get('MyDiamond') as any;
+
+		const {env: envB} = await secondRun(counter, store, snapshot);
+		await diamond(envB)(
+			'MyDiamond',
+			{account: 'deployer'},
+			{facets: [{artifact: facetArtifact(1), args: []}], owner: DEPLOYER},
+		);
+		const afterB = envB.get('MyDiamond') as any;
+
+		expect(afterB.numDeployments).toBe(afterA.numDeployments);
+	});
+});

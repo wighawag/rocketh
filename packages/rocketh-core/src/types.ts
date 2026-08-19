@@ -744,10 +744,24 @@ export interface Environment<
 	 */
 	runUnderUnknownSignerPolicy<T>(frame: UnknownSignerPolicyFrame, action: () => Promise<T>): Promise<T>;
 
+	/**
+	 * Record a deployment under `name`.
+	 *
+	 * `numDeployments` counts how many times the RECORD changed, whether rocketh made
+	 * the change or merely observed it. An upgrade performed by a Safe out-of-band and
+	 * picked up on the next run counts exactly like one rocketh sent itself, because
+	 * from the record's point of view the same thing happened.
+	 *
+	 * `considerItAsFreshDeployment` ASSERTS the count is 1. It is not "save without
+	 * incrementing": it declares that this address holds a contract deployed once, of
+	 * which this is the first record. Use it when recording something that already
+	 * existed on chain (a CREATE3 address that already holds the right code), and NOT
+	 * to refresh a record whose history you want to keep, because it will erase it.
+	 */
 	save<TAbi extends Abi = Abi>(
 		name: string,
 		deployment: Deployment<TAbi>,
-		options?: {doNotCountAsNewDeployment?: boolean},
+		options?: {considerItAsFreshDeployment?: boolean},
 	): Promise<Deployment<TAbi>>;
 	/**
 	 * Broadcast a transaction that is not a contract deployment (`execute`, `executeByName`

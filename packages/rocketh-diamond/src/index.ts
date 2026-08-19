@@ -7,7 +7,7 @@ import artifactDiamondLoupeFact from './hardhat-deploy-v1-artifacts/DiamondLoupe
 import artifactDiamondCutFact from './hardhat-deploy-v1-artifacts/DiamondCutFacet.js';
 import artifactOwnershipFacet from './hardhat-deploy-v1-artifacts/OwnershipFacet.js';
 import artifactDiamondERC165Init from './hardhat-deploy-v1-artifacts/DiamondERC165Init.js';
-import {filterABI, mergeABIs, sigsFromABI} from './utils.js';
+import {filterABI, mergeABIs, sigsFromABI, sameDiamondRecord} from './utils.js';
 import {formatDiamondCutPlan, selectorSignatures} from './report.js';
 import {deploy, DeployResult} from '@rocketh/deploy';
 
@@ -470,7 +470,7 @@ export function diamond(
 						execute: options.execute,
 					},
 					{
-						doNotCountAsNewDeployment: proxy.newlyDeployed ? false : true,
+						considerItAsFreshDeployment: proxy.newlyDeployed ? false : true,
 					},
 				);
 			} else {
@@ -541,19 +541,35 @@ export function diamond(
 				newlyDeployed: true,
 			};
 		} else {
-			// const oldDeployment = await partialExtension.get(name);
-
-			// const proxiedDeployment: DeploymentSubmission = {
-			//   ...oldDeployment,
-			//   facets: facetSnapshot,
-			//   abi,
-			//   execute: options.execute,
-			// };
-			// // TODO ?
-			// // proxiedDeployment.history = proxiedDeployment.history
-			// //   ? proxiedDeployment.history.concat([oldDeployment])
-			// //   : [oldDeployment];
-			// await saveDeployment(name, proxiedDeployment);
+			// THE RECORD DESCRIBES THE CHAIN, NOT THIS RUN.
+			//
+			//  `changesDetected` answers "is there a cut to perform?", correctly and from the
+			//  on-chain loupe rather than from this record. Saving only inside it answers a
+			//  DIFFERENT question: "did THIS run change anything?". The two come apart whenever
+			//  the cut happens somewhere else, which for a governed diamond is always: the run
+			//  that wants the cut throws at `_execute` before saving, and the run after it finds
+			//  the facets already correct and takes this branch. Until now this branch wrote
+			//  nothing, so the record kept the old facet addresses and the old merged ABI
+			//  indefinitely, and that record is what `@rocketh/export` ships to a frontend and
+			//  what `env.get<Abi>()` hands the next script.
+			//
+			//  Guarded, because `env.save` bumps `numDeployments` and rewrites the file. That
+			//  counter means "how many times the recorded deployment CHANGED", so a cut rocketh
+			//  is only now observing must tick it while an ordinary converged re-run must not.
+			//  The comparison covers the facet snapshot as well as the ABI: replacing a facet
+			//  with a new build of the same contract moves the addresses while leaving the ABI
+			//  byte-identical, and an ABI-only check would call that unchanged.
+			if (proxy && oldDeployment && !sameDiamondRecord(oldDeployment, {abi, facets: facetSnapshot})) {
+				await env.save<TAbi>(name, {
+					...(oldDeployment as Deployment<TAbi>),
+					linkedData: toJSONCompatibleLinkedData(options.linkedData),
+					libraries: options.libraries,
+					address: proxy.address,
+					abi,
+					facets: facetSnapshot,
+					execute: options.execute,
+				});
+			}
 
 			const deployment = await env.get<TAbi>(name);
 			return {

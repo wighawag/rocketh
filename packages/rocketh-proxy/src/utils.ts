@@ -87,3 +87,35 @@ export function replaceTemplateArgs(
 
 	return proxyArgs;
 }
+
+/**
+ * Whether a stored ABI already describes what we are about to record.
+ *
+ * The proxy record is written whenever the chain agrees with the target
+ * implementation, however it got there, which includes runs where rocketh did
+ * nothing at all. `env.save` bumps `numDeployments` and rewrites the file, and that
+ * counter means "how many times the recorded deployment CHANGED", so it must tick
+ * for an upgrade rocketh is only now observing and must NOT tick for a re-run that
+ * changed nothing. This comparison is what separates those two cases.
+ *
+ * Compared as ORDER-SENSITIVE JSON, deliberately. The candidate always comes from
+ * `mergeABIs` over the same inputs in the same order, so a genuine no-op run
+ * reproduces byte-identical output; anything that does differ is a real change worth
+ * recording. A semantic ABI comparison would be more forgiving and much easier to
+ * get subtly wrong, and being wrong in the lenient direction here means silently
+ * keeping a stale ABI, which is the bug this exists to fix.
+ *
+ * A missing stored ABI counts as different: there is nothing recorded to trust.
+ */
+export function sameABI(stored: unknown, candidate: unknown): boolean {
+	if (!stored) {
+		return false;
+	}
+	try {
+		return JSON.stringify(stored) === JSON.stringify(candidate);
+	} catch {
+		// Never let a comparison failure decide the outcome: fall back to "different",
+		//  which re-records. A redundant save is recoverable; a skipped one is the bug.
+		return false;
+	}
+}

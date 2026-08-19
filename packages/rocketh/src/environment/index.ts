@@ -966,9 +966,17 @@ export async function createEnvironment<
 	async function save<TAbi extends Abi>(
 		name: string,
 		deployment: Deployment<TAbi>,
-		options?: {doNotCountAsNewDeployment?: boolean},
+		options?: {considerItAsFreshDeployment?: boolean},
 	): Promise<Deployment<TAbi>> {
-		if (!options?.doNotCountAsNewDeployment) {
+		// `numDeployments` counts changes to the RECORD, so a save always moves it, whether
+		//  this run performed the change or merely observed one made elsewhere.
+		//
+		//  `considerItAsFreshDeployment` is the opt-out and it ASSERTS a count of 1 rather
+		//  than skipping the increment. It was called `doNotCountAsNewDeployment`, which
+		//  promised the weaker thing and silently did this stronger one. Harmless for its two
+		//  callers, which both record something deployed exactly once, and a trap for anyone
+		//  reaching for it to refresh a record with history worth keeping.
+		if (!options?.considerItAsFreshDeployment) {
 			let numDeployments = 1;
 			const oldDeployment = deployments[name];
 			if (oldDeployment) {

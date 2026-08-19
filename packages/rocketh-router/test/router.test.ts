@@ -140,3 +140,80 @@ describe('@rocketh/router - deployViaRouter', () => {
 		).rejects.toThrow();
 	});
 });
+
+/**
+ * THE RECORD MUST DESCRIBE WHAT IS ON CHAIN, not what this run happened to do.
+ *
+ * `@rocketh/proxy` and `@rocketh/diamond` both had a version of this: the record was
+ * written only on a run that changed something, which is a different condition from
+ * "the record disagrees with reality". Router guards its save with
+ * `!existingDeployment || router.newlyDeployed`, so the question is whether the
+ * merged ABI can change while the ROUTER contract does not.
+ *
+ * It can. `extraABIs` contribute to the merged ABI but not to the implementations,
+ * so they never reach the router's constructor args, so the router is not
+ * redeployed, so nothing is saved. No deferral or governance needed to reach it.
+ */
+describe('@rocketh/router - the record tracks the merged ABI, not just the router', () => {
+	it('refreshes the record when extraABIs change but the router does not', async () => {
+		const {createMapDeploymentStore} = await import('@rocketh/test-utils');
+		const store = createMapDeploymentStore();
+
+		const EXTRA_ABI = [
+			{type: 'function', name: 'extraFunction', inputs: [], outputs: [{type: 'uint256'}], stateMutability: 'view'},
+		] as const satisfies Abi;
+
+		const routes = () => [{name: 'RouteA', artifact: createExampleArtifact('ImplA', 0), args: []}];
+
+		const env1 = await createTestEnvironment({
+			accounts: STANDARD_NAMED_ACCOUNTS,
+			nodeAccounts: NODE_HELD_ACCOUNTS,
+			deploymentStore: store,
+		});
+		await deployViaRouter(env1.env)('MyRouter', {account: 'deployer'}, routes());
+
+		// Same routes, so the router contract is unchanged, but the declared interface grew.
+		const env2 = await createTestEnvironment({
+			accounts: STANDARD_NAMED_ACCOUNTS,
+			nodeAccounts: NODE_HELD_ACCOUNTS,
+			deploymentStore: store,
+		});
+		await env2.internal.loadDeployments();
+		await deployViaRouter(env2.env)('MyRouter', {account: 'deployer'}, routes(), {extraABIs: [EXTRA_ABI as Abi]});
+
+		const names = (env2.env.get('MyRouter').abi as any[]).filter((f) => f.type === 'function').map((f) => f.name);
+		expect(names).toContain('extraFunction');
+	});
+
+	it('does not rewrite the record, or move the counter, when nothing changed', async () => {
+		const {createMapDeploymentStore} = await import('@rocketh/test-utils');
+		const store = createMapDeploymentStore();
+		const routes = () => [{name: 'RouteA', artifact: createExampleArtifact('ImplA', 0), args: []}];
+
+		const env1 = await createTestEnvironment({
+			accounts: STANDARD_NAMED_ACCOUNTS,
+			nodeAccounts: NODE_HELD_ACCOUNTS,
+			deploymentStore: store,
+		});
+		await deployViaRouter(env1.env)('MyRouter', {account: 'deployer'}, routes());
+
+		const env2 = await createTestEnvironment({
+			accounts: STANDARD_NAMED_ACCOUNTS,
+			nodeAccounts: NODE_HELD_ACCOUNTS,
+			deploymentStore: store,
+		});
+		await env2.internal.loadDeployments();
+		await deployViaRouter(env2.env)('MyRouter', {account: 'deployer'}, routes());
+		const after1 = env2.env.get('MyRouter').numDeployments;
+
+		const env3 = await createTestEnvironment({
+			accounts: STANDARD_NAMED_ACCOUNTS,
+			nodeAccounts: NODE_HELD_ACCOUNTS,
+			deploymentStore: store,
+		});
+		await env3.internal.loadDeployments();
+		await deployViaRouter(env3.env)('MyRouter', {account: 'deployer'}, routes());
+
+		expect(env3.env.get('MyRouter').numDeployments).toBe(after1);
+	});
+});

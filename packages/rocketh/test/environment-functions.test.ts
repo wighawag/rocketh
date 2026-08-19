@@ -158,6 +158,67 @@ describe('save and get', () => {
 	});
 });
 
+/**
+ * `numDeployments` counts how many times the RECORD changed, whether rocketh made the
+ * change or merely observed it. `@rocketh/proxy`, `/diamond` and `/router` all rely on
+ * that: each re-records when the chain (or the declared interface) has moved on
+ * without them, and each such refresh is a real change worth counting.
+ *
+ * `considerItAsFreshDeployment` is the opt-out, and its name is load-bearing. It does
+ * NOT mean "save without moving the counter": it ASSERTS the count is 1, which is a
+ * different and stronger claim. Both callers want exactly that, and both reach it in
+ * a state where 1 is already the answer:
+ *
+ *   - `@rocketh/deploy` recording a CREATE3 address that already holds the right code,
+ *     where the deployment happened once and rocketh merely found it;
+ *   - `@rocketh/diamond` on its fresh-diamond path.
+ *
+ * It was previously called `doNotCountAsNewDeployment`, which promised only "do not
+ * increment" and silently delivered "reset to 1". Harmless for those two callers,
+ * because neither can be holding a count above 1, but a trap for the third: the
+ * record-refresh work above would have reached for it and quietly erased history.
+ * Renamed so the name states the behaviour, and pinned here so it cannot drift back.
+ */
+describe('save and numDeployments', () => {
+	const record = (address: `0x${string}`) =>
+		({
+			abi: [] as any,
+			address,
+			argsData: '0x',
+			bytecode: '0x',
+			deployedBytecode: '0x',
+			linkReferences: {},
+		}) as any;
+
+	it('counts every save, so an observed change is counted like a performed one', async () => {
+		const {env} = await buildEnv({accounts: {deployer: NAMED_ADDR}, nodeAccounts: [NAMED_ADDR]});
+		const address = ('0x' + 'f'.repeat(40)) as `0x${string}`;
+
+		await env.save('Token', record(address));
+		expect(env.get('Token').numDeployments).toBe(1);
+
+		await env.save('Token', record(address));
+		expect(env.get('Token').numDeployments).toBe(2);
+
+		await env.save('Token', record(address));
+		expect(env.get('Token').numDeployments).toBe(3);
+	});
+
+	it('considerItAsFreshDeployment asserts a count of one, it does not merely skip the increment', async () => {
+		const {env} = await buildEnv({accounts: {deployer: NAMED_ADDR}, nodeAccounts: [NAMED_ADDR]});
+		const address = ('0x' + 'f'.repeat(40)) as `0x${string}`;
+
+		await env.save('Token', record(address));
+		await env.save('Token', record(address));
+		expect(env.get('Token').numDeployments).toBe(2);
+
+		// Not 2 (skip the increment) and not 3 (take it): ONE. That is the whole point
+		//  of the name, and the reason a record refresh must not use this flag.
+		await env.save('Token', record(address), {considerItAsFreshDeployment: true});
+		expect(env.get('Token').numDeployments).toBe(1);
+	});
+});
+
 describe('fromAddressToNamedABIOrNull', () => {
 	it('returns the names and merged ABI for an address with one deployment', async () => {
 		const {env} = await buildEnv({accounts: {deployer: NAMED_ADDR}, nodeAccounts: [NAMED_ADDR]});

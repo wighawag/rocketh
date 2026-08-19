@@ -4,7 +4,7 @@ import type {EIP1193Account} from 'eip-1193';
 import {encodeFunctionData, zeroAddress} from 'viem';
 import {logs} from 'named-logs';
 import {deploy, DeployOptions} from '@rocketh/deploy';
-import {checkUpgradeIndex, replaceTemplateArgs} from './utils.js';
+import {checkUpgradeIndex, replaceTemplateArgs, sameABI} from './utils.js';
 import ERC1967Proxy from './hardhat-deploy-v1-artifacts/ERC1967Proxy.js';
 import ERC173Proxy from './hardhat-deploy-v1-artifacts/EIP173Proxy.js';
 import ERC173ProxyWithReceive from './hardhat-deploy-v1-artifacts/EIP173ProxyWithReceive.js';
@@ -576,6 +576,30 @@ export function deployViaProxy(
 						});
 					}
 				}
+			}
+
+			// THE RECORD DESCRIBES THE CHAIN, NOT THIS RUN.
+			//
+			//  This save used to live inside the `if` above, so it only ran when THIS run
+			//  performed the upgrade. That is a different condition, and the two come apart
+			//  as soon as the upgrade happens somewhere else: a Safe executing a deferred
+			//  upgrade, a timelock, a manual `upgradeTo`. The run that wanted the upgrade
+			//  throws at `_execute` above, before reaching here; the run after it finds the
+			//  implementation slot already correct and skips the `if` entirely. No run wrote
+			//  the record, so it kept the OLD implementation's ABI indefinitely, and that
+			//  record is what `@rocketh/export` ships, what `env.get<Abi>()` returns and what
+			//  `@rocketh/doc` documents.
+			//
+			//  Saving here instead means: record it whenever the chain agrees with the target,
+			//  however it got there. A deferred upgrade therefore produces the same record as
+			//  a signable one, one run later.
+			//
+			//  GUARDED, because `env.save` bumps `numDeployments` and rewrites the file. That
+			//  counter means "how many times the recorded deployment changed", so an
+			//  out-of-band upgrade must tick it (it is a real change rocketh is only now
+			//  observing) while a re-run that changes nothing must not. Comparing the merged
+			//  ABI against what is stored is what separates those two.
+			if (!sameABI(existingDeployment?.abi, mergedABI)) {
 				existingDeployment = await env.save<TAbi>(name, {
 					...proxyDeployment,
 					...artifactToUse,

@@ -340,3 +340,123 @@ describe('@rocketh/proxy - upgrade path', () => {
 		expect(upgrades[0].from.toLowerCase()).toBe(DEPLOYER.toLowerCase());
 	});
 });
+
+/**
+ * THE RECORD MUST DESCRIBE WHAT IS ON CHAIN, not what this run happened to do.
+ *
+ * `deployViaProxy` writes the proxy record only on a run that PERFORMS an upgrade.
+ * That is a different condition, and the two come apart the moment the upgrade
+ * happens somewhere else: a Safe executing a deferred upgrade, a governance
+ * timelock, or a plain manual `upgradeTo`. The run that wanted the upgrade throws
+ * before the save; the run after it finds the implementation slot already correct
+ * and skips the whole branch, save included. No run writes the record, so it keeps
+ * the OLD implementation's ABI forever.
+ *
+ * That record is what `@rocketh/export` ships to a frontend, what `env.get<Abi>()`
+ * hands a later script, and what `@rocketh/doc` documents. All three go silently
+ * stale, and only for users whose upgrades are governed, which is why it survived.
+ *
+ * `numDeployments` counts how many times the recorded deployment CHANGED, whether
+ * rocketh made the change or merely observed it. So an out-of-band upgrade counts,
+ * and the deferred path must end up with the same record the signable path
+ * produces, that field included.
+ */
+const CONTRACT_ABI_V2 = [
+	...CONTRACT_ABI,
+	{
+		type: 'function',
+		name: 'getExtra',
+		inputs: [],
+		outputs: [{type: 'uint256'}],
+		stateMutability: 'view',
+	},
+] as const satisfies Abi;
+
+/** v2, and its ABI genuinely differs: `getExtra` exists only here. */
+function artifactV2WithWiderAbi(): Artifact<typeof CONTRACT_ABI_V2> {
+	return {
+		...createMockArtifact('Vault', CONTRACT_ABI_V2),
+		bytecode: `0x6080604052348015600f57600080fd5b5022` as `0x${string}`,
+		deployedBytecode: `0x608060405222dead0002` as `0x${string}`,
+	};
+}
+
+const hasExtra = (abi: readonly unknown[]) => abi.some((entry) => (entry as {name?: string}).name === 'getExtra');
+
+describe('@rocketh/proxy - the record tracks the chain, not this run', () => {
+	it('refreshes the ABI when the upgrade happened out-of-band', async () => {
+		/**
+		 * The purest statement of the bug: no `catchUnknownSigner`, no deferral
+		 * machinery. Someone upgraded the proxy outside rocketh, to an implementation
+		 * rocketh then deploys and recognises. The next run must record it.
+		 */
+		const storage = createStorage();
+		const counter = {value: 0};
+		const store = createMapDeploymentStore();
+		await firstDeploy(storage, store, counter);
+
+		// Run 2 deploys the v2 implementation, then upgrades, then saves. Ordinary path.
+		const {env: envSignable} = await secondRun(storage, store, counter);
+		await deployViaProxy(envSignable)(
+			'Vault',
+			{account: 'deployer', artifact: artifactV2WithWiderAbi(), args: [42n]},
+			{},
+		);
+		const signableRecord = envSignable.get('Vault');
+
+		// Now the same journey with the upgrade performed elsewhere. Fresh store.
+		const storage2 = createStorage();
+		const counter2 = {value: 0};
+		const store2 = createMapDeploymentStore();
+		const first = await firstDeploy(storage2, store2, counter2);
+
+		// Run 2: deploy the new implementation but let the upgrade happen OUT OF BAND,
+		//  by writing the implementation slot directly before rocketh looks at it.
+		const {env} = await secondRun(storage2, store2, counter2);
+		const {deploy} = await import('@rocketh/deploy');
+		const newImpl = await deploy(env)('Vault_Implementation', {
+			account: 'deployer',
+			artifact: artifactV2WithWiderAbi(),
+			args: [42n],
+		});
+		storage2.setAddress(first.vault.address, IMPLEMENTATION_SLOT, newImpl.address);
+
+		// Run 3: rocketh is asked for the same v2 implementation. The slot already
+		//  matches, so it performs no upgrade. It must still record the truth.
+		const {env: env3, provider} = await secondRun(storage2, store2, counter2);
+		await deployViaProxy(env3)('Vault', {account: 'deployer', artifact: artifactV2WithWiderAbi(), args: [42n]}, {});
+
+		const record = env3.get('Vault');
+
+		// It did NOT upgrade: the chain was already where it should be.
+		expect(broadcastFrom(provider).length).toBe(0);
+		// ...but the record now describes the implementation the proxy actually runs.
+		expect(hasExtra(record.abi)).toBe(true);
+		expect(record.address.toLowerCase()).toBe(first.vault.address.toLowerCase());
+		// An out-of-band upgrade IS a new deployment as far as the record is concerned,
+		//  so the two journeys must agree on the count as well as on the ABI.
+		expect(record.numDeployments).toBe(signableRecord.numDeployments);
+	});
+
+	it('does not rewrite the record, or move the counter, when nothing changed', async () => {
+		/**
+		 * The guard on the fix. Refreshing unconditionally would rewrite the file and
+		 * tick `numDeployments` on every single run, turning a counter of real changes
+		 * into a counter of invocations.
+		 */
+		const storage = createStorage();
+		const counter = {value: 0};
+		const store = createMapDeploymentStore();
+		await firstDeploy(storage, store, counter);
+
+		const {env: envA} = await secondRun(storage, store, counter);
+		await deployViaProxy(envA)('Vault', {account: 'deployer', artifact: artifactV(1), args: [42n]}, {});
+		const after1 = envA.get('Vault');
+
+		const {env: envB} = await secondRun(storage, store, counter);
+		await deployViaProxy(envB)('Vault', {account: 'deployer', artifact: artifactV(1), args: [42n]}, {});
+		const after2 = envB.get('Vault');
+
+		expect(after2.numDeployments).toBe(after1.numDeployments);
+	});
+});

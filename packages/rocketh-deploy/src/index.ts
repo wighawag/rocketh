@@ -671,7 +671,7 @@ export function deploy(env: Environment): <TAbi extends Abi>(
 							address: expectedAddress,
 							...partialDeployment,
 						},
-						{doNotCountAsNewDeployment: true},
+						{considerItAsFreshDeployment: true},
 					);
 					return {...(deployment as Deployment<TAbi>), newlyDeployed: false};
 				} else {

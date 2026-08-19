@@ -145,13 +145,17 @@ export function deployViaRouter(
 
 		// logger.info(`router deployed at ${router.address}`);
 
+		const recordPayload = {
+			abi: mergedABI as unknown as TAbi,
+			devdoc: mergedDevDocs,
+			userdoc: mergedUserDocs,
+		};
+
 		if (!existingDeployment || router.newlyDeployed) {
 			const {newlyDeployed, ...routerWithoutDeployedFlag} = router;
 			existingDeployment = await env.save<TAbi>(name, {
 				...routerWithoutDeployedFlag,
-				abi: mergedABI as unknown as TAbi,
-				devdoc: mergedDevDocs,
-				userdoc: mergedUserDocs,
+				...recordPayload,
 			});
 
 			// logger.info(`save with merged ABI: ${name}`);
@@ -159,6 +163,61 @@ export function deployViaRouter(
 			return {...existingDeployment, newlyDeployed: true};
 		}
 
+		// THE RECORD DESCRIBES WHAT WAS DECLARED, NOT WHAT THIS RUN DEPLOYED.
+		//
+		//  The guard above asks "was the ROUTER contract (re)deployed?", which is not the
+		//  same question as "does the stored record still describe this router?". The two
+		//  come apart through `extraABIs`: they contribute to the merged ABI but never to
+		//  the implementations, so they cannot reach the router's constructor args, so the
+		//  router is not redeployed, so nothing was saved. Adding one used to be a silent
+		//  no-op, leaving a record whose ABI omits it, which is then what `@rocketh/export`
+		//  ships and what `env.get<Abi>()` hands the next script.
+		//
+		//  Unlike the proxy and diamond cases this needs no governance to reach: it is a
+		//  plain second run with a wider declared interface.
+		//
+		//  `newlyDeployed` stays FALSE here, deliberately: nothing was deployed. Only the
+		//  record caught up. But `env.save` does bump `numDeployments`, on the same rule the
+		//  proxy and diamond fixes use, that the counter tracks changes to the RECORD.
+		if (!sameRouterRecord(existingDeployment, recordPayload)) {
+			const {newlyDeployed, ...routerWithoutDeployedFlag} = router;
+			existingDeployment = await env.save<TAbi>(name, {
+				...routerWithoutDeployedFlag,
+				...recordPayload,
+			});
+		}
+
 		return {...existingDeployment, newlyDeployed: false};
 	};
+}
+
+/**
+ * Whether the stored record already describes the router we are about to record.
+ *
+ * Guards the record refresh above so that `env.save`, which bumps `numDeployments`
+ * and rewrites the file, only fires when something genuinely differs. Covers the
+ * documentation as well as the ABI, because `extraABIs` carry devdoc/userdoc into
+ * the merged result and a doc-only change is still a change to what we publish.
+ *
+ * Compared as order-sensitive JSON: both sides come from `mergeArtifacts` over the
+ * same inputs in the same order, so a genuine no-op reproduces identical output.
+ * A missing stored ABI, or a comparison that throws, counts as different: a
+ * redundant save is recoverable, a skipped one is the bug this exists to fix.
+ */
+function sameRouterRecord(
+	stored: {abi?: unknown; devdoc?: unknown; userdoc?: unknown} | null | undefined,
+	candidate: {abi: unknown; devdoc: unknown; userdoc: unknown},
+): boolean {
+	if (!stored || !stored.abi) {
+		return false;
+	}
+	try {
+		return (
+			JSON.stringify(stored.abi) === JSON.stringify(candidate.abi) &&
+			JSON.stringify(stored.devdoc) === JSON.stringify(candidate.devdoc) &&
+			JSON.stringify(stored.userdoc) === JSON.stringify(candidate.userdoc)
+		);
+	} catch {
+		return false;
+	}
 }
