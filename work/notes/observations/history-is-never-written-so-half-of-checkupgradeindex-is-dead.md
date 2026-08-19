@@ -3,6 +3,7 @@ title: 'rocketh never writes `history`, so half of `checkUpgradeIndex` is unreac
 type: observation
 status: spotted
 spotted: 2026-08-19
+needsAnswers: true
 ---
 
 # `checkUpgradeIndex` reads a field nothing in rocketh ever writes
