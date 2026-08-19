@@ -2,6 +2,16 @@ linkWorkspacePackages: true
 packages:
   - 'packages/*'
   - 'website'
+  # The demoes are workspace members, not standalone projects. They HAVE to be: each
+  # declares `hardhat-deploy: workspace:*`, which cannot resolve outside a workspace, so
+  # `pnpm install` inside one fails with "node_modules missing" and no way forward.
+  #
+  # Membership also makes them real consumers rather than decoration. Their `@rocketh/*`
+  # dependencies are RANGES rather than `workspace:*`, so they stay copy-pasteable for a
+  # user, and `linkWorkspacePackages` above links them to the local packages whenever the
+  # range matches. Watch that last part: a package bumped PAST a demo's range silently
+  # detaches it and it starts testing the published version instead.
+  - 'demoes/hardhat-deploy/*'
 
 # ---------------------------------------------------------------------------
 # Supply-chain settings
