@@ -2,6 +2,7 @@
 '@rocketh/proxy': patch
 '@rocketh/diamond': patch
 '@rocketh/router': patch
+'@rocketh/deploy': patch
 '@rocketh/core': patch
 'rocketh': patch
 ---
@@ -24,7 +25,7 @@ All three now re-record when the stored record disagrees with what is declared a
 
 **`numDeployments` counts changes to the RECORD**, whether rocketh made the change or merely observed one made elsewhere. An upgrade executed by a Safe out-of-band therefore counts exactly as one rocketh sent itself, and the deferred path now produces the same record as the signable path, that field included.
 
-**Renamed `save`'s `doNotCountAsNewDeployment` option to `considerItAsFreshDeployment`** (`@rocketh/core` type, `rocketh` implementation). The old name promised "do not increment" and actually did something stronger: it ASSERTS a count of 1. That was harmless for its two callers, which each record something deployed exactly once, and a trap for anyone reaching for it to refresh a record whose history matters, which the work above nearly did. The name now states the behaviour. This is a breaking rename of an option on `Environment.save`; no in-tree caller outside these packages used it.
+**Renamed `save`'s `doNotCountAsNewDeployment` option to `considerItAsFreshDeployment`** (`@rocketh/core` type, `rocketh` implementation). The old name promised "do not increment" and actually did something stronger: it ASSERTS a count of 1. That was harmless for its two callers, which each record something deployed exactly once, and a trap for anyone reaching for it to refresh a record whose history matters, which the work above nearly did. The name now states the behaviour. This is a breaking rename of an option on `Environment.save`, and both in-tree callers were updated: `@rocketh/deploy` (recording a CREATE3 address that already holds the right code) and `@rocketh/diamond` (its fresh-diamond path). If you call `save` yourself with the old option name, a plain object literal will fail its excess-property check loudly, but a loosely typed options variable will silently stop asserting a fresh deployment and start incrementing instead.
 
 **`numDeployments` now survives to disk.** `save()` counted into the in-memory record and then wrote the UNCOUNTED argument, so the field reached a file only when a caller happened to spread an object that already carried one. Anything reading it across runs, `checkUpgradeIndex` most of all, was working from a number that silently restarted. It now serialises the counted record.
 

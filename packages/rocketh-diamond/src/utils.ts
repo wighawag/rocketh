@@ -66,24 +66,16 @@ export function mergeABIs<TAbi extends Abi = Abi>(
 /**
  * Whether the stored record already describes the diamond we are about to record.
  *
- * The record is written whenever the chain agrees with the declared facet set,
- * however it got there, which includes runs where rocketh cut nothing at all. Since
- * `env.save` bumps `numDeployments` and rewrites the file, and that counter means
- * "how many times the recorded deployment CHANGED", it must tick for a cut rocketh
- * is only now observing and must NOT tick for a re-run that changed nothing.
+ * Guards the refresh on the no-cut-needed path; see `Environment.save` in
+ * `@rocketh/core` for the counter rule this protects.
  *
- * BOTH the facet snapshot AND the ABI are compared, and the facets are the reason
- * this is not just an ABI check: replacing a facet with a new build of the SAME
- * contract changes the addresses while leaving the merged ABI byte-identical. An
- * ABI-only comparison would call that unchanged and leave the record naming facet
- * addresses the diamond no longer uses.
- *
- * Compared as order-sensitive JSON: both sides are produced by the same code over
- * the same inputs in the same order, so a genuine no-op reproduces identical output.
- * A missing stored value counts as different, and so does a comparison that throws:
- * a redundant save is recoverable, a skipped one is the bug this exists to fix.
+ * Compares the facet snapshot AND the ABI. The facets are the reason this is not just
+ * an ABI check: replacing a facet with a new build of the SAME contract changes the
+ * addresses while leaving the merged ABI byte-identical, and an ABI-only comparison
+ * would call that unchanged and leave the record naming facets the diamond no longer
+ * uses. Missing or unserialisable counts as NOT described.
  */
-export function sameDiamondRecord(
+export function recordDescribesDiamond(
 	stored: {abi?: unknown; facets?: unknown} | null | undefined,
 	candidate: {abi: unknown; facets: unknown},
 ): boolean {

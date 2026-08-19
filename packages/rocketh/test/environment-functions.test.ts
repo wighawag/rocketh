@@ -186,7 +186,8 @@ describe('save and get', () => {
  *
  *   - `@rocketh/deploy` recording a CREATE3 address that already holds the right code,
  *     where the deployment happened once and rocketh merely found it;
- *   - `@rocketh/diamond` on its fresh-diamond path.
+ *   - `@rocketh/diamond` on its fresh-diamond path, where it is passed only when the
+ *     proxy was NOT newly deployed, i.e. the address already held the diamond.
  *
  * It was previously called `doNotCountAsNewDeployment`, which promised only "do not
  * increment" and silently delivered "reset to 1". Harmless for those two callers,

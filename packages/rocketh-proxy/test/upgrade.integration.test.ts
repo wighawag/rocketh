@@ -16,6 +16,7 @@
 
 import {describe, it, expect} from 'vitest';
 import {deployViaProxy} from '../src/index.js';
+import {deploy} from '@rocketh/deploy';
 import {
 	createTestEnvironment,
 	createMockArtifact,
@@ -220,7 +221,6 @@ describe('@rocketh/proxy - upgrade path', () => {
 		// To test the throw, we need 'Vault' to exist but 'Vault_Proxy' to not exist.
 		// This happens naturally if someone saved a deployment named 'Vault' without using deployViaProxy.
 		// Instead, let's directly test by deploying a non-proxy deployment first.
-		const {deploy} = await import('@rocketh/deploy');
 		const _deploy = deploy(env);
 		// 'Vault' already exists from the first deploy. Let's try to use deployViaProxy
 		// which will find the existing 'Vault' but no 'Vault_Proxy'.
@@ -413,7 +413,6 @@ describe('@rocketh/proxy - the record tracks the chain, not this run', () => {
 		// Run 2: deploy the new implementation but let the upgrade happen OUT OF BAND,
 		//  by writing the implementation slot directly before rocketh looks at it.
 		const {env} = await secondRun(storage2, store2, counter2);
-		const {deploy} = await import('@rocketh/deploy');
 		const newImpl = await deploy(env)('Vault_Implementation', {
 			account: 'deployer',
 			artifact: artifactV2WithWiderAbi(),
@@ -485,7 +484,7 @@ describe('@rocketh/proxy - the record tracks the chain, not this run', () => {
  */
 describe('@rocketh/proxy - upgradeIndex tells the story of the upgrade, idempotently', () => {
 	/** The deploy script, verbatim on every run: three steps that never get deleted. */
-	async function runTheScript(env: any) {
+	async function runTheScript(env: Parameters<typeof deployViaProxy>[0]) {
 		await deployViaProxy(env)('Vault', {account: 'deployer', artifact: artifactV(1), args: [42n]}, {upgradeIndex: 0});
 		await deployViaProxy(env)('Vault', {account: 'deployer', artifact: artifactV(2), args: [42n]}, {upgradeIndex: 1});
 		await deployViaProxy(env)('Vault', {account: 'deployer', artifact: artifactV(3), args: [42n]}, {upgradeIndex: 2});

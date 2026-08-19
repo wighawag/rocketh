@@ -13,29 +13,21 @@ import type {Abi, Deployment} from '@rocketh/core/types';
  * deployViaProxy('Vault', {artifact: V3}, {upgradeIndex: 2});
  * ```
  *
- * On a fresh chain all three run in order. On a chain already at V3 all three are
- * no-ops. The same property lets a TEST replay an upgrade sequence from scratch, which
- * is the only way to exercise an upgrade path that has already happened in production.
+ * On a fresh chain all three run in order; on a chain already at V3 all three are
+ * no-ops. The same property lets a test replay an upgrade sequence from scratch.
  *
- * `numDeployments` IS THE MECHANISM, and the only one. It counts how many times this
- * record has been written, so it is exactly "how many steps of the story have run", and
- * therefore also the index of the step that runs next. Three outcomes:
- *
- * - more steps recorded than this index: this step already ran, hand back the existing
- *   deployment as not-newly-deployed;
- * - exactly this many: this step is the next one, proceed;
- * - fewer: the script is being asked to run a step whose predecessors have not run, so
- *   throw rather than silently apply an upgrade out of order.
+ * `numDeployments` is the mechanism, and the only one: it counts how many times this
+ * record has been written, so it is both how many steps have run and the index of the
+ * step that runs next. More recorded than asked for means this step already ran (hand
+ * back the existing deployment); exactly as many means it is due (proceed); fewer means
+ * its predecessors have not run (throw, rather than apply an upgrade out of order).
  *
  * A record with no `numDeployments` counts as one step, which is what it is: written
- * once, never upgraded. That also carries records written before the counter was
- * persisted, where the field is simply absent.
+ * once, never upgraded. That is also what carries records written before the counter
+ * was persisted.
  *
- * NO `history`. hardhat-deploy v1 consults a `history` array first and falls back to
- * this counter, and that shape was ported here, but rocketh has never written `history`
- * anywhere, so those branches could not run and the error messages advertised a field
- * users could not produce. Removed rather than reinstated, deliberately: one mechanism
- * that works beats two where one is decoration. See
+ * NO `history`: v1 consults one first, rocketh never wrote one, so those branches were
+ * unreachable and their errors named a field users could not produce. See
  * `work/notes/observations/history-is-never-written-so-half-of-checkupgradeindex-is-dead.md`.
  */
 export function checkUpgradeIndex<TAbi extends Abi>(
@@ -50,8 +42,8 @@ export function checkUpgradeIndex<TAbi extends Abi>(
 	//  had exactly one: it was deployed and never upgraded.
 	const stepsRun = oldDeployment ? (oldDeployment.numDeployments as number | undefined) || 1 : 0;
 
-	if (stepsRun > upgradeIndex) {
-		return {...(oldDeployment as Deployment<TAbi>), newlyDeployed: false};
+	if (oldDeployment && stepsRun > upgradeIndex) {
+		return {...oldDeployment, newlyDeployed: false};
 	}
 
 	if (stepsRun < upgradeIndex) {
@@ -104,24 +96,17 @@ export function replaceTemplateArgs(
 /**
  * Whether the stored record already describes THIS implementation behind the proxy.
  *
- * Used only on the path where no upgrade was needed, because the chain already runs
- * the target implementation. The question there is whether the record knows that yet:
- * a governed upgrade is executed elsewhere, so the run that wanted it threw before
- * saving and this run has nothing to do but write down what it found.
+ * Used only where no upgrade was needed because the chain already runs the target, so
+ * the question is whether the record knows that yet. An upgrade this run PERFORMED
+ * must save unconditionally and must not come through here: two implementations can
+ * differ while their ABIs are identical, so this would call that unchanged and freeze
+ * `numDeployments` on a real upgrade, which `upgradeIndex` reads. That was a genuine
+ * regression, caught by the upgradeIndex integration test.
  *
- * An upgrade this run PERFORMED must save unconditionally and must not come through
- * here. Two implementations can differ while their ABIs are identical, so a comparison
- * like this one would call that unchanged, skip the save, and freeze `numDeployments`
- * on a real upgrade. `upgradeIndex` reads that counter to work out which step of the
- * upgrade story has already run, so freezing it makes a script redo an upgrade or
- * throw. That was a real regression, caught by the upgradeIndex integration test.
- *
- * Compares the implementation's own `deployedBytecode` as well as the merged ABI, for
- * the same reason: an out-of-band upgrade to a new implementation with an unchanged
- * interface is invisible to an ABI-only check.
- *
- * A missing stored record, or a comparison that throws, counts as NOT described: a
- * redundant save is recoverable, a skipped one is the bug this exists to fix.
+ * Compares the implementation's own `deployedBytecode` as well as the merged ABI,
+ * because an out-of-band upgrade to a new implementation with an unchanged interface is
+ * invisible to an ABI-only check. Missing or unserialisable counts as NOT described;
+ * see `Environment.save` in `@rocketh/core` for why erring that way is the safe side.
  */
 export function recordDescribesImplementation(
 	stored: {abi?: unknown; deployedBytecode?: unknown} | null | undefined,

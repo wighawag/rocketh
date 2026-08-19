@@ -15,6 +15,7 @@ import {deployViaRouter} from '../src/index.js';
 import {
 	createTestEnvironment,
 	createExampleArtifact,
+	createMapDeploymentStore,
 	STANDARD_NAMED_ACCOUNTS,
 	NODE_HELD_ACCOUNTS,
 } from '@rocketh/test-utils';
@@ -74,7 +75,6 @@ describe('@rocketh/router - deployViaRouter', () => {
 	});
 
 	it('returns newlyDeployed: false on a second call with the same store', async () => {
-		const {createMapDeploymentStore} = await import('@rocketh/test-utils');
 		const store = createMapDeploymentStore();
 
 		const env1 = await createTestEnvironment({
@@ -156,7 +156,6 @@ describe('@rocketh/router - deployViaRouter', () => {
  */
 describe('@rocketh/router - the record tracks the merged ABI, not just the router', () => {
 	it('refreshes the record when extraABIs change but the router does not', async () => {
-		const {createMapDeploymentStore} = await import('@rocketh/test-utils');
 		const store = createMapDeploymentStore();
 
 		const EXTRA_ABI = [
@@ -186,7 +185,6 @@ describe('@rocketh/router - the record tracks the merged ABI, not just the route
 	});
 
 	it('does not rewrite the record, or move the counter, when nothing changed', async () => {
-		const {createMapDeploymentStore} = await import('@rocketh/test-utils');
 		const store = createMapDeploymentStore();
 		const routes = () => [{name: 'RouteA', artifact: createExampleArtifact('ImplA', 0), args: []}];
 

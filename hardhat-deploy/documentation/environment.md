@@ -46,7 +46,7 @@ export interface Environment<
 	save<TAbi extends Abi = Abi>(
 		name: string,
 		deployment: Deployment<TAbi>,
-		options?: {doNotCountAsNewDeployment?: boolean}
+		options?: {considerItAsFreshDeployment?: boolean}
 	): Promise<Deployment<TAbi>>;
 	broadcastExecution(
 		transaction: TransactionToBroadcast,

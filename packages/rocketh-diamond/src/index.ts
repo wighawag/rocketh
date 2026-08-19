@@ -7,7 +7,7 @@ import artifactDiamondLoupeFact from './hardhat-deploy-v1-artifacts/DiamondLoupe
 import artifactDiamondCutFact from './hardhat-deploy-v1-artifacts/DiamondCutFacet.js';
 import artifactOwnershipFacet from './hardhat-deploy-v1-artifacts/OwnershipFacet.js';
 import artifactDiamondERC165Init from './hardhat-deploy-v1-artifacts/DiamondERC165Init.js';
-import {filterABI, mergeABIs, sigsFromABI, sameDiamondRecord} from './utils.js';
+import {filterABI, mergeABIs, sigsFromABI, recordDescribesDiamond} from './utils.js';
 import {formatDiamondCutPlan, selectorSignatures} from './report.js';
 import {deploy, DeployResult} from '@rocketh/deploy';
 
@@ -552,7 +552,7 @@ export function diamond(
 			//  The comparison covers the facet snapshot as well as the ABI: replacing a facet
 			//  with a new build of the same contract moves the addresses while leaving the ABI
 			//  byte-identical, and an ABI-only check would call that unchanged.
-			if (proxy && oldDeployment && !sameDiamondRecord(oldDeployment, {abi, facets: facetSnapshot})) {
+			if (proxy && oldDeployment && !recordDescribesDiamond(oldDeployment, {abi, facets: facetSnapshot})) {
 				await env.save<TAbi>(name, {
 					...(oldDeployment as Deployment<TAbi>),
 					linkedData: toJSONCompatibleLinkedData(options.linkedData),

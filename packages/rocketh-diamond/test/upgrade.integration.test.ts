@@ -18,6 +18,7 @@
 
 import {describe, it, expect, vi} from 'vitest';
 import {diamond} from '../src/index.js';
+import {deploy} from '@rocketh/deploy';
 import {
 	createTestEnvironment,
 	createMockArtifact,
@@ -26,7 +27,7 @@ import {
 	NODE_HELD_ACCOUNTS,
 } from '@rocketh/test-utils';
 import {encodeAbiParameters, toFunctionSelector} from 'viem';
-import type {Abi, Artifact} from '@rocketh/core/types';
+import type {Abi, Artifact, Deployment} from '@rocketh/core/types';
 import type {DeploymentStore} from '@rocketh/core/types';
 
 const DEPLOYER = STANDARD_NAMED_ACCOUNTS.deployer;
@@ -405,6 +406,12 @@ describe('@rocketh/diamond - the cut is announced before it is executed', () => 
 	});
 });
 
+/** What a diamond record carries beyond a plain `Deployment`, for the assertions below. */
+type DiamondRecord = Deployment<Abi> & {
+	facets: {facetAddress: `0x${string}`; functionSelectors: `0x${string}`[]}[];
+	numDeployments?: number;
+};
+
 /**
  * THE RECORD MUST DESCRIBE WHAT IS ON CHAIN, not what this run happened to do.
  *
@@ -424,7 +431,7 @@ describe('@rocketh/diamond - the record tracks the chain, not this run', () => {
 		const store = createMapDeploymentStore();
 
 		const first = await firstDeploy(counter, store);
-		const beforeRecord = first.env.get('MyDiamond') as any;
+		const beforeRecord = first.env.get('MyDiamond') as DiamondRecord;
 		const snapshotV1 = beforeRecord.facets as {
 			facetAddress: `0x${string}`;
 			functionSelectors: `0x${string}`[];
@@ -432,7 +439,6 @@ describe('@rocketh/diamond - the record tracks the chain, not this run', () => {
 
 		// Deploy the v2 facet so we know the address the out-of-band cut would target.
 		const {env: envDeploy} = await secondRun(counter, store, snapshotV1);
-		const {deploy} = await import('@rocketh/deploy');
 		const facetV2 = await deploy(envDeploy)('MyFacet', {account: 'deployer', artifact: facetArtifact(2), args: []});
 
 		// The world as it is AFTER someone else performed the cut: identical to the
@@ -451,7 +457,7 @@ describe('@rocketh/diamond - the record tracks the chain, not this run', () => {
 			{facets: [{artifact: facetArtifact(2), args: []}], owner: DEPLOYER},
 		);
 
-		const record = env.get('MyDiamond') as any;
+		const record = env.get('MyDiamond') as DiamondRecord;
 		const recordedAddresses = (record.facets as {facetAddress: string}[]).map((f) => f.facetAddress.toLowerCase());
 
 		// No cut was sent: the chain was already where it should be.
@@ -467,8 +473,9 @@ describe('@rocketh/diamond - the record tracks the chain, not this run', () => {
 		// ...but the record now names the facet the diamond actually runs.
 		expect(recordedAddresses).toContain(facetV2.address.toLowerCase());
 		expect(recordedAddresses).not.toContain(first.facetAddress.toLowerCase());
-		// An out-of-band cut IS a change as far as the record is concerned.
-		expect(record.numDeployments).toBeGreaterThan(beforeRecord.numDeployments);
+		// An out-of-band cut IS a change as far as the record is concerned. A record with no
+		//  counter is one step in, which is what the fresh-diamond save leaves behind.
+		expect(record.numDeployments ?? 1).toBeGreaterThan(beforeRecord.numDeployments ?? 1);
 	});
 
 	it('does not rewrite the record, or move the counter, when nothing changed', async () => {
@@ -476,7 +483,7 @@ describe('@rocketh/diamond - the record tracks the chain, not this run', () => {
 		const store = createMapDeploymentStore();
 
 		const first = await firstDeploy(counter, store);
-		const snapshot = (first.env.get('MyDiamond') as any).facets;
+		const snapshot = (first.env.get('MyDiamond') as DiamondRecord).facets;
 
 		const {env: envA} = await secondRun(counter, store, snapshot);
 		await diamond(envA)(
@@ -484,7 +491,7 @@ describe('@rocketh/diamond - the record tracks the chain, not this run', () => {
 			{account: 'deployer'},
 			{facets: [{artifact: facetArtifact(1), args: []}], owner: DEPLOYER},
 		);
-		const afterA = envA.get('MyDiamond') as any;
+		const afterA = envA.get('MyDiamond') as DiamondRecord;
 
 		const {env: envB} = await secondRun(counter, store, snapshot);
 		await diamond(envB)(
@@ -492,7 +499,7 @@ describe('@rocketh/diamond - the record tracks the chain, not this run', () => {
 			{account: 'deployer'},
 			{facets: [{artifact: facetArtifact(1), args: []}], owner: DEPLOYER},
 		);
-		const afterB = envB.get('MyDiamond') as any;
+		const afterB = envB.get('MyDiamond') as DiamondRecord;
 
 		expect(afterB.numDeployments).toBe(afterA.numDeployments);
 	});

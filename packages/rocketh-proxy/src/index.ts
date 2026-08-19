@@ -580,35 +580,14 @@ export function deployViaProxy(
 				}
 			}
 
-			// THE RECORD DESCRIBES THE CHAIN, NOT THIS RUN.
+			// The record describes the CHAIN, not this run, so it is written whenever the two
+			//  agree, however they came to. See `Environment.save` in `@rocketh/core` for the
+			//  counter rule and `recordDescribesImplementation` for what "agree" compares.
 			//
-			//  This save used to live inside the `if` above, so it only ran when THIS run
-			//  performed the upgrade. That is a different condition, and the two come apart
-			//  as soon as the upgrade happens somewhere else: a Safe executing a deferred
-			//  upgrade, a timelock, a manual `upgradeTo`. The run that wanted the upgrade
-			//  throws at `_execute` above, before reaching here; the run after it finds the
-			//  implementation slot already correct and skips the `if` entirely. No run wrote
-			//  the record, so it kept the OLD implementation's ABI indefinitely, and that
-			//  record is what `@rocketh/export` ships, what `env.get<Abi>()` returns and what
-			//  `@rocketh/doc` documents.
-			//
-			//  Saving here instead means: record it whenever the chain agrees with the target,
-			//  however it got there. A deferred upgrade therefore produces the same record as
-			//  a signable one, one run later.
-			//
-			//  AN UPGRADE THIS RUN PERFORMED ALWAYS SAVES, unconditionally, exactly as before.
-			//  Do not fold that into the staleness check below: two implementations can differ
-			//  while their ABIs are identical (a bug fix, a gas tweak, anything not touching the
-			//  interface), and skipping the save there would leave `numDeployments` frozen. That
-			//  in turn breaks `upgradeIndex`, which reads the counter to work out which step of
-			//  the upgrade story has already run, so the script would redo an upgrade or throw
-			//  "expects Deployments numDeployments to be at least N".
-			//
-			//  The staleness check is only for the OTHER case: no upgrade was needed because the
-			//  chain already matches, and the question is whether the record knows that yet. It
-			//  compares the implementation's own bytecode as well as the merged ABI, for the same
-			//  reason: an out-of-band upgrade to a new implementation with an unchanged interface
-			//  is invisible to an ABI-only comparison.
+			//  `upgradeNeeded ||` is the part that is specific to this call site and must not be
+			//  folded into the guard: an upgrade this run performed always saves, because two
+			//  implementations can differ while their ABIs are identical and skipping the save
+			//  there would freeze `numDeployments`, which `upgradeIndex` reads.
 			if (upgradeNeeded || !recordDescribesImplementation(existingDeployment, mergedABI, artifactToUse)) {
 				existingDeployment = await env.save<TAbi>(name, {
 					...proxyDeployment,
