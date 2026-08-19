@@ -89,33 +89,41 @@ export function replaceTemplateArgs(
 }
 
 /**
- * Whether a stored ABI already describes what we are about to record.
+ * Whether the stored record already describes THIS implementation behind the proxy.
  *
- * The proxy record is written whenever the chain agrees with the target
- * implementation, however it got there, which includes runs where rocketh did
- * nothing at all. `env.save` bumps `numDeployments` and rewrites the file, and that
- * counter means "how many times the recorded deployment CHANGED", so it must tick
- * for an upgrade rocketh is only now observing and must NOT tick for a re-run that
- * changed nothing. This comparison is what separates those two cases.
+ * Used only on the path where no upgrade was needed, because the chain already runs
+ * the target implementation. The question there is whether the record knows that yet:
+ * a governed upgrade is executed elsewhere, so the run that wanted it threw before
+ * saving and this run has nothing to do but write down what it found.
  *
- * Compared as ORDER-SENSITIVE JSON, deliberately. The candidate always comes from
- * `mergeABIs` over the same inputs in the same order, so a genuine no-op run
- * reproduces byte-identical output; anything that does differ is a real change worth
- * recording. A semantic ABI comparison would be more forgiving and much easier to
- * get subtly wrong, and being wrong in the lenient direction here means silently
- * keeping a stale ABI, which is the bug this exists to fix.
+ * An upgrade this run PERFORMED must save unconditionally and must not come through
+ * here. Two implementations can differ while their ABIs are identical, so a comparison
+ * like this one would call that unchanged, skip the save, and freeze `numDeployments`
+ * on a real upgrade. `upgradeIndex` reads that counter to work out which step of the
+ * upgrade story has already run, so freezing it makes a script redo an upgrade or
+ * throw. That was a real regression, caught by the upgradeIndex integration test.
  *
- * A missing stored ABI counts as different: there is nothing recorded to trust.
+ * Compares the implementation's own `deployedBytecode` as well as the merged ABI, for
+ * the same reason: an out-of-band upgrade to a new implementation with an unchanged
+ * interface is invisible to an ABI-only check.
+ *
+ * A missing stored record, or a comparison that throws, counts as NOT described: a
+ * redundant save is recoverable, a skipped one is the bug this exists to fix.
  */
-export function sameABI(stored: unknown, candidate: unknown): boolean {
-	if (!stored) {
+export function recordDescribesImplementation(
+	stored: {abi?: unknown; deployedBytecode?: unknown} | null | undefined,
+	abi: unknown,
+	implementationArtifact: {deployedBytecode?: unknown},
+): boolean {
+	if (!stored || !stored.abi) {
 		return false;
 	}
 	try {
-		return JSON.stringify(stored) === JSON.stringify(candidate);
+		return (
+			stored.deployedBytecode === implementationArtifact.deployedBytecode &&
+			JSON.stringify(stored.abi) === JSON.stringify(abi)
+		);
 	} catch {
-		// Never let a comparison failure decide the outcome: fall back to "different",
-		//  which re-records. A redundant save is recoverable; a skipped one is the bug.
 		return false;
 	}
 }

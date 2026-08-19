@@ -4,7 +4,7 @@ import type {EIP1193Account} from 'eip-1193';
 import {encodeFunctionData, zeroAddress} from 'viem';
 import {logs} from 'named-logs';
 import {deploy, DeployOptions} from '@rocketh/deploy';
-import {checkUpgradeIndex, replaceTemplateArgs, sameABI} from './utils.js';
+import {checkUpgradeIndex, replaceTemplateArgs, recordDescribesImplementation} from './utils.js';
 import ERC1967Proxy from './hardhat-deploy-v1-artifacts/ERC1967Proxy.js';
 import ERC173Proxy from './hardhat-deploy-v1-artifacts/EIP173Proxy.js';
 import ERC173ProxyWithReceive from './hardhat-deploy-v1-artifacts/EIP173ProxyWithReceive.js';
@@ -468,7 +468,9 @@ export function deployViaProxy(
 			});
 			const currentImplementationAddress = `0x${implementationSlotData.substr(-40)}`;
 
-			if (currentImplementationAddress.toLowerCase() !== implementationDeployment.address.toLowerCase()) {
+			const upgradeNeeded =
+				currentImplementationAddress.toLowerCase() !== implementationDeployment.address.toLowerCase();
+			if (upgradeNeeded) {
 				// logger.info(
 				// 	`different implementation old: ${currentImplementationAddress} new: ${implementationDeployment.address}, upgrade...`,
 				// );
@@ -594,12 +596,20 @@ export function deployViaProxy(
 			//  however it got there. A deferred upgrade therefore produces the same record as
 			//  a signable one, one run later.
 			//
-			//  GUARDED, because `env.save` bumps `numDeployments` and rewrites the file. That
-			//  counter means "how many times the recorded deployment changed", so an
-			//  out-of-band upgrade must tick it (it is a real change rocketh is only now
-			//  observing) while a re-run that changes nothing must not. Comparing the merged
-			//  ABI against what is stored is what separates those two.
-			if (!sameABI(existingDeployment?.abi, mergedABI)) {
+			//  AN UPGRADE THIS RUN PERFORMED ALWAYS SAVES, unconditionally, exactly as before.
+			//  Do not fold that into the staleness check below: two implementations can differ
+			//  while their ABIs are identical (a bug fix, a gas tweak, anything not touching the
+			//  interface), and skipping the save there would leave `numDeployments` frozen. That
+			//  in turn breaks `upgradeIndex`, which reads the counter to work out which step of
+			//  the upgrade story has already run, so the script would redo an upgrade or throw
+			//  "expects Deployments numDeployments to be at least N".
+			//
+			//  The staleness check is only for the OTHER case: no upgrade was needed because the
+			//  chain already matches, and the question is whether the record knows that yet. It
+			//  compares the implementation's own bytecode as well as the merged ABI, for the same
+			//  reason: an out-of-band upgrade to a new implementation with an unchanged interface
+			//  is invisible to an ABI-only comparison.
+			if (upgradeNeeded || !recordDescribesImplementation(existingDeployment, mergedABI, artifactToUse)) {
 				existingDeployment = await env.save<TAbi>(name, {
 					...proxyDeployment,
 					...artifactToUse,

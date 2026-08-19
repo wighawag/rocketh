@@ -44,7 +44,18 @@ Initially deferred, because writing it would add a line to every deployment file
 
 Four more red-first tests cover it: written from 2, omitted at 1, surviving a reload so a later run continues rather than restarts, and dropped again by a fresh-deployment save. The mock store in that test file had to start writing the `.chain` marker, since `loadDeploymentsFromStore` refuses a folder without one and no test had exercised the reload path through it.
 
+## A regression this work introduced, and what caught it
+
+The proxy fix first guarded its save on the merged ABI alone. That is wrong for the case where an upgrade IS performed: two implementations can differ while their ABIs are identical (a bug fix, a gas tweak, anything not touching the interface), so the guard skipped the save on a real upgrade and froze `numDeployments`.
+
+Frozen counter breaks `upgradeIndex`, which reads it to work out which step of the upgrade story has already run, so a script would redo an upgrade or throw `expects Deployments numDeployments to be at least N`.
+
+Nothing in the suite caught it. The proxy upgrade tests assert the transaction, not the record; the `checkUpgradeIndex` unit tests hand it a fabricated record. It surfaced only when an integration test was added that runs the actual upgrade story, `upgradeIndex` 0 then 1 then 2, over artifacts that deliberately share an ABI.
+
+Corrected: an upgrade performed this run saves unconditionally, exactly as before, and the staleness check applies only to the no-upgrade-needed path, comparing the implementation's own `deployedBytecode` as well as the ABI so an out-of-band upgrade with an unchanged interface is still seen.
+
 ## Fallout, deliberately not fixed here
 
 - Whether any existing `upgradeIndex` user relied on the broken-restart behaviour of `checkUpgradeIndex` (`packages/rocketh-proxy/src/utils.ts:20-42`) was not investigated. A project whose files never carried the field will now see the count climb from 1 rather than reset.
+- `history` is read by `checkUpgradeIndex` and written by nothing in rocketh, so half that function is unreachable and four of its unit tests cover dead code. Recorded in `work/notes/observations/history-is-never-written-so-half-of-checkupgradeindex-is-dead.md`, with the reinstate-or-delete decision left open.
 - The four sibling demoes had to move to `workspace:*`, because the `save` signature lives on `Environment` and they were typechecking a workspace `rocketh` against registry extension packages built for the previous signature. That skew was already recorded as a hazard; this is it biting.

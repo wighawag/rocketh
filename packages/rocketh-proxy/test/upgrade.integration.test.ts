@@ -85,8 +85,8 @@ function createStorage() {
 }
 
 /** Two versions of the same contract, differing in deployedBytecode ahead of the CBOR metadata. */
-function artifactV(version: 1 | 2): Artifact<typeof CONTRACT_ABI> {
-	const marker = version === 1 ? '11' : '22';
+function artifactV(version: 1 | 2 | 3): Artifact<typeof CONTRACT_ABI> {
+	const marker = version === 1 ? '11' : version === 2 ? '22' : '33';
 	return {
 		...createMockArtifact('Vault', CONTRACT_ABI),
 		bytecode: `0x6080604052348015600f57600080fd5b50${marker}` as `0x${string}`,
@@ -458,5 +458,129 @@ describe('@rocketh/proxy - the record tracks the chain, not this run', () => {
 		const after2 = envB.get('Vault');
 
 		expect(after2.numDeployments).toBe(after1.numDeployments);
+	});
+});
+
+/**
+ * `upgradeIndex` exists so a deploy script can TELL THE STORY OF THE UPGRADE and stay
+ * idempotent while doing it. Every step stays in the script forever:
+ *
+ *   deployViaProxy('Vault', {artifact: V1}, {upgradeIndex: 0});
+ *   deployViaProxy('Vault', {artifact: V2}, {upgradeIndex: 1});
+ *   deployViaProxy('Vault', {artifact: V3}, {upgradeIndex: 2});
+ *
+ * On a fresh chain all three run in order. On a chain already at V3 all three are
+ * no-ops. hardhat-deploy v1 puts it as "a deploy call with a specific upgradeIndex
+ * will be executed only once, only if the current upgradeIndex is one less". The same
+ * property is what lets a TEST replay an upgrade sequence from scratch.
+ *
+ * "The current upgradeIndex" is read from the stored record, `history` first and
+ * `numDeployments` second. rocketh never writes `history` (v1 does; the diamond has it
+ * commented out with a TODO), so `numDeployments` is the only live source, and until it
+ * was persisted this feature could not work across runs at all: on the second run
+ * `upgradeIndex: 1` would redo the upgrade and `upgradeIndex: 2` would throw
+ * "expects Deployments history to exists, or numDeployments to be greater than 1".
+ *
+ * The unit tests in `utils.test.ts` cover the decision function thoroughly and could
+ * not have caught that, because they hand it a fabricated record. This is the test that
+ * runs the story.
+ */
+describe('@rocketh/proxy - upgradeIndex tells the story of the upgrade, idempotently', () => {
+	/** The deploy script, verbatim on every run: three steps that never get deleted. */
+	async function runTheScript(env: any) {
+		await deployViaProxy(env)('Vault', {account: 'deployer', artifact: artifactV(1), args: [42n]}, {upgradeIndex: 0});
+		await deployViaProxy(env)('Vault', {account: 'deployer', artifact: artifactV(2), args: [42n]}, {upgradeIndex: 1});
+		await deployViaProxy(env)('Vault', {account: 'deployer', artifact: artifactV(3), args: [42n]}, {upgradeIndex: 2});
+	}
+
+	it('walks every step on a fresh chain, then does nothing at all on a re-run', async () => {
+		const storage = createStorage();
+		const counter = {value: 0};
+		const store = createMapDeploymentStore();
+
+		// FIRST RUN: nothing exists, so the whole story plays out.
+		const first = await createTestEnvironment({
+			accounts: STANDARD_NAMED_ACCOUNTS,
+			nodeAccounts: NODE_HELD_ACCOUNTS,
+			deploymentStore: store,
+			providerConfig: uniqueReceiptsConfig(counter, {
+				eth_getStorageAt: (params?: unknown[]) => storage.respond(params),
+			}),
+		});
+		await deployViaProxy(first.env)(
+			'Vault',
+			{account: 'deployer', artifact: artifactV(1), args: [42n]},
+			{upgradeIndex: 0},
+		);
+		// Mirror what the proxy constructor wrote, as the other tests in this file do.
+		const vault = first.env.get('Vault');
+		storage.setAddress(vault.address, IMPLEMENTATION_SLOT, first.env.get('Vault_Implementation').address);
+		storage.setAddress(vault.address, ADMIN_SLOT, DEPLOYER);
+
+		await deployViaProxy(first.env)(
+			'Vault',
+			{account: 'deployer', artifact: artifactV(2), args: [42n]},
+			{upgradeIndex: 1},
+		);
+		await deployViaProxy(first.env)(
+			'Vault',
+			{account: 'deployer', artifact: artifactV(3), args: [42n]},
+			{upgradeIndex: 2},
+		);
+
+		// Three steps happened, so the record has been written three times.
+		expect(first.env.get('Vault').numDeployments).toBe(3);
+
+		// SECOND RUN: same script, same store, chain already at the end of the story.
+		const second = await secondRun(storage, store, counter);
+		await runTheScript(second.env);
+
+		// Nothing was broadcast: every step recognised itself as already done.
+		expect(broadcastFrom(second.provider).length).toBe(0);
+		// ...and the counter did not move, so a third run behaves the same way.
+		expect(second.env.get('Vault').numDeployments).toBe(3);
+	});
+
+	it('reports each step as not-newly-deployed on the re-run', async () => {
+		const storage = createStorage();
+		const counter = {value: 0};
+		const store = createMapDeploymentStore();
+
+		const first = await createTestEnvironment({
+			accounts: STANDARD_NAMED_ACCOUNTS,
+			nodeAccounts: NODE_HELD_ACCOUNTS,
+			deploymentStore: store,
+			providerConfig: uniqueReceiptsConfig(counter, {
+				eth_getStorageAt: (params?: unknown[]) => storage.respond(params),
+			}),
+		});
+		await deployViaProxy(first.env)(
+			'Vault',
+			{account: 'deployer', artifact: artifactV(1), args: [42n]},
+			{upgradeIndex: 0},
+		);
+		const vault = first.env.get('Vault');
+		storage.setAddress(vault.address, IMPLEMENTATION_SLOT, first.env.get('Vault_Implementation').address);
+		storage.setAddress(vault.address, ADMIN_SLOT, DEPLOYER);
+		await deployViaProxy(first.env)(
+			'Vault',
+			{account: 'deployer', artifact: artifactV(2), args: [42n]},
+			{upgradeIndex: 1},
+		);
+
+		const second = await secondRun(storage, store, counter);
+		const step0 = await deployViaProxy(second.env)(
+			'Vault',
+			{account: 'deployer', artifact: artifactV(1), args: [42n]},
+			{upgradeIndex: 0},
+		);
+		const step1 = await deployViaProxy(second.env)(
+			'Vault',
+			{account: 'deployer', artifact: artifactV(2), args: [42n]},
+			{upgradeIndex: 1},
+		);
+
+		expect(step0.newlyDeployed).toBe(false);
+		expect(step1.newlyDeployed).toBe(false);
 	});
 });
