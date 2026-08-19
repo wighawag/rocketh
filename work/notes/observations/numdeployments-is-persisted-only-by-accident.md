@@ -47,3 +47,17 @@ The fix for `work/notes/observations/deferred-proxy-upgrade-leaves-stale-abi-in-
 ## Why it was not fixed on the spot
 
 Writing `deployments[name]` instead of `deployment` is a one-word change and almost certainly the intent, but it would add a `numDeployments` field to files that do not currently have one, across every project on the next deploy. That is a visible diff in committed `deployments/` folders and wants its own decision, its own changeset note, and a check of whether anything consumes these files positionally or by exact shape (`@rocketh/export`, `@rocketh/doc`, the hardhat-deploy v1 compatibility surface).
+
+## Update, 2026-08-19: fixed
+
+`save()` now serialises the counted record rather than the argument, so the field survives to disk and across runs.
+
+**It is omitted while the count is 1.** One is the overwhelmingly common case and carries no information, so writing it would add a line to essentially every deployment file every user has committed in exchange for nothing. Absent already reads back AS one, because the increment is `(old.numDeployments || 1) + 1`, so omission is a smaller file rather than a special case anyone downstream has to remember. A record whose count falls back to 1 through `considerItAsFreshDeployment` drops the field again.
+
+That also answers the concern that held the fix back: the blast radius is not "every deployment file gains a line". Only records that have genuinely changed more than once gain one, and the handful of files that currently carry `numDeployments: 1` by accident will shed it.
+
+Pinned by five tests in `packages/rocketh/test/environment-functions.test.ts`, four of which were red first: the field is omitted at 1, written from 2, survives a reload so a later run continues the count rather than restarting it, reads an omitted field back as 1, and is dropped again by a fresh-deployment save. The mock store in that file also had to start writing the `.chain` marker, since `loadDeploymentsFromStore` refuses a folder without one, and no test had exercised the reload path through it before.
+
+Verified against the demo that started this: a fresh deploy writes no field, and after a deferred upgrade is executed on the multisig and the script re-run, `Registry.json` carries the refreshed ABI and `numDeployments: 2`.
+
+The suspected consequence for `checkUpgradeIndex` (`packages/rocketh-proxy/src/utils.ts:20-42`) is now moot in the same direction: it reads a counter that persists. Whether any existing `upgradeIndex` user was relying on the broken-restart behaviour was NOT investigated, and a project whose files never carried the field will now see the count climb from 1 rather than resetting.

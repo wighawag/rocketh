@@ -46,7 +46,9 @@ function createInMemoryStore(): DeploymentStore & {files: Record<string, string>
 	const files: Record<string, string> = {};
 	return {
 		files,
-		listFiles: vi.fn(async () => Object.keys(files)),
+		listFiles: vi.fn(async (_f: unknown, _e: unknown, filter?: (name: string) => boolean) =>
+			Object.keys(files).filter((name) => (filter ? filter(name) : true)),
+		),
 		deleteAll: vi.fn(async () => {
 			for (const key of Object.keys(files)) delete files[key];
 		}),
@@ -54,7 +56,10 @@ function createInMemoryStore(): DeploymentStore & {files: Record<string, string>
 		writeFile: vi.fn(async (_f, _e, name, content) => {
 			files[name] = content;
 		}),
-		writeFileWithChainInfo: vi.fn(async (_info, _f, _e, name, content) => {
+		writeFileWithChainInfo: vi.fn(async (info, _f, _e, name, content) => {
+			// Mirror the real store: the chain marker is written alongside, and
+			//  `loadDeploymentsFromStore` refuses to load a folder without it.
+			files['.chain'] = JSON.stringify(info);
 			files[name] = content;
 		}),
 		readFile: vi.fn(async (_f, _e, name) => files[name] ?? ''),
@@ -71,17 +76,27 @@ const promptExecutor: PromptExecutor = {
 	exit() {},
 };
 
-async function buildEnv(options: {accounts: UserConfig['accounts']; nodeAccounts?: string[]}) {
+async function buildEnv(options: {
+	accounts: UserConfig['accounts'];
+	nodeAccounts?: string[];
+	saveDeployments?: boolean;
+	store?: DeploymentStore & {files: Record<string, string>};
+}) {
 	const provider = mockProvider(options.nodeAccounts);
 	const config = resolveConfig({
 		accounts: options.accounts,
 		signerProtocols: {privateKey},
 		defaultPollingInterval: 0.001,
 	});
-	const executionParams = {provider, environment: 'memory', saveDeployments: false, promptExecutor};
+	const executionParams = {
+		provider,
+		environment: 'memory',
+		saveDeployments: options.saveDeployments ?? false,
+		promptExecutor,
+	};
 	const chainId = await getChainIdForEnvironment(config, 'memory', executionParams);
 	const resolved = resolveExecutionParams(config, executionParams, chainId);
-	const store = createInMemoryStore();
+	const store = options.store ?? createInMemoryStore();
 	const {external: env, internal} = await createEnvironment(config, resolved, store);
 	return {env, internal, store};
 }
@@ -216,6 +231,121 @@ describe('save and numDeployments', () => {
 		//  of the name, and the reason a record refresh must not use this flag.
 		await env.save('Token', record(address), {considerItAsFreshDeployment: true});
 		expect(env.get('Token').numDeployments).toBe(1);
+	});
+
+	/**
+	 * ...and the counter has to SURVIVE to the file, or it is a per-run number
+	 * pretending to be history.
+	 *
+	 * `save()` counted into the in-memory map and then wrote the UNCOUNTED argument,
+	 * so the field reached disk only when a caller happened to spread an object that
+	 * already carried one. Every consumer that reads it across runs, `checkUpgradeIndex`
+	 * most of all, was working from a number that restarts.
+	 *
+	 * OMITTED WHEN IT IS 1, deliberately. One is the overwhelmingly common case and
+	 * carries no information, so writing it would add a line to essentially every
+	 * deployment file every user has committed, for nothing. Absent already means one
+	 * on the way back in, because the increment reads `(old.numDeployments || 1) + 1`,
+	 * so omitting it is not a special case anyone has to remember downstream.
+	 */
+	describe('persisting it', () => {
+		const stored = (store: {files: Record<string, string>}, name: string) => JSON.parse(store.files[`${name}.json`]);
+
+		it('omits the field entirely while it is still one', async () => {
+			const {env, store} = await buildEnv({
+				accounts: {deployer: NAMED_ADDR},
+				nodeAccounts: [NAMED_ADDR],
+				saveDeployments: true,
+			});
+			await env.save('Token', record(('0x' + 'f'.repeat(40)) as `0x${string}`));
+
+			expect(env.get('Token').numDeployments).toBe(1);
+			expect('numDeployments' in stored(store, 'Token')).toBe(false);
+		});
+
+		it('writes the field once there is something to say', async () => {
+			const {env, store} = await buildEnv({
+				accounts: {deployer: NAMED_ADDR},
+				nodeAccounts: [NAMED_ADDR],
+				saveDeployments: true,
+			});
+			const address = ('0x' + 'f'.repeat(40)) as `0x${string}`;
+			await env.save('Token', record(address));
+			await env.save('Token', record(address));
+
+			expect(stored(store, 'Token').numDeployments).toBe(2);
+		});
+
+		it('survives a reload, so the count is history rather than a per-run number', async () => {
+			const address = ('0x' + 'f'.repeat(40)) as `0x${string}`;
+			const store = createInMemoryStore();
+
+			const first = await buildEnv({
+				accounts: {deployer: NAMED_ADDR},
+				nodeAccounts: [NAMED_ADDR],
+				saveDeployments: true,
+				store,
+			});
+			await first.env.save('Token', record(address));
+			await first.env.save('Token', record(address));
+			await first.env.save('Token', record(address));
+			expect(first.env.get('Token').numDeployments).toBe(3);
+
+			// A new run over the same store picks up where the last one left off.
+			const second = await buildEnv({
+				accounts: {deployer: NAMED_ADDR},
+				nodeAccounts: [NAMED_ADDR],
+				saveDeployments: true,
+				store,
+			});
+			await second.internal.loadDeployments();
+			expect(second.env.get('Token').numDeployments).toBe(3);
+
+			await second.env.save('Token', record(address));
+			expect(second.env.get('Token').numDeployments).toBe(4);
+			expect(stored(store, 'Token').numDeployments).toBe(4);
+		});
+
+		it('reads an omitted field back as one, so a first-run record counts to two', async () => {
+			const address = ('0x' + 'f'.repeat(40)) as `0x${string}`;
+			const store = createInMemoryStore();
+
+			const first = await buildEnv({
+				accounts: {deployer: NAMED_ADDR},
+				nodeAccounts: [NAMED_ADDR],
+				saveDeployments: true,
+				store,
+			});
+			await first.env.save('Token', record(address));
+			expect('numDeployments' in stored(store, 'Token')).toBe(false);
+
+			const second = await buildEnv({
+				accounts: {deployer: NAMED_ADDR},
+				nodeAccounts: [NAMED_ADDR],
+				saveDeployments: true,
+				store,
+			});
+			await second.internal.loadDeployments();
+			await second.env.save('Token', record(address));
+
+			expect(second.env.get('Token').numDeployments).toBe(2);
+			expect(stored(store, 'Token').numDeployments).toBe(2);
+		});
+
+		it('drops the field again when a fresh-deployment save resets the count', async () => {
+			const address = ('0x' + 'f'.repeat(40)) as `0x${string}`;
+			const {env, store} = await buildEnv({
+				accounts: {deployer: NAMED_ADDR},
+				nodeAccounts: [NAMED_ADDR],
+				saveDeployments: true,
+			});
+			await env.save('Token', record(address));
+			await env.save('Token', record(address));
+			expect(stored(store, 'Token').numDeployments).toBe(2);
+
+			await env.save('Token', record(address), {considerItAsFreshDeployment: true});
+			expect('numDeployments' in stored(store, 'Token')).toBe(false);
+		});
 	});
 });
 

@@ -987,12 +987,30 @@ export async function createEnvironment<
 			deployments[name] = {...deployment, numDeployments: 1};
 		}
 		if (context.saveDeployments) {
+			// WRITE THE COUNTED RECORD, not the argument.
+			//
+			//  This used to serialise `deployment`, the argument, which never carries the
+			//  count computed just above. The counter therefore lived for the rest of the run
+			//  and vanished, unless a caller happened to build its argument by spreading a
+			//  previously-loaded record, which is why some files had the field and others did
+			//  not. Anything reading it across runs, `checkUpgradeIndex` above all, was working
+			//  from a number that silently restarted.
+			//
+			//  OMITTED WHILE IT IS 1. One is the overwhelmingly common case and says nothing,
+			//  so writing it would add a line to essentially every deployment file every user
+			//  has committed, in exchange for no information. Absent already reads back AS one,
+			//  because the increment above is `(old.numDeployments || 1) + 1`, so this is a
+			//  smaller file rather than a special case anyone downstream has to remember. It
+			//  also means a record whose count falls back to 1 (`considerItAsFreshDeployment`)
+			//  drops the field again, keeping the file honest in both directions.
+			const {numDeployments, ...recordWithoutCount} = deployments[name];
+			const recordToWrite = numDeployments && numDeployments > 1 ? deployments[name] : recordWithoutCount;
 			deploymentStore.writeFileWithChainInfo(
 				{chainId, genesisHash},
 				deploymentsFolder,
 				environmentName,
 				`${name}.json`,
-				JSONToString(deployment, 2),
+				JSONToString(recordToWrite, 2),
 			);
 		}
 		return deployment;
