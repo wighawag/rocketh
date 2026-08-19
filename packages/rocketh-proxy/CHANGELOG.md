@@ -1,5 +1,54 @@
 # @rocketh/proxy
 
+## 0.19.23
+
+### Patch Changes
+
+- 916507d: Record a deployment whenever the chain agrees with the target, not only when this run is what changed it.
+
+  **The bug.** `deployViaProxy` wrote the proxy's record only inside the branch that performs an upgrade. That answers "did THIS run change anything?", which is a different question from "does the record still describe reality", and the two come apart whenever the upgrade happens somewhere else. For a governed upgrade that is always: the run that wants it throws `UnknownSignerError` at the `_execute` before reaching the save, and the run after governance executes finds the implementation slot already correct and skips the whole branch. No run wrote the record, so it kept the OLD implementation's ABI indefinitely.
+
+  That record is what `@rocketh/export` ships to a frontend, what `env.get<Abi>(name)` hands the next script, and what `@rocketh/doc` documents. All three went silently stale, and only for users whose upgrades are governed by a Safe, a timelock or any other account rocketh cannot sign for, which is exactly why it survived: in the ordinary signable flow the upgrade and the save happen in the same run.
+
+  Reproduced end to end against a local node with `demoes/hardhat-deploy/governance`: after deferring an upgrade, executing it on the multisig, and re-running to convergence, the chain ran the new implementation while `Registry.json` still described the old one.
+
+  **Same defect in `@rocketh/diamond`**, same cause: the save lived inside `if (changesDetected)`. Worth noting the change DETECTION was always right, since it reads the on-chain loupe rather than the record, so a deferred `diamondCut` did converge. Only the record was left behind.
+
+  **`@rocketh/router` was affected too, and does not need governance to reach it.** Its save was guarded on `!existingDeployment || router.newlyDeployed`, and `extraABIs` contribute to the merged ABI without reaching the router's constructor args. So adding one was a silent no-op: the router is not redeployed, nothing is saved, and the record keeps an ABI that omits it.
+
+  All three now re-record when the stored record disagrees with what is declared and on chain, guarded so an ordinary converged re-run still writes nothing. An upgrade a run actually performs still saves unconditionally: two implementations can differ while their ABIs are identical, so making that save conditional would freeze `numDeployments` on a real upgrade and break `upgradeIndex`, which reads the counter to decide which step of an upgrade sequence has already run.
+
+  `upgradeIndex` now has an integration test that runs the story it exists for, `0` then `1` then `2` across separate calls, and asserts the second run broadcasts nothing. Its existing unit tests hand `checkUpgradeIndex` a fabricated record, so they could never have shown that the feature did not survive a reload.
+
+  **`numDeployments` counts changes to the RECORD**, whether rocketh made the change or merely observed one made elsewhere. An upgrade executed by a Safe out-of-band therefore counts exactly as one rocketh sent itself, and the deferred path now produces the same record as the signable path, that field included.
+
+  **Renamed `save`'s `doNotCountAsNewDeployment` option to `considerItAsFreshDeployment`** (`@rocketh/core` type, `rocketh` implementation). The old name promised "do not increment" and actually did something stronger: it ASSERTS a count of 1. That was harmless for its two callers, which each record something deployed exactly once, and a trap for anyone reaching for it to refresh a record whose history matters, which the work above nearly did. The name now states the behaviour. This is a breaking rename of an option on `Environment.save`, and both in-tree callers were updated: `@rocketh/deploy` (recording a CREATE3 address that already holds the right code) and `@rocketh/diamond` (its fresh-diamond path). If you call `save` yourself with the old option name, a plain object literal will fail its excess-property check loudly, but a loosely typed options variable will silently stop asserting a fresh deployment and start incrementing instead.
+
+  **`numDeployments` now survives to disk.** `save()` counted into the in-memory record and then wrote the UNCOUNTED argument, so the field reached a file only when a caller happened to spread an object that already carried one. Anything reading it across runs, `checkUpgradeIndex` most of all, was working from a number that silently restarted. It now serialises the counted record.
+
+  It is **omitted while the count is 1**, which is the overwhelmingly common case and says nothing. Absent already reads back as 1, since the increment is `(old.numDeployments || 1) + 1`, so this keeps files small rather than introducing a case anyone downstream has to remember. A record reset by `considerItAsFreshDeployment` drops the field again.
+
+  Note for anyone with committed `deployments/` folders: the first run after upgrading may rewrite a record that had gone stale and tick its `numDeployments`, which is the fix doing its job. Records that have only ever been deployed once gain nothing, and the occasional file carrying `numDeployments: 1` today will shed it.
+
+- 443c031: `upgradeIndex` now works from `numDeployments` alone, and says something useful when it refuses.
+
+  `checkUpgradeIndex` was a faithful port of hardhat-deploy v1's, which consults a `history` array first and falls back to a counter. rocketh has never written `history`: not in `@rocketh/proxy`, not in `@rocketh/diamond` (where the code sat commented out behind a TODO), and the field is not even on the `Deployment` type. So half of that function could not run, and its error messages told users to produce a field they had no way to produce.
+
+  Removed rather than reinstated. `numDeployments` counts how many times the record has been written, which is exactly how many steps of the upgrade story have run, and therefore the index of the step due next. That leaves one comparison with three outcomes: more steps recorded than the index asked for means this step already ran, so hand back the existing deployment; exactly that many means it is due, so proceed; fewer means its predecessors have not run, so throw instead of applying an upgrade out of order. The old special cases for index `0` and `1` fall out of the same rule.
+
+  Behaviour is unchanged for every record rocketh itself has written, including one with no `numDeployments`, which still counts as exactly one step and is what carries deployments recorded before that field was persisted.
+
+  **One case does change, and it matters if you are migrating from hardhat-deploy v1.** A `deployments/` folder produced by v1 can contain a `history` array and no counter. v1 read `history` first, so it would treat such a record as several steps in; rocketh now reads the counter alone and treats it as one step. Concretely, with `history` of length 3 and no `numDeployments`: `upgradeIndex: 1` now proceeds where v1 skipped, which is harmless because the implementation-slot check downstream still refuses to send an upgrade the chain does not need; but `upgradeIndex: 2` or higher now THROWS where v1 skipped, which will stop the run. The record self-heals after any successful save (the counter starts being written), so the workaround is to add `"numDeployments": <history.length + 1>` to the affected file once.
+
+  **The error messages changed**, and deliberately diverge from v1's wording. They used to say `expects Deployments history to exists, or numDeployments to be greater than 1`, naming a field rocketh does not maintain. They now name the index that was asked for, how many steps have actually run, and which step is missing. Matching v1 word for word is worth less than not misleading the reader.
+
+  Worth knowing if you use `upgradeIndex`: combined with `numDeployments` now persisting, a sequence of steps kept in a deploy script is idempotent across runs for the first time. Previously `upgradeIndex: 1` would redo its upgrade on every run and `upgradeIndex: 2` or higher would throw, because the counter it depends on never survived to disk.
+
+- Updated dependencies [916507d]
+  - @rocketh/deploy@0.19.17
+  - @rocketh/core@0.19.12
+  - @rocketh/read-execute@0.19.12
+
 ## 0.19.22
 
 ### Patch Changes

@@ -1,5 +1,12 @@
 # @rocketh/signer
 
+## 0.19.12
+
+### Patch Changes
+
+- Updated dependencies [916507d]
+  - @rocketh/core@0.19.12
+
 ## 0.19.11
 
 ### Patch Changes
