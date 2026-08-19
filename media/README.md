@@ -6,7 +6,7 @@ Brand sources for the rocketh site. Everything published under `public/` is eith
 | --- | --- | --- |
 | `logo.svg` | `public/logo.svg` | straight copy |
 | `logo.svg` + `build.py` | `public/preview.png` | `python3 media/build.py preview` |
-| `icon.svg` + `build.py` | `public/icon.png` | `python3 media/build.py icon` |
+| `logo.svg` + `build.py` | `public/icon.png` | `python3 media/build.py icon` |
 
 ## Regenerating
 
@@ -39,21 +39,15 @@ Vendored so the build is reproducible without a network fetch or a system instal
 
 The wordmark is rasterised into the card, so there is no webfont dependency at runtime. If the wordmark ever moves into the page itself, convert it to paths rather than loading the font.
 
-## icon.svg
+## icon.png
 
-**The favicon is a different drawing from the logo, on purpose.** `logo.svg` is illegible at 16px, which is the size a browser tab actually renders: its fins, nose and plume merge into an indistinct blob. No amount of scaling or antialiasing fixes that, because the problem is element count, not resolution.
-
-`icon.svg` therefore drops the fins entirely, reduces the Ethereum mark to its upper diamond with a single crease, and keeps one chunky plume. Three large shapes instead of eleven small ones.
-
-It is also **upright rather than tilted 30 degrees**. Losing the tilt is a real cost, since the diagonal is part of the identity, but a symmetric shape survives having only a handful of pixels far better than a diagonal one. An illegible favicon communicates nothing, so legibility won.
-
-Beyond the source swap, `build.py icon` treats it like the logo: crop to ink, rescale to `ICON_MARGIN`, then apply the *same* `OPTICAL_FACTOR` rather than a second, differently-tuned rule. Because the glyph is symmetric that correction comes out at exactly `+0` horizontally with a 50.0/50.0 mass split. **If it ever reports a non-zero horizontal shift, the glyph has drifted off-axis** - that number is a free regression check, so it is printed on every run.
+The favicon is the **full mark**, so it stays visually identical to the logo. `logo.svg` is not used verbatim though: it carries margins tuned for sitting on a page next to the wordmark, plus its own baked-in optical nudge, and neither suits a 512px square. `build.py icon` therefore crops to the ink, rescales to `ICON_MARGIN`, then re-applies the *same* `OPTICAL_FACTOR` as the logo rather than introducing a second, separately-tuned centring rule.
 
 Rendered at 4x and downsampled with Lanczos; the mark is all hard diagonal edges and rasterising straight to 512 visibly stairsteps them.
 
 ## Known gaps
 
-- The icon fills only ~27% of its frame, because the glyph is taller than it is wide and is fitted by its longest side. Widening it would buy real pixels at 16px.
-- The favicon and the logo are now two drawings that must be kept in visual sync by hand. A palette change to one will not propagate to the other.
+- **The mark does not resolve at 16px.** At browser-tab size the fins, nose and plume merge into an indistinct blob. This is inherent to a faceted multi-element mark and cannot be fixed by scaling or antialiasing; it would need a purpose-drawn simplified glyph. That trade was considered and **deliberately declined**: a simplified glyph reads better small but stops looking like the logo, and brand consistency was judged worth more than tab-icon legibility. Revisit only if the favicon becomes a real recognition surface.
+- The icon fills only ~26% of its frame, because the artwork is taller than it is wide and is fitted by its longest side.
 - There is no dark/light split. The current palette was chosen to work on both, so `index.md` points its `dark:` and `light:` hero slots at the same file.
 - The tagline is illegible at feed thumbnail size. That is normal for an Open Graph card, where the wordmark carries the recognition, but it means the tagline is decorative rather than functional.

@@ -33,7 +33,6 @@ ROOT = Path(__file__).resolve().parent.parent
 MEDIA = ROOT / "media"
 FONTS = MEDIA / "fonts"
 LOGO_SVG = MEDIA / "logo.svg"
-ICON_SVG = MEDIA / "icon.svg"    # simplified glyph, NOT logo.svg - see README
 OUT_PNG = ROOT / "public" / "preview.png"
 OUT_ICON = ROOT / "public" / "icon.png"
 
@@ -137,16 +136,18 @@ def centroid_drift(alpha):
 
 
 def build_icon():
-    """Square app/favicon, built from the SIMPLIFIED glyph, not the full mark.
+    """Square app/favicon: the full mark, refitted to fill the frame.
 
-    icon.svg exists because logo.svg is illegible at 16px. Beyond the source
-    swap this still crops to ink, rescales to the icon margin, and re-applies
-    the SAME optical correction as the logo rather than inventing a second rule.
-    The glyph is symmetric, so that correction should come out near zero
-    horizontally - if it does not, the glyph has drifted off-axis.
+    logo.svg carries margins tuned for sitting on a page next to the wordmark,
+    plus its own baked-in optical nudge, and neither suits a 512px square. So
+    this crops to ink, rescales to the icon margin, and re-applies the SAME
+    optical correction rather than inventing a second, separately-tuned rule.
+
+    Known limitation, accepted deliberately: the full mark does not resolve at
+    16px. See README.
     """
     big = ICON_PX * ICON_SUPERSAMPLE
-    src = render_svg(ICON_SVG, big)
+    src = render_svg(LOGO_SVG, big)
     src = src.crop(src.getchannel("A").getbbox())
 
     target = ICON_PX - 2 * ICON_MARGIN
