@@ -1,0 +1,5 @@
+# Revisions to skip in `git blame`, because they are pure mechanical reformats.
+# Use with: git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# style: apply prettier to the files the formatter never reached
+ba90fab01ebc55fb5c94080265a5b8f11e56e218

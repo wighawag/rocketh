@@ -11,3 +11,19 @@ generated
 package.json
 pnpm-lock.yaml
 *.hbs
+
+#############################################
+# Prettier reads only the ROOT .gitignore, so anything covered by a nested
+# .gitignore has to be repeated here or a repo-wide run will format build output.
+#############################################
+dist
+.kilo
+# Copied in by rocketh's prepublishOnly, ignored in packages/rocketh/.gitignore.
+packages/rocketh/README.md
+packages/rocketh/LICENSE
+
+# The demoes are standalone projects with their own .prettierrc and their own
+# prettier-plugin-solidity, which is not installed at the root. Running the root
+# formatter over them aborts the whole run on a missing plugin, so they format
+# themselves from within their own workspace.
+demoes

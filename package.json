@@ -67,8 +67,8 @@
 		"test:watch": "vitest",
 		"test:ui": "vitest --ui",
 		"test:coverage": "vitest run --coverage",
-		"format": "prettier --write \"packages/*/{src,test}/**/*.ts\"",
-		"format:check": "prettier --check \"packages/*/{src,test}/**/*.ts\"",
+		"format": "prettier --write .",
+		"format:check": "prettier --check .",
 		"build": "nx run-many -t build",
 		"start": "nx run-many -t dev",
 		"verify:artifacts": "pnpm -r --if-present verify:artifacts"
