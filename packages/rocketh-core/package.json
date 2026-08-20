@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/core",
-	"version": "0.19.12",
+	"version": "0.19.13",
 	"description": "Core types and utilities for rocketh, the framework-agnostic deployment system for EVM smart contracts.",
 	"keywords": [
 		"rocketh",

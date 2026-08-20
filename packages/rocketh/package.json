@@ -1,6 +1,6 @@
 {
 	"name": "rocketh",
-	"version": "0.19.19",
+	"version": "0.19.20",
 	"description": "Framework-agnostic deployment system for EVM smart contracts, and the deployment engine behind hardhat-deploy v2.",
 	"keywords": [
 		"rocketh",
