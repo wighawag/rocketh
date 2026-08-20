@@ -44,8 +44,8 @@ This applies to the interactive path only. A deployment rocketh broadcast itself
 
 For an EXECUTION there is no address to anchor on, so rocketh weighs whether the transaction you pasted looks like the one it asked for. It cannot simply compare `to` and `data`: a governed execution is routinely wrapped by the multisig into a different shape, so a mismatch is not evidence of a mistake. It ranks the evidence instead:
 
-| what it finds                                                | what that is                                    |
-| ------------------------------------------------------------ | ----------------------------------------------- |
+| what it finds                                                 | what that is                                    |
+| ------------------------------------------------------------- | ----------------------------------------------- |
 | same `to`, `data` and `value`                                 | the transaction itself                          |
 | sent TO the account rocketh needed to act as                  | what every Safe execution looks like            |
 | your calldata appears verbatim inside the transaction's input | a Safe `execTransaction`, MultiSend, a timelock |
@@ -57,11 +57,11 @@ ACCEPTED RESIDUAL RISK, stated rather than engineered around: no wallet ABI is d
 
 ## Choosing the behaviour (`onUnknownSigner`)
 
-| value     | what happens when a `from` is unsignable                                          |
-| --------- | --------------------------------------------------------------------------------- |
+| value     | what happens when a `from` is unsignable                                             |
+| --------- | ------------------------------------------------------------------------------------ |
 | `'auto'`  | **the default**: `ask` when the run can ask a human for text, `throw` when it cannot |
-| `'ask'`   | pause and ask, when the run can ask a human for text; otherwise behave as `throw` |
-| `'throw'` | raise `UnknownSignerError` immediately, without ever asking                        |
+| `'ask'`   | pause and ask, when the run can ask a human for text; otherwise behave as `throw`    |
+| `'throw'` | raise `UnknownSignerError` immediately, without ever asking                          |
 
 It is resolved as CLI flag / execution parameter > chain config > top-level config > the default `'auto'`.
 
@@ -69,9 +69,7 @@ Set it for a whole chain in `rocketh/config.ts`:
 
 ```typescript
 export const config = {
-	accounts: {
-		/* ... */
-	},
+	accounts: {/* ... */},
 	chains: {
 		11155111: {onUnknownSigner: 'ask'},
 	},
@@ -83,9 +81,7 @@ Set it once for EVERY chain with the top-level key, so "never prompt me anywhere
 
 ```typescript
 export const config = {
-	accounts: {
-		/* ... */
-	},
+	accounts: {/* ... */},
 	onUnknownSigner: 'throw',
 	data: {},
 } as const satisfies UserConfig;

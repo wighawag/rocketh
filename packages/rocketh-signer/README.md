@@ -29,19 +29,19 @@ Add the signer protocol to your Rocketh configuration:
 
 ```typescript
 // rocketh/config.ts
-import type { UserConfig } from 'rocketh/types';
-import { privateKey } from '@rocketh/signer';
+import type {UserConfig} from 'rocketh/types';
+import {privateKey} from '@rocketh/signer';
 
 export const config = {
-  accounts: {
-    deployer: {
-      default: 0,
-    },
-  },
-  signerProtocols: {
-    privateKey: privateKey,
-  },
-  data: {},
+	accounts: {
+		deployer: {
+			default: 0,
+		},
+	},
+	signerProtocols: {
+		privateKey: privateKey,
+	},
+	data: {},
 } as const satisfies UserConfig;
 ```
 
@@ -66,11 +66,13 @@ The signer uses a protocol string format:
 ```
 
 For the private key signer:
+
 ```
 privateKey:0x{privateKeyHex}
 ```
 
 **Example:**
+
 ```
 privateKey:0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 ```
@@ -82,24 +84,28 @@ privateKey:0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 A signer protocol function that creates a signer from a private key.
 
 **Type:**
+
 ```typescript
-const privateKey: SignerProtocolFunction
+const privateKey: SignerProtocolFunction;
 ```
 
 **Protocol String Format:**
+
 ```
 privateKey:0x{64-hex-characters}
 ```
 
 **Returns:**
+
 ```typescript
 {
-  type: 'signerOnly';
-  signer: EIP1193LocalSigner;
+	type: 'signerOnly';
+	signer: EIP1193LocalSigner;
 }
 ```
 
 **Throws:**
+
 - Error if the private key doesn't start with `0x`
 
 ## Creating Custom Signer Protocols
@@ -107,32 +113,32 @@ privateKey:0x{64-hex-characters}
 You can create custom signer protocols by implementing the `SignerProtocolFunction` interface:
 
 ```typescript
-import type { SignerProtocolFunction, Signer } from '@rocketh/core/types';
+import type {SignerProtocolFunction, Signer} from '@rocketh/core/types';
 
 // Example: Hardware wallet signer
 export const ledger: SignerProtocolFunction = async (protocolString: string) => {
-  const [proto, derivationPath] = protocolString.split(':');
-  
-  // Connect to hardware wallet and get signer
-  const hardwareSigner = await connectToLedger(derivationPath);
-  
-  return {
-    type: 'signerOnly',
-    signer: hardwareSigner,
-  };
+	const [proto, derivationPath] = protocolString.split(':');
+
+	// Connect to hardware wallet and get signer
+	const hardwareSigner = await connectToLedger(derivationPath);
+
+	return {
+		type: 'signerOnly',
+		signer: hardwareSigner,
+	};
 };
 
 // Example: Cloud KMS signer
 export const awsKms: SignerProtocolFunction = async (protocolString: string) => {
-  const [proto, keyId] = protocolString.split(':');
-  
-  // Connect to AWS KMS
-  const kmsSigner = await createKmsSigner(keyId);
-  
-  return {
-    type: 'signerOnly',
-    signer: kmsSigner,
-  };
+	const [proto, keyId] = protocolString.split(':');
+
+	// Connect to AWS KMS
+	const kmsSigner = await createKmsSigner(keyId);
+
+	return {
+		type: 'signerOnly',
+		signer: kmsSigner,
+	};
 };
 ```
 
@@ -140,16 +146,16 @@ Then register in your config:
 
 ```typescript
 // rocketh/config.ts
-import { privateKey } from '@rocketh/signer';
-import { ledger, awsKms } from './custom-signers.js';
+import {privateKey} from '@rocketh/signer';
+import {ledger, awsKms} from './custom-signers.js';
 
 export const config = {
-  signerProtocols: {
-    privateKey,
-    ledger,
-    awsKms,
-  },
-  // ...
+	signerProtocols: {
+		privateKey,
+		ledger,
+		awsKms,
+	},
+	// ...
 } as const satisfies UserConfig;
 ```
 
@@ -158,29 +164,35 @@ export const config = {
 Rocketh supports three signer types:
 
 ### `signerOnly`
+
 A signer that can only sign transactions (no sending capability):
+
 ```typescript
 {
-  type: 'signerOnly';
-  signer: EIP1193SignerProvider;
+	type: 'signerOnly';
+	signer: EIP1193SignerProvider;
 }
 ```
 
 ### `remote`
+
 A remote signer (e.g., JSON-RPC provider):
+
 ```typescript
 {
-  type: 'remote';
-  signer: EIP1193ProviderWithoutEvents;
+	type: 'remote';
+	signer: EIP1193ProviderWithoutEvents;
 }
 ```
 
 ### `wallet`
+
 A full wallet provider (e.g., MetaMask):
+
 ```typescript
 {
-  type: 'wallet';
-  signer: EIP1193WalletProvider;
+	type: 'wallet';
+	signer: EIP1193WalletProvider;
 }
 ```
 

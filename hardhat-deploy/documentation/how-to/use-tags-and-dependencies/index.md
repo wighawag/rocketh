@@ -5,6 +5,7 @@ Tags and dependencies are powerful features that help you organize and control t
 ## What are Tags?
 
 Tags are labels you assign to deploy scripts that allow you to:
+
 - Run specific groups of deployments
 - Control execution order through dependencies
 - Organize deployments by feature or component
@@ -20,19 +21,19 @@ Dependencies specify which tags must be executed before the current script runs,
 Add tags to your deploy scripts:
 
 ```typescript
-import { deployScript, artifacts } from "../rocketh/deploy.js";
+import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(
-  async ({ deploy, namedAccounts }) => {
-    const { deployer } = namedAccounts;
+	async ({deploy, namedAccounts}) => {
+		const {deployer} = namedAccounts;
 
-    await deploy("MyToken", {
-      account: deployer,
-      artifact: artifacts.MyToken,
-      args: ["My Token", "MTK"],
-    });
-  },
-  { tags: ["MyToken", "tokens"] } // Multiple tags
+		await deploy('MyToken', {
+			account: deployer,
+			artifact: artifacts.MyToken,
+			args: ['My Token', 'MTK'],
+		});
+	},
+	{tags: ['MyToken', 'tokens']}, // Multiple tags
 );
 ```
 
@@ -59,28 +60,28 @@ Ensure scripts run in the correct order:
 
 ```typescript
 // deploy/001_deploy_token.ts
-import { deployScript, artifacts } from "../rocketh/deploy.js";
+import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(
-  async ({ deploy, namedAccounts }) => {
-    // Deploy token first
-    await deploy("MyToken", { /* ... */ });
-  },
-  { tags: ["MyToken", "tokens"] }
+	async ({deploy, namedAccounts}) => {
+		// Deploy token first
+		await deploy('MyToken', {/* ... */});
+	},
+	{tags: ['MyToken', 'tokens']},
 );
 
 // deploy/002_deploy_governance.ts
-import { deployScript, artifacts } from "../rocketh/deploy.js";
+import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(
-  async ({ deploy, namedAccounts }) => {
-    // This runs after token deployment
-    await deploy("Governance", { /* ... */ });
-  },
-  {
-    tags: ["Governance", "governance"],
-    dependencies: ["MyToken"] // Wait for MyToken tag to complete
-  }
+	async ({deploy, namedAccounts}) => {
+		// This runs after token deployment
+		await deploy('Governance', {/* ... */});
+	},
+	{
+		tags: ['Governance', 'governance'],
+		dependencies: ['MyToken'], // Wait for MyToken tag to complete
+	},
 );
 ```
 
@@ -90,16 +91,16 @@ Handle multiple dependencies:
 
 ```typescript
 // deploy/003_deploy_staking.ts
-import { deployScript, artifacts } from "../rocketh/deploy.js";
+import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(
-  async ({ deploy, namedAccounts }) => {
-    await deploy("Staking", { /* ... */ });
-  },
-  {
-    tags: ["Staking"],
-    dependencies: ["MyToken", "Governance"] // Wait for both
-  }
+	async ({deploy, namedAccounts}) => {
+		await deploy('Staking', {/* ... */});
+	},
+	{
+		tags: ['Staking'],
+		dependencies: ['MyToken', 'Governance'], // Wait for both
+	},
 );
 ```
 
@@ -109,82 +110,82 @@ export default deployScript(
 
 ```typescript
 // deploy/001_deploy_token.ts
-import { deployScript, artifacts } from "../rocketh/deploy.js";
+import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(
-  async ({ deploy, namedAccounts }) => {
-    const { deployer } = namedAccounts;
-    
-    await deploy("ProtocolToken", {
-      account: deployer,
-      artifact: artifacts.ProtocolToken,
-      args: ["Protocol Token", "PROTO"],
-    });
-  },
-  { tags: ["ProtocolToken", "tokens", "core"] }
+	async ({deploy, namedAccounts}) => {
+		const {deployer} = namedAccounts;
+
+		await deploy('ProtocolToken', {
+			account: deployer,
+			artifact: artifacts.ProtocolToken,
+			args: ['Protocol Token', 'PROTO'],
+		});
+	},
+	{tags: ['ProtocolToken', 'tokens', 'core']},
 );
 ```
 
 ```typescript
 // deploy/002_deploy_treasury.ts
-import { deployScript, artifacts } from "../rocketh/deploy.js";
+import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(
-  async ({ deploy, namedAccounts }) => {
-    const { deployer, treasury } = namedAccounts;
-    
-    await deploy("Treasury", {
-      account: deployer,
-      artifact: artifacts.Treasury,
-      args: [treasury],
-    });
-  },
-  { tags: ["Treasury", "core"] }
+	async ({deploy, namedAccounts}) => {
+		const {deployer, treasury} = namedAccounts;
+
+		await deploy('Treasury', {
+			account: deployer,
+			artifact: artifacts.Treasury,
+			args: [treasury],
+		});
+	},
+	{tags: ['Treasury', 'core']},
 );
 ```
 
 ```typescript
 // deploy/003_deploy_staking.ts
-import { deployScript, artifacts } from "../rocketh/deploy.js";
+import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(
-  async ({ deploy, namedAccounts, get }) => {
-    const { deployer } = namedAccounts;
-    const token = get("ProtocolToken");
-    const treasury = get("Treasury");
-    
-    await deploy("Staking", {
-      account: deployer,
-      artifact: artifacts.Staking,
-      args: [token.address, treasury.address],
-    });
-  },
-  {
-    tags: ["Staking", "defi"],
-    dependencies: ["ProtocolToken", "Treasury"]
-  }
+	async ({deploy, namedAccounts, get}) => {
+		const {deployer} = namedAccounts;
+		const token = get('ProtocolToken');
+		const treasury = get('Treasury');
+
+		await deploy('Staking', {
+			account: deployer,
+			artifact: artifacts.Staking,
+			args: [token.address, treasury.address],
+		});
+	},
+	{
+		tags: ['Staking', 'defi'],
+		dependencies: ['ProtocolToken', 'Treasury'],
+	},
 );
 ```
 
 ```typescript
 // deploy/004_deploy_governance.ts
-import { deployScript, artifacts } from "../rocketh/deploy.js";
+import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(
-  async ({ deploy, namedAccounts, get }) => {
-    const { deployer } = namedAccounts;
-    const token = get("ProtocolToken");
-    
-    await deploy("Governance", {
-      account: deployer,
-      artifact: artifacts.Governance,
-      args: [token.address],
-    });
-  },
-  {
-    tags: ["Governance", "dao"],
-    dependencies: ["ProtocolToken"]
-  }
+	async ({deploy, namedAccounts, get}) => {
+		const {deployer} = namedAccounts;
+		const token = get('ProtocolToken');
+
+		await deploy('Governance', {
+			account: deployer,
+			artifact: artifacts.Governance,
+			args: [token.address],
+		});
+	},
+	{
+		tags: ['Governance', 'dao'],
+		dependencies: ['ProtocolToken'],
+	},
 );
 ```
 
@@ -208,54 +209,54 @@ npx hardhat deploy
 
 ```typescript
 // deploy/001_deploy_nft.ts
-import { deployScript, artifacts } from "../rocketh/deploy.js";
+import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(
-  async ({ deploy, namedAccounts }) => {
-    await deploy("MyNFT", { /* ... */ });
-  },
-  { tags: ["MyNFT", "nft", "core"] }
+	async ({deploy, namedAccounts}) => {
+		await deploy('MyNFT', {/* ... */});
+	},
+	{tags: ['MyNFT', 'nft', 'core']},
 );
 ```
 
 ```typescript
 // deploy/002_deploy_marketplace.ts
-import { deployScript, artifacts } from "../rocketh/deploy.js";
+import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(
-  async ({ deploy, namedAccounts, get }) => {
-    const nft = get("MyNFT");
-    
-    await deploy("Marketplace", {
-      // ...
-      args: [nft.address],
-    });
-  },
-  {
-    tags: ["Marketplace", "trading"],
-    dependencies: ["MyNFT"]
-  }
+	async ({deploy, namedAccounts, get}) => {
+		const nft = get('MyNFT');
+
+		await deploy('Marketplace', {
+			// ...
+			args: [nft.address],
+		});
+	},
+	{
+		tags: ['Marketplace', 'trading'],
+		dependencies: ['MyNFT'],
+	},
 );
 ```
 
 ```typescript
 // deploy/003_deploy_auction.ts
-import { deployScript, artifacts } from "../rocketh/deploy.js";
+import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(
-  async ({ deploy, namedAccounts, get }) => {
-    const nft = get("MyNFT");
-    const marketplace = get("Marketplace");
-    
-    await deploy("Auction", {
-      // ...
-      args: [nft.address, marketplace.address],
-    });
-  },
-  {
-    tags: ["Auction", "trading"],
-    dependencies: ["MyNFT", "Marketplace"]
-  }
+	async ({deploy, namedAccounts, get}) => {
+		const nft = get('MyNFT');
+		const marketplace = get('Marketplace');
+
+		await deploy('Auction', {
+			// ...
+			args: [nft.address, marketplace.address],
+		});
+	},
+	{
+		tags: ['Auction', 'trading'],
+		dependencies: ['MyNFT', 'Marketplace'],
+	},
 );
 ```
 

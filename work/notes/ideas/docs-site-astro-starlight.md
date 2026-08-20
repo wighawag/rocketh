@@ -55,14 +55,19 @@ Frontmatter-title script (`add-frontmatter.mjs`, run once over `src/content/docs
 ```js
 import {readdirSync, readFileSync, writeFileSync, statSync} from 'node:fs';
 import {join} from 'node:path';
-function walk(dir){for(const e of readdirSync(dir)){const p=join(dir,e);statSync(p).isDirectory()?walk(p):p.endsWith('.md')&&process(p);}}
-function process(p){
-  let src=readFileSync(p,'utf8');
-  if(src.startsWith('---'))return;
-  const m=src.match(/^#\s+(.+)$/m);
-  let title=(m?m[1]:p.split('/').pop().replace(/\.md$/,'')).replace(/`/g,'').trim();
-  if(m)src=src.replace(/^#\s+.+$\n?/m,'');
-  writeFileSync(p,`---\ntitle: ${JSON.stringify(title)}\n---\n\n`+src.replace(/^\n+/,''));
+function walk(dir) {
+	for (const e of readdirSync(dir)) {
+		const p = join(dir, e);
+		statSync(p).isDirectory() ? walk(p) : p.endsWith('.md') && process(p);
+	}
+}
+function process(p) {
+	let src = readFileSync(p, 'utf8');
+	if (src.startsWith('---')) return;
+	const m = src.match(/^#\s+(.+)$/m);
+	let title = (m ? m[1] : p.split('/').pop().replace(/\.md$/, '')).replace(/`/g, '').trim();
+	if (m) src = src.replace(/^#\s+.+$\n?/m, '');
+	writeFileSync(p, `---\ntitle: ${JSON.stringify(title)}\n---\n\n` + src.replace(/^\n+/, ''));
 }
 walk('src/content/docs');
 ```

@@ -21,6 +21,7 @@ pnpm add -D @rocketh/verifier
 ## Supported Services
 
 hardhat-deploy supports verification on:
+
 - **Etherscan** (and compatible explorers like Polygonscan, BSCScan)
 - **Sourcify** (decentralized verification)
 - **Blockscout** (open-source explorer)
@@ -57,7 +58,6 @@ For custom Blockscout instances:
 ```bash
 pnpm rocketh-verify -e sepolia blockscout --endpoint https://eth-sepolia.blockscout.com/api/v2
 ```
-
 
 ## Next Steps
 

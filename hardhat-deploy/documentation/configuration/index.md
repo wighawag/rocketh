@@ -1,4 +1,3 @@
-
 # Configuration
 
 Configuration of hardhat's network or other hardhat specific config is done via hardhat.config.ts

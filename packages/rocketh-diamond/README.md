@@ -84,24 +84,28 @@ Facets are deployed **deterministically by default**, so an unchanged facet keep
 Use `excludeSelectors` when a facet exposes a function the diamond should not route:
 
 ```typescript
-{excludeSelectors: {TreasuryFacet: ['0x12345678']}}
+{
+	excludeSelectors: {
+		TreasuryFacet: ['0x12345678'];
+	}
+}
 ```
 
 ## Options
 
 `facets` is required. The rest:
 
-| Option | Description |
-| --- | --- |
-| `owner` | Address that may cut the diamond. Defaults to the deployer. |
-| `execute` | Initialization call attached to a cut. See the caveat below. |
-| `defaultCutFacet` | Include the built-in `DiamondCutFacet` (on by default). Turning it off makes the diamond permanently un-cuttable. |
-| `defaultOwnershipFacet` | Include the built-in `OwnershipFacet` (on by default). |
-| `diamondContractArgs` | Constructor arguments for the diamond base contract. |
-| `excludeSelectors` | Per-facet selectors to leave out of the cut. |
-| `facetsArgs` | Default constructor arguments for every facet. A facet's own `args` overrides them. (`linkedData` and `libraries` work the same way: set once for all facets, overridden per facet.) |
-| `deterministicSalt` | Deploy the diamond deterministically with this salt. |
-| `alwaysOverride` / `strictBytecodeMatch` | Mutually exclusive re-deployment controls, as in `@rocketh/deploy`. |
+| Option                                   | Description                                                                                                                                                                          |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `owner`                                  | Address that may cut the diamond. Defaults to the deployer.                                                                                                                          |
+| `execute`                                | Initialization call attached to a cut. See the caveat below.                                                                                                                         |
+| `defaultCutFacet`                        | Include the built-in `DiamondCutFacet` (on by default). Turning it off makes the diamond permanently un-cuttable.                                                                    |
+| `defaultOwnershipFacet`                  | Include the built-in `OwnershipFacet` (on by default).                                                                                                                               |
+| `diamondContractArgs`                    | Constructor arguments for the diamond base contract.                                                                                                                                 |
+| `excludeSelectors`                       | Per-facet selectors to leave out of the cut.                                                                                                                                         |
+| `facetsArgs`                             | Default constructor arguments for every facet. A facet's own `args` overrides them. (`linkedData` and `libraries` work the same way: set once for all facets, overridden per facet.) |
+| `deterministicSalt`                      | Deploy the diamond deterministically with this salt.                                                                                                                                 |
+| `alwaysOverride` / `strictBytecodeMatch` | Mutually exclusive re-deployment controls, as in `@rocketh/deploy`.                                                                                                                  |
 
 ## `execute` rides a cut, it is not a call you schedule
 

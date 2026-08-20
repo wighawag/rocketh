@@ -50,22 +50,22 @@ describe('my extension', () => {
 
 ## `createTestEnvironment(options?)`
 
-| Option | Default | Description |
-| --- | --- | --- |
-| `accounts` | `{}` | Named accounts, in `UserConfig.accounts` shape. |
-| `nodeAccounts` | `[]` | Addresses the node exposes through `eth_accounts`. |
-| `impersonation` | `'succeed'` | Whether `hardhat_impersonateAccount` succeeds or throws. |
-| `chainId` | `31337` | Chain id. |
-| `environmentName` | `'memory'` | Environment name. |
-| `config` | - | A partial `UserConfig` merged into what is resolved, for settings the harness cannot enumerate (custom `chains[id]` fields, a `signerProtocols` entry). |
+| Option            | Default     | Description                                                                                                                                             |
+| ----------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `accounts`        | `{}`        | Named accounts, in `UserConfig.accounts` shape.                                                                                                         |
+| `nodeAccounts`    | `[]`        | Addresses the node exposes through `eth_accounts`.                                                                                                      |
+| `impersonation`   | `'succeed'` | Whether `hardhat_impersonateAccount` succeeds or throws.                                                                                                |
+| `chainId`         | `31337`     | Chain id.                                                                                                                                               |
+| `environmentName` | `'memory'`  | Environment name.                                                                                                                                       |
+| `config`          | -           | A partial `UserConfig` merged into what is resolved, for settings the harness cannot enumerate (custom `chains[id]` fields, a `signerProtocols` entry). |
 
 Returns:
 
-| Field | Description |
-| --- | --- |
-| `env` | The `Environment` your code under test receives. |
-| `internal` | The internal half of the environment. |
-| `provider` | The mock provider handle: set canned responses, inspect requests. |
+| Field             | Description                                                                                                                      |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `env`             | The `Environment` your code under test receives.                                                                                 |
+| `internal`        | The internal half of the environment.                                                                                            |
+| `provider`        | The mock provider handle: set canned responses, inspect requests.                                                                |
 | `deploymentStore` | The `Map`-backed store used. Pass it to a second `createTestEnvironment` to assert that deployments survive a fresh environment. |
 
 ### Testing signability
@@ -84,11 +84,11 @@ await createTestEnvironment({accounts: {safe: addr}, nodeAccounts: [], impersona
 
 ## Artifacts
 
-| Helper | Purpose |
-| --- | --- |
-| `createMockArtifact(name, abi?)` | A minimal artifact with ABI and bytecode. `abi` defaults to a small standard one. |
-| `createMockArtifactWithLibrary(name, ...)` | An artifact with unresolved library link references, for testing library linking. |
-| `createExampleArtifact(name, templateNumber)` | A larger, more realistic artifact. |
+| Helper                                        | Purpose                                                                           |
+| --------------------------------------------- | --------------------------------------------------------------------------------- |
+| `createMockArtifact(name, abi?)`              | A minimal artifact with ABI and bytecode. `abi` defaults to a small standard one. |
+| `createMockArtifactWithLibrary(name, ...)`    | An artifact with unresolved library link references, for testing library linking. |
+| `createExampleArtifact(name, templateNumber)` | A larger, more realistic artifact.                                                |
 
 ## Prompts
 

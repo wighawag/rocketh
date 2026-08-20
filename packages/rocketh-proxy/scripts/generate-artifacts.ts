@@ -27,7 +27,11 @@ await generateV1Artifacts({
 	units: [
 		{
 			// The EIP173 pair, with rocketh's own `Proxy.sol` base.
-			sources: ['solc_0.8/proxy/EIP173Proxy.sol', 'solc_0.8/proxy/Proxy.sol', 'solc_0.8/proxy/EIP173ProxyWithReceive.sol'],
+			sources: [
+				'solc_0.8/proxy/EIP173Proxy.sol',
+				'solc_0.8/proxy/Proxy.sol',
+				'solc_0.8/proxy/EIP173ProxyWithReceive.sol',
+			],
 			artifacts: [
 				{name: 'EIP173Proxy', sourceName: 'solc_0.8/proxy/EIP173Proxy.sol'},
 				{name: 'EIP173ProxyWithReceive', sourceName: 'solc_0.8/proxy/EIP173ProxyWithReceive.sol'},

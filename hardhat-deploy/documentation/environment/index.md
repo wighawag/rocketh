@@ -9,7 +9,7 @@ export interface Environment<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
 	Deployments extends UnknownDeployments = UnknownDeployments,
-	Extra extends Record<string, unknown> = Record<string, unknown>
+	Extra extends Record<string, unknown> = Record<string, unknown>,
 > {
 	readonly name: string;
 	readonly context: {
@@ -46,17 +46,17 @@ export interface Environment<
 	save<TAbi extends Abi = Abi>(
 		name: string,
 		deployment: Deployment<TAbi>,
-		options?: {considerItAsFreshDeployment?: boolean}
+		options?: {considerItAsFreshDeployment?: boolean},
 	): Promise<Deployment<TAbi>>;
 	broadcastExecution(
 		transaction: TransactionToBroadcast,
-		options?: {message?: string}
+		options?: {message?: string},
 	): Promise<EIP1193TransactionReceipt>;
 	broadcastDeployment<TAbi extends Abi = Abi>(
 		name: string,
 		transaction: TransactionToBroadcast,
 		partialDeployment: PartialDeployment<TAbi>,
-		options?: {message?: string; expectedAddress?: `0x${string}`}
+		options?: {message?: string; expectedAddress?: `0x${string}`},
 	): Promise<Deployment<TAbi>>;
 	get<TAbi extends Abi>(name: string): Deployment<TAbi>;
 	getOrNull<TAbi extends Abi>(name: string): Deployment<TAbi> | null;

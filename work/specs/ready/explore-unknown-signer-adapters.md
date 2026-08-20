@@ -14,6 +14,7 @@ tasks that would be fiction; spike the risky questions on the narrowest real cas
 emit a build plan for a follow-on build spec.
 
 <!-- open-questions -->
+
 ## Open questions
 
 1. **Batching vs active protocols.** `catchUnknownSigner` batches naturally (collect-and-defer,
@@ -35,6 +36,7 @@ emit a build plan for a follow-on build spec.
    subsume it?
 5. **Signing-page launcher.** Is launching a browser tab / WalletConnect signing page in scope,
    and can it batch (one page for N txs)? Feasibility spike.
+
 <!-- /open-questions -->
 
 ## Problem Statement

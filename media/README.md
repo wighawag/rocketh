@@ -2,12 +2,12 @@
 
 Brand sources for the rocketh site. Everything published under `public/` is either copied or generated from here, so edit these files rather than the ones in `public/`.
 
-| Source | Published as | How |
-| --- | --- | --- |
-| `logo.svg` | `public/logo.svg` | straight copy |
-| `logo.svg` + `build.py` | `public/preview.png` | `python3 media/build.py preview` |
-| `logo.svg` + `build.py` | `public/icon.png` | `python3 media/build.py icon` |
-| `logo.svg` + `hardhat-pilot.svg` | `public/hardhat-deploy-logo.svg` | `python3 media/build.py hd-logo` |
+| Source                                 | Published as                        | How                                 |
+| -------------------------------------- | ----------------------------------- | ----------------------------------- |
+| `logo.svg`                             | `public/logo.svg`                   | straight copy                       |
+| `logo.svg` + `build.py`                | `public/preview.png`                | `python3 media/build.py preview`    |
+| `logo.svg` + `build.py`                | `public/icon.png`                   | `python3 media/build.py icon`       |
+| `logo.svg` + `hardhat-pilot.svg`       | `public/hardhat-deploy-logo.svg`    | `python3 media/build.py hd-logo`    |
 | `hardhat-deploy-logo.svg` + `build.py` | `public/hardhat-deploy-preview.png` | `python3 media/build.py hd-preview` |
 
 ## Regenerating
@@ -36,9 +36,9 @@ If the geometry changes, the fit and the optical nudge need re-deriving rather t
 
 `hardhat-deploy` is no longer built as a separate site; its docs live in `hardhat-deploy/` in this repo and are served by this VitePress site. Its assets are therefore generated here too.
 
-`public/hardhat-deploy-logo.svg` is **generated, not authored**. It is the rocketh mark plus a porthole holding the Hardhat mascot. The rocket geometry is *read from* `logo.svg` at build time rather than copied, so the two marks cannot drift apart; only the porthole is additive. Edit `logo.svg` and both marks change together.
+`public/hardhat-deploy-logo.svg` is **generated, not authored**. It is the rocketh mark plus a porthole holding the Hardhat mascot. The rocket geometry is _read from_ `logo.svg` at build time rather than copied, so the two marks cannot drift apart; only the porthole is additive. Edit `logo.svg` and both marks change together.
 
-`hardhat-pilot.svg` holds the porthole. Read the warning inside it before touching it: the character is clipped by a `clipPath`, and that clip is the whole reason she reads as being *inside* the rocket. A dangling `clip-path` url is not an error in SVG, it is silently ignored, so dropping the definition renders her whole body with no warning. `build.py` fails loudly if the clip goes missing, and checks the generated file for dangling `url(#)` references.
+`hardhat-pilot.svg` holds the porthole. Read the warning inside it before touching it: the character is clipped by a `clipPath`, and that clip is the whole reason she reads as being _inside_ the rocket. A dangling `clip-path` url is not an error in SVG, it is silently ignored, so dropping the definition renders her whole body with no warning. `build.py` fails loudly if the clip goes missing, and checks the generated file for dangling `url(#)` references.
 
 The previous mark also had a second, male mascot standing on the ground outside the rocket. He was dropped: he sat outside the composition and unbalanced it.
 
@@ -46,16 +46,16 @@ The previous mark also had a second, male mascot standing on the ground outside 
 
 Vendored so the build is reproducible without a network fetch or a system install. Both are SIL Open Font License 1.1; the license texts sit alongside them and must be kept with the files.
 
-| File | Used for | License |
-| --- | --- | --- |
-| `fonts/ChakraPetch-BoldItalic.ttf` | wordmark | `fonts/OFL-ChakraPetch.txt` |
-| `fonts/SpaceGrotesk-Variable.ttf` | tagline | `fonts/OFL-SpaceGrotesk.txt` |
+| File                               | Used for | License                      |
+| ---------------------------------- | -------- | ---------------------------- |
+| `fonts/ChakraPetch-BoldItalic.ttf` | wordmark | `fonts/OFL-ChakraPetch.txt`  |
+| `fonts/SpaceGrotesk-Variable.ttf`  | tagline  | `fonts/OFL-SpaceGrotesk.txt` |
 
 The wordmark is rasterised into the card, so there is no webfont dependency at runtime. If the wordmark ever moves into the page itself, convert it to paths rather than loading the font.
 
 ## icon.png
 
-The favicon is the **full mark**, so it stays visually identical to the logo. `logo.svg` is not used verbatim though: it carries margins tuned for sitting on a page next to the wordmark, plus its own baked-in optical nudge, and neither suits a 512px square. `build.py icon` therefore crops to the ink, rescales to `ICON_MARGIN`, then re-applies the *same* `OPTICAL_FACTOR` as the logo rather than introducing a second, separately-tuned centring rule.
+The favicon is the **full mark**, so it stays visually identical to the logo. `logo.svg` is not used verbatim though: it carries margins tuned for sitting on a page next to the wordmark, plus its own baked-in optical nudge, and neither suits a 512px square. `build.py icon` therefore crops to the ink, rescales to `ICON_MARGIN`, then re-applies the _same_ `OPTICAL_FACTOR` as the logo rather than introducing a second, separately-tuned centring rule.
 
 Rendered at 4x and downsampled with Lanczos; the mark is all hard diagonal edges and rasterising straight to 512 visibly stairsteps them.
 

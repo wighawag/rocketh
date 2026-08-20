@@ -67,11 +67,11 @@ export default deployScript(
 
 `viem(env)` returns a `ViemHandle`:
 
-| Member | Description |
-| --- | --- |
-| `publicClient` | A viem `PublicClient` on the environment's chain and provider. |
-| `walletClient` | A viem `WalletClient` on the same transport. |
-| `getContract(nameOrDeployment)` | A read-only viem contract. Accepts a deployment name or a deployment object. |
+| Member                                              | Description                                                                                    |
+| --------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `publicClient`                                      | A viem `PublicClient` on the environment's chain and provider.                                 |
+| `walletClient`                                      | A viem `WalletClient` on the same transport.                                                   |
+| `getContract(nameOrDeployment)`                     | A read-only viem contract. Accepts a deployment name or a deployment object.                   |
 | `getWritableContract(nameOrDeployment, {account?})` | A writable viem contract. `account` sets the sender; omit it to use the default wallet client. |
 
 Both clients use viem's `custom` transport over `env.network.provider`, so they talk to exactly the same provider as the rest of the deployment, including any in-memory or forked chain.

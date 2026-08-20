@@ -34,11 +34,11 @@ export default deployScript(
 
 A deploy script is meant to be re-runnable, so `deploy` first asks whether the contract it is about to deploy is already deployed. Three options control that question:
 
-| option | effect |
-| --- | --- |
-| `skipIfAlreadyDeployed` | if a deployment with this name exists, return it and look no further — the code is never compared |
-| `alwaysOverride` | redeploy unconditionally, comparing nothing (mutually exclusive with `skipIfAlreadyDeployed`, which throws) |
-| `strictBytecodeMatch` | how to compare, when comparing happens — see below |
+| option                  | effect                                                                                                      |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `skipIfAlreadyDeployed` | if a deployment with this name exists, return it and look no further — the code is never compared           |
+| `alwaysOverride`        | redeploy unconditionally, comparing nothing (mutually exclusive with `skipIfAlreadyDeployed`, which throws) |
+| `strictBytecodeMatch`   | how to compare, when comparing happens — see below                                                          |
 
 With neither `skipIfAlreadyDeployed` nor `alwaysOverride`, rocketh compares the saved deployment's code and constructor arguments against what you are deploying now, and redeploys only if they differ.
 

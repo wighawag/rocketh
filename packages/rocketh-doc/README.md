@@ -36,12 +36,12 @@ rocketh-doc -e mainnet -o ./docs/contracts -t ./my-templates
 
 ### Options
 
-| Option | Description |
-| --- | --- |
-| `-e, --environment <value>` | **(Required)** Environment context to use. |
-| `-o, --output <value>` | Folder to generate the docs into. |
-| `-d, --deployments <value>` | Folder where deployments are saved. |
-| `-t, --template <value>` | Template used to generate the docs. |
+| Option                                | Description                                                  |
+| ------------------------------------- | ------------------------------------------------------------ |
+| `-e, --environment <value>`           | **(Required)** Environment context to use.                   |
+| `-o, --output <value>`                | Folder to generate the docs into.                            |
+| `-d, --deployments <value>`           | Folder where deployments are saved.                          |
+| `-t, --template <value>`              | Template used to generate the docs.                          |
 | `--except-suffix <suffix, suffix...>` | Ignore contracts whose name ends with any of these suffixes. |
 
 `--except-suffix` is the option most projects want straight away: a proxy deployment saves `MyContract_Proxy` and `MyContract_Implementation` next to `MyContract`, and documenting all three says the same thing three times.
@@ -66,13 +66,13 @@ await run(config, 'mainnet', {
 });
 ```
 
-| Export | Purpose |
-| --- | --- |
-| `run(config, environmentName, options)` | Load an environment's deployments from files and generate. |
-| `generate({deployments}, options)` | Generate from deployments you already hold. |
-| `generateFromDeployments(deployments, options)` | The rendering step, without the filtering. |
-| `generateDocumentationData(...)` | Build the documentation **model** only, and render it yourself. |
-| `runFromFolder(folder, options)` | Generate from a folder of deployment JSON files, bypassing config. |
+| Export                                          | Purpose                                                            |
+| ----------------------------------------------- | ------------------------------------------------------------------ |
+| `run(config, environmentName, options)`         | Load an environment's deployments from files and generate.         |
+| `generate({deployments}, options)`              | Generate from deployments you already hold.                        |
+| `generateFromDeployments(deployments, options)` | The rendering step, without the filtering.                         |
+| `generateDocumentationData(...)`                | Build the documentation **model** only, and render it yourself.    |
+| `runFromFolder(folder, options)`                | Generate from a folder of deployment JSON files, bypassing config. |
 
 `RunOptions` is `{template?: string; output?: string; exceptSuffix?: string[]}`.
 

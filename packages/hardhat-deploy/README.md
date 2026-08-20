@@ -77,25 +77,25 @@ You can also provide your own modules for advanced use cases.
 ## Quick Example
 
 ```typescript
-import { deployScript, artifacts } from "../rocketh/deploy.js";
+import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(
-  async ({ deployViaProxy, namedAccounts }) => {
-    const { deployer, admin } = namedAccounts;
+	async ({deployViaProxy, namedAccounts}) => {
+		const {deployer, admin} = namedAccounts;
 
-    await deployViaProxy(
-      "GreetingsRegistry",
-      {
-        account: deployer,
-        artifact: artifacts.GreetingsRegistry,
-        args: ["prefix:"],
-      },
-      {
-        owner: admin,
-      },
-    );
-  },
-  { tags: ["GreetingsRegistry"] },
+		await deployViaProxy(
+			'GreetingsRegistry',
+			{
+				account: deployer,
+				artifact: artifacts.GreetingsRegistry,
+				args: ['prefix:'],
+			},
+			{
+				owner: admin,
+			},
+		);
+	},
+	{tags: ['GreetingsRegistry']},
 );
 ```
 

@@ -2,7 +2,7 @@
 
 Call and transact against your deployments from inside a deploy script. `read` performs a `view`/`pure` call, `execute` sends a transaction to a `nonpayable`/`payable` function, and `tx` sends a raw transaction. All of them are fully typed against the deployment's ABI, so function names and arguments are checked at compile time.
 
-This is how a deploy script does the work that comes *after* a deployment: wiring contracts together, transferring ownership, seeding state.
+This is how a deploy script does the work that comes _after_ a deployment: wiring contracts together, transferring ownership, seeding state.
 
 ## Installation
 

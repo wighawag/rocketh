@@ -3,8 +3,8 @@
 layout: home
 
 hero:
-  name: "hardhat-deploy"
-  text: "A Hardhat Plugin For Replicable Deployments And Easy Testing"
+  name: 'hardhat-deploy'
+  text: 'A Hardhat Plugin For Replicable Deployments And Easy Testing'
   tagline: Easy And Flexible Deployment for both development and production
   image:
     dark: /hardhat-deploy-logo.svg

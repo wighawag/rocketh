@@ -14,11 +14,11 @@ Spotted while running `demoes/hardhat-deploy/governance` end to end for the firs
 
 `scenario-multisig`, four runs against a local node: deploy v1, ask for v2 (upgrade deferred to the multisig), execute it through the multisig, re-run to converge. Afterwards:
 
-| | value |
-| --- | --- |
-| proxy's EIP-1967 implementation slot, on chain | `0x5fc8…707` (the v2 implementation) |
-| `deployments/localhost/Registry_Implementation.json` | `0x5fc8…707`, ABI contains `getMessage` (v2 only) |
-| `deployments/localhost/Registry.json` (the proxy) | ABI does **not** contain `getMessage`, i.e. still v1 |
+|                                                      | value                                                |
+| ---------------------------------------------------- | ---------------------------------------------------- |
+| proxy's EIP-1967 implementation slot, on chain       | `0x5fc8…707` (the v2 implementation)                 |
+| `deployments/localhost/Registry_Implementation.json` | `0x5fc8…707`, ABI contains `getMessage` (v2 only)    |
+| `deployments/localhost/Registry.json` (the proxy)    | ABI does **not** contain `getMessage`, i.e. still v1 |
 
 So the chain runs v2 and the proxy's saved record describes v1.
 

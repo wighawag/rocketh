@@ -12,6 +12,7 @@ Before using fork testing, ensure you have:
 ## What is Fork Testing?
 
 Fork testing creates a local copy of a blockchain at a specific block, allowing you to:
+
 - Test deployments against real contract state
 - Interact with existing contracts and protocols
 - Validate integrations with live systems
@@ -34,6 +35,7 @@ HARDHAT_FORK=arbitrum npx hardhat deploy
 ```
 
 The network helpers automatically:
+
 - Use the target network's RPC URL from `ETH_NODE_URI_<network>`
 - Copy account configuration from the target network
 - Set up the `fork` network configuration
@@ -44,43 +46,54 @@ The network helpers automatically:
 ### Testing Against Live Protocols
 
 ```typescript
-import { deployScript, artifacts } from "../rocketh/deploy.js";
+import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(
-  async (env) => {
-    const { deployer } = env.namedAccounts;
-    const { name: networkName } = env.network;
-    
-    console.log(`Deploying on ${networkName} (fork: ${env.network.fork || 'none'})`);
-    
-    // Deploy your contract
-    const deployment = await env.deploy("MyDeFiContract", {
-      account: deployer,
-      artifact: artifacts.MyDeFiContract,
-      args: [
-        "0xA0b86a33E6441E8C8C7014b5C1e8e8b8C8C8C8C8", // USDC on mainnet
-        "0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9", // Aave LendingPool
-      ],
-    });
-    
-    if (env.network.fork) {
-      // Only run integration tests when forking
-      console.log("Running fork-specific validation...");
-      
-      // Test interaction with live USDC contract
-      const usdcAddress = "0xA0b86a33E6441E8C8C7014b5C1e8e8b8C8C8C8C8";
-      const usdcBalance = await env.read({
-        address: usdcAddress,
-        abi: [{"constant":true,"inputs":[{"name":"_owner","type":"address"}],"name":"balanceOf","outputs":[{"name":"balance","type":"uint256"}],"type":"function"}],
-      }, {
-        functionName: "balanceOf",
-        args: [deployment.address],
-      });
-      
-      console.log(`Contract USDC balance: ${usdcBalance}`);
-    }
-  },
-  { tags: ["MyDeFiContract"] }
+	async (env) => {
+		const {deployer} = env.namedAccounts;
+		const {name: networkName} = env.network;
+
+		console.log(`Deploying on ${networkName} (fork: ${env.network.fork || 'none'})`);
+
+		// Deploy your contract
+		const deployment = await env.deploy('MyDeFiContract', {
+			account: deployer,
+			artifact: artifacts.MyDeFiContract,
+			args: [
+				'0xA0b86a33E6441E8C8C7014b5C1e8e8b8C8C8C8C8', // USDC on mainnet
+				'0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9', // Aave LendingPool
+			],
+		});
+
+		if (env.network.fork) {
+			// Only run integration tests when forking
+			console.log('Running fork-specific validation...');
+
+			// Test interaction with live USDC contract
+			const usdcAddress = '0xA0b86a33E6441E8C8C7014b5C1e8e8b8C8C8C8C8';
+			const usdcBalance = await env.read(
+				{
+					address: usdcAddress,
+					abi: [
+						{
+							constant: true,
+							inputs: [{name: '_owner', type: 'address'}],
+							name: 'balanceOf',
+							outputs: [{name: 'balance', type: 'uint256'}],
+							type: 'function',
+						},
+					],
+				},
+				{
+					functionName: 'balanceOf',
+					args: [deployment.address],
+				},
+			);
+
+			console.log(`Contract USDC balance: ${usdcBalance}`);
+		}
+	},
+	{tags: ['MyDeFiContract']},
 );
 ```
 
@@ -103,15 +116,14 @@ ldenv -n HARDHAT_FORK=mainnet hardhat deploy
 
 ```json
 {
-  "scripts": {
-    "fork:mainnet": "HARDHAT_FORK=mainnet hardhat deploy",
-    "fork:polygon": "HARDHAT_FORK=polygon hardhat deploy",
-    "fork:test": "HARDHAT_FORK=mainnet hardhat test",
-    "fork:execute": "HARDHAT_FORK=mainnet hardhat run scripts/interact.ts"
-  }
+	"scripts": {
+		"fork:mainnet": "HARDHAT_FORK=mainnet hardhat deploy",
+		"fork:polygon": "HARDHAT_FORK=polygon hardhat deploy",
+		"fork:test": "HARDHAT_FORK=mainnet hardhat test",
+		"fork:execute": "HARDHAT_FORK=mainnet hardhat run scripts/interact.ts"
+	}
 }
 ```
-
 
 ## Next Steps
 

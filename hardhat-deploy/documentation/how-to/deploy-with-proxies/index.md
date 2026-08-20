@@ -33,16 +33,19 @@ export {extensions};
 hardhat-deploy supports several proxy patterns:
 
 ### 1. Transparent Proxy (OpenZeppelin)
+
 - Admin can upgrade, users can call functions
 - Gas overhead on every call
 - Most secure for production
 
 ### 2. UUPS (Universal Upgradeable Proxy Standard)
+
 - Upgrade logic in implementation contract
 - Lower gas costs
 - Implementation must include upgrade functionality
 
 ### 3. Beacon Proxy
+
 - Multiple proxies share same implementation
 - Efficient for deploying many identical contracts
 
@@ -51,53 +54,53 @@ hardhat-deploy supports several proxy patterns:
 ### Transparent Proxy
 
 ```typescript
-import { deployScript, artifacts } from "../rocketh/deploy.js";
+import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(
-  async ({ deployViaProxy, namedAccounts }) => {
-    const { deployer, admin } = namedAccounts;
+	async ({deployViaProxy, namedAccounts}) => {
+		const {deployer, admin} = namedAccounts;
 
-    await deployViaProxy(
-      "MyContract", // Contract name
-      {
-        account: deployer,
-        artifact: artifacts.Greeter,
-        args: ["initialValue"], // Constructor arguments
-      },
-      {
-        owner: admin, // Proxy admin
-        proxyContract: "SharedAdminOptimizedTransparentProxy", // Proxy type
-      }
-    );
-  },
-  { tags: ["MyContract"] }
+		await deployViaProxy(
+			'MyContract', // Contract name
+			{
+				account: deployer,
+				artifact: artifacts.Greeter,
+				args: ['initialValue'], // Constructor arguments
+			},
+			{
+				owner: admin, // Proxy admin
+				proxyContract: 'SharedAdminOptimizedTransparentProxy', // Proxy type
+			},
+		);
+	},
+	{tags: ['MyContract']},
 );
 ```
 
 ### UUPS Proxy
 
 ```typescript
-import { deployScript, artifacts } from "../rocketh/deploy.js";
+import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(
-  async ({ deployViaProxy, namedAccounts }) => {
-    const { deployer, admin } = namedAccounts;
+	async ({deployViaProxy, namedAccounts}) => {
+		const {deployer, admin} = namedAccounts;
 
-    await deployViaProxy(
-      "MyUUPSContract",
-      {
-        account: deployer,
-        artifact: artifacts.MyUUPSContract,
-        args: [admin, "initialValue"],
-      },
-      {
-        owner: admin,
-        proxyContract: "UUPS", // UUPS proxy type
-        execute: "initialize", // Initialization function
-      }
-    );
-  },
-  { tags: ["MyUUPSContract"] }
+		await deployViaProxy(
+			'MyUUPSContract',
+			{
+				account: deployer,
+				artifact: artifacts.MyUUPSContract,
+				args: [admin, 'initialValue'],
+			},
+			{
+				owner: admin,
+				proxyContract: 'UUPS', // UUPS proxy type
+				execute: 'initialize', // Initialization function
+			},
+		);
+	},
+	{tags: ['MyUUPSContract']},
 );
 ```
 
@@ -124,32 +127,32 @@ When you modify your contract and redeploy, hardhat-deploy automatically detects
 You can also check if an upgrade is needed before deploying:
 
 ```typescript
-import { deployScript, artifacts } from "../rocketh/deploy.js";
+import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(
-  async ({ deployViaProxy, namedAccounts }) => {
-    const { deployer, admin } = namedAccounts;
+	async ({deployViaProxy, namedAccounts}) => {
+		const {deployer, admin} = namedAccounts;
 
-    const result = await deployViaProxy(
-      "MyContract",
-      {
-        account: deployer,
-        artifact: artifacts.MyContract,
-        args: ["initialValue"],
-      },
-      {
-        owner: admin,
-        proxyContract: "SharedAdminOptimizedTransparentProxy",
-      }
-    );
+		const result = await deployViaProxy(
+			'MyContract',
+			{
+				account: deployer,
+				artifact: artifacts.MyContract,
+				args: ['initialValue'],
+			},
+			{
+				owner: admin,
+				proxyContract: 'SharedAdminOptimizedTransparentProxy',
+			},
+		);
 
-    if (result.newlyDeployed) {
-      console.log("Contract was upgraded or newly deployed");
-    } else {
-      console.log("Contract unchanged, no upgrade needed");
-    }
-  },
-  { tags: ["MyContract"] }
+		if (result.newlyDeployed) {
+			console.log('Contract was upgraded or newly deployed');
+		} else {
+			console.log('Contract unchanged, no upgrade needed');
+		}
+	},
+	{tags: ['MyContract']},
 );
 ```
 
@@ -160,30 +163,30 @@ export default deployScript(
 For contracts that need initialization after deployment:
 
 ```typescript
-import { deployScript, artifacts } from "../rocketh/deploy.js";
+import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(
-  async ({ deployViaProxy, namedAccounts }) => {
-    const { deployer, admin } = namedAccounts;
+	async ({deployViaProxy, namedAccounts}) => {
+		const {deployer, admin} = namedAccounts;
 
-    await deployViaProxy(
-      "MyContract",
-      {
-        account: deployer,
-        artifact: artifacts.Greeter,
-        args: [""], // No constructor args
-      },
-      {
-        owner: admin,
-        proxyContract: "SharedAdminOptimizedTransparentProxy",
-        execute: {
-          methodName: "initialize",
-          args: [admin, deployer, 1000], // Initialization parameters
-        },
-      }
-    );
-  },
-  { tags: ["MyContract"] }
+		await deployViaProxy(
+			'MyContract',
+			{
+				account: deployer,
+				artifact: artifacts.Greeter,
+				args: [''], // No constructor args
+			},
+			{
+				owner: admin,
+				proxyContract: 'SharedAdminOptimizedTransparentProxy',
+				execute: {
+					methodName: 'initialize',
+					args: [admin, deployer, 1000], // Initialization parameters
+				},
+			},
+		);
+	},
+	{tags: ['MyContract']},
 );
 ```
 

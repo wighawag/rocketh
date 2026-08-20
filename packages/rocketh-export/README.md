@@ -33,17 +33,17 @@ rocketh-export -e mainnet --ts ./app/src/contracts.ts,./admin/src/contracts.ts -
 
 ### Options
 
-| Option | Description |
-| --- | --- |
-| `-e, --environment <value>` | **(Required)** Environment context to use. |
-| `-d, --deployments <value>` | Folder where deployments are saved. |
-| `--ts <value>` | Comma-separated file paths for the TypeScript export. |
-| `--js <value>` | Comma-separated file paths for the JavaScript export. |
-| `--json <value>` | Comma-separated file paths for the JSON export. |
-| `--tsm <value>` | TypeScript export with one named export per contract. |
-| `--jsm <value>` | JavaScript export with one named export per contract. |
-| `-b, --bytecode` | Include bytecode in the output. |
-| `--verify` | Ask the chain whether the deployments are really there before writing. Needs an RPC. |
+| Option                      | Description                                                                          |
+| --------------------------- | ------------------------------------------------------------------------------------ |
+| `-e, --environment <value>` | **(Required)** Environment context to use.                                           |
+| `-d, --deployments <value>` | Folder where deployments are saved.                                                  |
+| `--ts <value>`              | Comma-separated file paths for the TypeScript export.                                |
+| `--js <value>`              | Comma-separated file paths for the JavaScript export.                                |
+| `--json <value>`            | Comma-separated file paths for the JSON export.                                      |
+| `--tsm <value>`             | TypeScript export with one named export per contract.                                |
+| `--jsm <value>`             | JavaScript export with one named export per contract.                                |
+| `-b, --bytecode`            | Include bytecode in the output.                                                      |
+| `--verify`                  | Ask the chain whether the deployments are really there before writing. Needs an RPC. |
 
 At least one output path is required; without one the command fails with `NoOutputPathError` rather than doing nothing.
 

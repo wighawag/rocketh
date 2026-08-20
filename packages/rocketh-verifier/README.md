@@ -71,35 +71,35 @@ rocketh-verify -e mainnet metadata --out ./metadata
 
 ### Global Options
 
-| Option | Description |
-|--------|-------------|
+| Option                      | Description                             |
+| --------------------------- | --------------------------------------- |
 | `-e, --environment <value>` | **(Required)** Environment/network name |
-| `-d, --deployments <value>` | Deployments folder path |
+| `-d, --deployments <value>` | Deployments folder path                 |
 
 ### Etherscan Options
 
-| Option | Description |
-|--------|-------------|
-| `--endpoint <value>` | Custom API endpoint |
-| `--license <value>` | Source code license (e.g., MIT, GPL-3.0) |
-| `--force-license` | Force the specified license |
-| `--min-interval <value>` | Minimum interval between requests (ms) |
-| `--fix-mispell` | Fix misspelled form fields (some APIs) |
+| Option                   | Description                              |
+| ------------------------ | ---------------------------------------- |
+| `--endpoint <value>`     | Custom API endpoint                      |
+| `--license <value>`      | Source code license (e.g., MIT, GPL-3.0) |
+| `--force-license`        | Force the specified license              |
+| `--min-interval <value>` | Minimum interval between requests (ms)   |
+| `--fix-mispell`          | Fix misspelled form fields (some APIs)   |
 
 **Environment Variable:** `ETHERSCAN_API_KEY`
 
 ### Sourcify Options
 
-| Option | Description |
-|--------|-------------|
-| `--endpoint <value>` | Custom Sourcify endpoint |
+| Option                   | Description                            |
+| ------------------------ | -------------------------------------- |
+| `--endpoint <value>`     | Custom Sourcify endpoint               |
 | `--min-interval <value>` | Minimum interval between requests (ms) |
 
 ### Blockscout Options
 
-| Option | Description |
-|--------|-------------|
-| `--endpoint <value>` | Custom Blockscout API endpoint |
+| Option                   | Description                            |
+| ------------------------ | -------------------------------------- |
+| `--endpoint <value>`     | Custom Blockscout API endpoint         |
 | `--min-interval <value>` | Minimum interval between requests (ms) |
 
 ## Programmatic Usage
@@ -107,17 +107,17 @@ rocketh-verify -e mainnet metadata --out ./metadata
 You can also use the verifier programmatically:
 
 ```typescript
-import { run } from '@rocketh/verifier';
+import {run} from '@rocketh/verifier';
 
 await run(resolvedConfig, 'mainnet', {
-  verifier: {
-    type: 'etherscan',
-    apiKey: process.env.ETHERSCAN_API_KEY,
-    license: 'MIT',
-  },
-  deploymentNames: ['MyContract', 'MyToken'], // Optional: specific contracts
-  minInterval: 1000, // Optional: rate limiting
-  logErrorOnFailure: true,
+	verifier: {
+		type: 'etherscan',
+		apiKey: process.env.ETHERSCAN_API_KEY,
+		license: 'MIT',
+	},
+	deploymentNames: ['MyContract', 'MyToken'], // Optional: specific contracts
+	minInterval: 1000, // Optional: rate limiting
+	logErrorOnFailure: true,
 });
 ```
 
@@ -137,10 +137,10 @@ Runs the verification process.
 
 ```typescript
 interface VerificationOptions {
-  verifier: EtherscanOptions | SourcifyOptions | BlockscoutOptions;
-  deploymentNames?: string[];   // Specific contracts to verify
-  minInterval?: number;         // Rate limiting (ms between requests)
-  logErrorOnFailure?: boolean;  // Log errors instead of throwing
+	verifier: EtherscanOptions | SourcifyOptions | BlockscoutOptions;
+	deploymentNames?: string[]; // Specific contracts to verify
+	minInterval?: number; // Rate limiting (ms between requests)
+	logErrorOnFailure?: boolean; // Log errors instead of throwing
 }
 ```
 
@@ -148,12 +148,12 @@ interface VerificationOptions {
 
 ```typescript
 interface EtherscanOptions {
-  type: 'etherscan';
-  endpoint?: string;      // Custom API endpoint
-  apiKey?: string;        // Etherscan API key
-  license?: string;       // SPDX license identifier
-  forceLicense?: boolean; // Override contract license
-  fixMispell?: boolean;   // Fix API form field spelling
+	type: 'etherscan';
+	endpoint?: string; // Custom API endpoint
+	apiKey?: string; // Etherscan API key
+	license?: string; // SPDX license identifier
+	forceLicense?: boolean; // Override contract license
+	fixMispell?: boolean; // Fix API form field spelling
 }
 ```
 
@@ -161,8 +161,8 @@ interface EtherscanOptions {
 
 ```typescript
 interface SourcifyOptions {
-  type: 'sourcify';
-  endpoint?: string; // Custom Sourcify endpoint
+	type: 'sourcify';
+	endpoint?: string; // Custom Sourcify endpoint
 }
 ```
 
@@ -170,8 +170,8 @@ interface SourcifyOptions {
 
 ```typescript
 interface BlockscoutOptions {
-  type: 'blockscout';
-  endpoint?: string; // Custom Blockscout API endpoint
+	type: 'blockscout';
+	endpoint?: string; // Custom Blockscout API endpoint
 }
 ```
 
@@ -181,15 +181,15 @@ interface BlockscoutOptions {
 
 The verifier automatically detects the correct Etherscan endpoint for common networks:
 
-| Network | Chain ID | Endpoint |
-|---------|----------|----------|
-| Ethereum Mainnet | 1 | api.etherscan.io |
-| Goerli | 5 | api-goerli.etherscan.io |
-| Sepolia | 11155111 | api-sepolia.etherscan.io |
-| Polygon | 137 | api.polygonscan.com |
-| Arbitrum | 42161 | api.arbiscan.io |
-| Optimism | 10 | api-optimistic.etherscan.io |
-| Base | 8453 | api.basescan.org |
+| Network          | Chain ID | Endpoint                    |
+| ---------------- | -------- | --------------------------- |
+| Ethereum Mainnet | 1        | api.etherscan.io            |
+| Goerli           | 5        | api-goerli.etherscan.io     |
+| Sepolia          | 11155111 | api-sepolia.etherscan.io    |
+| Polygon          | 137      | api.polygonscan.com         |
+| Arbitrum         | 42161    | api.arbiscan.io             |
+| Optimism         | 10       | api-optimistic.etherscan.io |
+| Base             | 8453     | api.basescan.org            |
 
 For other networks, use the `--endpoint` option.
 
@@ -216,14 +216,14 @@ rocketh-verify -e mainnet etherscan
 ### Verify Specific Contracts
 
 ```typescript
-import { run } from '@rocketh/verifier';
+import {run} from '@rocketh/verifier';
 
 await run(config, 'mainnet', {
-  verifier: {
-    type: 'etherscan',
-    apiKey: process.env.ETHERSCAN_API_KEY,
-  },
-  deploymentNames: ['Token', 'TokenSale'], // Only verify these
+	verifier: {
+		type: 'etherscan',
+		apiKey: process.env.ETHERSCAN_API_KEY,
+	},
+	deploymentNames: ['Token', 'TokenSale'], // Only verify these
 });
 ```
 
@@ -260,6 +260,7 @@ rocketh-verify -e mainnet etherscan --min-interval 5000
 ### Missing API Key
 
 Etherscan requires an API key. Get one at:
+
 - [Etherscan](https://etherscan.io/apis)
 - [Polygonscan](https://polygonscan.com/apis)
 - [Arbiscan](https://arbiscan.io/apis)

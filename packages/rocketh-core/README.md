@@ -21,14 +21,14 @@ yarn add @rocketh/core
 
 The package is split so a consumer can import just the slice it needs.
 
-| Subpath | Contents |
-| --- | --- |
-| `@rocketh/core` | Everything below, re-exported. |
-| `@rocketh/core/types` | All types: `Environment`, `Deployment`, `Artifact`, `Signer`, `DeploymentConstruction`, and the rest. |
-| `@rocketh/core/artifacts` | `mergeABIs`, `mergeArtifacts`. |
-| `@rocketh/core/json` | bigint-safe JSON helpers. |
-| `@rocketh/core/environment` | `withEnvironment`, `enhanceEnvIfNeeded`. |
-| `@rocketh/core/providers` | `TransactionHashTrackerProvider`. |
+| Subpath                     | Contents                                                                                              |
+| --------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `@rocketh/core`             | Everything below, re-exported.                                                                        |
+| `@rocketh/core/types`       | All types: `Environment`, `Deployment`, `Artifact`, `Signer`, `DeploymentConstruction`, and the rest. |
+| `@rocketh/core/artifacts`   | `mergeABIs`, `mergeArtifacts`.                                                                        |
+| `@rocketh/core/json`        | bigint-safe JSON helpers.                                                                             |
+| `@rocketh/core/environment` | `withEnvironment`, `enhanceEnvIfNeeded`.                                                              |
+| `@rocketh/core/providers`   | `TransactionHashTrackerProvider`.                                                                     |
 
 Account resolution is not a standalone helper: `resolveAccount` and `resolveAccountOrUndefined` are **methods on `Environment`**.
 
@@ -77,7 +77,7 @@ extension entry "Foo" is a class, which cannot be called with the environment
 
 Since this surfaces when a deploy script runs rather than at build time, the naming is what makes it diagnosable. Put anything that is not a curried function on a **subpath export**. `@rocketh/unknown-signer` keeps `UnknownSignerError` on `./errors` for exactly this reason.
 
-A *getter*, meaning `(env) => value` returning a non-function, is a supported second shape and becomes a property. The check is on the entry being callable, never on what it returns.
+A _getter_, meaning `(env) => value` returning a non-function, is a supported second shape and becomes a property. The check is on the entry being callable, never on what it returns.
 
 ## Utilities
 
@@ -101,11 +101,11 @@ An EIP-1193 provider wrapper that records the transaction hashes passing through
 
 The `Signer` union has **three** variants, and they are easy to get backwards:
 
-| Variant | Meaning | Broadcast path |
-| --- | --- | --- |
-| `signerOnly` | We hold the signing material and sign **locally**. | `eth_signTransaction`, then `eth_sendRawTransaction` |
-| `wallet` | An external wallet signs on the user's behalf (browser / injected). | `eth_sendTransaction` |
-| `remote` | The node or provider signs. | `eth_sendTransaction` |
+| Variant      | Meaning                                                             | Broadcast path                                       |
+| ------------ | ------------------------------------------------------------------- | ---------------------------------------------------- |
+| `signerOnly` | We hold the signing material and sign **locally**.                  | `eth_signTransaction`, then `eth_sendRawTransaction` |
+| `wallet`     | An external wallet signs on the user's behalf (browser / injected). | `eth_sendTransaction`                                |
+| `remote`     | The node or provider signs.                                         | `eth_sendTransaction`                                |
 
 `signerOnly`, not `wallet`, is the locally-signing one. [`@rocketh/signer`](https://www.npmjs.com/package/@rocketh/signer)'s `privateKey` protocol returns it, as should any user-supplied protocol exposing `eth_signTransaction` (a hardware wallet, an HSM).
 

@@ -179,14 +179,14 @@ Update your `package.json` to use Hardhat 3.x and hardhat-deploy v2:
 
 ```json
 {
-  "devDependencies": {
-    "hardhat": "^2.22.18",
-    "hardhat-deploy": "^0.14.0",
-    "hardhat-deploy-ethers": "^0.4.2",
-    "hardhat-deploy-tenderly": "^1.0.0",
-    "ethers": "^6.13.5",
-    "hardhat-deploy": "^0.14.0"
-  }
+	"devDependencies": {
+		"hardhat": "^2.22.18",
+		"hardhat-deploy": "^0.14.0",
+		"hardhat-deploy-ethers": "^0.4.2",
+		"hardhat-deploy-tenderly": "^1.0.0",
+		"ethers": "^6.13.5",
+		"hardhat-deploy": "^0.14.0"
+	}
 }
 ```
 
@@ -194,23 +194,23 @@ Update your `package.json` to use Hardhat 3.x and hardhat-deploy v2:
 
 ```json
 {
-  "type": "module",
-  "devDependencies": {
-    "hardhat": "^3.1.4",
-    "hardhat-deploy": "^2.0.0",
-    "rocketh": "^0.17.15",
-    "@rocketh/deploy": "^0.17.9",
-    "@rocketh/read-execute": "^0.17.9",
-    "@rocketh/node": "^0.17.18",
-    "@rocketh/proxy": "^0.17.13",
-    "@rocketh/signer": "^0.17.9",
-    "viem": "^2.45.0",
-    "earl": "^2.0.0",
-    "@nomicfoundation/hardhat-viem": "^3.0.1",
-    "@nomicfoundation/hardhat-node-test-runner": "^3.0.8",
-    "@nomicfoundation/hardhat-network-helpers": "^3.0.3",
-    "@nomicfoundation/hardhat-keystore": "^3.0.3"
-  }
+	"type": "module",
+	"devDependencies": {
+		"hardhat": "^3.1.4",
+		"hardhat-deploy": "^2.0.0",
+		"rocketh": "^0.17.15",
+		"@rocketh/deploy": "^0.17.9",
+		"@rocketh/read-execute": "^0.17.9",
+		"@rocketh/node": "^0.17.18",
+		"@rocketh/proxy": "^0.17.13",
+		"@rocketh/signer": "^0.17.9",
+		"viem": "^2.45.0",
+		"earl": "^2.0.0",
+		"@nomicfoundation/hardhat-viem": "^3.0.1",
+		"@nomicfoundation/hardhat-node-test-runner": "^3.0.8",
+		"@nomicfoundation/hardhat-network-helpers": "^3.0.3",
+		"@nomicfoundation/hardhat-keystore": "^3.0.3"
+	}
 }
 ```
 
@@ -239,68 +239,68 @@ pnpm install
 **v1 hardhat.config.ts example:**
 
 ```typescript
-import "dotenv/config";
-import { HardhatUserConfig } from "hardhat/types";
+import 'dotenv/config';
+import {HardhatUserConfig} from 'hardhat/types';
 
-import "@nomicfoundation/hardhat-chai-matchers";
-import "@nomicfoundation/hardhat-ethers";
-import "@typechain/hardhat";
+import '@nomicfoundation/hardhat-chai-matchers';
+import '@nomicfoundation/hardhat-ethers';
+import '@typechain/hardhat';
 
-import "hardhat-deploy";
-import "hardhat-deploy-ethers";
-import "hardhat-deploy-tenderly";
+import 'hardhat-deploy';
+import 'hardhat-deploy-ethers';
+import 'hardhat-deploy-tenderly';
 
-import { node_url, accounts, addForkConfiguration } from "./utils/network";
+import {node_url, accounts, addForkConfiguration} from './utils/network';
 
 const config: HardhatUserConfig = {
-  solidity: {
-    compilers: [
-      {
-        version: "0.8.17",
-        settings: {
-          optimizer: {
-            enabled: true,
-            runs: 2000,
-          },
-        },
-      },
-    ],
-  },
-  namedAccounts: {
-    deployer: 0,
-    simpleERC20Beneficiary: 1,
-  },
-  networks: addForkConfiguration({
-    hardhat: {
-      initialBaseFeePerGas: 0,
-    },
-    localhost: {
-      url: node_url("localhost"),
-      accounts: accounts(),
-    },
-    mainnet: {
-      url: node_url("mainnet"),
-      accounts: accounts("mainnet"),
-    },
-    sepolia: {
-      url: node_url("sepolia"),
-      accounts: accounts("sepolia"),
-    },
-  }),
-  paths: {
-    sources: "src",
-  },
-  mocha: {
-    timeout: 0,
-  },
-  external: process.env.HARDHAT_FORK
-    ? {
-        deployments: {
-          hardhat: ["deployments/" + process.env.HARDHAT_FORK],
-          localhost: ["deployments/" + process.env.HARDHAT_FORK],
-        },
-      }
-    : undefined,
+	solidity: {
+		compilers: [
+			{
+				version: '0.8.17',
+				settings: {
+					optimizer: {
+						enabled: true,
+						runs: 2000,
+					},
+				},
+			},
+		],
+	},
+	namedAccounts: {
+		deployer: 0,
+		simpleERC20Beneficiary: 1,
+	},
+	networks: addForkConfiguration({
+		hardhat: {
+			initialBaseFeePerGas: 0,
+		},
+		localhost: {
+			url: node_url('localhost'),
+			accounts: accounts(),
+		},
+		mainnet: {
+			url: node_url('mainnet'),
+			accounts: accounts('mainnet'),
+		},
+		sepolia: {
+			url: node_url('sepolia'),
+			accounts: accounts('sepolia'),
+		},
+	}),
+	paths: {
+		sources: 'src',
+	},
+	mocha: {
+		timeout: 0,
+	},
+	external: process.env.HARDHAT_FORK
+		? {
+				deployments: {
+					hardhat: ['deployments/' + process.env.HARDHAT_FORK],
+					localhost: ['deployments/' + process.env.HARDHAT_FORK],
+				},
+			}
+		: undefined,
 };
 
 export default config;
@@ -309,83 +309,73 @@ export default config;
 **v2 hardhat.config.ts example:** (see [template-ethereum-contracts/hardhat.config.ts](https://github.com/wighawag/template-ethereum-contracts/blob/main/contracts/hardhat.config.ts))
 
 ```typescript
-import type { HardhatUserConfig } from "hardhat/config";
+import type {HardhatUserConfig} from 'hardhat/config';
 
-import HardhatNodeTestRunner from "@nomicfoundation/hardhat-node-test-runner";
-import HardhatViem from "@nomicfoundation/hardhat-viem";
-import HardhatNetworkHelpers from "@nomicfoundation/hardhat-network-helpers";
-import HardhatKeystore from "@nomicfoundation/hardhat-keystore";
+import HardhatNodeTestRunner from '@nomicfoundation/hardhat-node-test-runner';
+import HardhatViem from '@nomicfoundation/hardhat-viem';
+import HardhatNetworkHelpers from '@nomicfoundation/hardhat-network-helpers';
+import HardhatKeystore from '@nomicfoundation/hardhat-keystore';
 
-import HardhatDeploy from "hardhat-deploy";
-import {
-  addForkConfiguration,
-  addNetworksFromEnv,
-  addNetworksFromKnownList,
-} from "hardhat-deploy/helpers";
+import HardhatDeploy from 'hardhat-deploy';
+import {addForkConfiguration, addNetworksFromEnv, addNetworksFromKnownList} from 'hardhat-deploy/helpers';
 
 const config: HardhatUserConfig = {
-  plugins: [
-    HardhatNodeTestRunner,
-    HardhatViem,
-    HardhatNetworkHelpers,
-    HardhatKeystore,
-    HardhatDeploy,
-  ],
-  solidity: {
-    profiles: {
-      default: {
-        version: "0.8.17",
-      },
-      production: {
-        version: "0.8.17",
-        settings: {
-          optimizer: {
-            enabled: true,
-            runs: 999999,
-          },
-        },
-      },
-    },
-  },
-  networks:
-    // This add the fork configuration for chosen network
-    addForkConfiguration(
-      // this add a network config for all known chain using kebab-cases names
-      // Note that MNEMONIC_<network> (or MNEMONIC if the other is not set) will
-      // be used for account
-      // Similarly ETH_NODE_URI_<network> will be used for rpcUrl
-      // Note that if you set these env variable to have the value: "SECRET" it will be like using:
-      //  configVariable('SECRET_ETH_NODE_URI_<network>')
-      //  configVariable('SECRET_MNEMONIC_<network>')
-      addNetworksFromKnownList(
-        // this add network for each respective env var found (ETH_NODE_URI_<network>)
-        // it will also read MNEMONIC_<network> to populate the accounts
-        // And like above it will use configVariable if set to SECRET
-        addNetworksFromEnv(
-          // and you can add in your specific network here
-          {
-            default: {
-              type: "edr-simulated",
-              chainType: "l1",
-              accounts: {
-                mnemonic: process.env.MNEMONIC || undefined,
-              },
-            },
-          },
-        ),
-      ),
-    ),
-  paths: {
-    sources: ["src"],
-  },
-  generateTypedArtifacts: {
-    destinations: [
-      {
-        folder: "./generated",
-        mode: "typescript",
-      },
-    ],
-  },
+	plugins: [HardhatNodeTestRunner, HardhatViem, HardhatNetworkHelpers, HardhatKeystore, HardhatDeploy],
+	solidity: {
+		profiles: {
+			default: {
+				version: '0.8.17',
+			},
+			production: {
+				version: '0.8.17',
+				settings: {
+					optimizer: {
+						enabled: true,
+						runs: 999999,
+					},
+				},
+			},
+		},
+	},
+	networks:
+		// This add the fork configuration for chosen network
+		addForkConfiguration(
+			// this add a network config for all known chain using kebab-cases names
+			// Note that MNEMONIC_<network> (or MNEMONIC if the other is not set) will
+			// be used for account
+			// Similarly ETH_NODE_URI_<network> will be used for rpcUrl
+			// Note that if you set these env variable to have the value: "SECRET" it will be like using:
+			//  configVariable('SECRET_ETH_NODE_URI_<network>')
+			//  configVariable('SECRET_MNEMONIC_<network>')
+			addNetworksFromKnownList(
+				// this add network for each respective env var found (ETH_NODE_URI_<network>)
+				// it will also read MNEMONIC_<network> to populate the accounts
+				// And like above it will use configVariable if set to SECRET
+				addNetworksFromEnv(
+					// and you can add in your specific network here
+					{
+						default: {
+							type: 'edr-simulated',
+							chainType: 'l1',
+							accounts: {
+								mnemonic: process.env.MNEMONIC || undefined,
+							},
+						},
+					},
+				),
+			),
+		),
+	paths: {
+		sources: ['src'],
+	},
+	generateTypedArtifacts: {
+		destinations: [
+			{
+				folder: './generated',
+				mode: 'typescript',
+			},
+		],
+	},
 };
 
 export default config;
@@ -409,22 +399,16 @@ export default config;
 
 ```json
 {
-  "compilerOptions": {
-    "target": "es5",
-    "module": "commonjs",
-    "strict": true,
-    "esModuleInterop": true,
-    "moduleResolution": "node",
-    "forceConsistentCasingInFileNames": true,
-    "outDir": "dist"
-  },
-  "include": [
-    "hardhat.config.ts",
-    "./scripts",
-    "./deploy",
-    "./test",
-    "typechain/**/*"
-  ]
+	"compilerOptions": {
+		"target": "es5",
+		"module": "commonjs",
+		"strict": true,
+		"esModuleInterop": true,
+		"moduleResolution": "node",
+		"forceConsistentCasingInFileNames": true,
+		"outDir": "dist"
+	},
+	"include": ["hardhat.config.ts", "./scripts", "./deploy", "./test", "typechain/**/*"]
 }
 ```
 
@@ -432,21 +416,21 @@ export default config;
 
 ```json
 {
-  "compilerOptions": {
-    "lib": ["es2023"],
-    "module": "node16",
-    "target": "es2022",
-    "moduleResolution": "node16",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "sourceMap": true,
-    "declaration": true,
-    "declarationMap": true,
-    "outDir": "dist",
-    "rootDir": "."
-  },
-  "include": ["deploy", "generated"]
+	"compilerOptions": {
+		"lib": ["es2023"],
+		"module": "node16",
+		"target": "es2022",
+		"moduleResolution": "node16",
+		"strict": true,
+		"esModuleInterop": true,
+		"skipLibCheck": true,
+		"sourceMap": true,
+		"declaration": true,
+		"declarationMap": true,
+		"outDir": "dist",
+		"rootDir": "."
+	},
+	"include": ["deploy", "generated"]
 }
 ```
 
@@ -454,13 +438,13 @@ export default config;
 
 ```json
 {
-  "extends": "../tsconfig.json",
-  "compilerOptions": {
-    "noEmit": true,
-    "rootDir": ".."
-  },
-  "include": ["**/*", "../generated/**/*", "../rocketh/**/*"],
-  "exclude": []
+	"extends": "../tsconfig.json",
+	"compilerOptions": {
+		"noEmit": true,
+		"rootDir": ".."
+	},
+	"include": ["**/*", "../generated/**/*", "../rocketh/**/*"],
+	"exclude": []
 }
 ```
 
@@ -468,18 +452,13 @@ export default config;
 
 ```json
 {
-  "extends": "../tsconfig.json",
-  "compilerOptions": {
-    "noEmit": true,
-    "rootDir": ".."
-  },
-  "include": [
-    "**/*",
-    "../generated/**/*",
-    "../rocketh/**/*",
-    "../hardhat.config.ts"
-  ],
-  "exclude": []
+	"extends": "../tsconfig.json",
+	"compilerOptions": {
+		"noEmit": true,
+		"rootDir": ".."
+	},
+	"include": ["**/*", "../generated/**/*", "../rocketh/**/*", "../hardhat.config.ts"],
+	"exclude": []
 }
 ```
 
@@ -503,65 +482,56 @@ export default config;
 // ----------------------------------------------------------------------------
 // Typed Config
 // ----------------------------------------------------------------------------
-import type {
-  EnhancedEnvironment,
-  UnknownDeployments,
-  UserConfig,
-} from "rocketh/types";
+import type {EnhancedEnvironment, UnknownDeployments, UserConfig} from 'rocketh/types';
 
 // this one provide a protocol supporting private key as account
-import { privateKey } from "@rocketh/signer";
+import {privateKey} from '@rocketh/signer';
 
 // we define our config and export it as "config"
 export const config = {
-  accounts: {
-    deployer: {
-      default: 0,
-    },
-    simpleERC20Beneficiary: {
-      default: 1,
-    },
-  },
-  data: {},
-  signerProtocols: {
-    privateKey,
-  },
+	accounts: {
+		deployer: {
+			default: 0,
+		},
+		simpleERC20Beneficiary: {
+			default: 1,
+		},
+	},
+	data: {},
+	signerProtocols: {
+		privateKey,
+	},
 } as const satisfies UserConfig;
 
 // then we import each extensions we are interested in using in our deploy script or elsewhere
 
 // this one provide a deploy function
-import * as deployExtension from "@rocketh/deploy";
+import * as deployExtension from '@rocketh/deploy';
 // this one provide read,execute functions
-import * as readExecuteExtension from "@rocketh/read-execute";
+import * as readExecuteExtension from '@rocketh/read-execute';
 // this one provide a deployViaProxy function that let you declaratively
 //  deploy proxy based contracts
-import * as deployProxyExtension from "@rocketh/proxy";
+import * as deployProxyExtension from '@rocketh/proxy';
 // this one provide a viem handle to clients and contracts
-import * as viemExtension from "@rocketh/viem";
+import * as viemExtension from '@rocketh/viem';
 
 // and export them as a unified object
 const extensions = {
-  ...deployExtension,
-  ...readExecuteExtension,
-  ...deployProxyExtension,
-  ...viemExtension,
+	...deployExtension,
+	...readExecuteExtension,
+	...deployProxyExtension,
+	...viemExtension,
 };
-export { extensions };
+export {extensions};
 
 // then we also export the types that our config ehibit so other can use it
 
 type Extensions = typeof extensions;
 type Accounts = typeof config.accounts;
 type Data = typeof config.data;
-type Environment = EnhancedEnvironment<
-  Accounts,
-  Data,
-  UnknownDeployments,
-  Extensions
->;
+type Environment = EnhancedEnvironment<Accounts, Data, UnknownDeployments, Extensions>;
 
-export type { Extensions, Accounts, Data, Environment };
+export type {Extensions, Accounts, Data, Environment};
 ```
 
 **Transformation Rules**:
@@ -577,26 +547,19 @@ export type { Extensions, Accounts, Data, Environment };
 **New file: rocketh/deploy.ts example:** (see [template-ethereum-contracts/rocketh/deploy.ts](https://github.com/wighawag/template-ethereum-contracts/blob/main/contracts/rocketh/deploy.ts))
 
 ```typescript
-import {
-  type Accounts,
-  type Data,
-  type Extensions,
-  extensions,
-} from "./config.js";
+import {type Accounts, type Data, type Extensions, extensions} from './config.js';
 
 // ----------------------------------------------------------------------------
 // we re-export the artifacts, so they are easily available from the alias
-import * as artifacts from "../generated/artifacts/index.js";
-export { artifacts };
+import * as artifacts from '../generated/artifacts/index.js';
+export {artifacts};
 // ----------------------------------------------------------------------------
 // we create the rocketh functions we need by passing the extensions to the
 //  setup function
-import { setupDeployScripts } from "rocketh";
-const { deployScript } = setupDeployScripts<Extensions, Accounts, Data>(
-  extensions,
-);
+import {setupDeployScripts} from 'rocketh';
+const {deployScript} = setupDeployScripts<Extensions, Accounts, Data>(extensions);
 
-export { deployScript };
+export {deployScript};
 ```
 
 **Transformation Rules**:
@@ -611,28 +574,15 @@ export { deployScript };
 **New file: rocketh/environment.ts example:** (see [template-ethereum-contracts/rocketh/environment.ts](https://github.com/wighawag/template-ethereum-contracts/blob/main/contracts/rocketh/environment.ts))
 
 ```typescript
-import {
-  type Accounts,
-  type Data,
-  type Extensions,
-  extensions,
-} from "./config.js";
-import { setupEnvironmentFromFiles } from "@rocketh/node";
-import { setupHardhatDeploy } from "hardhat-deploy/helpers";
+import {type Accounts, type Data, type Extensions, extensions} from './config.js';
+import {setupEnvironmentFromFiles} from '@rocketh/node';
+import {setupHardhatDeploy} from 'hardhat-deploy/helpers';
 
 // useful for test and scripts, uses file-system
-const { loadAndExecuteDeploymentsFromFiles } = setupEnvironmentFromFiles<
-  Extensions,
-  Accounts,
-  Data
->(extensions);
-const { loadEnvironmentFromHardhat } = setupHardhatDeploy<
-  Extensions,
-  Accounts,
-  Data
->(extensions);
+const {loadAndExecuteDeploymentsFromFiles} = setupEnvironmentFromFiles<Extensions, Accounts, Data>(extensions);
+const {loadEnvironmentFromHardhat} = setupHardhatDeploy<Extensions, Accounts, Data>(extensions);
 
-export { loadEnvironmentFromHardhat, loadAndExecuteDeploymentsFromFiles };
+export {loadEnvironmentFromHardhat, loadAndExecuteDeploymentsFromFiles};
 ```
 
 **Transformation Rules**:
@@ -649,46 +599,46 @@ export { loadEnvironmentFromHardhat, loadAndExecuteDeploymentsFromFiles };
 **v1 deploy script example:**
 
 ```typescript
-import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { DeployFunction } from "hardhat-deploy/types";
-import { parseEther } from "ethers";
+import {HardhatRuntimeEnvironment} from 'hardhat/types';
+import {DeployFunction} from 'hardhat-deploy/types';
+import {parseEther} from 'ethers';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { deployments, getNamedAccounts } = hre;
-  const { deploy } = deployments;
+	const {deployments, getNamedAccounts} = hre;
+	const {deploy} = deployments;
 
-  const { deployer, simpleERC20Beneficiary } = await getNamedAccounts();
+	const {deployer, simpleERC20Beneficiary} = await getNamedAccounts();
 
-  await deploy("SimpleERC20", {
-    from: deployer,
-    args: [simpleERC20Beneficiary, parseEther("1000000000")],
-    log: true,
-    autoMine: true, // speed up deployment on local network (ganache, hardhat), no effect on live networks
-  });
+	await deploy('SimpleERC20', {
+		from: deployer,
+		args: [simpleERC20Beneficiary, parseEther('1000000000')],
+		log: true,
+		autoMine: true, // speed up deployment on local network (ganache, hardhat), no effect on live networks
+	});
 };
 export default func;
-func.tags = ["SimpleERC20"];
+func.tags = ['SimpleERC20'];
 ```
 
 **v2 deploy script example:** (see [template-ethereum-contracts/deploy/001_deploy_greetings_registry.ts](https://github.com/wighawag/template-ethereum-contracts/blob/main/contracts/deploy/001_deploy_greetings_registry.ts))
 
 ```typescript
-import { deployScript, artifacts } from "../rocketh/deploy.js";
-import { parseEther } from "viem";
+import {deployScript, artifacts} from '../rocketh/deploy.js';
+import {parseEther} from 'viem';
 
 export default deployScript(
-  async (env) => {
-    const { deployer, simpleERC20Beneficiary } = env.namedAccounts;
+	async (env) => {
+		const {deployer, simpleERC20Beneficiary} = env.namedAccounts;
 
-    await env.deploy("SimpleERC20", {
-      artifact: artifacts.SimpleERC20,
-      account: deployer,
-      args: [simpleERC20Beneficiary, parseEther("1000000000")],
-    });
-  },
-  {
-    tags: ["SimpleERC20"],
-  },
+		await env.deploy('SimpleERC20', {
+			artifact: artifacts.SimpleERC20,
+			account: deployer,
+			args: [simpleERC20Beneficiary, parseEther('1000000000')],
+		});
+	},
+	{
+		tags: ['SimpleERC20'],
+	},
 );
 ```
 
@@ -711,63 +661,63 @@ export default deployScript(
 **v1 proxy deploy script example:**
 
 ```typescript
-import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { DeployFunction } from "hardhat-deploy/types";
+import {HardhatRuntimeEnvironment} from 'hardhat/types';
+import {DeployFunction} from 'hardhat-deploy/types';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { deployer } = await hre.getNamedAccounts();
-  const { deploy } = hre.deployments;
-  const useProxy = !hre.network.live;
+	const {deployer} = await hre.getNamedAccounts();
+	const {deploy} = hre.deployments;
+	const useProxy = !hre.network.live;
 
-  // proxy only in non-live network (localhost and hardhat network) enabling HCR (Hot Contract Replacement)
-  // in live network, proxy is disabled and constructor is invoked
-  await deploy("GreetingsRegistry", {
-    from: deployer,
-    proxy: useProxy && "postUpgrade",
-    args: [2],
-    log: true,
-    autoMine: true, // speed up deployment on local network (ganache, hardhat), no effect on live networks
-  });
+	// proxy only in non-live network (localhost and hardhat network) enabling HCR (Hot Contract Replacement)
+	// in live network, proxy is disabled and constructor is invoked
+	await deploy('GreetingsRegistry', {
+		from: deployer,
+		proxy: useProxy && 'postUpgrade',
+		args: [2],
+		log: true,
+		autoMine: true, // speed up deployment on local network (ganache, hardhat), no effect on live networks
+	});
 
-  return !useProxy; // when live network, record the script as executed to prevent rexecution
+	return !useProxy; // when live network, record the script as executed to prevent rexecution
 };
 export default func;
-func.id = "deploy_greetings_registry"; // id required to prevent reexecution
-func.tags = ["GreetingsRegistry"];
+func.id = 'deploy_greetings_registry'; // id required to prevent reexecution
+func.tags = ['GreetingsRegistry'];
 ```
 
 **v2 proxy deploy script example:** (see [template-ethereum-contracts/deploy/002_deploy_greetings_registry.ts](https://github.com/wighawag/template-ethereum-contracts/blob/main/contracts/deploy/002_deploy_greetings_registry.ts))
 
 ```typescript
-import { deployScript, artifacts } from "../rocketh/deploy.js";
-import { parseEther } from "viem";
+import {deployScript, artifacts} from '../rocketh/deploy.js';
+import {parseEther} from 'viem';
 
 export default deployScript(
-  async (env) => {
-    const { deployer } = env.namedAccounts;
-    const useProxy = !env.tags.live;
+	async (env) => {
+		const {deployer} = env.namedAccounts;
+		const useProxy = !env.tags.live;
 
-    // proxy only in non-live network (localhost and hardhat network) enabling HCR (Hot Contract Replacement)
-    // in live network, proxy is disabled and constructor is invoked
-    await env.deployViaProxy(
-      "GreetingsRegistry",
-      {
-        account: deployer,
-        artifact: artifacts.GreetingsRegistry,
-        args: ["2"],
-      },
-      {
-        proxyDisabled: !useProxy,
-        execute: "postUpgrade",
-      },
-    );
+		// proxy only in non-live network (localhost and hardhat network) enabling HCR (Hot Contract Replacement)
+		// in live network, proxy is disabled and constructor is invoked
+		await env.deployViaProxy(
+			'GreetingsRegistry',
+			{
+				account: deployer,
+				artifact: artifacts.GreetingsRegistry,
+				args: ['2'],
+			},
+			{
+				proxyDisabled: !useProxy,
+				execute: 'postUpgrade',
+			},
+		);
 
-    return !useProxy; // when live network, record the script as executed to prevent rexecution
-  },
-  {
-    tags: ["GreetingsRegistry"],
-    id: "deploy_greetings_registry", // id required to prevent reexecution
-  },
+		return !useProxy; // when live network, record the script as executed to prevent rexecution
+	},
+	{
+		tags: ['GreetingsRegistry'],
+		id: 'deploy_greetings_registry', // id required to prevent reexecution
+	},
 );
 ```
 
@@ -786,119 +736,108 @@ export default deployScript(
 **v1 test example:**
 
 ```typescript
-import { expect } from "chai";
-import {
-  ethers,
-  deployments,
-  getUnnamedAccounts,
-  getNamedAccounts,
-} from "hardhat";
-import { IERC20 } from "../typechain-types";
-import { setupUser, setupUsers } from "./utils";
+import {expect} from 'chai';
+import {ethers, deployments, getUnnamedAccounts, getNamedAccounts} from 'hardhat';
+import {IERC20} from '../typechain-types';
+import {setupUser, setupUsers} from './utils';
 
 const setup = deployments.createFixture(async () => {
-  await deployments.fixture("SimpleERC20");
-  const { simpleERC20Beneficiary } = await getNamedAccounts();
-  const contracts = {
-    SimpleERC20: await ethers.getContract<IERC20>("SimpleERC20"),
-  };
-  const users = await setupUsers(await getUnnamedAccounts(), contracts);
-  return {
-    ...contracts,
-    users,
-    simpleERC20Beneficiary: await setupUser(simpleERC20Beneficiary, contracts),
-  };
+	await deployments.fixture('SimpleERC20');
+	const {simpleERC20Beneficiary} = await getNamedAccounts();
+	const contracts = {
+		SimpleERC20: await ethers.getContract<IERC20>('SimpleERC20'),
+	};
+	const users = await setupUsers(await getUnnamedAccounts(), contracts);
+	return {
+		...contracts,
+		users,
+		simpleERC20Beneficiary: await setupUser(simpleERC20Beneficiary, contracts),
+	};
 });
 
-describe("SimpleERC20", function () {
-  it("transfer fails", async function () {
-    const { users } = await setup();
-    await expect(
-      users[0].SimpleERC20.transfer(users[1].address, 1),
-    ).to.be.revertedWith("NOT_ENOUGH_TOKENS");
-  });
+describe('SimpleERC20', function () {
+	it('transfer fails', async function () {
+		const {users} = await setup();
+		await expect(users[0].SimpleERC20.transfer(users[1].address, 1)).to.be.revertedWith('NOT_ENOUGH_TOKENS');
+	});
 
-  it("transfer succeed", async function () {
-    const { users, simpleERC20Beneficiary, SimpleERC20 } = await setup();
-    await simpleERC20Beneficiary.SimpleERC20.transfer(users[1].address, 1);
+	it('transfer succeed', async function () {
+		const {users, simpleERC20Beneficiary, SimpleERC20} = await setup();
+		await simpleERC20Beneficiary.SimpleERC20.transfer(users[1].address, 1);
 
-    await expect(
-      simpleERC20Beneficiary.SimpleERC20.transfer(users[1].address, 1),
-    )
-      .to.emit(SimpleERC20, "Transfer")
-      .withArgs(simpleERC20Beneficiary.address, users[1].address, 1);
-  });
+		await expect(simpleERC20Beneficiary.SimpleERC20.transfer(users[1].address, 1))
+			.to.emit(SimpleERC20, 'Transfer')
+			.withArgs(simpleERC20Beneficiary.address, users[1].address, 1);
+	});
 });
 ```
 
 **v2 test example:** (see [template-ethereum-contracts/test/GreetingsRegistry.test.ts](https://github.com/wighawag/template-ethereum-contracts/blob/main/contracts/test/GreetingsRegistry.test.ts))
 
 ```typescript
-import { expect } from "earl";
-import { describe, it } from "node:test";
-import { network } from "hardhat";
-import { EthereumProvider } from "hardhat/types/providers";
-import { loadAndExecuteDeploymentsFromFiles } from "../rocketh/environment.js";
-import { Abi_SimpleERC20 } from "../generated/abis/SimpleERC20.js";
+import {expect} from 'earl';
+import {describe, it} from 'node:test';
+import {network} from 'hardhat';
+import {EthereumProvider} from 'hardhat/types/providers';
+import {loadAndExecuteDeploymentsFromFiles} from '../rocketh/environment.js';
+import {Abi_SimpleERC20} from '../generated/abis/SimpleERC20.js';
 
 function setupFixtures(provider: EthereumProvider) {
-  return {
-    async deployAll() {
-      const env = await loadAndExecuteDeploymentsFromFiles({
-        provider: provider,
-      });
+	return {
+		async deployAll() {
+			const env = await loadAndExecuteDeploymentsFromFiles({
+				provider: provider,
+			});
 
-      // Deployment are inherently untyped since they can vary from
-      //  network or even be different from current artifacts so here
-      //  we type them manually assuming the artifact is still matching
-      const SimpleERC20 = env.get<Abi_SimpleERC20>("SimpleERC20");
+			// Deployment are inherently untyped since they can vary from
+			//  network or even be different from current artifacts so here
+			//  we type them manually assuming the artifact is still matching
+			const SimpleERC20 = env.get<Abi_SimpleERC20>('SimpleERC20');
 
-      return {
-        env,
-        SimpleERC20,
-        namedAccounts: env.namedAccounts,
-        unnamedAccounts: env.unnamedAccounts,
-      };
-    },
-  };
+			return {
+				env,
+				SimpleERC20,
+				namedAccounts: env.namedAccounts,
+				unnamedAccounts: env.unnamedAccounts,
+			};
+		},
+	};
 }
 
-const { provider, networkHelpers } = await network.connect();
-const { deployAll } = setupFixtures(provider);
+const {provider, networkHelpers} = await network.connect();
+const {deployAll} = setupFixtures(provider);
 
-describe("SimpleERC20", function () {
-  it("transfer fails", async function () {
-    const { env, SimpleERC20, unnamedAccounts } =
-      await networkHelpers.loadFixture(deployAll);
+describe('SimpleERC20', function () {
+	it('transfer fails', async function () {
+		const {env, SimpleERC20, unnamedAccounts} = await networkHelpers.loadFixture(deployAll);
 
-    await expect(
-      env.execute(SimpleERC20, {
-        account: unnamedAccounts[0],
-        functionName: "transfer",
-        args: [unnamedAccounts[1], 1n],
-      }),
-    ).toBeRejectedWith("NOT_ENOUGH_TOKENS");
-  });
+		await expect(
+			env.execute(SimpleERC20, {
+				account: unnamedAccounts[0],
+				functionName: 'transfer',
+				args: [unnamedAccounts[1], 1n],
+			}),
+		).toBeRejectedWith('NOT_ENOUGH_TOKENS');
+	});
 
-  it("transfer succeed", async function () {
-    const { env, SimpleERC20, unnamedAccounts, namedAccounts } =
-      await networkHelpers.loadFixture(deployAll);
+	it('transfer succeed', async function () {
+		const {env, SimpleERC20, unnamedAccounts, namedAccounts} = await networkHelpers.loadFixture(deployAll);
 
-    await env.execute(SimpleERC20, {
-      account: namedAccounts.simpleERC20Beneficiary,
-      functionName: "transfer",
-      args: [unnamedAccounts[1], 1n],
-    });
+		await env.execute(SimpleERC20, {
+			account: namedAccounts.simpleERC20Beneficiary,
+			functionName: 'transfer',
+			args: [unnamedAccounts[1], 1n],
+		});
 
-    env.execute(SimpleERC20, {
-      account: namedAccounts.simpleERC20Beneficiary,
-      functionName: "transfer",
-      args: [unnamedAccounts[1], 1n],
-    });
-    // TODO
-    // expect(...).toEmit(SimpleERC20, 'Transfer')
-    // .withArgs(simpleERC20Beneficiary.address, users[1].address, 1));
-  });
+		env.execute(SimpleERC20, {
+			account: namedAccounts.simpleERC20Beneficiary,
+			functionName: 'transfer',
+			args: [unnamedAccounts[1], 1n],
+		});
+		// TODO
+		// expect(...).toEmit(SimpleERC20, 'Transfer')
+		// .withArgs(simpleERC20Beneficiary.address, users[1].address, 1));
+	});
 });
 ```
 
@@ -926,61 +865,62 @@ describe("SimpleERC20", function () {
 **v1 test utils example:**
 
 ```typescript
-import { BaseContract } from "ethers";
-import hre from "hardhat";
+import {BaseContract} from 'ethers';
+import hre from 'hardhat';
 
-const { ethers } = hre;
+const {ethers} = hre;
 
-export async function setupUsers<
-  T extends { [contractName: string]: BaseContract },
->(addresses: string[], contracts: T): Promise<({ address: string } & T)[]> {
-  const users: ({ address: string } & T)[] = [];
-  for (const address of addresses) {
-    users.push(await setupUser(address, contracts));
-  }
-  return users;
+export async function setupUsers<T extends {[contractName: string]: BaseContract}>(
+	addresses: string[],
+	contracts: T,
+): Promise<({address: string} & T)[]> {
+	const users: ({address: string} & T)[] = [];
+	for (const address of addresses) {
+		users.push(await setupUser(address, contracts));
+	}
+	return users;
 }
 
-export async function setupUser<
-  T extends { [contractName: string]: BaseContract },
->(address: string, contracts: T): Promise<{ address: string } & T> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const user: any = { address };
-  for (const key of Object.keys(contracts)) {
-    user[key] = contracts[key].connect(await ethers.getSigner(address));
-  }
-  return user as { address: string } & T;
+export async function setupUser<T extends {[contractName: string]: BaseContract}>(
+	address: string,
+	contracts: T,
+): Promise<{address: string} & T> {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const user: any = {address};
+	for (const key of Object.keys(contracts)) {
+		user[key] = contracts[key].connect(await ethers.getSigner(address));
+	}
+	return user as {address: string} & T;
 }
 ```
 
 **v2 test utils example:** (see [template-ethereum-contracts/test/utils/index.ts](https://github.com/wighawag/template-ethereum-contracts/blob/main/contracts/test/utils/index.ts))
 
 ```typescript
-import { Abi_GreetingsRegistry } from "../../generated/abis/GreetingsRegistry.js";
-import { loadAndExecuteDeploymentsFromFiles } from "../../rocketh/environment.js";
-import { EthereumProvider } from "hardhat/types/providers";
+import {Abi_GreetingsRegistry} from '../../generated/abis/GreetingsRegistry.js';
+import {loadAndExecuteDeploymentsFromFiles} from '../../rocketh/environment.js';
+import {EthereumProvider} from 'hardhat/types/providers';
 
 export function setupFixtures(provider: EthereumProvider) {
-  return {
-    async deployAll() {
-      const env = await loadAndExecuteDeploymentsFromFiles({
-        provider: provider,
-      });
+	return {
+		async deployAll() {
+			const env = await loadAndExecuteDeploymentsFromFiles({
+				provider: provider,
+			});
 
-      // Deployment are inherently untyped since they can vary from
-      //  network or even be different from current artifacts so here
-      //  we type them manually assuming the artifact is still matching
-      const GreetingsRegistry =
-        env.get<Abi_GreetingsRegistry>("GreetingsRegistry");
+			// Deployment are inherently untyped since they can vary from
+			//  network or even be different from current artifacts so here
+			//  we type them manually assuming the artifact is still matching
+			const GreetingsRegistry = env.get<Abi_GreetingsRegistry>('GreetingsRegistry');
 
-      return {
-        env,
-        GreetingsRegistry,
-        namedAccounts: env.namedAccounts,
-        unnamedAccounts: env.unnamedAccounts,
-      };
-    },
-  };
+			return {
+				env,
+				GreetingsRegistry,
+				namedAccounts: env.namedAccounts,
+				unnamedAccounts: env.unnamedAccounts,
+			};
+		},
+	};
 }
 ```
 
@@ -996,46 +936,46 @@ export function setupFixtures(provider: EthereumProvider) {
 **v1 script pattern**:
 
 ```typescript
-import hre from "hardhat";
+import hre from 'hardhat';
 
 async function main() {
-  const { deployments, getNamedAccounts } = hre;
-  const { deployer } = await getNamedAccounts();
+	const {deployments, getNamedAccounts} = hre;
+	const {deployer} = await getNamedAccounts();
 
-  const MyContract = await deployments.get("MyContract");
-  const contract = await ethers.getContractAt("MyContract", MyContract.address);
+	const MyContract = await deployments.get('MyContract');
+	const contract = await ethers.getContractAt('MyContract', MyContract.address);
 
-  await contract.someFunction();
+	await contract.someFunction();
 }
 
 main().catch((error) => {
-  console.error(error);
-  process.exit(1);
+	console.error(error);
+	process.exit(1);
 });
 ```
 
 **v2 script pattern**:
 
 ```typescript
-import hre from "hardhat";
-import { loadEnvironmentFromHardhat } from "./rocketh/environment.js";
-import { Abi_MyContract } from "./generated/abis/MyContract.js";
+import hre from 'hardhat';
+import {loadEnvironmentFromHardhat} from './rocketh/environment.js';
+import {Abi_MyContract} from './generated/abis/MyContract.js';
 
 async function main() {
-  const env = await loadEnvironmentFromHardhat({ hre });
+	const env = await loadEnvironmentFromHardhat({hre});
 
-  const MyContract = env.get<Abi_MyContract>("MyContract");
+	const MyContract = env.get<Abi_MyContract>('MyContract');
 
-  await env.execute(MyContract, {
-    account: env.namedAccounts.deployer,
-    functionName: "someFunction",
-    args: [],
-  });
+	await env.execute(MyContract, {
+		account: env.namedAccounts.deployer,
+		functionName: 'someFunction',
+		args: [],
+	});
 }
 
 main().catch((error) => {
-  console.error(error);
-  process.exit(1);
+	console.error(error);
+	process.exit(1);
 });
 ```
 
@@ -1053,21 +993,21 @@ main().catch((error) => {
 
 ```json
 {
-  "scripts": {
-    "prepare": "hardhat typechain",
-    "compile": "hardhat compile",
-    "void:deploy": "hardhat deploy --report-gas",
-    "test": "cross-env HARDHAT_DEPLOY_FIXTURE=true HARDHAT_COMPILE=true mocha --bail --recursive test",
-    "gas": "cross-env REPORT_GAS=true hardhat test",
-    "coverage": "cross-env HARDHAT_DEPLOY_FIXTURE=true hardhat coverage",
-    "dev:node": "cross-env MINING_INTERVAL=\"3000,5000\" hardhat node --hostname 0.0.0.0",
-    "dev": "cross-env MINING_INTERVAL=\"3000,5000\" hardhat node --hostname 0.0.0.0 --watch",
-    "local:dev": "hardhat --network localhost deploy --watch",
-    "execute": "node ./_scripts.js run",
-    "deploy": "node ./_scripts.js deploy",
-    "verify": "node ./_scripts.js verify",
-    "export": "node ./_scripts.js export"
-  }
+	"scripts": {
+		"prepare": "hardhat typechain",
+		"compile": "hardhat compile",
+		"void:deploy": "hardhat deploy --report-gas",
+		"test": "cross-env HARDHAT_DEPLOY_FIXTURE=true HARDHAT_COMPILE=true mocha --bail --recursive test",
+		"gas": "cross-env REPORT_GAS=true hardhat test",
+		"coverage": "cross-env HARDHAT_DEPLOY_FIXTURE=true hardhat coverage",
+		"dev:node": "cross-env MINING_INTERVAL=\"3000,5000\" hardhat node --hostname 0.0.0.0",
+		"dev": "cross-env MINING_INTERVAL=\"3000,5000\" hardhat node --hostname 0.0.0.0 --watch",
+		"local:dev": "hardhat --network localhost deploy --watch",
+		"execute": "node ./_scripts.js run",
+		"deploy": "node ./_scripts.js deploy",
+		"verify": "node ./_scripts.js verify",
+		"export": "node ./_scripts.js export"
+	}
 }
 ```
 
@@ -1075,28 +1015,28 @@ main().catch((error) => {
 
 ```json
 {
-  "scripts": {
-    "prepare": "set-defaults .vscode && pnpm compile",
-    "local_node": "ldenv -d localhost hardhat node",
-    "compile": "hardhat compile",
-    "compile:watch": "as-soon -w src pnpm compile",
-    "fork:execute": "ldenv tsx @=HARDHAT_FORK=@@MODE @@",
-    "fork:deploy": "pnpm compile --build-profile production && ldenv hardhat @=HARDHAT_FORK=@@MODE deploy @@",
-    "deploy:dev": "ldenv -d localhost pnpm :deploy+export @@",
-    "deploy:watch": "wait-on ./generated && ldenv -m localhost pnpm as-soon -w generated -w deploy pnpm run deploy:dev @@MODE @@",
-    "test": "hardhat test",
-    "test:watch": "wait-on ./generated && as-soon -w generated -w test hardhat test --no-compile",
-    "typescript:watch": "as-soon -w js pnpm typescript",
-    "format:check": "prettier --check .",
-    "format": "prettier --write .",
-    "lint": "slippy src/**/*.sol",
-    "docgen": "ldenv -m default pnpm run deploy @@MODE --save-deployments true --skip-prompts ~~ pnpm rocketh-doc -e @@MODE --except-suffix _Implementation,_Proxy,_Router,_Route ~~ @@",
-    "execute": "ldenv -n HARDHAT_NETWORK tsx @@",
-    "deploy": "pnpm compile --build-profile production && ldenv hardhat --network @@MODE deploy @@",
-    "verify": "ldenv rocketh-verify -e @@MODE @@",
-    "export": "ldenv rocketh-export -e @@MODE @@",
-    "typescript": "tsc"
-  }
+	"scripts": {
+		"prepare": "set-defaults .vscode && pnpm compile",
+		"local_node": "ldenv -d localhost hardhat node",
+		"compile": "hardhat compile",
+		"compile:watch": "as-soon -w src pnpm compile",
+		"fork:execute": "ldenv tsx @=HARDHAT_FORK=@@MODE @@",
+		"fork:deploy": "pnpm compile --build-profile production && ldenv hardhat @=HARDHAT_FORK=@@MODE deploy @@",
+		"deploy:dev": "ldenv -d localhost pnpm :deploy+export @@",
+		"deploy:watch": "wait-on ./generated && ldenv -m localhost pnpm as-soon -w generated -w deploy pnpm run deploy:dev @@MODE @@",
+		"test": "hardhat test",
+		"test:watch": "wait-on ./generated && as-soon -w generated -w test hardhat test --no-compile",
+		"typescript:watch": "as-soon -w js pnpm typescript",
+		"format:check": "prettier --check .",
+		"format": "prettier --write .",
+		"lint": "slippy src/**/*.sol",
+		"docgen": "ldenv -m default pnpm run deploy @@MODE --save-deployments true --skip-prompts ~~ pnpm rocketh-doc -e @@MODE --except-suffix _Implementation,_Proxy,_Router,_Route ~~ @@",
+		"execute": "ldenv -n HARDHAT_NETWORK tsx @@",
+		"deploy": "pnpm compile --build-profile production && ldenv hardhat --network @@MODE deploy @@",
+		"verify": "ldenv rocketh-verify -e @@MODE @@",
+		"export": "ldenv rocketh-export -e @@MODE @@",
+		"typescript": "tsc"
+	}
 }
 ```
 
@@ -1121,35 +1061,35 @@ main().catch((error) => {
 **v1**:
 
 ```typescript
-module.exports = async ({ getNamedAccounts, deployments }) => {
-  const { deploy } = deployments;
-  const { deployer } = await getNamedAccounts();
+module.exports = async ({getNamedAccounts, deployments}) => {
+	const {deploy} = deployments;
+	const {deployer} = await getNamedAccounts();
 
-  await deploy("MyContract", {
-    from: deployer,
-    args: ["Hello"],
-    log: true,
-  });
+	await deploy('MyContract', {
+		from: deployer,
+		args: ['Hello'],
+		log: true,
+	});
 };
-module.exports.tags = ["MyContract"];
+module.exports.tags = ['MyContract'];
 ```
 
 **v2**:
 
 ```typescript
-import { deployScript, artifacts } from "../rocketh/deploy.js";
+import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(
-  async ({ deploy, namedAccounts }) => {
-    const { deployer } = namedAccounts;
+	async ({deploy, namedAccounts}) => {
+		const {deployer} = namedAccounts;
 
-    await deploy("MyContract", {
-      account: deployer,
-      artifact: artifacts.MyContract,
-      args: ["Hello"],
-    });
-  },
-  { tags: ["MyContract"] },
+		await deploy('MyContract', {
+			account: deployer,
+			artifact: artifacts.MyContract,
+			args: ['Hello'],
+		});
+	},
+	{tags: ['MyContract']},
 );
 ```
 
@@ -1158,33 +1098,33 @@ export default deployScript(
 **v1**:
 
 ```typescript
-const { deploy } = deployments;
-const { deployer, tokenOwner } = await getNamedAccounts();
+const {deploy} = deployments;
+const {deployer, tokenOwner} = await getNamedAccounts();
 
-await deploy("Token", {
-  from: deployer,
-  args: [tokenOwner, ethers.utils.parseEther("1000000"), "My Token", "MTK"],
-  log: true,
+await deploy('Token', {
+	from: deployer,
+	args: [tokenOwner, ethers.utils.parseEther('1000000'), 'My Token', 'MTK'],
+	log: true,
 });
 ```
 
 **v2**:
 
 ```typescript
-import { deployScript, artifacts } from "../rocketh/deploy.js";
-import { parseEther } from "viem";
+import {deployScript, artifacts} from '../rocketh/deploy.js';
+import {parseEther} from 'viem';
 
 export default deployScript(
-  async ({ deploy, namedAccounts }) => {
-    const { deployer, tokenOwner } = namedAccounts;
+	async ({deploy, namedAccounts}) => {
+		const {deployer, tokenOwner} = namedAccounts;
 
-    await deploy("Token", {
-      account: deployer,
-      artifact: artifacts.Token,
-      args: [tokenOwner, parseEther("1000000"), "My Token", "MTK"],
-    });
-  },
-  { tags: ["Token"] },
+		await deploy('Token', {
+			account: deployer,
+			artifact: artifacts.Token,
+			args: [tokenOwner, parseEther('1000000'), 'My Token', 'MTK'],
+		});
+	},
+	{tags: ['Token']},
 );
 ```
 
@@ -1193,39 +1133,39 @@ export default deployScript(
 **v1**:
 
 ```typescript
-await deploy("MyContract", {
-  from: deployer,
-  proxy: {
-    proxyContract: "OpenZeppelinTransparentProxy",
-    viaAdminContract: "DefaultProxyAdmin",
-  },
-  args: [initArg],
-  log: true,
+await deploy('MyContract', {
+	from: deployer,
+	proxy: {
+		proxyContract: 'OpenZeppelinTransparentProxy',
+		viaAdminContract: 'DefaultProxyAdmin',
+	},
+	args: [initArg],
+	log: true,
 });
 ```
 
 **v2**:
 
 ```typescript
-import * as proxyExtension from "@rocketh/proxy";
+import * as proxyExtension from '@rocketh/proxy';
 
 // Add to extensions in rocketh/config.ts
 const extensions = {
-  ...deployExtension,
-  ...proxyExtension,
+	...deployExtension,
+	...proxyExtension,
 };
 
 // Then in deploy script:
 await env.deployViaProxy(
-  "MyContract",
-  {
-    account: deployer,
-    artifact: artifacts.MyContract,
-    args: [initArg],
-  },
-  {
-    proxyKind: "Transparent",
-  },
+	'MyContract',
+	{
+		account: deployer,
+		artifact: artifacts.MyContract,
+		args: [initArg],
+	},
+	{
+		proxyKind: 'Transparent',
+	},
 );
 ```
 
@@ -1234,16 +1174,16 @@ await env.deployViaProxy(
 **v1**:
 
 ```typescript
-const { deployer } = await getNamedAccounts();
-const existing = await deployments.get("MyContract");
-console.log("Contract address:", existing.address);
+const {deployer} = await getNamedAccounts();
+const existing = await deployments.get('MyContract');
+console.log('Contract address:', existing.address);
 ```
 
 **v2**:
 
 ```typescript
-const MyContract = env.get<Abi_MyContract>("MyContract");
-console.log("Contract address:", MyContract.address);
+const MyContract = env.get<Abi_MyContract>('MyContract');
+console.log('Contract address:', MyContract.address);
 ```
 
 ### Pattern 5: Contract Interaction in Tests
@@ -1251,7 +1191,7 @@ console.log("Contract address:", MyContract.address);
 **v1**:
 
 ```typescript
-const MyContract = await ethers.getContract("MyContract");
+const MyContract = await ethers.getContract('MyContract');
 await MyContract.setValue(42);
 const value = await MyContract.getValue();
 expect(value).to.equal(42);
@@ -1260,17 +1200,17 @@ expect(value).to.equal(42);
 **v2**:
 
 ```typescript
-import { Abi_MyContract } from "../generated/abis/MyContract.js";
+import {Abi_MyContract} from '../generated/abis/MyContract.js';
 
-const MyContract = env.get<Abi_MyContract>("MyContract");
+const MyContract = env.get<Abi_MyContract>('MyContract');
 await env.execute(MyContract, {
-  account: env.namedAccounts.deployer,
-  functionName: "setValue",
-  args: [42n],
+	account: env.namedAccounts.deployer,
+	functionName: 'setValue',
+	args: [42n],
 });
 const value = await env.read(MyContract, {
-  functionName: "getValue",
-  args: [],
+	functionName: 'getValue',
+	args: [],
 });
 expect(value).toEqual(42n);
 ```
@@ -1288,8 +1228,8 @@ const myDeployments = Object.values(deploymentsList);
 
 ```typescript
 const env = await loadAndExecuteDeploymentsFromFiles({
-  provider: provider,
-  tags: ["MyTag"],
+	provider: provider,
+	tags: ['MyTag'],
 });
 ```
 
@@ -1299,10 +1239,10 @@ const env = await loadAndExecuteDeploymentsFromFiles({
 
 ```typescript
 const useProxy = !hre.network.live;
-await deploy("MyContract", {
-  from: deployer,
-  proxy: useProxy && "postUpgrade",
-  args: [initArg],
+await deploy('MyContract', {
+	from: deployer,
+	proxy: useProxy && 'postUpgrade',
+	args: [initArg],
 });
 ```
 
@@ -1311,16 +1251,16 @@ await deploy("MyContract", {
 ```typescript
 const useProxy = !env.tags.live;
 await env.deployViaProxy(
-  "MyContract",
-  {
-    account: deployer,
-    artifact: artifacts.MyContract,
-    args: [initArg],
-  },
-  {
-    proxyDisabled: !useProxy,
-    execute: "postUpgrade",
-  },
+	'MyContract',
+	{
+		account: deployer,
+		artifact: artifacts.MyContract,
+		args: [initArg],
+	},
+	{
+		proxyDisabled: !useProxy,
+		execute: 'postUpgrade',
+	},
 );
 ```
 
@@ -1330,10 +1270,10 @@ await env.deployViaProxy(
 
 ```typescript
 const networkName = hre.network.name;
-if (networkName === "mainnet") {
-  // mainnet-specific logic
+if (networkName === 'mainnet') {
+	// mainnet-specific logic
 } else {
-  // testnet logic
+	// testnet logic
 }
 ```
 
@@ -1342,9 +1282,9 @@ if (networkName === "mainnet") {
 ```typescript
 const networkName = hre.network.name;
 if (env.tags.live) {
-  // live network logic
+	// live network logic
 } else {
-  // local/dev network logic
+	// local/dev network logic
 }
 ```
 
@@ -1394,14 +1334,14 @@ await deploy("Contract", {...});
 **After (v2)**:
 
 ```typescript
-import { deployScript, artifacts } from "../rocketh/deploy.js";
+import {deployScript, artifacts} from '../rocketh/deploy.js';
 
-export default deployScript(async ({ deploy }) => {
-  await deploy("Contract", {
-    artifact: artifacts.Contract,
-    account: deployer,
-    args: [],
-  });
+export default deployScript(async ({deploy}) => {
+	await deploy('Contract', {
+		artifact: artifacts.Contract,
+		account: deployer,
+		args: [],
+	});
 }, {});
 ```
 
@@ -1414,18 +1354,18 @@ export default deployScript(async ({ deploy }) => {
 **Before**:
 
 ```typescript
-await deploy("Contract", {
-  from: deployer,
-  args: [],
+await deploy('Contract', {
+	from: deployer,
+	args: [],
 });
 ```
 
 **After**:
 
 ```typescript
-await deploy("Contract", {
-  account: deployer,
-  args: [],
+await deploy('Contract', {
+	account: deployer,
+	args: [],
 });
 ```
 
@@ -1438,15 +1378,15 @@ await deploy("Contract", {
 **Before**:
 
 ```typescript
-import { deployScript, artifacts } from "../rocketh/deploy";
-import { loadEnvironmentFromHardhat } from "./rocketh/environment";
+import {deployScript, artifacts} from '../rocketh/deploy';
+import {loadEnvironmentFromHardhat} from './rocketh/environment';
 ```
 
 **After**:
 
 ```typescript
-import { deployScript, artifacts } from "../rocketh/deploy.js";
-import { loadEnvironmentFromHardhat } from "./rocketh/environment.js";
+import {deployScript, artifacts} from '../rocketh/deploy.js';
+import {loadEnvironmentFromHardhat} from './rocketh/environment.js';
 ```
 
 ### Error: Type errors with artifacts
@@ -1458,14 +1398,14 @@ import { loadEnvironmentFromHardhat } from "./rocketh/environment.js";
 **Before**:
 
 ```typescript
-const MyContract = await ethers.getContract("MyContract");
+const MyContract = await ethers.getContract('MyContract');
 ```
 
 **After**:
 
 ```typescript
-import { Abi_MyContract } from "../generated/abis/MyContract.js";
-const MyContract = env.get<Abi_MyContract>("MyContract");
+import {Abi_MyContract} from '../generated/abis/MyContract.js';
+const MyContract = env.get<Abi_MyContract>('MyContract');
 ```
 
 ### Error: "HardhatDeploy is not a constructor"
@@ -1477,13 +1417,13 @@ const MyContract = env.get<Abi_MyContract>("MyContract");
 **Before**:
 
 ```typescript
-import { HardhatDeploy } from "hardhat-deploy";
+import {HardhatDeploy} from 'hardhat-deploy';
 ```
 
 **After**:
 
 ```typescript
-import HardhatDeploy from "hardhat-deploy";
+import HardhatDeploy from 'hardhat-deploy';
 ```
 
 ### Error: Test fixtures not working
@@ -1524,13 +1464,13 @@ const {env, MyContract} = await networkHelpers.loadFixture(deployAll);
 
 ```typescript
 // rocketh/config.ts
-import * as readExecuteExtension from "@rocketh/read-execute";
+import * as readExecuteExtension from '@rocketh/read-execute';
 
 const extensions = {
-  ...deployExtension,
-  ...readExecuteExtension, // This provides execute function
+	...deployExtension,
+	...readExecuteExtension, // This provides execute function
 };
-export { extensions };
+export {extensions};
 ```
 
 ### Error: Network configuration not working
@@ -1540,23 +1480,19 @@ export { extensions };
 **Solution**: Use the helper functions from `hardhat-deploy/helpers`:
 
 ```typescript
-import {
-  addForkConfiguration,
-  addNetworksFromEnv,
-  addNetworksFromKnownList,
-} from "hardhat-deploy/helpers";
+import {addForkConfiguration, addNetworksFromEnv, addNetworksFromKnownList} from 'hardhat-deploy/helpers';
 
 const config: HardhatUserConfig = {
-  networks: addForkConfiguration(
-    addNetworksFromKnownList(
-      addNetworksFromEnv({
-        hardhat: {
-          type: "edr-simulated",
-          chainType: "l1",
-        },
-      }),
-    ),
-  ),
+	networks: addForkConfiguration(
+		addNetworksFromKnownList(
+			addNetworksFromEnv({
+				hardhat: {
+					type: 'edr-simulated',
+					chainType: 'l1',
+				},
+			}),
+		),
+	),
 };
 ```
 
@@ -1758,15 +1694,15 @@ v2 provides enhanced fork testing through the Hardhat 3.x integration.
 **Setup**:
 
 ```typescript
-import { addForkConfiguration } from "hardhat-deploy/helpers";
+import {addForkConfiguration} from 'hardhat-deploy/helpers';
 
 const config: HardhatUserConfig = {
-  networks: addForkConfiguration({
-    hardhat: {
-      type: "edr-simulated",
-      chainType: "l1",
-    },
-  }),
+	networks: addForkConfiguration({
+		hardhat: {
+			type: 'edr-simulated',
+			chainType: 'l1',
+		},
+	}),
 };
 ```
 
@@ -1805,20 +1741,20 @@ You can add custom extensions to the rocketh configuration:
 
 ```typescript
 // rocketh/config.ts
-import * as customExtension from "./my-custom-extension";
+import * as customExtension from './my-custom-extension';
 
 const extensions = {
-  ...deployExtension,
-  ...readExecuteExtension,
-  ...customExtension, // Add your custom extension
+	...deployExtension,
+	...readExecuteExtension,
+	...customExtension, // Add your custom extension
 };
 ```
 
 ```typescript
 // my-custom-extension.ts
 export function myCustomFunction(env, options) {
-  // Your custom logic here
-  return result;
+	// Your custom logic here
+	return result;
 }
 ```
 
@@ -1841,8 +1777,8 @@ jobs:
       - uses: pnpm/action-setup@v2
       - uses: actions/setup-node@v3
         with:
-          node-version: "22"
-          cache: "pnpm"
+          node-version: '22'
+          cache: 'pnpm'
 
       - run: pnpm install
       - run: pnpm compile --build-profile production
@@ -1867,24 +1803,24 @@ For complex deployments with multiple interdependent contracts:
 
 ```typescript
 export default deployScript(
-  async ({ deploy, namedAccounts }) => {
-    const { deployer } = namedAccounts;
+	async ({deploy, namedAccounts}) => {
+		const {deployer} = namedAccounts;
 
-    // Deploy first contract
-    const ContractA = await deploy("ContractA", {
-      account: deployer,
-      artifact: artifacts.ContractA,
-      args: [],
-    });
+		// Deploy first contract
+		const ContractA = await deploy('ContractA', {
+			account: deployer,
+			artifact: artifacts.ContractA,
+			args: [],
+		});
 
-    // Deploy second contract with address of first
-    const ContractB = await deploy("ContractB", {
-      account: deployer,
-      artifact: artifacts.ContractB,
-      args: [ContractA.address],
-    });
-  },
-  { tags: ["multi"] },
+		// Deploy second contract with address of first
+		const ContractB = await deploy('ContractB', {
+			account: deployer,
+			artifact: artifacts.ContractB,
+			args: [ContractA.address],
+		});
+	},
+	{tags: ['multi']},
 );
 ```
 
@@ -1916,22 +1852,22 @@ pnpm export sepolia
 v2 maintains the HCR feature from v1, allowing rapid development cycles:
 
 ```typescript
-export default deployScript(async ({ deploy, namedAccounts }) => {
-  const { deployer } = namedAccounts;
-  const useProxy = !env.tags.live;
+export default deployScript(async ({deploy, namedAccounts}) => {
+	const {deployer} = namedAccounts;
+	const useProxy = !env.tags.live;
 
-  await env.deployViaProxy(
-    "MyContract",
-    {
-      account: deployer,
-      artifact: artifacts.MyContract,
-      args: [],
-    },
-    {
-      proxyDisabled: !useProxy, // Only use proxy in dev
-      execute: "postUpgrade",
-    },
-  );
+	await env.deployViaProxy(
+		'MyContract',
+		{
+			account: deployer,
+			artifact: artifacts.MyContract,
+			args: [],
+		},
+		{
+			proxyDisabled: !useProxy, // Only use proxy in dev
+			execute: 'postUpgrade',
+		},
+	);
 }, {});
 ```
 
@@ -1946,22 +1882,22 @@ pnpm deploy:watch sepolia
 v2 provides enhanced TypeScript support through generated types:
 
 ```typescript
-import { Abi_MyContract } from "../generated/abis/MyContract.js";
+import {Abi_MyContract} from '../generated/abis/MyContract.js';
 
 // Fully typed contract access
-const MyContract = env.get<Abi_MyContract>("MyContract");
+const MyContract = env.get<Abi_MyContract>('MyContract');
 
 // Type-safe function calls with IntelliSense
 await env.execute(MyContract, {
-  account: deployer,
-  functionName: "setValue", // TypeScript will suggest available functions
-  args: [42n], // TypeScript will validate argument types
+	account: deployer,
+	functionName: 'setValue', // TypeScript will suggest available functions
+	args: [42n], // TypeScript will validate argument types
 });
 
 // Type-safe reads
 const value = await env.read(MyContract, {
-  functionName: "getValue",
-  args: [], // TypeScript will validate return type
+	functionName: 'getValue',
+	args: [], // TypeScript will validate return type
 });
 // value is typed as bigint
 ```

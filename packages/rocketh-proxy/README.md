@@ -64,7 +64,7 @@ export default deployScript(
 
 ## The initializer runs through `execute`, not the constructor
 
-This is the single most common mistake. State written by an implementation's **constructor** lands in the implementation's own storage, not the proxy's, so a proxied contract initializes through a call made *through the proxy*. That is what `execute` is for:
+This is the single most common mistake. State written by an implementation's **constructor** lands in the implementation's own storage, not the proxy's, so a proxied contract initializes through a call made _through the proxy_. That is what `execute` is for:
 
 ```typescript
 // runs `initialize(...)` through the proxy on first deployment
@@ -98,13 +98,13 @@ type PredefinedProxyContract =
 	| 'SharedAdminOptimizedTransparentProxy';
 ```
 
-| Value | Use it for |
-| --- | --- |
-| `ERC173Proxy` | Default ERC-173 ownable proxy. |
-| `ERC173ProxyWithReceive` | Same, when the proxy must accept plain ETH transfers. |
-| `UUPS` | The upgrade logic lives in the implementation (ERC-1822 / UUPS). |
+| Value                                     | Use it for                                                              |
+| ----------------------------------------- | ----------------------------------------------------------------------- |
+| `ERC173Proxy`                             | Default ERC-173 ownable proxy.                                          |
+| `ERC173ProxyWithReceive`                  | Same, when the proxy must accept plain ETH transfers.                   |
+| `UUPS`                                    | The upgrade logic lives in the implementation (ERC-1822 / UUPS).        |
 | `SharedAdminOpenZeppelinTransparentProxy` | OpenZeppelin-compatible transparent proxy behind a shared `ProxyAdmin`. |
-| `SharedAdminOptimizedTransparentProxy` | Optimized transparent proxy behind a shared `ProxyAdmin`. |
+| `SharedAdminOptimizedTransparentProxy`    | Optimized transparent proxy behind a shared `ProxyAdmin`.               |
 
 The two shared-admin variants accept a `proxyAdminName` so several proxies can share (or deliberately not share) one admin contract:
 
@@ -128,17 +128,17 @@ A custom proxy artifact is supported too. `args` names where the proxy construct
 
 Everything from `@rocketh/deploy`'s `DeployOptions` (minus the re-deployment flags it replaces) plus:
 
-| Option | Description |
-| --- | --- |
-| `owner` | Address that may upgrade the proxy. Defaults to the deployer. |
-| `execute` | Initializer / upgrade call, as described above. |
-| `proxyContract` | Which proxy to use. See the table above. |
-| `proxyDisabled` | Deploy the implementation directly, with no proxy. Useful for a production build that must not be upgradeable. |
-| `upgradeIndex` | Lets you tell an upgrade story as a sequence of steps that each run exactly once. See below. |
-| `checkProxyAdmin` | Verify the on-chain proxy admin matches what the config expects (defaults on). |
-| `checkABIConflict` | Refuse an upgrade whose new ABI conflicts with the proxy's own functions. |
-| `deterministicImplementation` | Deploy the implementation deterministically while leaving the proxy address nonce-derived. |
-| `alwaysOverride` / `strictBytecodeMatch` | Mutually exclusive re-deployment controls, as in `@rocketh/deploy`. |
+| Option                                   | Description                                                                                                    |
+| ---------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `owner`                                  | Address that may upgrade the proxy. Defaults to the deployer.                                                  |
+| `execute`                                | Initializer / upgrade call, as described above.                                                                |
+| `proxyContract`                          | Which proxy to use. See the table above.                                                                       |
+| `proxyDisabled`                          | Deploy the implementation directly, with no proxy. Useful for a production build that must not be upgradeable. |
+| `upgradeIndex`                           | Lets you tell an upgrade story as a sequence of steps that each run exactly once. See below.                   |
+| `checkProxyAdmin`                        | Verify the on-chain proxy admin matches what the config expects (defaults on).                                 |
+| `checkABIConflict`                       | Refuse an upgrade whose new ABI conflicts with the proxy's own functions.                                      |
+| `deterministicImplementation`            | Deploy the implementation deterministically while leaving the proxy address nonce-derived.                     |
+| `alwaysOverride` / `strictBytecodeMatch` | Mutually exclusive re-deployment controls, as in `@rocketh/deploy`.                                            |
 
 **Proxies force `strictBytecodeMatch: false`.** A metadata-only difference (a changed comment) must never trigger an upgrade. See [`docs/adr/0004-non-strict-bytecode-matching-by-default.md`](https://github.com/wighawag/rocketh/blob/main/docs/adr/0004-non-strict-bytecode-matching-by-default.md).
 

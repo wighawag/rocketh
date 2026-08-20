@@ -27,15 +27,15 @@ import type {UserConfig} from 'rocketh/types';
 
 // we define our config and export it as "config"
 export const config = {
-    accounts: {
-        deployer: {
-            default: 0,
-        },
-        admin: {
-            default: 1,
-        },
-    },
-    data: {}
+	accounts: {
+		deployer: {
+			default: 0,
+		},
+		admin: {
+			default: 1,
+		},
+	},
+	data: {},
 } as const satisfies UserConfig;
 
 // this one provide a viem handle to clients and contracts
@@ -61,14 +61,12 @@ export type {Extensions, Accounts, Data};
 The [template-ethereum-contracts](https://github.com/wighawag/template-ethereum-contracts) shows the clean import pattern:
 
 ```typescript
-import { deployScript, artifacts } from "../rocketh/deploy.js";
+import {deployScript, artifacts} from '../rocketh/deploy.js';
 
-export default deployScript(
-  async (env) => {
-    // env.viem is now available
-    const contract = env.viem.getContract<MyAbi>("ContractName");
-  }
-);
+export default deployScript(async (env) => {
+	// env.viem is now available
+	const contract = env.viem.getContract<MyAbi>('ContractName');
+});
 ```
 
 ## Viem Environment API
@@ -80,33 +78,33 @@ The viem extension adds several utilities to the environment:
 Get a type-safe contract instance from a deployment. if you provide a name only (as opposed to a typed deployment object), you will need to provide the generic type from the generated ABI since `getContract` cannot infer the type from the deployment name alone:
 
 ```typescript
-import { deployScript, artifacts } from "../rocketh/deploy.js";
+import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(
-  async (env) => {
-    const { deployer } = env.namedAccounts;
+	async (env) => {
+		const {deployer} = env.namedAccounts;
 
-    const deployment = await env.deploy("GreetingsRegistry", {
-      account: deployer,
-      artifact: artifacts.GreetingsRegistry,
-      args: ["Hello, World!"],
-    });
+		const deployment = await env.deploy('GreetingsRegistry', {
+			account: deployer,
+			artifact: artifacts.GreetingsRegistry,
+			args: ['Hello, World!'],
+		});
 
-    // Get type-safe contract instance from the deployment
-    const contract = env.viem.getContract(deployment);
+		// Get type-safe contract instance from the deployment
+		const contract = env.viem.getContract(deployment);
 
-    // Get type-safe contract instance by passing the abi type as generic
-    const contract2 = env.viem.getContract<typeof artifacts.GreetingsRegistry.abi>("GreetingsRegistry");
-    
-    // Type-safe read operations
-    const message = await contract.read.messages([deployer]);
-    console.log("Current message:", message);
-    
-    // Get contract info
-    console.log("Contract address:", contract.address);
-    console.log("Contract ABI available:", !!contract.abi);
-  },
-  { tags: ["GreetingsRegistry"] }
+		// Get type-safe contract instance by passing the abi type as generic
+		const contract2 = env.viem.getContract<typeof artifacts.GreetingsRegistry.abi>('GreetingsRegistry');
+
+		// Type-safe read operations
+		const message = await contract.read.messages([deployer]);
+		console.log('Current message:', message);
+
+		// Get contract info
+		console.log('Contract address:', contract.address);
+		console.log('Contract ABI available:', !!contract.abi);
+	},
+	{tags: ['GreetingsRegistry']},
 );
 ```
 
@@ -115,36 +113,35 @@ export default deployScript(
 Access the viem public client for network operations:
 
 ```typescript
-import { deployScript, artifacts } from "../rocketh/deploy.js";
+import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(
-  async (env) => {
-    const { deployer } = env.namedAccounts;
+	async (env) => {
+		const {deployer} = env.namedAccounts;
 
-    // Get network information
-    const blockNumber = await env.viem.publicClient.getBlockNumber();
-    const chainId = await env.viem.publicClient.getChainId();
-    
-    console.log(`Deploying on chain ${chainId} at block ${blockNumber}`);
+		// Get network information
+		const blockNumber = await env.viem.publicClient.getBlockNumber();
+		const chainId = await env.viem.publicClient.getChainId();
 
-    // Check account balance
-    const balance = await env.viem.publicClient.getBalance({
-      address: deployer as `0x${string}`,
-    });
-    
-    console.log(`Deployer balance: ${balance} wei`);
+		console.log(`Deploying on chain ${chainId} at block ${blockNumber}`);
 
-    // Deploy contract
-    const deployment = await env.deploy("MyContract", {
-      account: deployer,
-      artifact: artifacts.MyContract,
-      args: [],
-    });
-  },
-  { tags: ["MyContract"] }
+		// Check account balance
+		const balance = await env.viem.publicClient.getBalance({
+			address: deployer as `0x${string}`,
+		});
+
+		console.log(`Deployer balance: ${balance} wei`);
+
+		// Deploy contract
+		const deployment = await env.deploy('MyContract', {
+			account: deployer,
+			artifact: artifacts.MyContract,
+			args: [],
+		});
+	},
+	{tags: ['MyContract']},
 );
 ```
-
 
 ## Contract Interactions
 
@@ -153,32 +150,32 @@ export default deployScript(
 Use the type-safe contract instance for reading:
 
 ```typescript
-import { deployScript, artifacts } from "../rocketh/deploy.js";
+import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(
-  async (env) => {
-    const { deployer } = env.namedAccounts;
+	async (env) => {
+		const {deployer} = env.namedAccounts;
 
-    const deployment = await env.deploy("Counter", {
-      account: deployer,
-      artifact: artifacts.Counter,
-      args: [0],
-    });
+		const deployment = await env.deploy('Counter', {
+			account: deployer,
+			artifact: artifacts.Counter,
+			args: [0],
+		});
 
-    const contract = env.viem.getContract(deployment);
+		const contract = env.viem.getContract(deployment);
 
-    // Type-safe read operations
-    const count = await contract.read.count();
-    const owner = await contract.read.owner();
-    
-    console.log(`Count: ${count}`);
-    console.log(`Owner: ${owner}`);
+		// Type-safe read operations
+		const count = await contract.read.count();
+		const owner = await contract.read.owner();
 
-    // Read with parameters
-    const isAuthorized = await contract.read.isAuthorized([deployer as `0x${string}`]);
-    console.log(`Deployer authorized: ${isAuthorized}`);
-  },
-  { tags: ["Counter"] }
+		console.log(`Count: ${count}`);
+		console.log(`Owner: ${owner}`);
+
+		// Read with parameters
+		const isAuthorized = await contract.read.isAuthorized([deployer as `0x${string}`]);
+		console.log(`Deployer authorized: ${isAuthorized}`);
+	},
+	{tags: ['Counter']},
 );
 ```
 
@@ -187,34 +184,34 @@ export default deployScript(
 **Important**: For transaction execution, use `env.execute()` instead of direct viem calls. The `@rocketh/read-execute` extension keeps track of pending transactions, while viem client will not.
 
 ```typescript
-import { deployScript, artifacts } from "../rocketh/deploy.js";
+import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(
-  async (env) => {
-    const { deployer, admin } = env.namedAccounts;
+	async (env) => {
+		const {deployer, admin} = env.namedAccounts;
 
-    const deployment = await env.deploy("MyToken", {
-      account: deployer,
-      artifact: artifacts.MyToken,
-      args: ["My Token", "MTK"],
-    });
+		const deployment = await env.deploy('MyToken', {
+			account: deployer,
+			artifact: artifacts.MyToken,
+			args: ['My Token', 'MTK'],
+		});
 
-    // ✅ RECOMMENDED: Use env.execute() for transactions
-    // This tracks pending transactions and handles nonce management
-    await env.execute(deployment, {
-      functionName: "transfer",
-      args: [admin, 1000n],
-      account: deployer,
-    });
+		// ✅ RECOMMENDED: Use env.execute() for transactions
+		// This tracks pending transactions and handles nonce management
+		await env.execute(deployment, {
+			functionName: 'transfer',
+			args: [admin, 1000n],
+			account: deployer,
+		});
 
-    // ❌ NOT RECOMMENDED: Direct viem wallet client usage
-    // This doesn't track pending transactions
-    // const contract = env.viem.getContract(deployment);
-    // await contract.write.transfer([admin, 1000n], { account: deployer });
+		// ❌ NOT RECOMMENDED: Direct viem wallet client usage
+		// This doesn't track pending transactions
+		// const contract = env.viem.getContract(deployment);
+		// await contract.write.transfer([admin, 1000n], { account: deployer });
 
-    console.log("Transfer completed using env.execute()");
-  },
-  { tags: ["MyToken"] }
+		console.log('Transfer completed using env.execute()');
+	},
+	{tags: ['MyToken']},
 );
 ```
 
@@ -235,10 +232,10 @@ The `@rocketh/read-execute` extension provides several advantages:
 // - Error reporting
 
 await env.execute(deployment, {
-  functionName: "setMessage",
-  args: ["New message"],
-  account: deployer,
-  // Optional: gas limit, gas price, etc.
+	functionName: 'setMessage',
+	args: ['New message'],
+	account: deployer,
+	// Optional: gas limit, gas price, etc.
 });
 ```
 

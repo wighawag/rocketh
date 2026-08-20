@@ -36,17 +36,17 @@ rocketh -e localhost --reset
 
 ### Options
 
-| Option | Description |
-| --- | --- |
-| `-e, --environment <value>` | **(Required)** Environment to use. |
-| `-s, --scripts <value>` | Folder containing the deploy scripts to execute. |
-| `-t, --tags <value>` | Comma-separated list of tags to execute. |
-| `-d, --deployments <value>` | Folder where deployments are saved. |
-| `--save-deployments` | Save deployments. |
-| `--reset` | Delete all deployments first. |
-| `--skip-gas-report` | Skip the gas report. |
-| `--log-level <value>` | Set the log level. |
-| `--skip-prompts` | Skip any prompts. Also forces `--on-unknown-signer throw`. |
+| Option                        | Description                                                                                             |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `-e, --environment <value>`   | **(Required)** Environment to use.                                                                      |
+| `-s, --scripts <value>`       | Folder containing the deploy scripts to execute.                                                        |
+| `-t, --tags <value>`          | Comma-separated list of tags to execute.                                                                |
+| `-d, --deployments <value>`   | Folder where deployments are saved.                                                                     |
+| `--save-deployments`          | Save deployments.                                                                                       |
+| `--reset`                     | Delete all deployments first.                                                                           |
+| `--skip-gas-report`           | Skip the gas report.                                                                                    |
+| `--log-level <value>`         | Set the log level.                                                                                      |
+| `--skip-prompts`              | Skip any prompts. Also forces `--on-unknown-signer throw`.                                              |
 | `--on-unknown-signer <value>` | What to do when a transaction's `from` cannot be signed for: `throw`, `ask` or `auto` (default `auto`). |
 
 ### Unattended runs
@@ -81,16 +81,16 @@ const {deployments, accounts} = await loadAndExecuteDeploymentsFromFiles({provid
 
 ### Other exports
 
-| Export | Purpose |
-| --- | --- |
-| `setupEnvironmentFromFiles` | Bind extensions/types and get the file-backed loaders below. |
-| `loadEnvironmentFromFiles` | Build an environment from config and existing deployment records, without running scripts. |
-| `loadAndExecuteDeploymentsFromFiles` | Build the environment **and** run the deploy scripts. |
-| `loadDeploymentsFromFiles` | Read deployment records only. |
-| `readAndResolveConfig` | Read `rocketh/config.ts` and resolve it, applying overrides. |
-| `mergeChainConfig` | Merge chain configuration. |
-| `setupDeployScripts` | Re-exported from `rocketh` for convenience. |
-| `chainByCanonicalName` | Look up a chain by its canonical name. |
+| Export                               | Purpose                                                                                    |
+| ------------------------------------ | ------------------------------------------------------------------------------------------ |
+| `setupEnvironmentFromFiles`          | Bind extensions/types and get the file-backed loaders below.                               |
+| `loadEnvironmentFromFiles`           | Build an environment from config and existing deployment records, without running scripts. |
+| `loadAndExecuteDeploymentsFromFiles` | Build the environment **and** run the deploy scripts.                                      |
+| `loadDeploymentsFromFiles`           | Read deployment records only.                                                              |
+| `readAndResolveConfig`               | Read `rocketh/config.ts` and resolve it, applying overrides.                               |
+| `mergeChainConfig`                   | Merge chain configuration.                                                                 |
+| `setupDeployScripts`                 | Re-exported from `rocketh` for convenience.                                                |
+| `chainByCanonicalName`               | Look up a chain by its canonical name.                                                     |
 
 Types from `@rocketh/core` are re-exported, so `import type {Environment} from '@rocketh/node'` works.
 

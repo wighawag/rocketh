@@ -30,6 +30,7 @@ const extensions = {...deployExtensions, ...diamondExtensions};
 ## What are Diamond Contracts?
 
 Diamond contracts consist of:
+
 - **Diamond**: The main contract that delegates calls to facets
 - **Facets**: Individual contracts containing specific functionality
 - **Diamond Storage**: Shared storage accessible by all facets
@@ -40,33 +41,30 @@ Diamond contracts consist of:
 ### Simple Diamond with Facets
 
 ```typescript
-import { deployScript, artifacts } from "../rocketh/deploy.js";
+import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(
-  async ({ diamond, namedAccounts }) => {
-    const { deployer, admin } = namedAccounts;
+	async ({diamond, namedAccounts}) => {
+		const {deployer, admin} = namedAccounts;
 
-    await diamond(
-      "GreetingsRegistry", // Diamond name
-      {
-        account: deployer,
-      },
-      {
-        facets: [
-          { artifact: artifacts.GetMessageFacet },
-          { artifact: artifacts.SetMessageFacet },
-        ],
-        facetsArgs: [
-          {
-            prefix: "Hello, ",
-            num: 1,
-          },
-        ],
-        owner: admin,
-      }
-    );
-  },
-  { tags: ["GreetingsRegistry", "diamond"] }
+		await diamond(
+			'GreetingsRegistry', // Diamond name
+			{
+				account: deployer,
+			},
+			{
+				facets: [{artifact: artifacts.GetMessageFacet}, {artifact: artifacts.SetMessageFacet}],
+				facetsArgs: [
+					{
+						prefix: 'Hello, ',
+						num: 1,
+					},
+				],
+				owner: admin,
+			},
+		);
+	},
+	{tags: ['GreetingsRegistry', 'diamond']},
 );
 ```
 
@@ -75,38 +73,38 @@ export default deployScript(
 When you modify a facet or add new ones, hardhat-deploy generates the appropriate `diamondCut` automatically:
 
 ```typescript
-import { deployScript, artifacts } from "../rocketh/deploy.js";
+import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(
-  async ({ diamond, namedAccounts }) => {
-    const { deployer, admin } = namedAccounts;
+	async ({diamond, namedAccounts}) => {
+		const {deployer, admin} = namedAccounts;
 
-    // When you add/modify facets, hardhat-deploy will:
-    // - Detect new facets and add them
-    // - Detect modified facets and replace them
-    // - Detect removed facets and remove them
-    await diamond(
-      "GreetingsRegistry",
-      {
-        account: deployer,
-      },
-      {
-        facets: [
-          { artifact: artifacts.GetMessageFacet },
-          { artifact: artifacts.SetMessageFacet },
-          { artifact: artifacts.NewFeatureFacet }, // New facet added
-        ],
-        facetsArgs: [
-          {
-            prefix: "Hello, ",
-            num: 2, // Updated argument
-          },
-        ],
-        owner: admin,
-      }
-    );
-  },
-  { tags: ["GreetingsRegistry", "diamond"] }
+		// When you add/modify facets, hardhat-deploy will:
+		// - Detect new facets and add them
+		// - Detect modified facets and replace them
+		// - Detect removed facets and remove them
+		await diamond(
+			'GreetingsRegistry',
+			{
+				account: deployer,
+			},
+			{
+				facets: [
+					{artifact: artifacts.GetMessageFacet},
+					{artifact: artifacts.SetMessageFacet},
+					{artifact: artifacts.NewFeatureFacet}, // New facet added
+				],
+				facetsArgs: [
+					{
+						prefix: 'Hello, ',
+						num: 2, // Updated argument
+					},
+				],
+				owner: admin,
+			},
+		);
+	},
+	{tags: ['GreetingsRegistry', 'diamond']},
 );
 ```
 

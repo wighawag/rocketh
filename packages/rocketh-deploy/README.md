@@ -81,12 +81,12 @@ if (token.newlyDeployed) {
 deploy(name, {account, artifact, args?, value?, ...}, options?)
 ```
 
-| Field | Description |
-| --- | --- |
-| `account` | A **named account** (`'deployer'`) or a raw address. Named accounts are resolved per network from your config. |
-| `artifact` | The compiled artifact (ABI + bytecode). Typed with `abitype`, so `args` are checked against the constructor. |
-| `args` | Constructor arguments, type-checked against the artifact's ABI. |
-| `value` | Wei to send to a `payable` constructor. |
+| Field      | Description                                                                                                    |
+| ---------- | -------------------------------------------------------------------------------------------------------------- |
+| `account`  | A **named account** (`'deployer'`) or a raw address. Named accounts are resolved per network from your config. |
+| `artifact` | The compiled artifact (ABI + bytecode). Typed with `abitype`, so `args` are checked against the constructor.   |
+| `args`     | Constructor arguments, type-checked against the artifact's ABI.                                                |
+| `value`    | Wei to send to a `payable` constructor.                                                                        |
 
 Remaining fields come from viem's `DeployContractParameters` (minus `bytecode`, `account`, `abi` and `chain`, which rocketh supplies).
 

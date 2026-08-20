@@ -28,19 +28,19 @@ and to get the most of hardhat-deploy, the way to define them is to call the `de
 For example this script will deploy the `GreetingsRegistry` contract
 
 ```typescript
-import { deployScript, artifacts } from "../rocketh/deploy.js";
+import {deployScript, artifacts} from '../rocketh/deploy.js';
 export default deployScript(
-  async ({ deploy, namedAccounts }) => {
-    const { deployer } = namedAccounts;
+	async ({deploy, namedAccounts}) => {
+		const {deployer} = namedAccounts;
 
-    await deploy("GreetingsRegistry", {
-      account: deployer,
-      artifact: artifacts.GreetingsRegistry,
-      args: [""],
-    });
-  },
+		await deploy('GreetingsRegistry', {
+			account: deployer,
+			artifact: artifacts.GreetingsRegistry,
+			args: [''],
+		});
+	},
 
-  { tags: ["GreetingsRegistry", "GreetingsRegistry_deploy"] },
+	{tags: ['GreetingsRegistry', 'GreetingsRegistry_deploy']},
 );
 ```
 
@@ -67,10 +67,10 @@ These are provided by external modules. Several are already available:
 Provides the basic `deploy()` function for deploying contracts. This is the most commonly used extension.
 
 ```typescript
-await deploy("MyContract", {
-  account: deployer,
-  artifact: artifacts.MyContract,
-  args: ["arg1", "arg2"],
+await deploy('MyContract', {
+	account: deployer,
+	artifact: artifacts.MyContract,
+	args: ['arg1', 'arg2'],
 });
 ```
 
@@ -91,9 +91,9 @@ First, you have deploy the library using the `deploy` function, then when we dep
 First step: deploy the library:
 
 ```js
-const exampleLibrary = await deploy("ExampleLibrary", {
-  artifact: artifacts.ExampleLibrary,
-  account: deployer,
+const exampleLibrary = await deploy('ExampleLibrary', {
+	artifact: artifacts.ExampleLibrary,
+	account: deployer,
 });
 ```
 
@@ -105,17 +105,17 @@ Now that the library is deployed, we can link it in our next deployed contract.
 
 ```js
 const example = await deploy(
-  "Example",
-  {
-    account: deployer,
-    artifact: artifacts.Example,
-    args: ["example string argument for the 'Example' contract constructor"],
-  },
-  {
-    libraries: {
-      ExampleLibrary: exampleLibrary.address,
-    },
-  },
+	'Example',
+	{
+		account: deployer,
+		artifact: artifacts.Example,
+		args: ["example string argument for the 'Example' contract constructor"],
+	},
+	{
+		libraries: {
+			ExampleLibrary: exampleLibrary.address,
+		},
+	},
 );
 ```
 

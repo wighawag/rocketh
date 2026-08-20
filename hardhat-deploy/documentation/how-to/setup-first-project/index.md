@@ -23,9 +23,9 @@ Just create a new `package.json` file with the following content:
 
 ```json
 {
-  "name": "my-project",
-  "version": "0.0.0",
-  "type": "module"
+	"name": "my-project",
+	"version": "0.0.0",
+	"type": "module"
 }
 ```
 
@@ -72,50 +72,50 @@ We also need to create a new hardhat config file.
 > file: `hardhat.config.ts`
 
 ```typescript
-import { defineConfig } from "hardhat/config";
-import HardhatDeploy from "hardhat-deploy";
+import {defineConfig} from 'hardhat/config';
+import HardhatDeploy from 'hardhat-deploy';
 
 export default defineConfig({
-  plugins: [HardhatDeploy],
-  solidity: {
-    profiles: {
-      default: {
-        version: "0.8.28",
-      },
-      production: {
-        version: "0.8.28",
-        settings: {
-          optimizer: {
-            enabled: true,
-            runs: 200,
-          },
-        },
-      },
-    },
-  },
-  networks: {
-    hardhatMainnet: {
-      type: "edr-simulated",
-      chainType: "l1",
-    },
-    hardhatOp: {
-      type: "edr-simulated",
-      chainType: "op",
-    },
-  },
+	plugins: [HardhatDeploy],
+	solidity: {
+		profiles: {
+			default: {
+				version: '0.8.28',
+			},
+			production: {
+				version: '0.8.28',
+				settings: {
+					optimizer: {
+						enabled: true,
+						runs: 200,
+					},
+				},
+			},
+		},
+	},
+	networks: {
+		hardhatMainnet: {
+			type: 'edr-simulated',
+			chainType: 'l1',
+		},
+		hardhatOp: {
+			type: 'edr-simulated',
+			chainType: 'op',
+		},
+	},
 
-  // we always prefers to name our contracts source folder "src" as this usualy sit in a contract folder itself
-  paths: {
-    sources: ["src"],
-  },
-  // Since we use typescript we also set hardhat-deploy to generate them in typescript
-  generateTypedArtifacts: {
-    destinations: [
-      {
-        mode: "typescript",
-      },
-    ],
-  },
+	// we always prefers to name our contracts source folder "src" as this usualy sit in a contract folder itself
+	paths: {
+		sources: ['src'],
+	},
+	// Since we use typescript we also set hardhat-deploy to generate them in typescript
+	generateTypedArtifacts: {
+		destinations: [
+			{
+				mode: 'typescript',
+			},
+		],
+	},
 });
 ```
 
@@ -165,34 +165,34 @@ the config.ts file is used to define the config and the extensions we are intere
 /// ----------------------------------------------------------------------------
 // Typed Config
 // ----------------------------------------------------------------------------
-import type { UserConfig } from "rocketh/types";
+import type {UserConfig} from 'rocketh/types';
 
 // we define our config and export it as "config"
 export const config = {
-  accounts: {
-    deployer: {
-      default: 0,
-    },
-    admin: {
-      default: 1,
-    },
-  },
-  data: {},
+	accounts: {
+		deployer: {
+			default: 0,
+		},
+		admin: {
+			default: 1,
+		},
+	},
+	data: {},
 } as const satisfies UserConfig;
 
 // then we import each extensions we are interested in using in our deploy script or elsewhere
 
 // this one provide a deploy function
-import * as deployExtension from "@rocketh/deploy";
+import * as deployExtension from '@rocketh/deploy';
 // this one provide read,execute functions
-import * as readExecuteExtension from "@rocketh/read-execute";
+import * as readExecuteExtension from '@rocketh/read-execute';
 
 // and export them as a unified object
 const extensions = {
-  ...deployExtension,
-  ...readExecuteExtension,
+	...deployExtension,
+	...readExecuteExtension,
 };
-export { extensions };
+export {extensions};
 
 // then we also export the types that our config exhibits so others can use them
 
@@ -200,7 +200,7 @@ type Extensions = typeof extensions;
 type Accounts = typeof config.accounts;
 type Data = typeof config.data;
 
-export type { Extensions, Accounts, Data };
+export type {Extensions, Accounts, Data};
 ```
 
 the rocketh deploy file is used to export the deploy script function and the artifacts.
@@ -208,26 +208,19 @@ the rocketh deploy file is used to export the deploy script function and the art
 > file: `rocketh/deploy.ts`
 
 ```typescript
-import {
-  type Accounts,
-  type Data,
-  type Extensions,
-  extensions,
-} from "./config.js";
+import {type Accounts, type Data, type Extensions, extensions} from './config.js';
 
 // ----------------------------------------------------------------------------
 // we re-export the artifacts, so they are easily available from the alias
-import * as artifacts from "../generated/artifacts/index.js";
-export { artifacts };
+import * as artifacts from '../generated/artifacts/index.js';
+export {artifacts};
 // ----------------------------------------------------------------------------
 // we create the rocketh functions we need by passing the extensions to the
 //  setup function
-import { setupDeployScripts } from "rocketh";
-const { deployScript } = setupDeployScripts<Extensions, Accounts, Data>(
-  extensions,
-);
+import {setupDeployScripts} from 'rocketh';
+const {deployScript} = setupDeployScripts<Extensions, Accounts, Data>(extensions);
 
-export { deployScript };
+export {deployScript};
 ```
 
 the environment file is used to export the environment functions, to be used in test and scripts.
@@ -235,28 +228,15 @@ the environment file is used to export the environment functions, to be used in 
 > file: `rocketh/environment.ts`
 
 ```typescript
-import {
-  type Accounts,
-  type Data,
-  type Extensions,
-  extensions,
-} from "./config.js";
-import { setupEnvironmentFromFiles } from "@rocketh/node";
-import { setupHardhatDeploy } from "hardhat-deploy/helpers";
+import {type Accounts, type Data, type Extensions, extensions} from './config.js';
+import {setupEnvironmentFromFiles} from '@rocketh/node';
+import {setupHardhatDeploy} from 'hardhat-deploy/helpers';
 
 // useful for test and scripts, uses file-system
-const { loadAndExecuteDeploymentsFromFiles } = setupEnvironmentFromFiles<
-  Extensions,
-  Accounts,
-  Data
->(extensions);
-const { loadEnvironmentFromHardhat } = setupHardhatDeploy<
-  Extensions,
-  Accounts,
-  Data
->(extensions);
+const {loadAndExecuteDeploymentsFromFiles} = setupEnvironmentFromFiles<Extensions, Accounts, Data>(extensions);
+const {loadEnvironmentFromHardhat} = setupHardhatDeploy<Extensions, Accounts, Data>(extensions);
 
-export { loadEnvironmentFromHardhat, loadAndExecuteDeploymentsFromFiles };
+export {loadEnvironmentFromHardhat, loadAndExecuteDeploymentsFromFiles};
 ```
 
 ## adding deploy scripts
@@ -272,18 +252,18 @@ And create a deploy script file like this:
 > file: `deploy/deploy_Counter.ts`
 
 ```typescript
-import { deployScript, artifacts } from "../rocketh/deploy.js";
+import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(
-  async ({ deploy, namedAccounts }) => {
-    const { deployer } = namedAccounts;
+	async ({deploy, namedAccounts}) => {
+		const {deployer} = namedAccounts;
 
-    await deploy("Counter", {
-      account: deployer,
-      artifact: artifacts.Counter,
-    });
-  },
-  { tags: ["Counter", "Counter_deploy"] },
+		await deploy('Counter', {
+			account: deployer,
+			artifact: artifacts.Counter,
+		});
+	},
+	{tags: ['Counter', 'Counter_deploy']},
 );
 ```
 
@@ -327,17 +307,17 @@ in v1 you would create a deploy file like this:
 ```typescript skip
 // deploy/00_deploy_my_contract.js
 // export a function that get passed the Hardhat runtime environment
-module.exports = async ({ getNamedAccounts, deployments }) => {
-  const { deploy } = deployments;
-  const { deployer } = await getNamedAccounts();
-  await deploy("MyContract", {
-    from: deployer,
-    args: ["Hello"],
-    log: true,
-  });
+module.exports = async ({getNamedAccounts, deployments}) => {
+	const {deploy} = deployments;
+	const {deployer} = await getNamedAccounts();
+	await deploy('MyContract', {
+		from: deployer,
+		args: ['Hello'],
+		log: true,
+	});
 };
 // add tags and dependencies
-module.exports.tags = ["MyContract"];
+module.exports.tags = ['MyContract'];
 ```
 
 and you would have configuration in hardhat.config.ts
@@ -352,20 +332,20 @@ and you would have configuration in hardhat.config.ts
 in v2 you will do this instead:
 
 ```typescript skip
-import { deployScript, artifacts } from "../rocketh/deploy.js";
+import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(
-  async ({ deploy, namedAccounts }) => {
-    const { deployer } = namedAccounts;
+	async ({deploy, namedAccounts}) => {
+		const {deployer} = namedAccounts;
 
-    await deploy("MyContract", {
-      account: deployer,
-      artifact: artifacts.MyContract,
-      args: ["Hello"],
-    });
-  },
-  // finally you can pass tags and dependencies
-  { tags: ["MyContract"] },
+		await deploy('MyContract', {
+			account: deployer,
+			artifact: artifacts.MyContract,
+			args: ['Hello'],
+		});
+	},
+	// finally you can pass tags and dependencies
+	{tags: ['MyContract']},
 );
 ```
 
@@ -389,8 +369,8 @@ For example for an environment named "sepolia" (for the corresponding network) t
 
 ```json skip
 {
-  "chainId": "11155111",
-  "genesisHash": "0x25a5cc106eea7138acab33231d7160d69cb777ee0c2c553fcddf5138993e6dd9"
+	"chainId": "11155111",
+	"genesisHash": "0x25a5cc106eea7138acab33231d7160d69cb777ee0c2c553fcddf5138993e6dd9"
 }
 ```
 
@@ -398,36 +378,36 @@ Each contract file must follow this type (as defined in [types.ts](types.ts)) :
 
 ```typescript skip
 export type Deployment<TAbi extends Abi> = {
-  readonly address: EIP1193Account;
-  readonly abi: Narrow<TAbi>;
-  readonly transaction?: {
-    readonly hash: EIP1193DATA;
-    readonly origin?: EIP1193Account;
-    readonly nonce?: EIP1193DATA;
-  };
-  readonly receipt?: {
-    confirmations: number;
-    blockHash: EIP1193DATA;
-    blockNumber: EIP1193QUANTITY;
-    transactionIndex: EIP1193QUANTITY;
-  };
-  readonly bytecode: EIP1193DATA;
-  readonly argsData: EIP1193DATA;
-  readonly metadata: string;
-  readonly numDeployments?: number;
-  readonly libraries?: Libraries;
-  readonly linkedData?: any; // TODO
-  readonly deployedBytecode?: EIP1193DATA;
-  readonly linkReferences?: any; // TODO
-  readonly deployedLinkReferences?: any; // TODO
-  readonly contractName?: string;
-  readonly sourceName?: string; // relative path
-  readonly devdoc?: DevDoc;
-  readonly evm?: {
-    readonly gasEstimates?: GasEstimates | null;
-  } & any;
-  readonly storageLayout?: StorageLayout;
-  readonly userdoc?: UserDoc;
+	readonly address: EIP1193Account;
+	readonly abi: Narrow<TAbi>;
+	readonly transaction?: {
+		readonly hash: EIP1193DATA;
+		readonly origin?: EIP1193Account;
+		readonly nonce?: EIP1193DATA;
+	};
+	readonly receipt?: {
+		confirmations: number;
+		blockHash: EIP1193DATA;
+		blockNumber: EIP1193QUANTITY;
+		transactionIndex: EIP1193QUANTITY;
+	};
+	readonly bytecode: EIP1193DATA;
+	readonly argsData: EIP1193DATA;
+	readonly metadata: string;
+	readonly numDeployments?: number;
+	readonly libraries?: Libraries;
+	readonly linkedData?: any; // TODO
+	readonly deployedBytecode?: EIP1193DATA;
+	readonly linkReferences?: any; // TODO
+	readonly deployedLinkReferences?: any; // TODO
+	readonly contractName?: string;
+	readonly sourceName?: string; // relative path
+	readonly devdoc?: DevDoc;
+	readonly evm?: {
+		readonly gasEstimates?: GasEstimates | null;
+	} & any;
+	readonly storageLayout?: StorageLayout;
+	readonly userdoc?: UserDoc;
 } & Record<string, unknown>;
 ```
 

@@ -10,10 +10,10 @@ It exists because rocketh's central claim is that its core is framework-agnostic
 
 ## Two layers, one seam
 
-| Entry point                    | What it is                                                    | Built by |
-| ------------------------------ | ------------------------------------------------------------- | -------- |
-| `@rocketh/playground`          | the framework-free core: EVM lifecycle, store, log stream      | `tsc`    |
-| `@rocketh/playground/element`  | the `<rocketh-playground>` custom element (Svelte 5, compiled) | `vite`   |
+| Entry point                   | What it is                                                     | Built by |
+| ----------------------------- | -------------------------------------------------------------- | -------- |
+| `@rocketh/playground`         | the framework-free core: EVM lifecycle, store, log stream      | `tsc`    |
+| `@rocketh/playground/element` | the `<rocketh-playground>` custom element (Svelte 5, compiled) | `vite`   |
 
 The core has no DOM in it and runs unchanged under node, which is why the deploy pipeline is tested headlessly in `test/` rather than only behind a browser runner. The UI is a consumer of the core's public entry, never the other way round.
 
@@ -121,10 +121,10 @@ Three things about that shape are worth knowing, because each one costs an after
 
 Two implementations of the same registry, behind one proxy.
 
-| Implementation | Origin | Regenerate with |
-| --- | --- | --- |
-| `GreetingsRegistry` | vendored verbatim from `template-ethereum-contracts@0.0.3` | `pnpm artifact:sync` |
-| `GreetingsRegistryV2` | ours, in `contracts/` | `pnpm contracts:compile` |
+| Implementation        | Origin                                                     | Regenerate with          |
+| --------------------- | ---------------------------------------------------------- | ------------------------ |
+| `GreetingsRegistry`   | vendored verbatim from `template-ethereum-contracts@0.0.3` | `pnpm artifact:sync`     |
+| `GreetingsRegistryV2` | ours, in `contracts/`                                      | `pnpm contracts:compile` |
 
 The origins differ on purpose. v1 is kept exactly as published so its provenance stays "the real template contract", bug included. The template has no v2, so that one is ours, and its source lives in `contracts/` precisely so the code the tutorial **shows** is provably the code it **runs**.
 
@@ -132,7 +132,7 @@ The origins differ on purpose. v1 is kept exactly as published so its provenance
 
 ### The bug, and why it stays
 
-v1 passes a `"proxy:"` prefix to its **constructor**, and greetings read back without it. That is not a bug in rocketh or in the proxy, and it is deliberately not fixed: a constructor runs against the *implementation's* storage, never the proxy's, so the proxy's own `_prefix` slot is never written. v2 fixes it by setting the prefix through a `postUpgrade` call that rocketh makes **through the proxy** during the upgrade.
+v1 passes a `"proxy:"` prefix to its **constructor**, and greetings read back without it. That is not a bug in rocketh or in the proxy, and it is deliberately not fixed: a constructor runs against the _implementation's_ storage, never the proxy's, so the proxy's own `_prefix` slot is never written. v2 fixes it by setting the prefix through a `postUpgrade` call that rocketh makes **through the proxy** during the upgrade.
 
 v2 also only ever **appends** storage variables (`_prefixInitialized` at slot 2, leaving `_prefix` and `messages` where v1 put them). Reordering them, or inserting one above `messages`, would leave the new code reading the old slots and silently reinterpret every greeting anyone had stored.
 

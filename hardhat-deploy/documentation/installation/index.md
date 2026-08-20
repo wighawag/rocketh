@@ -51,17 +51,17 @@ in v1 you would create a deploy file like this:
 ```typescript skip
 // deploy/00_deploy_my_contract.js
 // export a function that get passed the Hardhat runtime environment
-module.exports = async ({ getNamedAccounts, deployments }) => {
-  const { deploy } = deployments;
-  const { deployer } = await getNamedAccounts();
-  await deploy("MyContract", {
-    from: deployer,
-    args: ["Hello"],
-    log: true,
-  });
+module.exports = async ({getNamedAccounts, deployments}) => {
+	const {deploy} = deployments;
+	const {deployer} = await getNamedAccounts();
+	await deploy('MyContract', {
+		from: deployer,
+		args: ['Hello'],
+		log: true,
+	});
 };
 // add tags and dependencies
-module.exports.tags = ["MyContract"];
+module.exports.tags = ['MyContract'];
 ```
 
 and you would have configuration in hardhat.config.ts
@@ -76,20 +76,20 @@ and you would have configuration in hardhat.config.ts
 in v2 you will do this instead:
 
 ```typescript skip
-import { deployScript, artifacts } from "../rocketh/deploy.js";
+import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(
-  async ({ deploy, namedAccounts }) => {
-    const { deployer } = namedAccounts;
+	async ({deploy, namedAccounts}) => {
+		const {deployer} = namedAccounts;
 
-    await deploy("MyContract", {
-      account: deployer,
-      artifact: artifacts.MyContract,
-      args: ["Hello"],
-    });
-  },
-  // finally you can pass tags and dependencies
-  { tags: ["MyContract"] },
+		await deploy('MyContract', {
+			account: deployer,
+			artifact: artifacts.MyContract,
+			args: ['Hello'],
+		});
+	},
+	// finally you can pass tags and dependencies
+	{tags: ['MyContract']},
 );
 ```
 
@@ -113,8 +113,8 @@ For example for an environment named "sepolia" (for the corresponding network) t
 
 ```json skip
 {
-  "chainId": "11155111",
-  "genesisHash": "0x25a5cc106eea7138acab33231d7160d69cb777ee0c2c553fcddf5138993e6dd9"
+	"chainId": "11155111",
+	"genesisHash": "0x25a5cc106eea7138acab33231d7160d69cb777ee0c2c553fcddf5138993e6dd9"
 }
 ```
 
@@ -122,36 +122,36 @@ Each contract file must follow this type (as defined in [types.ts](types.ts)) :
 
 ```typescript skip
 export type Deployment<TAbi extends Abi> = {
-  readonly address: EIP1193Account;
-  readonly abi: Narrow<TAbi>;
-  readonly transaction?: {
-    readonly hash: EIP1193DATA;
-    readonly origin?: EIP1193Account;
-    readonly nonce?: EIP1193DATA;
-  };
-  readonly receipt?: {
-    confirmations: number;
-    blockHash: EIP1193DATA;
-    blockNumber: EIP1193QUANTITY;
-    transactionIndex: EIP1193QUANTITY;
-  };
-  readonly bytecode: EIP1193DATA;
-  readonly argsData: EIP1193DATA;
-  readonly metadata: string;
-  readonly numDeployments?: number;
-  readonly libraries?: Libraries;
-  readonly linkedData?: any; // TODO
-  readonly deployedBytecode?: EIP1193DATA;
-  readonly linkReferences?: any; // TODO
-  readonly deployedLinkReferences?: any; // TODO
-  readonly contractName?: string;
-  readonly sourceName?: string; // relative path
-  readonly devdoc?: DevDoc;
-  readonly evm?: {
-    readonly gasEstimates?: GasEstimates | null;
-  } & any;
-  readonly storageLayout?: StorageLayout;
-  readonly userdoc?: UserDoc;
+	readonly address: EIP1193Account;
+	readonly abi: Narrow<TAbi>;
+	readonly transaction?: {
+		readonly hash: EIP1193DATA;
+		readonly origin?: EIP1193Account;
+		readonly nonce?: EIP1193DATA;
+	};
+	readonly receipt?: {
+		confirmations: number;
+		blockHash: EIP1193DATA;
+		blockNumber: EIP1193QUANTITY;
+		transactionIndex: EIP1193QUANTITY;
+	};
+	readonly bytecode: EIP1193DATA;
+	readonly argsData: EIP1193DATA;
+	readonly metadata: string;
+	readonly numDeployments?: number;
+	readonly libraries?: Libraries;
+	readonly linkedData?: any; // TODO
+	readonly deployedBytecode?: EIP1193DATA;
+	readonly linkReferences?: any; // TODO
+	readonly deployedLinkReferences?: any; // TODO
+	readonly contractName?: string;
+	readonly sourceName?: string; // relative path
+	readonly devdoc?: DevDoc;
+	readonly evm?: {
+		readonly gasEstimates?: GasEstimates | null;
+	} & any;
+	readonly storageLayout?: StorageLayout;
+	readonly userdoc?: UserDoc;
 } & Record<string, unknown>;
 ```
 

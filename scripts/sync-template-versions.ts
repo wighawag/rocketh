@@ -134,8 +134,7 @@ async function main() {
 
 	if (check) {
 		console.error(
-			`sync-template-versions: template is out of date:\n  - ${changes.join('\n  - ')}\n` +
-				`Run "pnpm sync:template".`,
+			`sync-template-versions: template is out of date:\n  - ${changes.join('\n  - ')}\n` + `Run "pnpm sync:template".`,
 		);
 		process.exit(1);
 	}

@@ -27,11 +27,11 @@ yarn add @rocketh/web
 
 Where deployments go is the one thing a browser cannot inherit from Node, so it is a choice you make explicitly. `@rocketh/node` writes to the filesystem; here you pass a store to `setupEnvironment`.
 
-| Store                                        | Survives a reload | Use it for                                    |
-| -------------------------------------------- | ----------------- | --------------------------------------------- |
-| `createVFSDeploymentStore()` (**default**)   | no                | one-off runs, playgrounds, tests               |
-| `await createIndexedDBDeploymentStore()`     | yes               | apps that must remember what they deployed     |
-| `createEmptyDeploymentStore()`               | no (discards)     | read-only environments that must not persist   |
+| Store                                      | Survives a reload | Use it for                                   |
+| ------------------------------------------ | ----------------- | -------------------------------------------- |
+| `createVFSDeploymentStore()` (**default**) | no                | one-off runs, playgrounds, tests             |
+| `await createIndexedDBDeploymentStore()`   | yes               | apps that must remember what they deployed   |
+| `createEmptyDeploymentStore()`             | no (discards)     | read-only environments that must not persist |
 
 ```typescript
 import {setupEnvironment, createIndexedDBDeploymentStore} from '@rocketh/web';
@@ -69,10 +69,10 @@ const {deployments} = await loadDeploymentsFromStore(deploymentStore, 'deploymen
 ### Setting Up the Environment
 
 ```typescript
-import { setupEnvironment } from '@rocketh/web';
-import { config, extensions } from './rocketh/config.js';
+import {setupEnvironment} from '@rocketh/web';
+import {config, extensions} from './rocketh/config.js';
 
-const { loadAndExecuteDeploymentsFromModules, loadEnvironment } = setupEnvironment(config, extensions);
+const {loadAndExecuteDeploymentsFromModules, loadEnvironment} = setupEnvironment(config, extensions);
 ```
 
 ### Loading an Environment
@@ -80,15 +80,15 @@ const { loadAndExecuteDeploymentsFromModules, loadEnvironment } = setupEnvironme
 Use `loadEnvironment` to create an environment without executing deploy scripts:
 
 ```typescript
-import { setupEnvironment } from '@rocketh/web';
-import { config, extensions } from './rocketh/config.js';
+import {setupEnvironment} from '@rocketh/web';
+import {config, extensions} from './rocketh/config.js';
 
-const { loadEnvironment } = setupEnvironment(config, extensions);
+const {loadEnvironment} = setupEnvironment(config, extensions);
 
 // Connect to a network via the browser provider
 const env = await loadEnvironment({
-  environment: 'mainnet',
-  provider: window.ethereum, // Use browser wallet provider
+	environment: 'mainnet',
+	provider: window.ethereum, // Use browser wallet provider
 });
 
 // Access deployments
@@ -101,37 +101,32 @@ console.log('Contract address:', myContract.address);
 Use `loadAndExecuteDeploymentsFromModules` to run deploy scripts in the browser:
 
 ```typescript
-import { setupEnvironment } from '@rocketh/web';
-import { config, extensions } from './rocketh/config.js';
+import {setupEnvironment} from '@rocketh/web';
+import {config, extensions} from './rocketh/config.js';
 import deployMyContract from './deploy/deploy_MyContract.js';
 
-const { loadAndExecuteDeploymentsFromModules } = setupEnvironment(config, extensions);
+const {loadAndExecuteDeploymentsFromModules} = setupEnvironment(config, extensions);
 
 // Execute deploy scripts
-const env = await loadAndExecuteDeploymentsFromModules(
-  [
-    { id: 'deploy_MyContract', module: deployMyContract },
-  ],
-  {
-    environment: 'sepolia',
-    provider: window.ethereum,
-  }
-);
+const env = await loadAndExecuteDeploymentsFromModules([{id: 'deploy_MyContract', module: deployMyContract}], {
+	environment: 'sepolia',
+	provider: window.ethereum,
+});
 ```
 
 ### Loading Deployments from IndexedDB
 
 ```typescript
-import { loadDeploymentsFromIndexedDB } from '@rocketh/web';
+import {loadDeploymentsFromIndexedDB} from '@rocketh/web';
 
-const { deployments, migrations, chainId, genesisHash } = await loadDeploymentsFromIndexedDB(
-  'deployments',
-  'mainnet',
-  true, // onlyABIAndAddress - load minimal data
-  {
-    chainId: '1',
-    genesisHash: '0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3',
-  }
+const {deployments, migrations, chainId, genesisHash} = await loadDeploymentsFromIndexedDB(
+	'deployments',
+	'mainnet',
+	true, // onlyABIAndAddress - load minimal data
+	{
+		chainId: '1',
+		genesisHash: '0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3',
+	},
 );
 ```
 
@@ -142,10 +137,12 @@ const { deployments, migrations, chainId, genesisHash } = await loadDeploymentsF
 Creates environment helpers for browser deployment.
 
 **Parameters:**
+
 - `config` - Rocketh user configuration
 - `extensions` - Extension functions (e.g., deploy, read, execute)
 
 **Returns:**
+
 - `loadAndExecuteDeploymentsFromModules` - Execute deploy scripts
 - `loadEnvironment` - Load environment without executing scripts
 
@@ -154,12 +151,14 @@ Creates environment helpers for browser deployment.
 Loads deployments from IndexedDB storage.
 
 **Parameters:**
+
 - `deploymentsPath` - Path/key for deployments in storage
 - `networkName` - Name of the network/environment
 - `onlyABIAndAddress` - If true, load only essential data
 - `expectedChain` - Optional chain validation
 
 **Returns:**
+
 - `deployments` - Record of deployed contracts
 - `migrations` - Record of executed migrations
 - `chainId` - Chain ID string
@@ -173,23 +172,20 @@ Build deployment dashboards that allow users to deploy contracts directly from t
 
 ```typescript
 async function deployFromBrowser() {
-  const { loadAndExecuteDeploymentsFromModules } = setupEnvironment(config, extensions);
-  
-  try {
-    const env = await loadAndExecuteDeploymentsFromModules(
-      deployModules,
-      {
-        environment: 'sepolia',
-        provider: window.ethereum,
-        tags: ['MyContract'], // Deploy specific tags
-      }
-    );
-    
-    console.log('Deployment complete!');
-    return env.deployments;
-  } catch (error) {
-    console.error('Deployment failed:', error);
-  }
+	const {loadAndExecuteDeploymentsFromModules} = setupEnvironment(config, extensions);
+
+	try {
+		const env = await loadAndExecuteDeploymentsFromModules(deployModules, {
+			environment: 'sepolia',
+			provider: window.ethereum,
+			tags: ['MyContract'], // Deploy specific tags
+		});
+
+		console.log('Deployment complete!');
+		return env.deployments;
+	} catch (error) {
+		console.error('Deployment failed:', error);
+	}
 }
 ```
 
@@ -198,33 +194,33 @@ async function deployFromBrowser() {
 Load existing deployments in your DApp frontend:
 
 ```typescript
-import { setupEnvironment } from '@rocketh/web';
-import { createPublicClient, custom } from 'viem';
+import {setupEnvironment} from '@rocketh/web';
+import {createPublicClient, custom} from 'viem';
 
-const { loadEnvironment } = setupEnvironment(config, extensions);
+const {loadEnvironment} = setupEnvironment(config, extensions);
 
 async function initializeApp() {
-  const env = await loadEnvironment({
-    environment: 'mainnet',
-    provider: window.ethereum,
-  });
-  
-  // Use deployed contracts
-  const token = env.get('Token');
-  
-  // Create viem client for interactions
-  const client = createPublicClient({
-    chain: env.network.chain,
-    transport: custom(window.ethereum),
-  });
-  
-  // Read contract data
-  const balance = await client.readContract({
-    address: token.address,
-    abi: token.abi,
-    functionName: 'balanceOf',
-    args: [userAddress],
-  });
+	const env = await loadEnvironment({
+		environment: 'mainnet',
+		provider: window.ethereum,
+	});
+
+	// Use deployed contracts
+	const token = env.get('Token');
+
+	// Create viem client for interactions
+	const client = createPublicClient({
+		chain: env.network.chain,
+		transport: custom(window.ethereum),
+	});
+
+	// Read contract data
+	const balance = await client.readContract({
+		address: token.address,
+		abi: token.abi,
+		functionName: 'balanceOf',
+		args: [userAddress],
+	});
 }
 ```
 

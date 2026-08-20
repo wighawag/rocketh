@@ -27,37 +27,37 @@ yarn add @rocketh/router
 ### Basic Router Deployment
 
 ```typescript
-import { deployScript, artifacts } from '../rocketh/deploy.js';
+import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(
-  async ({ deployViaRouter, namedAccounts }) => {
-    const { deployer } = namedAccounts;
+	async ({deployViaRouter, namedAccounts}) => {
+		const {deployer} = namedAccounts;
 
-    await deployViaRouter(
-      'MyRouter',
-      {
-        account: deployer,
-      },
-      [
-        {
-          name: 'UserModule',
-          artifact: artifacts.UserModule,
-          args: [],
-        },
-        {
-          name: 'PaymentModule',
-          artifact: artifacts.PaymentModule,
-          args: [],
-        },
-        {
-          name: 'AdminModule',
-          artifact: artifacts.AdminModule,
-          args: [],
-        },
-      ]
-    );
-  },
-  { tags: ['MyRouter'] }
+		await deployViaRouter(
+			'MyRouter',
+			{
+				account: deployer,
+			},
+			[
+				{
+					name: 'UserModule',
+					artifact: artifacts.UserModule,
+					args: [],
+				},
+				{
+					name: 'PaymentModule',
+					artifact: artifacts.PaymentModule,
+					args: [],
+				},
+				{
+					name: 'AdminModule',
+					artifact: artifacts.AdminModule,
+					args: [],
+				},
+			],
+		);
+	},
+	{tags: ['MyRouter']},
 );
 ```
 
@@ -71,32 +71,28 @@ import * as deployExtension from '@rocketh/deploy';
 import * as routerExtension from '@rocketh/router';
 
 const extensions = {
-  ...deployExtension,
-  ...routerExtension,
+	...deployExtension,
+	...routerExtension,
 };
-export { extensions };
+export {extensions};
 ```
 
 Then use it in your deploy scripts:
 
 ```typescript
-import { deployScript, artifacts } from '../rocketh/deploy.js';
+import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(
-  async (env) => {
-    const { deployer } = env.namedAccounts;
+	async (env) => {
+		const {deployer} = env.namedAccounts;
 
-    // deployViaRouter is now available on env
-    await env.deployViaRouter(
-      'MyRouter',
-      { account: deployer },
-      [
-        { name: 'ModuleA', artifact: artifacts.ModuleA, args: [] },
-        { name: 'ModuleB', artifact: artifacts.ModuleB, args: [] },
-      ]
-    );
-  },
-  { tags: ['MyRouter'] }
+		// deployViaRouter is now available on env
+		await env.deployViaRouter('MyRouter', {account: deployer}, [
+			{name: 'ModuleA', artifact: artifacts.ModuleA, args: []},
+			{name: 'ModuleB', artifact: artifacts.ModuleB, args: []},
+		]);
+	},
+	{tags: ['MyRouter']},
 );
 ```
 
@@ -107,45 +103,52 @@ export default deployScript(
 Creates a router deployment function.
 
 **Parameters:**
+
 - `env` - The Rocketh environment
 
 **Returns:** A deployment function with the signature:
 
 ```typescript
 function deployViaRouter<TAbi extends Abi>(
-  name: string,
-  params: RouterEnhancedDeploymentConstruction,
-  routes: Route<Abi>[],
-  options?: RouterDeployOptions
-): Promise<DeployResult<TAbi>>
+	name: string,
+	params: RouterEnhancedDeploymentConstruction,
+	routes: Route<Abi>[],
+	options?: RouterDeployOptions,
+): Promise<DeployResult<TAbi>>;
 ```
 
 ### Deployment Parameters
 
 #### `name`
+
 The name for the router deployment.
 
 #### `params`
+
 - `account` - The deployer account (named account or address)
 
 #### `routes`
+
 Array of route definitions:
+
 ```typescript
 interface Route<TAbi extends Abi> {
-  name: string;           // Name for this route implementation
-  artifact: Artifact<TAbi>; // Contract artifact
-  args?: unknown[];       // Constructor arguments
+	name: string; // Name for this route implementation
+	artifact: Artifact<TAbi>; // Contract artifact
+	args?: unknown[]; // Constructor arguments
 }
 ```
 
 #### `options`
+
 ```typescript
 interface RouterDeployOptions extends DeployOptions {
-  extraABIs?: Abi[];      // Additional ABIs to merge
-  routerContract?: {      // Custom router contract
-    type: 'custom';
-    artifact: Artifact;
-  };
+	extraABIs?: Abi[]; // Additional ABIs to merge
+	routerContract?: {
+		// Custom router contract
+		type: 'custom';
+		artifact: Artifact;
+	};
 }
 ```
 
@@ -159,6 +162,7 @@ interface RouterDeployOptions extends DeployOptions {
 ### Selector Map Format
 
 The router uses a sorted array of `bytes6` values where:
+
 - First 4 bytes: Function selector
 - Last 2 bytes: Implementation index (1-based, 0 means no implementation)
 
@@ -171,45 +175,45 @@ The router uses a sorted array of `bytes6` values where:
 
 ```typescript
 // deploy/deploy_MultiModuleToken.ts
-import { deployScript, artifacts } from '../rocketh/deploy.js';
+import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(
-  async ({ deployViaRouter, namedAccounts }) => {
-    const { deployer, treasury } = namedAccounts;
+	async ({deployViaRouter, namedAccounts}) => {
+		const {deployer, treasury} = namedAccounts;
 
-    await deployViaRouter(
-      'MultiModuleToken',
-      {
-        account: deployer,
-      },
-      [
-        {
-          name: 'ERC20Core',
-          artifact: artifacts.ERC20CoreModule,
-          args: ['My Token', 'MTK', 18],
-        },
-        {
-          name: 'Mintable',
-          artifact: artifacts.MintableModule,
-          args: [treasury],
-        },
-        {
-          name: 'Burnable',
-          artifact: artifacts.BurnableModule,
-          args: [],
-        },
-        {
-          name: 'Pausable',
-          artifact: artifacts.PausableModule,
-          args: [deployer], // Admin address
-        },
-      ],
-      {
-        deterministic: true, // Deploy deterministically
-      }
-    );
-  },
-  { tags: ['MultiModuleToken'] }
+		await deployViaRouter(
+			'MultiModuleToken',
+			{
+				account: deployer,
+			},
+			[
+				{
+					name: 'ERC20Core',
+					artifact: artifacts.ERC20CoreModule,
+					args: ['My Token', 'MTK', 18],
+				},
+				{
+					name: 'Mintable',
+					artifact: artifacts.MintableModule,
+					args: [treasury],
+				},
+				{
+					name: 'Burnable',
+					artifact: artifacts.BurnableModule,
+					args: [],
+				},
+				{
+					name: 'Pausable',
+					artifact: artifacts.PausableModule,
+					args: [deployer], // Admin address
+				},
+			],
+			{
+				deterministic: true, // Deploy deterministically
+			},
+		);
+	},
+	{tags: ['MultiModuleToken']},
 );
 ```
 
@@ -218,20 +222,16 @@ export default deployScript(
 You can provide a custom router contract that follows the same interface:
 
 ```typescript
-await deployViaRouter(
-  'MyRouter',
-  { account: deployer },
-  routes,
-  {
-    routerContract: {
-      type: 'custom',
-      artifact: myCustomRouterArtifact,
-    },
-  }
-);
+await deployViaRouter('MyRouter', {account: deployer}, routes, {
+	routerContract: {
+		type: 'custom',
+		artifact: myCustomRouterArtifact,
+	},
+});
 ```
 
 The custom router must accept constructor arguments in the format:
+
 ```solidity
 struct RouterParams {
     address fallbackImplementation;

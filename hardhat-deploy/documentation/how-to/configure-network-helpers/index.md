@@ -7,14 +7,11 @@ Hardhat-deploy provides powerful helper functions that automatically generate ne
 Hardhat-deploy provides three key helper functions that work together:
 
 ```typescript
-import {
-  addForkConfiguration,
-  addNetworksFromEnv,
-  addNetworksFromKnownList,
-} from 'hardhat-deploy/helpers';
+import {addForkConfiguration, addNetworksFromEnv, addNetworksFromKnownList} from 'hardhat-deploy/helpers';
 ```
 
 These helpers automatically:
+
 - Configure networks from environment variables
 - Add all known chains with standard naming
 - Set up fork configurations for testing
@@ -36,11 +33,11 @@ Scans environment variables for `ETH_NODE_URI_<network>` patterns and automatica
 // MNEMONIC_polygon=your mnemonic here
 
 const networks = addNetworksFromEnv({
-  // Your custom networks here
-  localhost: {
-    type: 'edr-simulated',
-    chainType: 'l1',
-  },
+	// Your custom networks here
+	localhost: {
+		type: 'edr-simulated',
+		chainType: 'l1',
+	},
 });
 ```
 
@@ -90,20 +87,22 @@ Automatically adds configurations for all known blockchain networks using their 
 // Adds networks for all known chains using kebab-case names:
 // ethereum, polygon, arbitrum, optimism, base, arbitrum-sepolia, etc.
 const networks = addNetworksFromKnownList(
-  addNetworksFromEnv({
-    // Your custom networks
-  })
+	addNetworksFromEnv({
+		// Your custom networks
+	}),
 );
 ```
 
 #### Network Name Conversion
 
 Network names are converted from their display names to kebab-case:
+
 - **"Arbitrum Sepolia"** → `arbitrum-sepolia`
 - **"MegaETH Testnet"** → `mega-eth-testnet`
 - **"Polygon Mumbai"** → `polygon-mumbai`
 
 **Important**: Environment variables use underscores instead of dashes (since dashes aren't allowed in env var names):
+
 - Network name: `arbitrum-sepolia`
 - Environment variable: `ETH_NODE_URI_arbitrum_sepolia`
 - Environment variable: `MNEMONIC_arbitrum_sepolia`
@@ -111,6 +110,7 @@ Network names are converted from their display names to kebab-case:
 #### Supported Networks
 
 The helper includes configurations for major networks:
+
 - **Ethereum**: `ethereum` (mainnet)
 - **Layer 2s**: `polygon`, `arbitrum`, `optimism`, `base`
 - **Testnets**: `sepolia`, `goerli`, `mumbai`, `arbitrum-sepolia`
@@ -119,6 +119,7 @@ The helper includes configurations for major networks:
 #### Automatic Configuration
 
 For each known network, it automatically sets:
+
 - **Chain ID**: Correct chain ID for the network
 - **RPC URL**: Default public RPC or your custom `ETH_NODE_URI_<network>`
 - **Accounts**: Network-specific mnemonic or fallback
@@ -132,11 +133,11 @@ Enables fork testing by automatically configuring the `fork` network based on th
 
 ```typescript
 const networks = addForkConfiguration(
-  addNetworksFromKnownList(
-    addNetworksFromEnv({
-      // Base networks
-    })
-  )
+	addNetworksFromKnownList(
+		addNetworksFromEnv({
+			// Base networks
+		}),
+	),
 );
 ```
 
@@ -158,6 +159,7 @@ HARDHAT_FORK=arbitrum
 #### Fork Network Configuration
 
 The helper automatically:
+
 - Creates a `fork` network configuration
 - Uses the target network's RPC URL for forking
 - Copies account configuration from the target network
@@ -169,48 +171,44 @@ Here's how the template uses all three helpers together:
 
 ```typescript
 // hardhat.config.ts
-import { HardhatUserConfig } from 'hardhat/config';
+import {HardhatUserConfig} from 'hardhat/config';
 import HardhatDeploy from 'hardhat-deploy';
-import {
-  addForkConfiguration,
-  addNetworksFromEnv,
-  addNetworksFromKnownList,
-} from 'hardhat-deploy/helpers';
+import {addForkConfiguration, addNetworksFromEnv, addNetworksFromKnownList} from 'hardhat-deploy/helpers';
 
 const config: HardhatUserConfig = {
-  plugins: [HardhatDeploy],
-  solidity: {
-    version: '0.8.28',
-    settings: {
-      optimizer: {
-        enabled: true,
-        runs: 999999,
-      },
-    },
-  },
-  networks:
-    // Step 3: Add fork configuration for chosen network
-    addForkConfiguration(
-      // Step 2: Add network config for all known chains using kebab-case names
-      // Uses MNEMONIC_<network> (or MNEMONIC if not set) for accounts
-      // Uses ETH_NODE_URI_<network> for RPC URLs
-      addNetworksFromKnownList(
-        // Step 1: Add networks for each ETH_NODE_URI_<network> env var found
-        // Also reads MNEMONIC_<network> to populate accounts
-        addNetworksFromEnv(
-          // Base configuration - your custom networks
-          {
-            default: {
-              type: 'edr-simulated',
-              chainType: 'l1',
-            },
-          }
-        )
-      )
-    ),
-  paths: {
-    sources: ['src'],
-  },
+	plugins: [HardhatDeploy],
+	solidity: {
+		version: '0.8.28',
+		settings: {
+			optimizer: {
+				enabled: true,
+				runs: 999999,
+			},
+		},
+	},
+	networks:
+		// Step 3: Add fork configuration for chosen network
+		addForkConfiguration(
+			// Step 2: Add network config for all known chains using kebab-case names
+			// Uses MNEMONIC_<network> (or MNEMONIC if not set) for accounts
+			// Uses ETH_NODE_URI_<network> for RPC URLs
+			addNetworksFromKnownList(
+				// Step 1: Add networks for each ETH_NODE_URI_<network> env var found
+				// Also reads MNEMONIC_<network> to populate accounts
+				addNetworksFromEnv(
+					// Base configuration - your custom networks
+					{
+						default: {
+							type: 'edr-simulated',
+							chainType: 'l1',
+						},
+					},
+				),
+			),
+		),
+	paths: {
+		sources: ['src'],
+	},
 };
 
 export default config;
@@ -257,24 +255,24 @@ SECRET_MNEMONIC_polygon=your production mnemonic here
 
 ```typescript
 const config: HardhatUserConfig = {
-  networks: addForkConfiguration(
-    addNetworksFromKnownList(
-      addNetworksFromEnv({
-        // Custom local network
-        localhost: {
-          type: 'edr-simulated',
-          chainType: 'l1',
-        },
-        // Custom testnet
-        'custom-testnet': {
-          type: 'http',
-          url: 'https://rpc.custom-testnet.com',
-          chainId: 12345,
-          accounts: { mnemonic: 'your custom testnet mnemonic' },
-        },
-      })
-    )
-  ),
+	networks: addForkConfiguration(
+		addNetworksFromKnownList(
+			addNetworksFromEnv({
+				// Custom local network
+				localhost: {
+					type: 'edr-simulated',
+					chainType: 'l1',
+				},
+				// Custom testnet
+				'custom-testnet': {
+					type: 'http',
+					url: 'https://rpc.custom-testnet.com',
+					chainId: 12345,
+					accounts: {mnemonic: 'your custom testnet mnemonic'},
+				},
+			}),
+		),
+	),
 };
 ```
 
@@ -316,21 +314,25 @@ ETH_NODE_URI=https://{{networkName}}.infura.io/v3/YOUR-PROJECT-ID
 ## Benefits of Using Helpers
 
 ### 1. **Reduced Configuration**
+
 - No need to manually configure each network
 - Automatic chain ID and RPC URL management
 - Built-in support for major networks
 
 ### 2. **Environment-Based Configuration**
+
 - Easy switching between development and production
 - Network-specific account management
 - Secure secret handling
 
 ### 3. **Fork Testing Support**
+
 - Automatic fork configuration
 - Easy network switching for testing
 - Proper account inheritance
 
 ### 4. **Maintainability**
+
 - Single source of truth for network configurations
 - Automatic updates when new networks are added
 - Consistent naming conventions
