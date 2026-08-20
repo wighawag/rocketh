@@ -137,5 +137,5 @@ library GreetingsStorage {
 
 ## Next Steps
 
-- [Deploy with Proxies](./deploy-with-proxies.md) for alternative upgrade patterns
-- [Deployment Fixtures in Tests](./deployment-fixtures-in-tests.md) for testing diamond contracts
+- [Deploy with Proxies](../deploy-with-proxies/) for alternative upgrade patterns
+- [Deployment Fixtures in Tests](../deployment-fixtures-in-tests/) for testing diamond contracts

@@ -43,6 +43,6 @@ You can also provide your own modules for advanced use cases.
 
 ## Getting Started
 
-To get started with hardhat-deploy, see the [Installation Guide](./installation.md), or jump straight into learning [How to Deploy Contracts](./how-to-deploy-contracts.md).
+To get started with hardhat-deploy, see the [Installation Guide](../installation/), or jump straight into learning [How to Deploy Contracts](../how-to-deploy-contracts/).
 
 For a production-ready setup, check out the [template-ethereum-contracts](https://github.com/wighawag/template-ethereum-contracts) template.

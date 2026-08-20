@@ -61,4 +61,4 @@ pnpm rocketh-verify -e sepolia blockscout --endpoint https://eth-sepolia.blocksc
 
 ## Next Steps
 
-- [Export Deployments for Frontend](./export-deployments.md) to integrate with web applications
+- [Export Deployments for Frontend](../export-deployments/) to integrate with web applications

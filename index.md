@@ -12,10 +12,13 @@ hero:
     alt: rocketh logo
   actions:
     - theme: brand
-      text: harhdat-deploy
-      link: https://rocketh.dev/hardhat-deploy/
+      text: Documentation
+      link: /documentation/
     - theme: alt
-      text: github
+      text: hardhat-deploy
+      link: /hardhat-deploy/
+    - theme: alt
+      text: GitHub
       link: https://github.com/wighawag/rocketh/#readme
 
 features:

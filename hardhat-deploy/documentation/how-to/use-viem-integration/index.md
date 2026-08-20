@@ -244,5 +244,5 @@ await env.execute(deployment, {
 
 ## Next Steps
 
-- [Use Fork Testing](./use-fork-testing.md) for testing with existing contracts using viem
-- [Use Deployment Fixtures in Tests](./deployment-fixtures-in-tests.md) for comprehensive testing patterns
+- [Use Fork Testing](../use-fork-testing/) for testing with existing contracts using viem
+- [Use Deployment Fixtures in Tests](../deployment-fixtures-in-tests/) for comprehensive testing patterns

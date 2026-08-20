@@ -189,5 +189,5 @@ export default deployScript(
 
 ## Next Steps
 
-- [Deploy Diamond Contracts](./deploy-diamond-contracts.md) for modular upgrades
-- [Deployment Fixtures in Tests](./deployment-fixtures-in-tests.md) for testing proxy deployments
+- [Deploy Diamond Contracts](../deploy-diamond-contracts/) for modular upgrades
+- [Deployment Fixtures in Tests](../deployment-fixtures-in-tests/) for testing proxy deployments

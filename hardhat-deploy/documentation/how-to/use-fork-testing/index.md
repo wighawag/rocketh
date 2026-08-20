@@ -1,12 +1,12 @@
 # How to Use Fork Testing
 
-Fork testing allows you to test your deployments against real blockchain state by forking mainnet or other networks. This guide shows you how to use fork testing with hardhat-deploy, building on the network configuration from the [Configure Network Helpers](./configure-network-helpers.md) guide.
+Fork testing allows you to test your deployments against real blockchain state by forking mainnet or other networks. This guide shows you how to use fork testing with hardhat-deploy, building on the network configuration from the [Configure Network Helpers](../configure-network-helpers/) guide.
 
 ## Prerequisites
 
 Before using fork testing, ensure you have:
 
-1. **Network helpers configured** - Follow the [Configure Network Helpers](./configure-network-helpers.md) guide to set up `addForkConfiguration` in your `hardhat.config.ts`
+1. **Network helpers configured** - Follow the [Configure Network Helpers](../configure-network-helpers/) guide to set up `addForkConfiguration` in your `hardhat.config.ts`
 2. **Network environment variables** - Set up `ETH_NODE_URI_<network>` for the networks you want to fork
 
 ## What is Fork Testing?
@@ -115,5 +115,5 @@ ldenv -n HARDHAT_FORK=mainnet hardhat deploy
 
 ## Next Steps
 
-- [Verify Contracts](./verify-contracts.md) for contract verification after fork testing
-- [Use Viem Integration](./use-viem-integration.md) for type-safe fork interactions
+- [Verify Contracts](../verify-contracts/) for contract verification after fork testing
+- [Use Viem Integration](../use-viem-integration/) for type-safe fork interactions

@@ -76,11 +76,11 @@ await deploy("MyContract", {
 
 #### `@rocketh/proxy`
 
-Provides `deployViaProxy()` for deploying upgradeable contracts using proxy patterns. See [Deploy with Proxies](./how-to/deploy-with-proxies.md) for detailed usage.
+Provides `deployViaProxy()` for deploying upgradeable contracts using proxy patterns. See [Deploy with Proxies](../how-to/deploy-with-proxies/) for detailed usage.
 
 #### `@rocketh/diamond`
 
-Provides `diamond()` for deploying EIP-2535 Diamond contracts with facets. See [Deploy Diamond Contracts](./how-to/deploy-diamond-contracts.md) for detailed usage.
+Provides `diamond()` for deploying EIP-2535 Diamond contracts with facets. See [Deploy Diamond Contracts](../how-to/deploy-diamond-contracts/) for detailed usage.
 
 ## Handling contracts using libraries
 

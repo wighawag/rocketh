@@ -307,7 +307,7 @@ See a template that uses them here: https://github.com/wighawag/template-ethereu
 
 ## Migrating from hardhat-deploy v1
 
-> **For a complete migration guide**, see [Migration from v1](./migration-from-v1.md)
+> **For a complete migration guide**, see [Migration from v1](../migration-from-v1/)
 
 Below is a quick overview of the key differences:
 

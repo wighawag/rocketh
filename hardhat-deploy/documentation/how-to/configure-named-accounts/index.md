@@ -111,5 +111,5 @@ describe('MyContract', function () {
 
 ## Next Steps
 
-- [Use Tags and Dependencies](./use-tags-and-dependencies.md) for organizing deployments
-- [Deploy with Proxies](./deploy-with-proxies.md) for upgradeable contracts
+- [Use Tags and Dependencies](../use-tags-and-dependencies/) for organizing deployments
+- [Deploy with Proxies](../deploy-with-proxies/) for upgradeable contracts

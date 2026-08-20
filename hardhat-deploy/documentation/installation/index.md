@@ -44,7 +44,7 @@ hardhat-deploy and rocketh provides many features to help you deploy your contra
 
 ## Migrating from hardhat-deploy v1
 
-> **Note**: We provide a detailed [Migrating from hardhat-deploy v1 guide](./how-to/migration-from-v1.md).
+> **Note**: We provide a detailed [Migrating from hardhat-deploy v1 guide](../how-to/migration-from-v1/).
 
 in v1 you would create a deploy file like this:
 
@@ -93,7 +93,7 @@ export default deployScript(
 );
 ```
 
-and you would have a `rocketh/config.ts` file as described in the [Setup First Project section](./how-to/setup-first-project.md)
+and you would have a `rocketh/config.ts` file as described in the [Setup First Project section](../how-to/setup-first-project/)
 
 ### Migrating existing deployment to hardhat-deploy
 

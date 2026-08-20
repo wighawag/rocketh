@@ -12,7 +12,7 @@ With the deployment saved, it allows you to deploy a contract only if changes we
 
 Deploy scripts (also called Deploy functions) can also perform arbitrary logic.
 
-For further details on how to use it and write deploy scripts, see [How to Deploy Contracts](./how-to-deploy-contracts.md).
+For further details on how to use it and write deploy scripts, see [How to Deploy Contracts](../how-to-deploy-contracts/).
 
 ### 2. rocketh-verify
 

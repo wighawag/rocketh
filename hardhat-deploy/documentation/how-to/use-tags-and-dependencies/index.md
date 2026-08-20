@@ -287,5 +287,5 @@ If scripts run in the wrong order:
 
 ## Next Steps
 
-- [Deploy with Proxies](./deploy-with-proxies.md) for upgradeable contracts
-- [Deployment Fixtures in Tests](./deployment-fixtures-in-tests.md) for testing integration
+- [Deploy with Proxies](../deploy-with-proxies/) for upgradeable contracts
+- [Deployment Fixtures in Tests](../deployment-fixtures-in-tests/) for testing integration

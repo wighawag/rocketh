@@ -39,65 +39,110 @@ export default defineConfig({
 		},
 	},
 
+	vite: {
+		optimizeDeps: {
+			// Vite's dependency scanner crawls the project root for HTML entry points. The repo
+			// root is also the docs srcDir, so an unrelated checkout under the gitignored `tmp/`
+			// (a hardhat monorepo clone, say) gets scanned as if it were part of this site, and
+			// one broken entry there aborts the WHOLE scan: dependency pre-bundling is then
+			// skipped for the docs, which is slow and confusing in a way that does not name the
+			// real cause. Scratch directories are not part of the site, so keep them out.
+			entries: ['**/*.html', '!tmp/**', '!demoes/**', '!packages/*/dist/**'],
+		},
+	},
+
 	themeConfig: {
 		// https://vitepress.dev/reference/default-theme-config
 		nav: [
 			{text: 'Home', link: '/'},
-			{text: 'Documentation', link: '/documentation'},
+			{text: 'Documentation', link: '/documentation/'},
 			{text: 'hardhat-deploy', link: '/hardhat-deploy/'},
 		],
 
-		// Path-scoped sidebars: the hardhat-deploy guides get their own tree,
-		// the rest of the site keeps the top-nav-only layout.
+		// Path-scoped sidebars: the rocketh documentation and the hardhat-deploy guides
+		// each get their own tree. The home page stays top-nav-only.
 		sidebar: {
+			'/documentation/': [
+				{text: 'Introduction', link: '/documentation/'},
+				{
+					text: 'Getting Started',
+					collapsed: false,
+					items: [
+						{text: 'Installation and Setup', link: '/documentation/installation/'},
+						{text: 'Core Concepts', link: '/documentation/core-concepts/'},
+						{text: 'Using rocketh', link: '/documentation/deploying/'},
+						{text: 'Examples', link: '/documentation/examples/'},
+					],
+				},
+				{
+					text: 'Going Further',
+					collapsed: false,
+					items: [
+						{text: 'Using hardhat-deploy', link: '/documentation/hardhat-deploy/'},
+						{text: 'Testing Deploy Scripts', link: '/documentation/testing/'},
+						{text: 'Exporting and Verifying', link: '/documentation/exporting-and-verifying/'},
+						{text: 'Handling Unknown Signers', link: '/documentation/unknown-signers/'},
+					],
+				},
+				{
+					text: 'Reference',
+					collapsed: false,
+					items: [
+						{text: 'Production Hardening', link: '/documentation/production-hardening/'},
+						{text: 'Architecture Overview', link: '/documentation/architecture/'},
+						{text: 'Migrating from v1', link: '/documentation/migration/'},
+					],
+				},
+			],
+
 			'/hardhat-deploy/': [
-				{text: 'Introduction', link: '/hardhat-deploy/documentation/introduction'},
-				{text: 'What Is It For?', link: '/hardhat-deploy/documentation/what-is-it-for'},
-				{text: 'In A Nutshell', link: '/hardhat-deploy/documentation/in-a-nutshell'},
-				{text: 'Installation', link: '/hardhat-deploy/documentation/installation'},
-				{text: 'Command And Tasks', link: '/hardhat-deploy/documentation/command-and-tasks'},
-				{text: 'Rocketh Environment', link: '/hardhat-deploy/documentation/environment'},
-				{text: 'Configuration', link: '/hardhat-deploy/documentation/configuration'},
-				{text: 'How to deploy contracts', link: '/hardhat-deploy/documentation/how-to-deploy-contracts'},
+				{text: 'Introduction', link: '/hardhat-deploy/documentation/introduction/'},
+				{text: 'What Is It For?', link: '/hardhat-deploy/documentation/what-is-it-for/'},
+				{text: 'In A Nutshell', link: '/hardhat-deploy/documentation/in-a-nutshell/'},
+				{text: 'Installation', link: '/hardhat-deploy/documentation/installation/'},
+				{text: 'Command And Tasks', link: '/hardhat-deploy/documentation/command-and-tasks/'},
+				{text: 'Rocketh Environment', link: '/hardhat-deploy/documentation/environment/'},
+				{text: 'Configuration', link: '/hardhat-deploy/documentation/configuration/'},
+				{text: 'How to deploy contracts', link: '/hardhat-deploy/documentation/how-to-deploy-contracts/'},
 				{
 					text: 'How-To Guides',
 					collapsed: false,
 					items: [
-						{text: 'Guides', link: '/hardhat-deploy/documentation/how-to/index'},
+						{text: 'Guides', link: '/hardhat-deploy/documentation/how-to/'},
 						{
 							text: 'Getting Started',
 							collapsed: true,
 							items: [
-								{text: 'Set Up Your First Project', link: '/hardhat-deploy/documentation/how-to/setup-first-project'},
-								{text: 'Migrate from v1', link: '/hardhat-deploy/documentation/how-to/migration-from-v1'},
-								{text: 'Configure Network Helpers', link: '/hardhat-deploy/documentation/how-to/configure-network-helpers'},
-								{text: 'Configure Named Accounts', link: '/hardhat-deploy/documentation/how-to/configure-named-accounts'},
-								{text: 'Use Tags and Dependencies', link: '/hardhat-deploy/documentation/how-to/use-tags-and-dependencies'},
+								{text: 'Set Up Your First Project', link: '/hardhat-deploy/documentation/how-to/setup-first-project/'},
+								{text: 'Migrate from v1', link: '/hardhat-deploy/documentation/how-to/migration-from-v1/'},
+								{text: 'Configure Network Helpers', link: '/hardhat-deploy/documentation/how-to/configure-network-helpers/'},
+								{text: 'Configure Named Accounts', link: '/hardhat-deploy/documentation/how-to/configure-named-accounts/'},
+								{text: 'Use Tags and Dependencies', link: '/hardhat-deploy/documentation/how-to/use-tags-and-dependencies/'},
 							],
 						},
 						{
 							text: 'Contract Patterns',
 							collapsed: true,
 							items: [
-								{text: 'Proxy Contracts', link: '/hardhat-deploy/documentation/how-to/deploy-with-proxies'},
-								{text: 'Diamond Contracts', link: '/hardhat-deploy/documentation/how-to/deploy-diamond-contracts'},
+								{text: 'Proxy Contracts', link: '/hardhat-deploy/documentation/how-to/deploy-with-proxies/'},
+								{text: 'Diamond Contracts', link: '/hardhat-deploy/documentation/how-to/deploy-diamond-contracts/'},
 							],
 						},
 						{
 							text: 'Testing Integration',
 							collapsed: true,
 							items: [
-								{text: 'Use Deployment Fixtures in Tests', link: '/hardhat-deploy/documentation/how-to/deployment-fixtures-in-tests'},
-								{text: 'Use Fork Testing', link: '/hardhat-deploy/documentation/how-to/use-fork-testing'},
+								{text: 'Use Deployment Fixtures in Tests', link: '/hardhat-deploy/documentation/how-to/deployment-fixtures-in-tests/'},
+								{text: 'Use Fork Testing', link: '/hardhat-deploy/documentation/how-to/use-fork-testing/'},
 							],
 						},
 						{
 							text: 'Development Workflow',
 							collapsed: true,
 							items: [
-								{text: 'Use Viem Integration', link: '/hardhat-deploy/documentation/how-to/use-viem-integration'},
-								{text: 'Verify Contracts', link: '/hardhat-deploy/documentation/how-to/verify-contracts'},
-								{text: 'Export Deployments for Frontend', link: '/hardhat-deploy/documentation/how-to/export-deployments'},
+								{text: 'Use Viem Integration', link: '/hardhat-deploy/documentation/how-to/use-viem-integration/'},
+								{text: 'Verify Contracts', link: '/hardhat-deploy/documentation/how-to/verify-contracts/'},
+								{text: 'Export Deployments for Frontend', link: '/hardhat-deploy/documentation/how-to/export-deployments/'},
 							],
 						},
 					],
@@ -134,6 +179,7 @@ export default defineConfig({
 		'skills/**',
 		'tmp/**',
 		'docs/**',
+		'media/**',
 		'.changeset/**',
 		'.kilo/**',
 		'AGENTS.md',
@@ -145,10 +191,15 @@ export default defineConfig({
 		'SECURITY.md',
 	],
 
+	// Every page is emitted as `<name>/index.html`, never `<name>.html`, so that a URL
+	// without an extension resolves natively on any static host (a directory request
+	// serves its index) rather than depending on host-specific rewrite rules. Source
+	// files follow the same convention: `documentation/installation/index.md`, and so on.
+	// `cleanUrls` does NOT do this: it only strips `.html` from links and still emits
+	// `<name>.html`, which is exactly the dependency on host rewrites we are avoiding.
 	rewrites(id) {
-		// console.log({ id });
 		if (id === 'README.md') {
-			return 'introduction.md';
+			return 'introduction/index.md';
 		}
 		return id;
 	},

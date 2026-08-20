@@ -416,5 +416,5 @@ HARDHAT_FORK=ethereum
 
 ## Next Steps
 
-- [Use Fork Testing](./use-fork-testing.md) to leverage the automatic fork configuration
-- [Configure Named Accounts](./configure-named-accounts.md) for account management
+- [Use Fork Testing](../use-fork-testing/) to leverage the automatic fork configuration
+- [Configure Named Accounts](../configure-named-accounts/) for account management
