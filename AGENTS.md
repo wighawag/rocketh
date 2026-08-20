@@ -162,9 +162,12 @@ export function deploy(
 ```typescript
 // packages/rocketh-core/src/index.ts
 export type * from './types.js';
-export {resolveAccount, resolveAccountOrUndefined} from './account.js';
+export {UnknownSignerError, type UnknownSignerErrorData} from './errors.js';
 export {mergeABIs, mergeArtifacts} from './artifacts.js';
+export {withEnvironment, enhanceEnvIfNeeded} from './environment.js';
 ```
+
+Note that `resolveAccount` / `resolveAccountOrUndefined` are **methods on `Environment`** (`env.resolveAccount('deployer')`), not standalone exports. There is no `account.js` module.
 
 ### Good: Test structure pattern
 
