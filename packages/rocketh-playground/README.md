@@ -2,7 +2,7 @@
 
 Run real rocketh deploy scripts against a real EVM, in the reader's browser.
 
-This is what powers the stepped tutorial in the [rocketh documentation](https://rocketh.dev/documentation): press **Start** and the page boots an EVM in your tab, then walks four actual deploy scripts through the actual `@rocketh/deploy` and `@rocketh/proxy` packages, streaming back what each one printed. Nothing is mocked, nothing is recorded, and nothing touches a network.
+This is what powers the stepped tutorial in the [rocketh documentation](https://rocketh.dev/documentation/): press **Start** and the page boots an EVM in your tab, then walks four actual deploy scripts through the actual `@rocketh/deploy` and `@rocketh/proxy` packages, streaming back what each one printed. Nothing is mocked, nothing is recorded, and nothing touches a network.
 
 The four steps deploy a contract behind a proxy, expose a bug in it, upgrade the implementation to fix it, and show what survived the upgrade. All four run against **one** chain and **one** deployment store, which is the only reason the upgrade means anything: step 3 has to find the proxy step 1 deployed.
 

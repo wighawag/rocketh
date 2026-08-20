@@ -4,6 +4,17 @@
 
 The package also exports `withUnknownSignerPolicy`, which chooses the unknown-signer policy for ONE call (see below).
 
+## You may not need this package
+
+Handling an unsignable `from` is built into rocketh. By default (`onUnknownSigner: 'auto'`), a run at a terminal PAUSES: it prints the transaction, waits while you execute it on your Safe, takes back the hash you paste, and continues the same run. One run, no wrapper, nothing to install.
+
+Reach for `catchUnknownSigner` when you specifically want the DEFER workflow instead:
+
+- you are migrating a hardhat-deploy v1 script that already uses it (its main reason to exist), or
+- you want the transaction handed back as a value in a run that must never block, and you will re-run afterwards.
+
+Otherwise the built-in interactive flow finishes the job in one run rather than two.
+
 ```typescript
 import {catchUnknownSigner} from '@rocketh/unknown-signer';
 import {execute} from '@rocketh/read-execute';
