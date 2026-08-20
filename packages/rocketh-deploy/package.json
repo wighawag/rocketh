@@ -1,12 +1,19 @@
 {
 	"name": "@rocketh/deploy",
 	"version": "0.19.17",
-	"description": "provide deploy function for rocketh",
+	"description": "Deploy EVM smart contracts with deterministic CREATE2 and CREATE3 support, for rocketh and hardhat-deploy.",
 	"keywords": [
 		"rocketh",
 		"ethereum",
+		"evm",
+		"solidity",
+		"smart-contracts",
 		"deployment",
-		"test"
+		"deploy",
+		"hardhat-deploy",
+		"create2",
+		"create3",
+		"deterministic-deployment"
 	],
 	"author": "Ronan Sandford",
 	"license": "MIT",

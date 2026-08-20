@@ -1,12 +1,18 @@
 {
 	"name": "@rocketh/verifier",
 	"version": "0.19.22",
-	"description": "submit verification proof to verifier services (blockchain explorer, sourcify...",
+	"description": "Verify deployed EVM smart contracts on Etherscan, Sourcify and compatible block explorers.",
 	"keywords": [
 		"rocketh",
 		"ethereum",
+		"evm",
+		"solidity",
+		"smart-contracts",
 		"deployment",
-		"test"
+		"verification",
+		"etherscan",
+		"sourcify",
+		"blockscout"
 	],
 	"author": "Ronan Sandford",
 	"license": "MIT",

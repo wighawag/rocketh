@@ -1,12 +1,18 @@
 {
 	"name": "@rocketh/export",
 	"version": "0.19.23",
-	"description": "export deployments",
+	"description": "Export EVM contract deployments (ABIs and addresses) for frontend consumption.",
 	"keywords": [
 		"rocketh",
 		"ethereum",
+		"evm",
+		"solidity",
+		"smart-contracts",
 		"deployment",
-		"test"
+		"abi",
+		"frontend",
+		"typescript",
+		"export"
 	],
 	"author": "Ronan Sandford",
 	"license": "MIT",

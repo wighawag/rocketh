@@ -1,12 +1,18 @@
 {
 	"name": "@rocketh/test-utils",
 	"version": "0.2.16",
-	"description": "Test utilities for rocketh packages",
+	"description": "Test utilities for rocketh deploy scripts, running a real environment against a mock EIP-1193 provider.",
 	"keywords": [
 		"rocketh",
 		"ethereum",
+		"evm",
+		"solidity",
+		"smart-contracts",
 		"deployment",
-		"test"
+		"testing",
+		"vitest",
+		"mock",
+		"eip-1193"
 	],
 	"author": "Ronan Sandford",
 	"license": "MIT",

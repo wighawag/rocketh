@@ -1,12 +1,17 @@
 {
 	"name": "@rocketh/doc",
 	"version": "0.19.21",
-	"description": "can generate doc from rocketh deployments and provided template",
+	"description": "Generate documentation from EVM contract deployments and NatSpec comments.",
 	"keywords": [
 		"rocketh",
 		"ethereum",
+		"evm",
+		"solidity",
+		"smart-contracts",
 		"deployment",
-		"test"
+		"documentation",
+		"natspec",
+		"docgen"
 	],
 	"author": "Ronan Sandford",
 	"license": "MIT",

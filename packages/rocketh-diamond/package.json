@@ -1,12 +1,20 @@
 {
 	"name": "@rocketh/diamond",
 	"version": "0.19.19",
-	"description": "provide diamond support for rocketh/hardhat-deploy",
+	"description": "Deploy and upgrade EIP-2535 Diamond proxies, for rocketh and hardhat-deploy.",
 	"keywords": [
 		"rocketh",
 		"ethereum",
+		"evm",
+		"solidity",
+		"smart-contracts",
 		"deployment",
-		"test"
+		"hardhat-deploy",
+		"diamond",
+		"eip-2535",
+		"erc-2535",
+		"facet",
+		"upgradeable"
 	],
 	"author": "Ronan Sandford",
 	"license": "MIT",

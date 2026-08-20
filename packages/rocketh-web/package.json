@@ -1,12 +1,16 @@
 {
 	"name": "@rocketh/web",
 	"version": "0.19.20",
-	"description": "rocketh for web",
+	"description": "Run rocketh deploy scripts in the browser.",
 	"keywords": [
 		"rocketh",
 		"ethereum",
+		"evm",
+		"solidity",
+		"smart-contracts",
 		"deployment",
-		"test"
+		"browser",
+		"web"
 	],
 	"author": "Ronan Sandford",
 	"license": "MIT",

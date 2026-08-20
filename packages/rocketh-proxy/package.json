@@ -1,12 +1,21 @@
 {
 	"name": "@rocketh/proxy",
 	"version": "0.19.23",
-	"description": "provide proxy-enabled deploy function for rocketh",
+	"description": "Deploy upgradeable EVM smart contracts behind ERC1967, UUPS, Transparent or ERC173 proxies, for rocketh and hardhat-deploy.",
 	"keywords": [
 		"rocketh",
 		"ethereum",
+		"evm",
+		"solidity",
+		"smart-contracts",
 		"deployment",
-		"test"
+		"hardhat-deploy",
+		"proxy",
+		"upgradeable",
+		"uups",
+		"erc1967",
+		"transparent-proxy",
+		"erc173"
 	],
 	"author": "Ronan Sandford",
 	"license": "MIT",

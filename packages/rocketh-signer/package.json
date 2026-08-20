@@ -1,12 +1,17 @@
 {
 	"name": "@rocketh/signer",
 	"version": "0.19.12",
-	"description": "add signer to rocketh",
+	"description": "Attach private-key and mnemonic signers to rocketh deploy scripts.",
 	"keywords": [
 		"rocketh",
 		"ethereum",
+		"evm",
+		"solidity",
+		"smart-contracts",
 		"deployment",
-		"test"
+		"signer",
+		"private-key",
+		"mnemonic"
 	],
 	"author": "Ronan Sandford",
 	"license": "MIT",

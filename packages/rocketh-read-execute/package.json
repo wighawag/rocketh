@@ -1,12 +1,17 @@
 {
 	"name": "@rocketh/read-execute",
 	"version": "0.19.12",
-	"description": "provide read abd execute functions for rocketh",
+	"description": "Read from and send transactions to deployed EVM smart contracts inside rocketh deploy scripts.",
 	"keywords": [
 		"rocketh",
 		"ethereum",
+		"evm",
+		"solidity",
+		"smart-contracts",
 		"deployment",
-		"test"
+		"viem",
+		"contract-calls",
+		"transactions"
 	],
 	"author": "Ronan Sandford",
 	"license": "MIT",

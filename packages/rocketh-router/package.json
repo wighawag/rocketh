@@ -1,12 +1,18 @@
 {
 	"name": "@rocketh/router",
 	"version": "0.19.19",
-	"description": "provide router based proxy deployment for rocketh",
+	"description": "Deploy router-based upgradeable EVM smart contracts, for rocketh and hardhat-deploy.",
 	"keywords": [
 		"rocketh",
 		"ethereum",
+		"evm",
+		"solidity",
+		"smart-contracts",
 		"deployment",
-		"test"
+		"hardhat-deploy",
+		"router",
+		"proxy",
+		"upgradeable"
 	],
 	"author": "Ronan Sandford",
 	"license": "MIT",

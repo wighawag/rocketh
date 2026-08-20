@@ -1,12 +1,17 @@
 {
 	"name": "@rocketh/node",
 	"version": "0.19.21",
-	"description": "rocketh for server-side JS runtime like node, including a cli",
+	"description": "Run rocketh deploy scripts on Node.js, with filesystem-backed artifacts and a CLI.",
 	"keywords": [
 		"rocketh",
 		"ethereum",
+		"evm",
+		"solidity",
+		"smart-contracts",
 		"deployment",
-		"test"
+		"hardhat-deploy",
+		"node",
+		"cli"
 	],
 	"author": "Ronan Sandford",
 	"license": "MIT",

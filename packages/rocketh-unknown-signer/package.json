@@ -1,13 +1,18 @@
 {
 	"name": "@rocketh/unknown-signer",
 	"version": "0.19.5",
-	"description": "provide catchUnknownSigner function for rocketh",
+	"description": "catchUnknownSigner for rocketh: capture calls your deployer cannot sign, for execution by a Safe or other multisig.",
 	"keywords": [
 		"rocketh",
 		"ethereum",
+		"evm",
+		"solidity",
+		"smart-contracts",
 		"deployment",
+		"safe",
 		"multisig",
-		"safe"
+		"gnosis-safe",
+		"governance"
 	],
 	"author": "Ronan Sandford",
 	"license": "MIT",
