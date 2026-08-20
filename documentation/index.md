@@ -4,6 +4,8 @@
 
 rocketh is a framework-agnostic system for deploying smart contracts on Ethereum-compatible networks. It provides a minimal API to save and load deployments, making it easy to track and manage contract deployments across different networks.
 
+The name is the archaic third-person verb, so it rhymes with _doth_: rocketh, as in "it deployeth".
+
 Key features of rocketh include:
 
 - Deployment tracking and management

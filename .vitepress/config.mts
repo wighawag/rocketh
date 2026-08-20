@@ -3,14 +3,14 @@ import {defineConfig} from 'vitepress';
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
 	title: 'rocketh',
-	description: 'A deployment system for EVM Smart Contracts',
+	description: 'Framework-agnostic deployment system for EVM smart contracts',
 	head: [
 		['link', {rel: 'icon', href: '/icon.png'}],
 		['meta', {name: 'theme-color', content: '#000000'}],
 
 		['meta', {name: 'og:url', content: 'https://rocketh.dev'}],
 		['meta', {name: 'og:title', content: 'rocketh'}],
-		['meta', {name: 'og:description', content: 'A deployment system for EVM Smart Contracts'}],
+		['meta', {name: 'og:description', content: 'Framework-agnostic deployment system for EVM smart contracts'}],
 		['meta', {name: 'og:type', content: 'website'}],
 		['meta', {name: 'og:locale', content: 'en'}],
 		['meta', {name: 'og:site_name', content: 'rocketh'}],
@@ -18,7 +18,7 @@ export default defineConfig({
 
 		['meta', {name: 'twitter:url', content: 'https://rocketh.dev'}],
 		['meta', {name: 'twitter:title', content: 'rocketh'}],
-		['meta', {name: 'twitter:description', content: 'A deployment system for EVM Smart Contracts'}],
+		['meta', {name: 'twitter:description', content: 'Framework-agnostic deployment system for EVM smart contracts'}],
 		['meta', {name: 'twitter:card', content: 'summary_large_image'}],
 		[
 			'meta',
@@ -115,9 +115,18 @@ export default defineConfig({
 							items: [
 								{text: 'Set Up Your First Project', link: '/hardhat-deploy/documentation/how-to/setup-first-project/'},
 								{text: 'Migrate from v1', link: '/hardhat-deploy/documentation/how-to/migration-from-v1/'},
-								{text: 'Configure Network Helpers', link: '/hardhat-deploy/documentation/how-to/configure-network-helpers/'},
-								{text: 'Configure Named Accounts', link: '/hardhat-deploy/documentation/how-to/configure-named-accounts/'},
-								{text: 'Use Tags and Dependencies', link: '/hardhat-deploy/documentation/how-to/use-tags-and-dependencies/'},
+								{
+									text: 'Configure Network Helpers',
+									link: '/hardhat-deploy/documentation/how-to/configure-network-helpers/',
+								},
+								{
+									text: 'Configure Named Accounts',
+									link: '/hardhat-deploy/documentation/how-to/configure-named-accounts/',
+								},
+								{
+									text: 'Use Tags and Dependencies',
+									link: '/hardhat-deploy/documentation/how-to/use-tags-and-dependencies/',
+								},
 							],
 						},
 						{
@@ -132,7 +141,10 @@ export default defineConfig({
 							text: 'Testing Integration',
 							collapsed: true,
 							items: [
-								{text: 'Use Deployment Fixtures in Tests', link: '/hardhat-deploy/documentation/how-to/deployment-fixtures-in-tests/'},
+								{
+									text: 'Use Deployment Fixtures in Tests',
+									link: '/hardhat-deploy/documentation/how-to/deployment-fixtures-in-tests/',
+								},
 								{text: 'Use Fork Testing', link: '/hardhat-deploy/documentation/how-to/use-fork-testing/'},
 							],
 						},
@@ -142,7 +154,10 @@ export default defineConfig({
 							items: [
 								{text: 'Use Viem Integration', link: '/hardhat-deploy/documentation/how-to/use-viem-integration/'},
 								{text: 'Verify Contracts', link: '/hardhat-deploy/documentation/how-to/verify-contracts/'},
-								{text: 'Export Deployments for Frontend', link: '/hardhat-deploy/documentation/how-to/export-deployments/'},
+								{
+									text: 'Export Deployments for Frontend',
+									link: '/hardhat-deploy/documentation/how-to/export-deployments/',
+								},
 							],
 						},
 					],

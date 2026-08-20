@@ -18,7 +18,9 @@
 
 # Rocketh
 
-A framework-agnostic smart contract deployment system for Ethereum-compatible networks.
+Framework-agnostic deployment system for EVM smart contracts, and the deployment engine behind hardhat-deploy v2.
+
+> **Rocketh**, as in "it deployeth". Rhymes with _doth_.
 
 ## Features
 
