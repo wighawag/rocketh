@@ -1,6 +1,5 @@
 <div align="center">
-<img alt="rocketh logo" src="https://rocketh.dev/logo.svg" width="100" /><br/>
-  <a href="https://rocketh.dev">Rocketh</a>
+<a href="https://rocketh.dev"><img alt="rocketh logo" src="https://rocketh.dev/preview.png"  /></a>
 <hr/>
 
 <a href="https://npmjs.com/package/rocketh"><img alt="Version" src="https://img.shields.io/npm/v/rocketh" /></a>
