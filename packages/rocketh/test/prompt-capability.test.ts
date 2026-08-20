@@ -297,3 +297,80 @@ describe('text-prompt capability - what branches on it', () => {
 		).rejects.toBeInstanceOf(UnknownSignerError);
 	});
 });
+
+/**
+ * A run that WANTED to resolve interactively and could not is the first place most
+ * people meet this error, because it is what CI and `--skip-prompts` produce. The
+ * message has to say why the documented pause-and-paste flow did not happen, or the
+ * degradation reads as the feature not existing.
+ */
+describe('text-prompt capability - explaining the degradation', () => {
+	async function unsignableBroadcastError(options: {promptExecutor?: PromptExecutor}): Promise<UnknownSignerError> {
+		const {env} = await buildEnvironment({
+			accounts: {deployer: PRIVATE_KEY, admin: SAFE_ADDRESS},
+			nodeAccounts: [],
+			promptExecutor: options.promptExecutor,
+		});
+		const from = env.resolveAccount('admin');
+		return env
+			.broadcastExecution({
+				type: 'object',
+				data: {type: '0x2', from, to: TARGET_CONTRACT, data: '0xdeadbeef', chainId: '0x7a69'},
+			})
+			.then(
+				() => {
+					throw new Error('expected the unsignable `from` to reject');
+				},
+				(e) => e as UnknownSignerError,
+			);
+	}
+
+	it('tells a prompt-less run what it would have done with a terminal', async () => {
+		const error = await unsignableBroadcastError({});
+
+		expect(error).toBeInstanceOf(UnknownSignerError);
+		expect(error.message).toContain('PAUSED');
+		expect(error.message).toContain('--skip-prompts');
+		// and it still carries the transaction to execute, which is the actual deliverable
+		expect(error.message).toContain(SAFE_ADDRESS);
+	});
+
+	/**
+	 * The web/confirm-only shape degrades for the same reason and gets the same note:
+	 * what matters is the absence of a TEXT capability, not the absence of a prompt.
+	 */
+	it('tells a confirm-only run the same thing', async () => {
+		const error = await unsignableBroadcastError({promptExecutor: createConfirmOnlyPromptExecutor()});
+		expect(error.message).toContain('PAUSED');
+	});
+
+	/**
+	 * THE QUIET PATH. `catchUnknownSigner` scopes an explicit `'throw'`, so a user who
+	 * chose the defer workflow gets the message they always got: nothing degraded for
+	 * them, and advertising a prompt they deliberately turned off would be noise.
+	 */
+	it('stays silent under an explicit `throw` policy, as `catchUnknownSigner` scopes', async () => {
+		const {env} = await buildEnvironment({
+			accounts: {deployer: PRIVATE_KEY, admin: SAFE_ADDRESS},
+			nodeAccounts: [],
+		});
+		const from = env.resolveAccount('admin');
+
+		// exactly what `catchUnknownSigner` does: run the action under a scoped `'throw'`
+		const error = await env
+			.runUnderUnknownSignerPolicy({policy: 'throw'}, () =>
+				env.broadcastExecution({
+					type: 'object',
+					data: {type: '0x2', from, to: TARGET_CONTRACT, data: '0xdeadbeef', chainId: '0x7a69'},
+				}),
+			)
+			.then(
+				() => undefined,
+				(e) => e as UnknownSignerError,
+			);
+
+		expect(error).toBeInstanceOf(UnknownSignerError);
+		expect(error!.message).not.toContain('PAUSED');
+		expect(error!.message).not.toContain('--skip-prompts');
+	});
+});

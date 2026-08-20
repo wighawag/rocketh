@@ -237,8 +237,14 @@ describe('unknown-signer error - auto-impersonation note', () => {
 
 	/**
 	 * The COMMON PATH is untouched: with auto-impersonation off (the default everywhere but a
-	 * fork or dev node) the message is byte-for-byte what it was, so the mainnet Safe user
-	 * gets no new noise about a feature they never enabled.
+	 * fork or dev node) the message OPENS with byte-for-byte what it always was, so the mainnet
+	 * Safe user gets no new noise about a feature they never enabled.
+	 *
+	 * `startsWith` rather than equality, because a run that CANNOT ask a human for text now
+	 * appends a note saying it would otherwise have paused and taken a pasted transaction hash
+	 * (pinned in `prompt-capability.test.ts`). That note is about prompt CAPABILITY, not
+	 * impersonation, and it lands after the transaction to execute. What is pinned here is that
+	 * nothing is injected INTO the deliverable, and that impersonation is still never mentioned.
 	 */
 	it('leaves the message unchanged when auto-impersonation is off', async () => {
 		const {env, calls} = await buildEnvironment({
@@ -253,7 +259,7 @@ describe('unknown-signer error - auto-impersonation note', () => {
 
 		expect(error!.data.autoImpersonation).toBeUndefined();
 		expect(error!.message.toLowerCase()).not.toContain('impersonat');
-		expect(error!.message).toBe(new UnknownSignerError({from, to: TARGET_CONTRACT}).message);
+		expect(error!.message.startsWith(new UnknownSignerError({from, to: TARGET_CONTRACT}).message)).toBe(true);
 	});
 
 	/**

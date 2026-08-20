@@ -25,7 +25,11 @@ import type {
 	UnknownSignerPolicyFrame,
 } from '@rocketh/core/types';
 import {UnknownSignerError, type UnknownSignerContractCall} from '@rocketh/core';
-import {createUnknownSignerPolicyStack, resolveUnknownSignerBehaviour} from './unknownSignerPolicy.js';
+import {
+	createUnknownSignerPolicyStack,
+	describeUnknownSignerCapabilityDegradation,
+	resolveUnknownSignerBehaviour,
+} from './unknownSignerPolicy.js';
 import {askForExecutedTransactionHash, confirmUnrelatedTransaction} from './interactiveUnknownSigner.js';
 import {classifyPastedTransaction, describeEvidence} from './pastedTransactionIntent.js';
 import {Abi, Address} from 'abitype';
@@ -1455,8 +1459,18 @@ export async function createEnvironment<
 				// prompt genuinely exists, and an explicit `'ask'` degrades to `'throw'` rather
 				// than hanging a run that cannot reach a human. This is the ONE place
 				// `canPromptForText()` is consulted.
-				const behaviour = resolveUnknownSignerBehaviour(policy, {canPromptForText: canPromptForText()});
+				const canAsk = canPromptForText();
+				const behaviour = resolveUnknownSignerBehaviour(policy, {canPromptForText: canAsk});
 				if (behaviour === 'throw') {
+					// A run that ASKED to resolve interactively and simply could not is the most
+					// confusing way to meet this error, because the documented default pauses and
+					// takes a pasted hash. Say why that did not happen here. Silent on an explicit
+					// `'throw'` (which is every `catchUnknownSigner` action), so the defer workflow
+					// keeps the message it always had.
+					const degradation = describeUnknownSignerCapabilityDegradation(policy, {canPromptForText: canAsk});
+					if (degradation) {
+						throw new UnknownSignerError(unknownSignerData, `${unknownSignerError.message}\n\n${degradation}`);
+					}
 					throw unknownSignerError;
 				}
 

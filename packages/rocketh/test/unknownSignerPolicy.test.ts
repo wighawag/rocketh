@@ -1,6 +1,10 @@
 import {describe, it, expect} from 'vitest';
 
-import {createUnknownSignerPolicyStack, resolveUnknownSignerBehaviour} from '../src/environment/unknownSignerPolicy.js';
+import {
+	createUnknownSignerPolicyStack,
+	describeUnknownSignerCapabilityDegradation,
+	resolveUnknownSignerBehaviour,
+} from '../src/environment/unknownSignerPolicy.js';
 
 /**
  * Unit tests for the unknown-signer POLICY FRAME STACK and for turning a policy
@@ -110,5 +114,40 @@ describe('resolveUnknownSignerBehaviour', () => {
 	it('degrades an explicit `ask` to `throw` without a text prompt', () => {
 		expect(resolveUnknownSignerBehaviour('ask', {canPromptForText: true})).toBe('ask');
 		expect(resolveUnknownSignerBehaviour('ask', {canPromptForText: false})).toBe('throw');
+	});
+});
+
+/**
+ * The note that explains a DEGRADATION. Same truth table as above, read for the
+ * question "did this run want to ask and find it could not?", which is the only
+ * case worth explaining to a user.
+ */
+describe('describeUnknownSignerCapabilityDegradation', () => {
+	it('explains the degradation when `auto` or `ask` cannot reach a human', () => {
+		for (const policy of ['auto', 'ask'] as const) {
+			const note = describeUnknownSignerCapabilityDegradation(policy, {canPromptForText: false});
+			expect(note).toBeDefined();
+			// names what WOULD have happened, and the three ways to be in this situation
+			expect(note).toContain('PAUSED');
+			expect(note).toContain('--skip-prompts');
+			expect(note).toContain('terminal');
+		}
+	});
+
+	/** Nothing degraded: the interactive path is about to run, so there is nothing to explain. */
+	it('says nothing when the run can ask', () => {
+		for (const policy of ['auto', 'ask', 'throw'] as const) {
+			expect(describeUnknownSignerCapabilityDegradation(policy, {canPromptForText: true})).toBeUndefined();
+		}
+	});
+
+	/**
+	 * The quiet path. An explicit `'throw'` is what `catchUnknownSigner` scopes, and a
+	 * user who chose the defer workflow is not surprised by getting it: advertising a
+	 * prompt they turned off would be noise on the one path meant to stay silent.
+	 */
+	it('says nothing for an explicit `throw`, capability or not', () => {
+		expect(describeUnknownSignerCapabilityDegradation('throw', {canPromptForText: false})).toBeUndefined();
+		expect(describeUnknownSignerCapabilityDegradation('throw', {canPromptForText: true})).toBeUndefined();
 	});
 });

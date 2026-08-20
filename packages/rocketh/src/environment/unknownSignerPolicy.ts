@@ -106,6 +106,47 @@ export function resolveUnknownSignerBehaviour(
 	throw new Error(`unhandled onUnknownSigner policy: ${exhaustive}`);
 }
 
+/**
+ * The note explaining that this run WANTED to resolve interactively and could not.
+ *
+ * WHY THIS EXISTS. The documented main path for an unsignable `from` is that rocketh PAUSES
+ * and lets you paste the hash of the transaction you executed out-of-band, and that is the
+ * default. But the capability ceiling silently turns it into a plain throw wherever no human
+ * can be reached, which is exactly CI and `--skip-prompts`, i.e. the first place most people
+ * meet this error at all. Without this note the message describes a transaction to execute
+ * and says nothing about the interactive resolution they read about, so the degradation looks
+ * like the feature not existing.
+ *
+ * (No em dash in the message text: this repo forbids them in any output, source included.)
+ *
+ * Returns `undefined` when there is nothing to explain:
+ * - the run CAN ask, so no degradation happened (the interactive path is taken instead); or
+ * - the policy is an explicit `'throw'`, which includes every `catchUnknownSigner` action,
+ *   since that wrapper scopes `'throw'`. Someone who asked for the defer workflow is not
+ *   surprised to get it, and telling them about a prompt they deliberately turned off is
+ *   noise on the one path that is meant to be quiet.
+ *
+ * Pure, for the same reason {@link resolveUnknownSignerBehaviour} is: both directions are
+ * testable without building an environment.
+ */
+export function describeUnknownSignerCapabilityDegradation(
+	policy: UnknownSignerPolicy,
+	capabilities: {canPromptForText: boolean},
+): string | undefined {
+	if (capabilities.canPromptForText) return undefined;
+	if (policy === 'throw') return undefined;
+	return (
+		`Note: with a terminal attached, rocketh would have PAUSED here rather than failing: it prints the ` +
+		`transaction above, waits while you execute it under its own authority (a Safe, a hardware wallet, ` +
+		`a governance contract), then takes back the transaction hash so this same run can continue. That ` +
+		`is the default behaviour of 'onUnknownSigner'.\n` +
+		`This run has no way to ask a human for text, so it threw instead. That is the case when stdin is not ` +
+		`a terminal (CI, a piped shell), when '--skip-prompts' was passed, or in a runtime with no text prompt ` +
+		`(the browser). Re-run it from a terminal to resolve it interactively, or keep this behaviour and ` +
+		`execute the transaction above out-of-band.`
+	);
+}
+
 export function createUnknownSignerPolicyStack(resolvedGlobal: UnknownSignerPolicy): UnknownSignerPolicyStack {
 	const frames: UnknownSignerPolicyFrame[] = [];
 	return {
