@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/export",
-	"version": "0.19.23",
+	"version": "0.19.24",
 	"description": "Export EVM contract deployments (ABIs and addresses) for frontend consumption.",
 	"keywords": [
 		"rocketh",

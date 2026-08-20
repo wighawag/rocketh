@@ -1,5 +1,22 @@
 # @rocketh/playground
 
+## 0.0.7
+
+### Patch Changes
+
+- ef2a3f6: Point the playground README at the documentation's new URL, and replace the six-line stub READMEs with real package documentation: what the package is for, how to wire it into `rocketh/config.ts`, a worked example, an option reference, and the gotchas that are easy to get wrong (proxy initializers running through `execute`, a diamond's facet set being declarative so a removed entry removes selectors on chain, `@rocketh/viem` writes bypassing the managed broadcast path, an empty export being an error rather than a no-op).
+- Updated dependencies [dd3550e]
+- Updated dependencies [ef2a3f6]
+- Updated dependencies [28426fe]
+- Updated dependencies [e7ce24b]
+  - rocketh@0.19.20
+  - @rocketh/core@0.19.13
+  - @rocketh/deploy@0.19.18
+  - @rocketh/proxy@0.19.24
+  - @rocketh/read-execute@0.19.13
+  - @rocketh/signer@0.19.13
+  - @rocketh/web@0.19.21
+
 ## 0.0.6
 
 ### Patch Changes

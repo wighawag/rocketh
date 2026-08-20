@@ -1,5 +1,25 @@
 # @rocketh/test-utils
 
+## 0.2.17
+
+### Patch Changes
+
+- ef2a3f6: Point the playground README at the documentation's new URL, and replace the six-line stub READMEs with real package documentation: what the package is for, how to wire it into `rocketh/config.ts`, a worked example, an option reference, and the gotchas that are easy to get wrong (proxy initializers running through `execute`, a diamond's facet set being declarative so a removed entry removes selectors on chain, `@rocketh/viem` writes bypassing the managed broadcast path, an empty export being an error rather than a no-op).
+- 28426fe: Rewrite the npm-facing metadata so the packages are discoverable by the terms people actually search, rather than by a name they have to already know.
+
+  Every package carried the same four keywords (`rocketh`, `ethereum`, `deployment`, `test`), which meant the scope was findable only by someone who had already heard of it. Keywords are now per-package and include the terms a search starts from: `hardhat-deploy`, `solidity`, `smart-contracts`, `evm`, `viem`, plus the specifics each package is the answer to (`create2`/`create3`, `uups`/`erc1967`/`erc173`, `eip-2535`, `etherscan`/`sourcify`, `safe`/`multisig`).
+
+  Descriptions defined each package in terms of rocketh itself ("provide deploy function for rocketh"), which is the one thing a first-time reader on npm cannot yet resolve. They now lead with the capability and anchor it to known concepts. Also fixes a typo in `@rocketh/read-execute` ("read abd execute").
+
+  `rocketh`'s `homepage` now points at https://rocketh.dev rather than the monorepo README.
+
+- Updated dependencies [dd3550e]
+- Updated dependencies [ef2a3f6]
+- Updated dependencies [28426fe]
+- Updated dependencies [e7ce24b]
+  - rocketh@0.19.20
+  - @rocketh/core@0.19.13
+
 ## 0.2.16
 
 ### Patch Changes

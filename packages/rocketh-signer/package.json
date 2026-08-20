@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/signer",
-	"version": "0.19.12",
+	"version": "0.19.13",
 	"description": "Attach private-key and mnemonic signers to rocketh deploy scripts.",
 	"keywords": [
 		"rocketh",

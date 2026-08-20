@@ -1,5 +1,26 @@
 # rocketh
 
+## 0.19.20
+
+### Patch Changes
+
+- dd3550e: Explain why an unknown-signer error did not resolve interactively. The documented main path for an account rocketh cannot sign for is that it PAUSES, prints the transaction, and takes back the hash you pasted after executing it out-of-band. The capability ceiling silently turns that into a plain throw wherever no human can be reached, which is exactly CI and `--skip-prompts`, and therefore the first place most people meet the error at all. `UnknownSignerError` now carries a note saying what would have happened with a terminal attached and which of the three conditions applies.
+
+  The note is added only when the run WANTED to ask and could not. An explicit `onUnknownSigner: 'throw'` is silent, which includes every `catchUnknownSigner` action (that wrapper scopes `'throw'`), so the defer workflow keeps the message it always had.
+
+- 28426fe: Rewrite the npm-facing metadata so the packages are discoverable by the terms people actually search, rather than by a name they have to already know.
+
+  Every package carried the same four keywords (`rocketh`, `ethereum`, `deployment`, `test`), which meant the scope was findable only by someone who had already heard of it. Keywords are now per-package and include the terms a search starts from: `hardhat-deploy`, `solidity`, `smart-contracts`, `evm`, `viem`, plus the specifics each package is the answer to (`create2`/`create3`, `uups`/`erc1967`/`erc173`, `eip-2535`, `etherscan`/`sourcify`, `safe`/`multisig`).
+
+  Descriptions defined each package in terms of rocketh itself ("provide deploy function for rocketh"), which is the one thing a first-time reader on npm cannot yet resolve. They now lead with the capability and anchor it to known concepts. Also fixes a typo in `@rocketh/read-execute` ("read abd execute").
+
+  `rocketh`'s `homepage` now points at https://rocketh.dev rather than the monorepo README.
+
+- Updated dependencies [ef2a3f6]
+- Updated dependencies [28426fe]
+- Updated dependencies [e7ce24b]
+  - @rocketh/core@0.19.13
+
 ## 0.19.19
 
 ### Patch Changes
