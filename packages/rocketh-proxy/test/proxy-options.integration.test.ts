@@ -17,6 +17,7 @@ import {deployViaProxy} from '../src/index.js';
 import {
 	createTestEnvironment,
 	createMockArtifact,
+	withChangedBytecode,
 	STANDARD_NAMED_ACCOUNTS,
 	NODE_HELD_ACCOUNTS,
 } from '@rocketh/test-utils';
@@ -59,6 +60,117 @@ describe('@rocketh/proxy - fresh-deploy options', () => {
 			expect(env.getOrNull('Vault_Proxy')).toBeNull();
 			// The deployment IS the implementation (no proxy wrapping)
 			expect(result.address).toBe(env.get('Vault').address);
+		});
+
+		/**
+		 * WITH NO PROXY THERE IS NO UPGRADE, so a changed contract must redeploy.
+		 *
+		 * This path took the PROXY's options, including a forced `skipIfAlreadyDeployed`.
+		 * That is a proxy's default and a sensible one: a proxy has a stable address and a
+		 * mutable implementation pointer, so an existing one is left in place and the change
+		 * is wired in by an upgrade. Here the deployment under `name` IS the contract and
+		 * nothing rewires it, so the skip just returned the existing record on name alone,
+		 * without comparing bytecode or args, and a recompiled contract never reached the
+		 * chain.
+		 */
+		it('redeploys when the contract changed, since nothing else would pick the change up', async () => {
+			const {env} = await setup();
+			const first = createMockArtifact('Vault', CONTRACT_ABI);
+			const recompiled = withChangedBytecode(first);
+
+			const before = await deployViaProxy(env)(
+				'Vault',
+				{account: 'deployer', artifact: first, args: [42n]},
+				{proxyDisabled: true},
+			);
+			const after = await deployViaProxy(env)(
+				'Vault',
+				{account: 'deployer', artifact: recompiled, args: [42n]},
+				{proxyDisabled: true},
+			);
+
+			expect(after.newlyDeployed).toBe(true);
+			expect(after.address).not.toBe(before.address);
+			expect(env.get('Vault').address).toBe(after.address);
+			expect(env.get('Vault').deployedBytecode).toBe(recompiled.deployedBytecode);
+		});
+
+		/**
+		 * THE CALLER'S OWN COMPARISON SETTING SURVIVES, because with the proxy disabled the
+		 * contract being compared is theirs.
+		 *
+		 * `strictBytecodeMatch: false` is forced for a real proxy on purpose: the comparison
+		 * decides whether to UPGRADE, and a compiler metadata diff is not a reason to move a
+		 * live proxy's implementation (ADR 0004). This path used to inherit that forcing, so
+		 * a caller pinning an exact compilation of their own contract was silently ignored.
+		 *
+		 * The two artifacts differ only in the trailing CBOR metadata blob, with the two-byte
+		 * big-endian length suffix solc appends, which is exactly what the default strips.
+		 * The creation bytecode carries the blob too, so it differs between compilations as
+		 * well: under `strictBytecodeMatch` the runtime comparison is skipped and it is the
+		 * creation bytecode that is compared (`@rocketh/deploy`'s else branch).
+		 */
+		it('honours strictBytecodeMatch on the contract, which a proxy would have forced off', async () => {
+			const RUNTIME_CODE = '0x60806040526001';
+			const compiledWith = (metadataByte: string, creationSuffix: string) => {
+				const artifact = createMockArtifact('Vault', CONTRACT_ABI);
+				const blob = metadataByte.repeat(10);
+				(artifact as {deployedBytecode: string}).deployedBytecode = `${RUNTIME_CODE}${blob}000a`;
+				(artifact as {bytecode: string}).bytecode = `${artifact.bytecode}${creationSuffix}`;
+				return artifact;
+			};
+			const FIRST_COMPILATION = () => compiledWith('a1', 'aa');
+			const SECOND_COMPILATION = () => compiledWith('b2', 'bb');
+
+			// Default: a metadata-only difference is not a change, so nothing is redeployed.
+			const lenient = await setup();
+			const lenientFirst = await deployViaProxy(lenient.env)(
+				'Vault',
+				{account: 'deployer', artifact: FIRST_COMPILATION(), args: [42n]},
+				{proxyDisabled: true},
+			);
+			const lenientSecond = await deployViaProxy(lenient.env)(
+				'Vault',
+				{account: 'deployer', artifact: SECOND_COMPILATION(), args: [42n]},
+				{proxyDisabled: true},
+			);
+			expect(lenientSecond.newlyDeployed).toBe(false);
+			expect(lenientSecond.address).toBe(lenientFirst.address);
+
+			// strictBytecodeMatch: the same pair of artifacts now counts as a change.
+			const strict = await setup();
+			const strictFirst = await deployViaProxy(strict.env)(
+				'Vault',
+				{account: 'deployer', artifact: FIRST_COMPILATION(), args: [42n]},
+				{proxyDisabled: true, strictBytecodeMatch: true},
+			);
+			const strictSecond = await deployViaProxy(strict.env)(
+				'Vault',
+				{account: 'deployer', artifact: SECOND_COMPILATION(), args: [42n]},
+				{proxyDisabled: true, strictBytecodeMatch: true},
+			);
+			expect(strictSecond.newlyDeployed).toBe(true);
+			expect(strictSecond.address).not.toBe(strictFirst.address);
+		});
+
+		/** The other direction: comparing on every run must not cause a spurious redeploy. */
+		it('still reuses an unchanged contract', async () => {
+			const {env} = await setup();
+			const artifact = createMockArtifact('Vault', CONTRACT_ABI);
+
+			const before = await deployViaProxy(env)(
+				'Vault',
+				{account: 'deployer', artifact, args: [42n]},
+				{proxyDisabled: true},
+			);
+			const after = await deployViaProxy(env)(
+				'Vault',
+				{account: 'deployer', artifact, args: [42n]},
+				{proxyDisabled: true},
+			);
+
+			expect(after.newlyDeployed).toBe(false);
+			expect(after.address).toBe(before.address);
 		});
 	});
 

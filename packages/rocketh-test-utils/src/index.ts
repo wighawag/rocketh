@@ -308,6 +308,30 @@ export function createExampleArtifact(name: string, templateNumber: number): Art
 }
 
 /**
+ * The SAME contract after a source change: same ABI, different code.
+ *
+ * The redeploy decision compares `deployedBytecode` (and, when that is missing on either
+ * side, the linked creation `bytecode`), so a test for "the user edited the contract and
+ * re-ran" has to move BOTH, which is fiddly enough to have been open-coded per test.
+ * Distinct from `createExampleArtifact`'s template suffix, which distinguishes SIBLING
+ * contracts from each other rather than one contract from its own earlier compilation.
+ *
+ * For a recompile that changed only compiler METADATA and not behaviour, this is the
+ * wrong helper: that case needs a real CBOR length suffix, and it is what
+ * `strictBytecodeMatch` exists to distinguish.
+ */
+export function withChangedBytecode<TArtifact extends {bytecode: string; deployedBytecode?: string}>(
+	artifact: TArtifact,
+	suffix = 'b0b0',
+): TArtifact {
+	return {
+		...artifact,
+		bytecode: `${artifact.bytecode}${suffix}`,
+		...(artifact.deployedBytecode === undefined ? {} : {deployedBytecode: `${artifact.deployedBytecode}${suffix}`}),
+	};
+}
+
+/**
  * Creates a mock artifact with library references.
  *
  * @param name - Contract name

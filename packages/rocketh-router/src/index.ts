@@ -24,19 +24,24 @@ export type RouterEnhancedDeploymentConstruction = Omit<
 	'artifact' | 'args'
 >;
 
-type DeployMutuallyExclusiveOptions = {alwaysOverride?: boolean} | {strictBytecodeMatch?: boolean};
-
-export type RouterDeployOptions = Omit<
-	DeployOptions,
-	'skipIfAlreadyDeployed' | 'alwaysOverride' | 'strictBytecodeMatch'
-> &
-	DeployMutuallyExclusiveOptions & {
-		extraABIs?: Abi[];
-		routerContract?: {
-			type: 'custom';
-			artifact: Artifact<typeof Router10X60.abi>;
-		};
+/**
+ * Exactly `DeployOptions`, plus the two options that are specific to routing.
+ *
+ * A router is a plain immutable deployment, not a proxy, so it takes the same staleness
+ * options as any other contract and they mean the same thing. This type used to omit all
+ * three and re-add a hand-rolled `alwaysOverride | strictBytecodeMatch` union, which
+ * encoded "a router is special" into the surface; the only thing actually special about a
+ * router is that it deploys SEVERAL contracts, which is a question of the LEVEL an option
+ * applies at, not of which options exist. See `deployViaRouter` for how that level is
+ * chosen.
+ */
+export type RouterDeployOptions = DeployOptions & {
+	extraABIs?: Abi[];
+	routerContract?: {
+		type: 'custom';
+		artifact: Artifact<typeof Router10X60.abi>;
 	};
+};
 
 export type DeployViaRouterFunction = <TAbi extends Abi>(
 	name: string,
@@ -59,26 +64,55 @@ export function deployViaRouter(
 		routes: Route<Abi>[],
 		options?: RouterDeployOptions,
 	) => {
+		const skipIfAlreadyDeployed = options && 'skipIfAlreadyDeployed' in options && options.skipIfAlreadyDeployed;
 		const alwaysOverride = options && 'alwaysOverride' in options && options.alwaysOverride;
 		const strictBytecodeMatch =
 			!alwaysOverride && options && 'strictBytecodeMatch' in options && options.strictBytecodeMatch;
-		const skipIfAlreadyDeployed = alwaysOverride ? false : true;
 
-		let optionsForRoutes = options
-			? {
-					alwaysOverride,
-					strictBytecodeMatch,
-					deterministic: options.deterministic,
-					libraries: options.libraries,
-				}
-			: undefined;
+		// Same conflict, same wording, as `@rocketh/deploy`. Worth restating here because the
+		//  composite skip below RETURNS before any child deploy runs, so the check inside
+		//  `deploy` would never be reached for this combination.
+		if (alwaysOverride && skipIfAlreadyDeployed) {
+			throw new Error(`conflicting options: "alwaysOverride" and "skipIfAlreadyDeployed"`);
+		}
 
-		let optionsForRouter = options
-			? ((options) => {
-					const {extraABIs, routerContract, ...rest} = options;
-					return {...rest, alwaysOverride, strictBytecodeMatch: false, skipIfAlreadyDeployed};
-				})(options)
-			: undefined;
+		// THE RECORD FOR THE COMPOSITE, read once. Routes save under `${name}_Router_…_Route`
+		//  and the router under `${name}_Router`, so nothing below changes this key.
+		let existingDeployment = env.getOrNull<TAbi>(name);
+
+		// `skipIfAlreadyDeployed` APPLIES TO THE WHOLE COMPOSITE, not to any one contract in it.
+		//  `deploy` keys the skip on a NAME existing, and this writes several names, so pushing
+		//  it down to the children gives each its own staleness policy and any name that is new
+		//  escapes the skip while the rest are frozen. That seam is the bug this replaced (see
+		//  the tests, which pin both doors into it). At the composite level there is no seam:
+		//  the whole stack is left alone, or all of it is considered.
+		if (existingDeployment && skipIfAlreadyDeployed) {
+			return {...existingDeployment, newlyDeployed: false};
+		}
+
+		// Both bags name every option they forward, so a new `DeployOptions` field reaches a
+		//  child only when someone decides it should. They are also built UNCONDITIONALLY: they
+		//  used to hang off `options ? … : undefined`, which is what made the original bug
+		//  depend on whether an options object was passed at all, its content irrelevant.
+		const optionsForRoutes = {
+			alwaysOverride,
+			strictBytecodeMatch,
+			deterministic: options?.deterministic,
+			libraries: options?.libraries,
+			// no linkedData: it describes the deployment the caller named, which is the router,
+			//  and copying it onto every route record would be a change in what gets recorded.
+		};
+
+		const optionsForRouter = {
+			alwaysOverride,
+			// never applied to the router: it is a fixed artifact this package supplies, so a
+			//  metadata-only difference in it would redeploy the router and cascade into an
+			//  upgrade of whatever proxy fronts it.
+			strictBytecodeMatch: false,
+			deterministic: options?.deterministic,
+			libraries: options?.libraries,
+			linkedData: options?.linkedData,
+		};
 
 		const _deploy = deploy(env);
 		const implementations: `0x${string}`[] = [];
@@ -122,8 +156,6 @@ export function deployViaRouter(
 		}
 
 		const sigMap = unorderedSigMap.sort();
-
-		let existingDeployment = env.getOrNull<TAbi>(name);
 
 		const routeParams = {
 			fallbackImplementation,

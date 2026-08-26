@@ -152,6 +152,14 @@ interface RouterDeployOptions extends DeployOptions {
 }
 ```
 
+The staleness options from `DeployOptions` mean what they mean everywhere else. Since this deploys several contracts, what each one needs is the **level** it applies at.
+
+By default every route and the router itself are compared on code and constructor arguments, and redeployed only if they differ. Because the route addresses are constructor arguments of the router, redeploying any route redeploys the router too: a router is immutable, so a new router is the only thing that can point at a new route.
+
+`skipIfAlreadyDeployed` applies to the deployment **as a whole**. If a deployment already exists under `name`, it is returned untouched and nothing is deployed, routes included. It is deliberately not applied per contract: skipping only some of them would deploy a route that the router does not name, leaving live code that nothing can reach. Because the stack is returned untouched, a change that affects only the recorded ABI (adding `extraABIs`, say) is not picked up either while this option is set.
+
+`alwaysOverride` and `strictBytecodeMatch` apply per contract, as they would to any deploy. `alwaysOverride` redeploys everything unconditionally, and throws if combined with `skipIfAlreadyDeployed`. `strictBytecodeMatch` applies to your route contracts; it is not applied to the router contract itself, so a compiler metadata difference in the bundled router artifact does not cascade into an upgrade of whatever proxy fronts it.
+
 ## How It Works
 
 1. **Deploy Routes**: Each route contract is deployed separately as `{name}_Router_{routeName}_Route`

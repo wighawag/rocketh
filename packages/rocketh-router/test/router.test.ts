@@ -16,13 +16,33 @@ import {
 	createTestEnvironment,
 	createExampleArtifact,
 	createMapDeploymentStore,
+	withChangedBytecode,
 	STANDARD_NAMED_ACCOUNTS,
 	NODE_HELD_ACCOUNTS,
 } from '@rocketh/test-utils';
-import {toFunctionSelector} from 'viem';
+import type {Environment} from '@rocketh/core/types';
+import {decodeAbiParameters, toFunctionSelector} from 'viem';
 import type {Abi} from 'abitype';
+import {Router10X60} from 'solidity-proxy/artifacts/index.js';
 
 const DEPLOYER = STANDARD_NAMED_ACCOUNTS.deployer;
+
+/**
+ * The route addresses the router will actually dispatch to, read back from the
+ * router's RECORDED constructor args rather than from anything this run computed.
+ *
+ * The only question that matters after a route changes is whether the router on chain
+ * names the new route, and the constructor args are where a `Router10X60` keeps that:
+ * it is immutable, so there is no storage slot or wiring call to consult instead.
+ */
+function recordedRouteAddresses(env: Environment, routerName: string): string[] {
+	const constructor = Router10X60.abi.find((entry) => entry.type === 'constructor');
+	if (!constructor) {
+		throw new Error('the router artifact has no constructor');
+	}
+	const [routes] = decodeAbiParameters(constructor.inputs, env.get(routerName).argsData as `0x${string}`);
+	return (routes as {implementations: readonly string[]}).implementations.map((a) => a.toLowerCase());
+}
 
 /** Each route's ABI has a distinct function so the selectors don't conflict. */
 const ROUTE0_ABI = [
@@ -213,5 +233,199 @@ describe('@rocketh/router - the record tracks the merged ABI, not just the route
 		await deployViaRouter(env3.env)('MyRouter', {account: 'deployer'}, routes());
 
 		expect(env3.env.get('MyRouter').numDeployments).toBe(after1);
+	});
+});
+
+/**
+ * A CHANGED ROUTE MUST REACH THE ROUTER, and passing options must not decide whether it does.
+ *
+ * A router is not a proxy. It is immutable and the route addresses live in its
+ * CONSTRUCTOR ARGS, so a redeployed route makes the existing router stale by definition:
+ * there is no upgrade call that could fix it up afterwards, only a new router. Skipping
+ * the router because a deployment under its name already exists therefore strands the new
+ * route: the code is on chain, the router still names the previous address, and nothing
+ * errors.
+ *
+ * All three spellings are asserted because the bug was reachable only through one of them:
+ * the router's options were built inside `options ? … : undefined`, so any options object
+ * at all, its content irrelevant, turned the router's comparison off.
+ *
+ * The two runs share ONE environment on purpose: what carries between runs is the
+ * deployment store, and the harness numbers addresses per environment, so a second
+ * environment would hand run two the same addresses run one already used.
+ */
+describe('@rocketh/router - a redeployed route is wired into the router', () => {
+	for (const [label, options] of [
+		['with no options', undefined],
+		['with an options object', {}],
+		['with unrelated options', {deterministic: false}],
+	] as const) {
+		/** One route's source changes; the router must move with it and name the new address. */
+		it(`redeploys the router naming the new route ${label}`, async () => {
+			const {env} = await createTestEnvironment({
+				accounts: STANDARD_NAMED_ACCOUNTS,
+				nodeAccounts: NODE_HELD_ACCOUNTS,
+			});
+			const routeB = {name: 'RouteB', artifact: createExampleArtifact('ImplB', 1), args: []};
+
+			const first = await deployViaRouter(env)(
+				'MyRouter',
+				{account: 'deployer'},
+				[{name: 'RouteA', artifact: createExampleArtifact('ImplA', 0), args: []}, routeB],
+				options,
+			);
+
+			const routeAddressBefore = env.get('MyRouter_Router_RouteA_Route').address.toLowerCase();
+			expect(recordedRouteAddresses(env, 'MyRouter_Router')).toContain(routeAddressBefore);
+
+			// Second run: RouteA's source changed, everything else is identical.
+			const second = await deployViaRouter(env)(
+				'MyRouter',
+				{account: 'deployer'},
+				[{name: 'RouteA', artifact: withChangedBytecode(createExampleArtifact('ImplA', 0)), args: []}, routeB],
+				options,
+			);
+
+			const routeAddressAfter = env.get('MyRouter_Router_RouteA_Route').address.toLowerCase();
+			expect(routeAddressAfter).not.toBe(routeAddressBefore);
+
+			// THE ASSERTION THAT MATTERS. A test that only checked the route moved passes even
+			//  when the router was skipped, which is exactly how this survived.
+			const recorded = recordedRouteAddresses(env, 'MyRouter_Router');
+			expect(recorded).toContain(routeAddressAfter);
+			expect(recorded).not.toContain(routeAddressBefore);
+
+			// And the record for the composed name must follow the router it describes, so a
+			//  caller that gates a proxy upgrade on `newlyDeployed` still upgrades.
+			expect(env.get('MyRouter').address).toBe(env.get('MyRouter_Router').address);
+			expect(second.address).not.toBe(first.address);
+			expect(second.newlyDeployed).toBe(true);
+		});
+	}
+
+	/** The other direction: comparing on every run must not cause a spurious redeploy. */
+	it('leaves an unchanged router alone when options are passed', async () => {
+		const {env} = await createTestEnvironment({
+			accounts: STANDARD_NAMED_ACCOUNTS,
+			nodeAccounts: NODE_HELD_ACCOUNTS,
+		});
+		const routes = () => [{name: 'RouteA', artifact: createExampleArtifact('ImplA', 0), args: []}];
+
+		const first = await deployViaRouter(env)('MyRouter', {account: 'deployer'}, routes(), {});
+		const second = await deployViaRouter(env)('MyRouter', {account: 'deployer'}, routes(), {});
+
+		expect(second.newlyDeployed).toBe(false);
+		expect(second.address).toBe(first.address);
+		// ONE deployment across both runs, not two: `numDeployments` counts them, so it is
+		//  what distinguishes "reused" from "redeployed to the same place".
+		expect(env.get('MyRouter_Router').numDeployments).toBe(1);
+	});
+});
+
+/**
+ * `skipIfAlreadyDeployed` FREEZES THE WHOLE COMPOSITE, and is never pushed down to a child.
+ *
+ * A router takes `deploy`'s options unchanged, because it is a plain immutable deployment
+ * rather than a proxy. What it does NOT share with a single deploy is that it writes
+ * several names, and `deploy` keys this option on a name existing, so the only level at
+ * which the option keeps its meaning is the composite: leave the stack alone entirely, or
+ * consider all of it. Any per-child application leaves a seam where one contract is frozen
+ * and another moves, which is precisely how a route gets stranded.
+ */
+describe('@rocketh/router - skipIfAlreadyDeployed applies to the whole composite', () => {
+	/** With no record under `name` there is nothing to skip, so a first run still deploys. */
+	it('deploys normally when there is nothing to skip', async () => {
+		const {env} = await createTestEnvironment({
+			accounts: STANDARD_NAMED_ACCOUNTS,
+			nodeAccounts: NODE_HELD_ACCOUNTS,
+		});
+
+		const result = await deployViaRouter(env)(
+			'MyRouter',
+			{account: 'deployer'},
+			[{name: 'RouteA', artifact: createExampleArtifact('ImplA', 0), args: []}],
+			{skipIfAlreadyDeployed: true},
+		);
+
+		expect(result.newlyDeployed).toBe(true);
+		expect(recordedRouteAddresses(env, 'MyRouter_Router')).toContain(
+			env.get('MyRouter_Router_RouteA_Route').address.toLowerCase(),
+		);
+	});
+
+	/** A changed route inside a frozen stack: the freeze wins, and nothing moves at all. */
+	it('leaves a changed route undeployed rather than deploying it and not wiring it', async () => {
+		const {env} = await createTestEnvironment({
+			accounts: STANDARD_NAMED_ACCOUNTS,
+			nodeAccounts: NODE_HELD_ACCOUNTS,
+		});
+
+		const first = await deployViaRouter(env)('MyRouter', {account: 'deployer'}, [
+			{name: 'RouteA', artifact: createExampleArtifact('ImplA', 0), args: []},
+		]);
+		const routeAddressBefore = env.get('MyRouter_Router_RouteA_Route').address;
+
+		const second = await deployViaRouter(env)(
+			'MyRouter',
+			{account: 'deployer'},
+			[{name: 'RouteA', artifact: withChangedBytecode(createExampleArtifact('ImplA', 0)), args: []}],
+			{skipIfAlreadyDeployed: true},
+		);
+
+		// Nothing moved: not the router, and not the route either. A frozen stack is the
+		//  point of the option; a route deployed into a frozen stack would be unreachable.
+		expect(second.newlyDeployed).toBe(false);
+		expect(second.address).toBe(first.address);
+		expect(env.get('MyRouter_Router_RouteA_Route').address).toBe(routeAddressBefore);
+		expect(recordedRouteAddresses(env, 'MyRouter_Router')).toContain(routeAddressBefore.toLowerCase());
+	});
+
+	/**
+	 * The case that rules out simply forwarding the option to the children. A route being
+	 * ADDED has no record under its own name, so a per-child skip would not apply to it and
+	 * it would deploy, while the router, which does have a record, would be skipped: a new
+	 * route the router does not name.
+	 */
+	it('does not deploy an added route while the router is frozen', async () => {
+		const {env} = await createTestEnvironment({
+			accounts: STANDARD_NAMED_ACCOUNTS,
+			nodeAccounts: NODE_HELD_ACCOUNTS,
+		});
+
+		await deployViaRouter(env)('MyRouter', {account: 'deployer'}, [
+			{name: 'RouteA', artifact: createExampleArtifact('ImplA', 0), args: []},
+		]);
+
+		const second = await deployViaRouter(env)(
+			'MyRouter',
+			{account: 'deployer'},
+			[
+				{name: 'RouteA', artifact: createExampleArtifact('ImplA', 0), args: []},
+				{name: 'RouteB', artifact: createExampleArtifact('ImplB', 1), args: []},
+			],
+			{skipIfAlreadyDeployed: true},
+		);
+
+		expect(second.newlyDeployed).toBe(false);
+		expect(env.getOrNull('MyRouter_Router_RouteB_Route')).toBeNull();
+		expect(recordedRouteAddresses(env, 'MyRouter_Router')).toHaveLength(1);
+	});
+
+	/** `deploy` rejects this pair; the composite skip returns first, so it is restated here. */
+	it('throws on the same conflicting pair as deploy, which the composite skip would otherwise hide', async () => {
+		const {env} = await createTestEnvironment({
+			accounts: STANDARD_NAMED_ACCOUNTS,
+			nodeAccounts: NODE_HELD_ACCOUNTS,
+		});
+		const routes = () => [{name: 'RouteA', artifact: createExampleArtifact('ImplA', 0), args: []}];
+
+		await deployViaRouter(env)('MyRouter', {account: 'deployer'}, routes());
+
+		await expect(
+			deployViaRouter(env)('MyRouter', {account: 'deployer'}, routes(), {
+				alwaysOverride: true,
+				skipIfAlreadyDeployed: true,
+			}),
+		).rejects.toThrow(/conflicting options/);
 	});
 });

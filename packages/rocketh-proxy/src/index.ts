@@ -188,16 +188,22 @@ export function deployViaProxy(
 		let existingDeployment = env.getOrNull<TAbi>(name);
 
 		if (options?.proxyDisabled) {
+			// WITH NO PROXY, THE DEPLOYMENT IS THE IMPLEMENTATION, so it takes the implementation's
+			//  options. It used to take the PROXY's, which decided two things on its behalf that a
+			//  proxy needs and a bare contract must not inherit: a forced `skipIfAlreadyDeployed`,
+			//  which skipped on NAME alone and silently left a recompiled contract undeployed with
+			//  nothing to upgrade it afterwards; and a forced `strictBytecodeMatch: false`, which
+			//  is there so a metadata-only diff cannot trigger an UPGRADE, and which here just
+			//  discarded the caller's own setting for their own contract. It also dropped
+			//  `deterministicImplementation`, which is the only implementation there is.
 			if (typeof params.artifact === 'function') {
 				return params.artifact(name, params, {
-					...optionsForProxy,
-					skipIfAlreadyDeployed,
+					...optionsForImplementation,
 					linkedData: options.linkedData,
 				});
 			} else {
 				return _deploy<TAbi>(name, params as DeploymentConstruction<TAbi>, {
-					...optionsForProxy,
-					skipIfAlreadyDeployed,
+					...optionsForImplementation,
 					linkedData: options.linkedData,
 				});
 			}
