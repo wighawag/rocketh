@@ -13,7 +13,7 @@
     "@rocketh/doc": "^0.19.22",
     "@rocketh/export": "^0.19.24",
     "@rocketh/node": "^0.19.22",
-    "@rocketh/proxy": "^0.19.24",
+    "@rocketh/proxy": "^0.19.25",
     "@rocketh/read-execute": "^0.19.13",
     "@rocketh/verifier": "^0.19.23",
     "@rocketh/viem": "^0.19.13",
