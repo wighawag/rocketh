@@ -61,3 +61,5 @@ The common case, which is comparing one value against one expected value, withou
 > Done means: `equals` works, one output can be selected and typed, the four comparison behaviours are pinned by tests that can actually fail, and the evaluation says what was read, what was selected and what it was compared against.
 >
 > RECORD non-obvious in-scope decisions in a `## Decisions` block at the end of your FINAL REPORT, in particular the selector's spelling and how you treated a single-output function under selection. Do not write the done record, the commit message or the PR body, and do not edit this task file.
+>
+> Write any markdown emphasis in that block with UNDERSCORES (`_like this_`), not asterisks. The runner transcribes the block verbatim into the done record, `pnpm format:check` covers `work/` and is the FIRST link of the acceptance gate, and prettier normalises asterisk emphasis. `execute-guard-seam-and-call-kind` lost a whole cycle to exactly that: the build was green and the gate red before build, typecheck or test ever ran (`work/notes/observations/decisions-block-formatting-reds-the-gate-after-a-green-build.md`).

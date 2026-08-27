@@ -49,3 +49,5 @@ One behaviour to pin deliberately rather than discover later: the call kind goes
 > Done means: every way a guard can fail to produce a verdict aborts the run without executing the call, the error names the guard, and a test would catch a regression to fall-through behaviour.
 >
 > RECORD non-obvious in-scope decisions in a `## Decisions` block at the end of your FINAL REPORT, in particular the error type you raise and whether you wrap or rethrow the underlying failure. Do not write the done record, the commit message or the PR body, and do not edit this task file.
+>
+> Write any markdown emphasis in that block with UNDERSCORES (`_like this_`), not asterisks. The runner transcribes the block verbatim into the done record, `pnpm format:check` covers `work/` and is the FIRST link of the acceptance gate, and prettier normalises asterisk emphasis. `execute-guard-seam-and-call-kind` lost a whole cycle to exactly that: the build was green and the gate red before build, typecheck or test ever ran (`work/notes/observations/decisions-block-formatting-reds-the-gate-after-a-green-build.md`).
