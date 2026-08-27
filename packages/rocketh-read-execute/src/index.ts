@@ -29,7 +29,7 @@ export {read, readByName} from './read.js';
 export type {ReadFunction, ReadFunctionByName, ReadingArgs} from './read.js';
 
 export {evaluateGuard} from './guard.js';
-export type {CallGuard, CallGuardEvaluation, ExecuteGuard, GuardEvaluation} from './guard.js';
+export type {CallGuard, CallGuardEvaluation, ExecuteGuard, GuardEvaluation, GuardOutputSelector} from './guard.js';
 
 const logger = logs('@rocketh/read-execute');
 

@@ -127,6 +127,44 @@ if (result.outcome === 'skipped') {
 
 The guard's `functionName` and `args` are typed against the ABI of the contract it READS, so a renamed getter is a compile error. A guard that throws (a reverting getter, a target that is not deployed) fails the run: it is never treated as "not satisfied", because that would re-send a privileged call that may already have happened.
 
+### `equals`, and selecting one output
+
+The commonest guard is "the value on chain is already the value I want", and `equals` states it in one line instead of a predicate. It is not merely shorter: it compares the value the way its ABI type says the value MEANS, which `===` does not.
+
+```typescript
+guard: {
+	kind: 'call',
+	on: proxy,
+	functionName: 'implementation',
+	// matches whatever the casing, because a checksummed address and a lowercased
+	// one are the same address
+	equals: nextImplementation.address,
+}
+```
+
+- `address` and `bytesN` fold case (checksum casing, and the casing of a role identifier or a salt, carry no meaning)
+- `string` is case SENSITIVE (it is user data: two names differing in case are two names)
+- a bigint never coerces against a number
+- arrays and tuple returns compare elementwise, each position under the rule for its own type
+
+A guard often cares about one component of what a getter returns. `output` selects one of the read function's declared outputs, by name or by position, and the verdict then applies to the selected value:
+
+```typescript
+guard: {
+	kind: 'call',
+	on: accessManager,
+	// returns (bool isMember, uint32 executionDelay)
+	functionName: 'hasRole',
+	args: [operatorRole, operator],
+	output: 'isMember',
+	equals: true,
+}
+```
+
+The selector is typed against the ABI outputs, so naming an output that does not exist is a compile error, and `equals` (or `satisfied`) is typed against the selected value. Reaching INSIDE a struct is deliberately not part of this: that is what `satisfied` is for. Note that viem unwraps a single output before the guard sees it, so selection is meaningful when a function declares SEVERAL; naming the only output of a single-output function is accepted and selects that same value.
+
+The evaluation reports all three facts behind a verdict: `value` (the whole return), `selected` (present only when an output was selected) and `expected` (present only when the verdict was an `equals`).
+
 Nothing is persisted. The verdict is derived from the chain on every run, which is what makes a deferred call (below) converge on the re-run instead of being handed to you a second time.
 
 Without a `guard`, `execute` returns the transaction receipt exactly as it always has.
