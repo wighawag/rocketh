@@ -15,11 +15,119 @@
  * OBSERVED nothing when it deferred (`docs/adr/0012-a-record-asserts-only-what-rocketh-observed.md`).
  */
 
-import type {Abi} from 'abitype';
+import type {Abi, AbiParameter, AbiParameterToPrimitiveType} from 'abitype';
 import type {Environment, MinimalDeployment} from '@rocketh/core/types';
 import type {EIP1193Account} from 'eip-1193';
 import type {ContractFunctionArgs, ContractFunctionName, DecodeFunctionResultReturnType} from 'viem';
+import {getAbiItem} from 'viem';
 import {read} from './read.js';
+import {returnValueEquals, valuesEqualForAbiType} from './abi-comparison.js';
+
+/** The OUTPUTS a function declares in the ABI it is read against. */
+type FunctionOutputs<TAbi extends Abi, TFunctionName> =
+	Extract<TAbi[number], {type: 'function'; name: TFunctionName}> extends {
+		outputs: infer TOutputs extends readonly AbiParameter[];
+	}
+		? TOutputs
+		: readonly AbiParameter[];
+
+/** The POSITIONS of those outputs, as number literals. */
+type OutputPositions<TOutputs extends readonly AbiParameter[]> =
+	Extract<keyof TOutputs, `${number}`> extends infer TKey
+		? TKey extends `${infer TPosition extends number}`
+			? TPosition
+			: never
+		: never;
+
+/** The NAMES of those outputs, skipping the unnamed ones, which can only be selected by position. */
+type OutputNames<TOutputs extends readonly AbiParameter[]> = {
+	[TKey in keyof TOutputs]: TOutputs[TKey] extends {name: infer TName extends string}
+		? TName extends ''
+			? never
+			: TName
+		: never;
+}[number];
+
+/**
+ * What a guard may name in `output`: an output of the read function, by name or by position.
+ *
+ * The boundary is deliberate. Reaching INSIDE a struct is NOT part of selection: that is
+ * what `satisfied` is for, and keeping the selector to the declared outputs is what keeps
+ * it typed against the ABI instead of becoming a path language.
+ */
+export type GuardOutputSelector<TAbi extends Abi, TFunctionName> =
+	OutputPositions<FunctionOutputs<TAbi, TFunctionName>> | OutputNames<FunctionOutputs<TAbi, TFunctionName>>;
+
+/** The value a given selector selects, typed from the ABI parameter it names. */
+type SelectedOutputValue<TOutputs extends readonly AbiParameter[], TSelector> = {
+	[TKey in keyof TOutputs]: TKey extends `${TSelector & number}`
+		? AbiParameterToPrimitiveType<TOutputs[TKey], 'outputs'>
+		: TOutputs[TKey] extends {name: TSelector}
+			? AbiParameterToPrimitiveType<TOutputs[TKey], 'outputs'>
+			: never;
+}[number];
+
+/** Any one of the declared outputs' values, which is what an evaluation's `selected` can hold. */
+type AnyOutputValue<TOutputs extends readonly AbiParameter[]> = {
+	[TKey in keyof TOutputs]: AbiParameterToPrimitiveType<TOutputs[TKey], 'outputs'>;
+}[number];
+
+/**
+ * The verdict, stated ONCE: as a predicate, or as the value the read must equal.
+ *
+ * `satisfied` is the primary form rather than an escape hatch, because real topologies
+ * include conditions no equality can state (a NEGATION such as "needed unless this
+ * operation reached its terminal state"). `equals` is sugar over it for the commonest
+ * guard there is, "the value on chain is already the value I want", and it is not merely
+ * shorter: it compares the value the way the ABI says the value MEANS, which a predicate
+ * written with `===` does not.
+ *
+ * The value reaches `satisfied` RAW, so a predicate comparing addresses with `===` will be
+ * wrong the moment one side is checksummed and the other is not (ADR 0013).
+ */
+type GuardVerdict<TValue> =
+	{satisfied: (value: TValue) => boolean; equals?: never} | {equals: TValue; satisfied?: never};
+
+/** What the guard READS: the same target shape `read` accepts, plus the function and its args. */
+type CallGuardRead<
+	TAbi extends Abi,
+	TFunctionName extends ContractFunctionName<TAbi, 'pure' | 'view'>,
+	TArgs extends ContractFunctionArgs<TAbi, 'pure' | 'view', TFunctionName>,
+> = {
+	kind: 'call';
+
+	/**
+	 * The contract to READ. Defaults to the contract being executed, which is the minority
+	 * case: the effect of a privileged call is usually observable somewhere else.
+	 */
+	on?: MinimalDeployment<TAbi>;
+
+	/** The view function to call, typed against the ABI of `on`. */
+	functionName: TFunctionName;
+
+	/** Its arguments, typed against the ABI of `on`. */
+	args?: TArgs;
+};
+
+/** One guard variant per selector, so the verdict is typed against the SELECTED value. */
+type SelectingVariants<TOutputs extends readonly AbiParameter[], TSelector> = TSelector extends unknown
+	? {
+			/**
+			 * Select ONE of the read function's declared outputs, by name or by position; the
+			 * verdict then applies to the selected value.
+			 *
+			 * viem decides the shape of the decoded value before the guard sees it: a function
+			 * with ONE output decodes to that value unwrapped, several decode to an array, none
+			 * decodes to `undefined`. Selection is therefore MEANINGFUL exactly when there are
+			 * several; naming the only output of a single-output function is accepted and
+			 * selects that same value.
+			 */
+			output: TSelector;
+		} & GuardVerdict<SelectedOutputValue<TOutputs, TSelector>>
+	: never;
+
+/** Distribute the read half across every verdict variant, so the result is a real union. */
+type GuardVariants<TRead, TVerdicts> = TVerdicts extends unknown ? TRead & TVerdicts : never;
 
 /**
  * A guard that reads by CALLING a view function through the ABI of its target.
@@ -41,32 +149,11 @@ export type CallGuard<
 		'pure' | 'view',
 		TFunctionName
 	>,
-> = {
-	kind: 'call';
-
-	/**
-	 * The contract to READ. Defaults to the contract being executed, which is the minority
-	 * case: the effect of a privileged call is usually observable somewhere else.
-	 */
-	on?: MinimalDeployment<TAbi>;
-
-	/** The view function to call, typed against the ABI of `on`. */
-	functionName: TFunctionName;
-
-	/** Its arguments, typed against the ABI of `on`. */
-	args?: TArgs;
-
-	/**
-	 * The verdict, over the DECODED value: `true` means the call is no longer needed, so it
-	 * is SKIPPED. It is the primary form rather than an escape hatch, because real
-	 * topologies include conditions no equality can state (a NEGATION such as "needed unless
-	 * this operation reached its terminal state", or a tuple where one component matters).
-	 *
-	 * The value arrives RAW, so a predicate comparing addresses with `===` will be wrong the
-	 * moment one side is checksummed and the other is not.
-	 */
-	satisfied: (value: DecodeFunctionResultReturnType<TAbi, TFunctionName>) => boolean;
-};
+> = GuardVariants<
+	CallGuardRead<TAbi, TFunctionName, TArgs>,
+	| ({output?: undefined} & GuardVerdict<DecodeFunctionResultReturnType<TAbi, TFunctionName>>)
+	| SelectingVariants<FunctionOutputs<TAbi, TFunctionName>, GuardOutputSelector<TAbi, TFunctionName>>
+>;
 
 /**
  * The guard union, discriminated on `kind`. One member today; a `storage` kind joins it.
@@ -95,8 +182,14 @@ export type CallGuardEvaluation<TAbi extends Abi, TFunctionName extends Contract
 	target: EIP1193Account;
 	functionName: TFunctionName;
 	args: readonly unknown[];
-	/** The decoded return value, exactly as `satisfied` received it. */
+	/** The WHOLE decoded return value, whether or not one output of it was selected. */
 	value: DecodeFunctionResultReturnType<TAbi, TFunctionName>;
+	/** The output that was selected, if one was. Absent otherwise, never `undefined`. */
+	output?: GuardOutputSelector<TAbi, TFunctionName>;
+	/** The selected value, i.e. what the verdict actually judged. Absent when nothing was selected. */
+	selected?: AnyOutputValue<FunctionOutputs<TAbi, TFunctionName>>;
+	/** What it was compared against. Absent when the verdict was a `satisfied` predicate. */
+	expected?: DecodeFunctionResultReturnType<TAbi, TFunctionName> | AnyOutputValue<FunctionOutputs<TAbi, TFunctionName>>;
 	satisfied: boolean;
 };
 
@@ -119,6 +212,10 @@ export type GuardEvaluation<
  * would do: same encoding, same decoding, same empty-return retry. Nothing here catches:
  * a guard that cannot produce a verdict must fail the run rather than be mistaken for
  * "not satisfied".
+ *
+ * The ABI is what makes `equals` possible at all: the declared OUTPUTS of the function
+ * being read supply both the selection (which output `output` names) and the comparison
+ * rule (whether casing matters for the value at that position). See `./abi-comparison.ts`.
  */
 export function evaluateGuard(
 	env: Environment,
@@ -158,13 +255,103 @@ export function evaluateGuard(
 			args: guard.args,
 		} as any);
 
+		// The SAME ABI item `decodeFunctionResult` decoded against, resolved the same way so an
+		// overloaded getter cannot select one item for decoding and another for comparison.
+		const abiItem = getAbiItem({
+			abi: target.abi as Abi,
+			name: guard.functionName as string,
+			args: guard.args as readonly unknown[] | undefined,
+		} as never) as {type?: string; outputs?: readonly AbiParameter[]} | undefined;
+		const outputs = abiItem?.type === 'function' ? (abiItem.outputs ?? []) : [];
+
+		const {satisfied, ...judged} = judge(guard, outputs, value);
+
 		return {
 			kind: 'call',
 			target: target.address,
 			functionName: guard.functionName,
 			args: (guard.args ?? []) as readonly unknown[],
 			value,
-			satisfied: guard.satisfied(value),
-		} satisfies GuardEvaluation<TAbi, TFunctionName>;
+			...judged,
+			satisfied,
+		} as GuardEvaluation<TAbi, TFunctionName>;
 	};
+}
+
+/** The selection-and-verdict half of an evaluation, kept apart from the read half. */
+type Judgement = {
+	output?: string | number;
+	selected?: unknown;
+	expected?: unknown;
+	satisfied: boolean;
+};
+
+/**
+ * Apply a guard's selection and verdict to the value that was read.
+ *
+ * `output`, `selected` and `expected` are only PRESENT when they mean something, so an
+ * evaluation never claims a selection that was not made or an expected value that was
+ * never stated: a user reading a skip sees exactly the three facts that produced it.
+ */
+function judge(
+	guard: {
+		functionName: unknown;
+		output?: string | number;
+		equals?: unknown;
+		satisfied?: (value: never) => boolean;
+	},
+	outputs: readonly AbiParameter[],
+	value: unknown,
+): Judgement {
+	const selection =
+		guard.output === undefined ? undefined : selectOutput(guard.functionName, guard.output, outputs, value);
+	const judged = selection ? selection.value : value;
+	const selected = selection ? {output: guard.output, selected: selection.value} : {};
+
+	if (typeof guard.satisfied === 'function') {
+		return {...selected, satisfied: guard.satisfied(judged as never)};
+	}
+
+	if ('equals' in guard) {
+		const expected = guard.equals;
+		return {
+			...selected,
+			expected,
+			satisfied: selection
+				? valuesEqualForAbiType(selection.parameter, judged, expected)
+				: returnValueEquals(outputs, value, expected),
+		};
+	}
+
+	throw new Error(
+		`the guard on "${String(guard.functionName)}" states no verdict: it declares neither "equals" nor "satisfied"`,
+	);
+}
+
+/**
+ * Pick one declared output out of a decoded return value.
+ *
+ * viem decides the shape before we get here: ONE declared output decodes to that value
+ * UNWRAPPED, several decode to an array. So selecting the only output of a single-output
+ * function is the identity rather than an index into something.
+ *
+ * The types already refuse a selector the ABI does not declare; this throw is what a
+ * caller who defeated them gets, because a guard that cannot produce a verdict must fail
+ * the run rather than be mistaken for "not satisfied".
+ */
+function selectOutput(
+	functionName: unknown,
+	selector: string | number,
+	outputs: readonly AbiParameter[],
+	value: unknown,
+): {parameter: AbiParameter; value: unknown} {
+	const position = typeof selector === 'number' ? selector : outputs.findIndex((output) => output.name === selector);
+	const parameter = position < 0 ? undefined : outputs[position];
+	if (!parameter) {
+		const declared = outputs.map((output, index) => output.name || `#${index}`).join(', ') || 'none';
+		throw new Error(
+			`the guard on "${String(functionName)}" selects the output "${selector}", which that function does not declare (declared outputs: ${declared})`,
+		);
+	}
+	return {parameter, value: outputs.length === 1 ? value : (value as readonly unknown[])[position]};
 }
