@@ -4,7 +4,6 @@ slug: document-execute-state-guard
 spec: execute-state-guard
 blockedBy: [execute-guard-evaluation-is-legible, execute-guard-convergence-scenario]
 covers: []
-needsAnswers: true
 ---
 
 ## What to build
