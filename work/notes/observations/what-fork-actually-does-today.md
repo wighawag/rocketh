@@ -1,3 +1,7 @@
+---
+needsAnswers: true
+---
+
 # What `fork` actually does today, and what a dry run would need
 
 Investigation prompted by the proposal to use a fork to discover pending privileged work (`work/notes/ideas/fork-based-discovery-of-pending-privileged-work.md`). Every claim below is from the code, with the location, because the proposal rests on this and "fork support exists" turns out to be generous.
