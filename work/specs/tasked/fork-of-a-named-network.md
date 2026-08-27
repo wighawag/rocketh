@@ -4,7 +4,7 @@ slug: fork-of-a-named-network
 humanOnly: true
 ---
 
-> Launch snapshot — records intent at creation, NOT maintained. Current truth: `docs/adr/` (decisions) + the code; remaining work: the tasks in `work/tasks/`.
+> Launch snapshot — records intent at creation, NOT maintained. Current truth: `docs/adr/` (decisions) + the code; remaining work: the tasks in `work/tasks/`. Tasked 2026-08-27: the implementation and testing detail moved into the six `fork-*` tasks, and the durable rationale into `docs/adr/0014-a-fork-run-simulates-one-chain-and-talks-to-another.md`.
 
 ## Problem Statement
 
@@ -56,7 +56,7 @@ Stating the existing TODO as a **split** rather than a swap is the point: "resol
 11. As a hardhat-deploy user, I want all of this without changing anything I do, since `HARDHAT_FORK` already tells rocketh which network is forked.
 12. As a maintainer, I want the fork descriptor shaped so that a future in-process fork engine can be told WHERE to fork from and AT WHICH BLOCK without re-cutting the concept.
 13. As a deployer with a configured `localhost` dev chain, I do NOT want those settings, and above all not those TAGS, applied to a fork of mainnet, because my deploy scripts branch on tags and I did not ask for the local branch during a mainnet rehearsal.
-14. As a deployer forking mainnet with anvil, which reports chain id 1, I want the transactions rocketh builds to declare chain 1, so that a locally signed transaction is not rejected by the node it was built for.
+14. As a deployer, I want the transactions rocketh builds to declare the chain id MY NODE reports, so that a locally signed transaction is not rejected by the node it was built for. On a forked anvil that is the forked network's id; on a hardhat node it is that engine's own. This is the one thing that must NOT follow the network being simulated, because a signed transaction's chain id is part of what was signed.
 15. As a deployer, I want to say WHERE my fork node is listening without having to configure a chain I am not using, so that pointing at a second fork on another port is not a lie about chain 31337.
 
 ## Autonomy notes
@@ -64,44 +64,6 @@ Stating the existing TODO as a **split** rather than a swap is the point: "resol
 `humanOnly: true`: this changes the meaning of a published core field (`env.network.fork`) and two run defaults derived from it, which is public semantics we then keep. A human drives the tasking.
 
 No `needsAnswers`. Two things were resolved before launch rather than carried as questions. The config shape for a fork's own overrides (a `fork` sub-key on the network's entry, rather than a conventional `"<network>:fork"` environment key) was decided with the maintainer, and it is a core type change, so it is agreed rather than assumed. And the one empirical unknown, whether the chain-identity check tolerates a fork under each tool, was resolved by running both rather than by reasoning: anvil reports the forked chain's id, hardhat reports 31337, and the check warns rather than throwing. Recorded as a correction in `work/notes/observations/what-fork-actually-does-today.md`, which also corrects that note's claim that it throws.
-
-## Implementation Decisions
-
-- **The fork descriptor names the network AND carries its chain id.** A name alone forces every consumer to re-resolve it, and the chain id is what the semantics lookup needs. Whatever `env.network.fork` becomes, `if (env.network.fork)` must keep reading naturally, and the in-memory case must be falsy.
-- **The chain-config lookup SPLITS in two**, and this is the change everything else hangs off: a CONNECTION lookup (local, keyed 31337 as today) and a SEMANTICS lookup (keyed by the forked network's chain id when there is one, otherwise the same id as the connection). `deterministicDeployment`, `onUnknownSigner`, `autoImpersonate`, `confirmationsRequired`, `autoMine` and the tags move to the semantics side. The provider stays on the connection side. The existing TODO is deleted by this, not edited.
-- **`autoImpersonate` resolves params > chain config > fork-aware default.** The default is on when the run is a fork and off otherwise. The precedence order is unchanged; only the last term stops being `undefined`.
-- **The chain-identity comparison becomes fork-aware.** For a fork, both the forked network's id and the local engine's id are legitimate answers from the provider, and neither is a misconfiguration. Which id the RUN then uses must be chosen deliberately rather than falling out of `chainIdFromProvider || chainId`, since it reaches `env.network.chain.id` and therefore the `chainId` field of every transaction `execute` builds. Whatever is chosen, a fork run under anvil and under hardhat should not silently build transactions carrying different chain ids.
-- **The descriptor must be able to grow a CREATION half, without being given one now.** Today rocketh ATTACHES to a fork somebody else started (anvil or hardhat), so the block to fork from is not rocketh's to choose: it was fixed when that node started, and pretending to configure it would be a lie. When an in-process engine lands, rocketh CREATES the fork and needs exactly what EDR's `ForkConfig` takes: `url`, `blockNumber`, `cacheDir`, `httpHeaders`. The url needs no new configuration, because the forked network's rpcUrl is already in the user's chain config, which is the same config this spec is teaching the run to read. So the growth is a `blockNumber` and a mode, and the descriptor should not foreclose it. Nothing in this spec builds it.
-- **Inheritance is the DEFAULT, overrides are the exception.** A fork of mainnet takes its configuration from mainnet and states only what genuinely differs, which is the local endpoint and plausibly impersonation and tags.
-- **A fork's own overrides live in a `fork` sub-key on the forked network's OWN environment entry** (decided; it is a core type change and was agreed rather than assumed):
-
-  ```ts
-  environments: {
-  	mainnet: {chain: 1, fork: {rpcUrl: 'http://localhost:8545', autoImpersonate: true}},
-  }
-  ```
-
-  The layering is then `chains[<forked id>]` under `environments[<name>].overrides` under `environments[<name>].fork`, most specific last, and the fork layer applies ONLY when the run is a fork. The shape wants no new vocabulary: `overrides` is already `Omit<ChainUserConfig, 'info'>`, which is exactly the bag a fork needs (rpcUrl, tags, autoImpersonate, deterministic deployment), so `fork` is a second override layer that is conditional rather than a new kind of thing. It grows the EDR creation fields later (a block number, a cache dir), which is why it is a bag rather than a bare url.
-
-  The alternative considered and rejected was a conventional environment key, `"<network>:fork"`. It costs no new type, which is a real advantage, but it invites two mistakes that the sub-key cannot express: it reads as a NAME, and the obvious implementation makes it one, at which point the fork reads and writes a `mainnet:fork/` deployments folder and loses the only thing forking is for (a colon is also reserved on Windows, and the name reaches `path.join`); and a conventional key can collide with a user's own environment naming. Same reasoning that replaced `pushUnknownSignerPolicy`/`popUnknownSignerPolicy` with one scoping verb: prefer making the mistake unrepresentable over documenting the pairing.
-
-- **Declaring `fork` does NOT put a run into fork mode.** A run is a fork because of how it was invoked, and the key only supplies the overrides when that happens. Presence of configuration must never be a mode switch, or a user who describes their fork once finds every subsequent run forked.
-- **Half of that layering already works, which makes this smaller than it looks.** `resolveExecutionParams` already merges `config.environments[environmentName].overrides` over the chain config, and on a fork run `environmentName` is the FORKED network's name, so `environments.mainnet.overrides` already applies to a fork of mainnet today. What is wrong is the layer underneath it: the chain config being merged is `chains[31337]` rather than `chains[1]`. The work is to slide the right bucket under a merge that already happens, not to invent a merge.
-- **The CONNECTION stops being borrowed from `chains[31337]`.** The local endpoint is a property of the FORK RUN, not of a chain the user is not using, and today the two are the same bucket. A fork should be able to say where its node is listening (defaulting to the same `http://127.0.0.1:8545` it effectively defaults to now, which is where anvil and `hardhat node` both listen) without the user having to configure chain 31337, and without a `localhost` chain config leaking its tags and policy into a mainnet rehearsal. Note that `DeploymentEnvironmentConfig.overrides` already exists and already accepts an `rpcUrl`, so the vocabulary for this is present.
-- **The run's chain IDENTITY is the forked network's**, not the local bucket's. `env.network.chain.id` reaching the `chainId` field of every transaction is what makes this load-bearing rather than cosmetic (see the observation note). A fork engine's own id, where it differs, is a fact about the connection and belongs on the connection side.
-- **What `{fork: X}` fundamentally means, stated once so the implementation can stop re-deriving it:** be the `X` environment for the purposes of deployment RECORDS, while not being `X` for the purposes of chain identity. Everything else the flag currently does to a run is incidental. The evidence is that an ordinary environment with `{chain: 1, overrides: {rpcUrl: 'http://localhost:8545'}}` already reproduces every other property of a fork run today, and the only thing it cannot do is read mainnet's deployment records.
-- **No new CLI surface.** `-e <network>` plus the existing fork input is all the information required. The `--fork` flag itself is a separate, later piece of work.
-
-## Testing Decisions
-
-- The predicate itself, which is the cheapest and most valuable test: an in-memory run is NOT a fork, a fork of mainnet IS one and says so, and a plain named-network run is not.
-- Semantics come from the forked network while the provider comes from the local config, asserted together in one test, since the bug being fixed is exactly that the two were the same lookup.
-- `autoImpersonate` on by default for a fork, off for a non-fork, and an explicit `false` still wins on a fork (the deferral-rehearsal story).
-- The identity check under both shapes: a provider reporting the forked network's id, and a provider reporting the local engine's id. Neither warns, and the chain id the run adopts is asserted, not incidental. The existing test harness can report either id, so both are cheap.
-- A hardhat-deploy shaped run keeps working unchanged, since that is the one caller that constructs a fork today.
-- The transaction a fork run BUILDS declares the forked network's chain id. Assert it on the transaction, not on `env.network.chain`, since the field is what a node rejects.
-- A `chains[31337]` config carrying tags and a policy does NOT leak into a fork run of another network. This is the assertion that would have caught the localhost-bucket conflation, and it is cheap: configure both buckets differently and assert which one the run adopted.
-- Prior art: `packages/rocketh/test/` for executor-level tests that build a real environment against a mock provider, and the unknown-signer scenarios for how a fork-shaped run is set up.
 
 ## Out of Scope
 
