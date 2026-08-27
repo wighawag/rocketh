@@ -4,6 +4,7 @@ slug: execute-guard-convergence-scenario
 spec: execute-state-guard
 blockedBy: [execute-guard-storage-kind]
 covers: [2, 3]
+needsAnswers: true
 ---
 
 ## What to build
