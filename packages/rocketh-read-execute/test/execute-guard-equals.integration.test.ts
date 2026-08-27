@@ -67,6 +67,29 @@ const REGISTRY_ABI = [
 		outputs: [{type: 'address'}],
 		stateMutability: 'view',
 	},
+	{
+		type: 'function',
+		name: 'getFlashBorrowers',
+		inputs: [],
+		outputs: [{type: 'address[]'}],
+		stateMutability: 'view',
+	},
+	{
+		type: 'function',
+		name: 'getReserveConfig',
+		inputs: [],
+		outputs: [
+			{
+				type: 'tuple',
+				components: [
+					{type: 'address', name: 'treasury'},
+					{type: 'string', name: 'label'},
+					{type: 'uint256', name: 'cap'},
+				],
+			},
+		],
+		stateMutability: 'view',
+	},
 ] as const satisfies Abi;
 
 /**
@@ -350,6 +373,72 @@ describe('@rocketh/read-execute - the execute guard: equals and output selection
 			expect((await _evaluate({...guard, equals: [true, 0]})).satisfied).toBe(true);
 			expect((await _evaluate({...guard, equals: [true, 3600]})).satisfied).toBe(false);
 			expect((await _evaluate({...guard, equals: [false, 0]})).satisfied).toBe(false);
+		});
+
+		it('compares an ARRAY return deeply, folding case per ELEMENT', async () => {
+			/**
+			 * Example: an `address[]` is a single output, so viem hands it over unwrapped, and
+			 * the per-type rule applies to each ELEMENT rather than to the array. The author's
+			 * lowercased list therefore matches the checksummed one the decoder produced, which
+			 * a `JSON.stringify` or an `every(===)` comparison would not.
+			 */
+			const {env, provider, registry} = await setup();
+
+			const others = [('0x' + '1'.repeat(40)) as `0x${string}`, ('0x' + '2'.repeat(40)) as `0x${string}`];
+			provider.setResponse('eth_call', returns([{type: 'address[]'}], [[IMPLEMENTATION_CHECKSUMMED, ...others]]));
+
+			const _evaluate = evaluateGuard(env);
+			const guard = {kind: 'call', on: registry, functionName: 'getFlashBorrowers'} as const;
+
+			expect((await _evaluate({...guard, equals: [IMPLEMENTATION_LOWERCASE, ...others]})).satisfied).toBe(true);
+			// a DIFFERENT member, and a shorter list, are both still different
+			expect((await _evaluate({...guard, equals: [IMPLEMENTATION_LOWERCASE, others[0], others[0]]})).satisfied).toBe(
+				false,
+			);
+			expect((await _evaluate({...guard, equals: [IMPLEMENTATION_LOWERCASE, others[0]]})).satisfied).toBe(false);
+		});
+
+		it('compares a STRUCT return deeply, each component under its OWN rule', async () => {
+			/**
+			 * Example: the case that proves the rule is per-COMPONENT and not per-value. A struct
+			 * carrying an `address`, a `string` and a `uint256` decodes to an object whose three
+			 * fields are two JavaScript strings and a bigint, and each one is judged by the ABI
+			 * type declared for it: the treasury folds case, the label does not.
+			 */
+			const {env, provider, registry} = await setup();
+
+			const config = {
+				type: 'tuple',
+				components: [
+					{type: 'address', name: 'treasury'},
+					{type: 'string', name: 'label'},
+					{type: 'uint256', name: 'cap'},
+				],
+			} as const satisfies AbiParameter;
+			provider.setResponse('eth_call', returns([config], [[IMPLEMENTATION_CHECKSUMMED, 'Main', 1000n]]));
+
+			const _evaluate = evaluateGuard(env);
+			const guard = {kind: 'call', on: registry, functionName: 'getReserveConfig'} as const;
+
+			// the address folds
+			expect(
+				(await _evaluate({...guard, equals: {treasury: IMPLEMENTATION_LOWERCASE, label: 'Main', cap: 1000n}}))
+					.satisfied,
+			).toBe(true);
+			// the label does NOT
+			expect(
+				(await _evaluate({...guard, equals: {treasury: IMPLEMENTATION_LOWERCASE, label: 'main', cap: 1000n}}))
+					.satisfied,
+			).toBe(false);
+			// and the bigint still does not coerce
+			expect(
+				(
+					await _evaluate({
+						...guard,
+						equals: {treasury: IMPLEMENTATION_LOWERCASE, label: 'Main', cap: 1000 as unknown as bigint},
+					})
+				).satisfied,
+			).toBe(false);
 		});
 	});
 
