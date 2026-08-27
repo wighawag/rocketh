@@ -125,7 +125,15 @@ if (result.outcome === 'skipped') {
 }
 ```
 
-The guard's `functionName` and `args` are typed against the ABI of the contract it READS, so a renamed getter is a compile error. A guard that throws (a reverting getter, a target that is not deployed) fails the run: it is never treated as "not satisfied", because that would re-send a privileged call that may already have happened.
+The guard's `functionName` and `args` are typed against the ABI of the contract it READS, so a renamed getter is a compile error.
+
+A guard that cannot produce a verdict FAILS THE RUN, and is never treated as "not satisfied": a reverting getter, a target that is not a contract, a slot the node refuses to serve, a `satisfied` predicate that throws. An error is not evidence that the call is still needed, and falling through would re-send a privileged call that may already have happened. The failure arrives as a `GuardEvaluationError` naming the guard and the target it read, with the underlying failure kept whole on `cause`:
+
+```typescript
+import {GuardEvaluationError} from '@rocketh/read-execute/errors';
+```
+
+A guard against a known deployment that momentarily returns no data is retried first (the same retry `read` performs); it is the exhausted read that is fatal.
 
 ### `equals`, and selecting one output
 
