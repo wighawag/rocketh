@@ -28,6 +28,8 @@ import {read} from './read.js';
 import {returnValueEquals, valuesEqualForAbiType} from './abi-comparison.js';
 import {decodeSlotWord, readSlot} from './slot.js';
 import type {SlotInterpretation, SlotValue} from './slot.js';
+import {GuardEvaluationError, describeGuard} from './errors.js';
+import type {GuardEvaluationErrorData} from './errors.js';
 
 export type {SlotInterpretation, SlotValue} from './slot.js';
 
@@ -311,10 +313,20 @@ export type GuardEvaluator = {
  * is an error rather than a guess.
  *
  * A `call` guard's read goes THROUGH `read`, so it cannot drift from what a hand-written
- * read would do: same encoding, same decoding, same empty-return retry. A `storage` guard
- * has no such sibling to stay in step with, so it owns its read (`./slot.ts`). Nothing
- * here catches: a guard that cannot produce a verdict must fail the run rather than be
- * mistaken for "not satisfied".
+ * read would do: same encoding, same decoding, same empty-return retry (a momentarily
+ * unreadable known deployment is retried, and only the EXHAUSTED read is fatal). A
+ * `storage` guard has no such sibling to stay in step with, so it owns its read
+ * (`./slot.ts`).
+ *
+ * This function is the ONE place a guard failure is turned into a
+ * {@link GuardEvaluationError}, and it never turns one into a verdict. The asymmetry is
+ * deliberate: an error while evaluating is NOT evidence that the call is needed, so a
+ * `catch` that answered "not satisfied" would hand the operator a privileged transaction
+ * they may already have executed out of band, which is the double-execution loss the guard
+ * exists to prevent (ADR 0012). Fail-loud costs a re-run and a fixed script; fail-open
+ * costs a duplicated mint, transfer or nonce-bearing governance action. Having a single
+ * seam is what keeps that true for `execute` and for a standalone collector alike: two
+ * seams would be two chances for one of them to fall through.
  *
  * A declared TYPE is what makes `equals` possible at all, and each kind has its own source
  * for it: the function's declared OUTPUTS for a call (which also supply the selection
@@ -324,9 +336,30 @@ export type GuardEvaluator = {
  */
 export function evaluateGuard(env: Environment): GuardEvaluator {
 	const evaluate = async (guard: ExecuteGuard, defaultTarget?: MinimalDeployment<Abi>): Promise<GuardEvaluation> => {
-		return guard.kind === 'storage'
-			? evaluateStorageGuard(env, guard, defaultTarget)
-			: evaluateCallGuard(env, guard, defaultTarget);
+		try {
+			// awaited INSIDE the try on purpose: returning the promise would put every asynchronous
+			// failure (the revert, the exhausted retry, the refused `eth_getStorageAt`) outside this
+			// catch, which is most of what can go wrong.
+			return guard.kind === 'storage'
+				? await evaluateStorageGuard(env, guard, defaultTarget)
+				: await evaluateCallGuard(env, guard, defaultTarget);
+		} catch (error) {
+			// Already ours (a guard that states no target, no verdict, or selects an output the ABI
+			// does not declare): it names the guard correctly, so re-wrapping would only say it twice.
+			if (error instanceof GuardEvaluationError) {
+				throw error;
+			}
+			// WRAPPED rather than rethrown, and wrapped rather than reworded: a bare
+			// `AbiDecodingZeroDataError` or a node's "method not available" does not say which of a
+			// script's guards asked, nor which contract it read, and those are the two facts needed
+			// to fix the script. The underlying failure is kept whole on `cause` AND quoted in the
+			// message, so nothing it said is lost.
+			throw new GuardEvaluationError(
+				guardErrorData(guard, defaultTarget),
+				`could not be evaluated, so nothing was executed: ${error instanceof Error ? error.message : String(error)}`,
+				error,
+			);
+		}
 	};
 
 	// One implementation, two call signatures: the generics of the two kinds have nothing in
@@ -344,10 +377,16 @@ async function evaluateCallGuard(
 ): Promise<CallGuardEvaluation<Abi, ContractFunctionName<Abi, 'pure' | 'view'>>> {
 	const target = guard.on ?? defaultTarget;
 	if (!target) {
-		throw new Error(
-			`the guard on "${String(guard.functionName)}" has no target: it names no "on" and no default target was given`,
+		throw new GuardEvaluationError(
+			{kind: 'call', functionName: String(guard.functionName)},
+			'has no target: it names no "on" and no default target was given',
 		);
 	}
+	const errorData: GuardEvaluationErrorData = {
+		kind: 'call',
+		target: target.address,
+		functionName: String(guard.functionName),
+	};
 
 	const value = await read(env)(target, {
 		functionName: guard.functionName,
@@ -363,7 +402,7 @@ async function evaluateCallGuard(
 	} as never) as {type?: string; outputs?: readonly AbiParameter[]} | undefined;
 	const outputs = abiItem?.type === 'function' ? (abiItem.outputs ?? []) : [];
 
-	const {satisfied, ...judged} = judge(guard, outputs, value);
+	const {satisfied, ...judged} = judge(guard, errorData, outputs, value);
 
 	return {
 		kind: 'call',
@@ -391,10 +430,14 @@ async function evaluateStorageGuard(
 ): Promise<StorageGuardEvaluation> {
 	const target = guard.on ?? defaultTarget;
 	if (!target) {
-		throw new Error(`the guard on slot ${guard.slot} has no target: it names no "on" and no default target was given`);
+		throw new GuardEvaluationError(
+			{kind: 'storage', slot: guard.slot},
+			'has no target: it names no "on" and no default target was given',
+		);
 	}
+	const errorData: GuardEvaluationErrorData = {kind: 'storage', target: target.address, slot: guard.slot};
 
-	const where = `the guard on slot ${guard.slot} of ${target.address}`;
+	const where = describeGuard(errorData);
 	const word = await readSlot(env, target.address, guard.slot);
 	const value = decodeSlotWord(guard.as, word, where);
 
@@ -422,7 +465,14 @@ async function evaluateStorageGuard(
 		};
 	}
 
-	throw new Error(`${where} states no verdict: it declares neither "equals" nor "satisfied"`);
+	throw new GuardEvaluationError(errorData, 'states no verdict: it declares neither "equals" nor "satisfied"');
+}
+
+/** What the {@link GuardEvaluationError} seam knows about a guard BEFORE evaluating it. */
+function guardErrorData(guard: ExecuteGuard, defaultTarget?: MinimalDeployment<Abi>): GuardEvaluationErrorData {
+	const target = (guard.on ?? defaultTarget)?.address;
+	const whatItReads = guard.kind === 'storage' ? {slot: guard.slot} : {functionName: String(guard.functionName)};
+	return {kind: guard.kind, ...(target ? {target} : {}), ...whatItReads};
 }
 
 /** The selection-and-verdict half of an evaluation, kept apart from the read half. */
@@ -447,11 +497,11 @@ function judge(
 		equals?: unknown;
 		satisfied?: (value: never) => boolean;
 	},
+	errorData: GuardEvaluationErrorData,
 	outputs: readonly AbiParameter[],
 	value: unknown,
 ): Judgement {
-	const selection =
-		guard.output === undefined ? undefined : selectOutput(guard.functionName, guard.output, outputs, value);
+	const selection = guard.output === undefined ? undefined : selectOutput(errorData, guard.output, outputs, value);
 	const judged = selection ? selection.value : value;
 	const selected = selection ? {output: guard.output, selected: selection.value} : {};
 
@@ -470,9 +520,7 @@ function judge(
 		};
 	}
 
-	throw new Error(
-		`the guard on "${String(guard.functionName)}" states no verdict: it declares neither "equals" nor "satisfied"`,
-	);
+	throw new GuardEvaluationError(errorData, 'states no verdict: it declares neither "equals" nor "satisfied"');
 }
 
 /**
@@ -487,7 +535,7 @@ function judge(
  * the run rather than be mistaken for "not satisfied".
  */
 function selectOutput(
-	functionName: unknown,
+	errorData: GuardEvaluationErrorData,
 	selector: string | number,
 	outputs: readonly AbiParameter[],
 	value: unknown,
@@ -496,8 +544,9 @@ function selectOutput(
 	const parameter = position < 0 ? undefined : outputs[position];
 	if (!parameter) {
 		const declared = outputs.map((output, index) => output.name || `#${index}`).join(', ') || 'none';
-		throw new Error(
-			`the guard on "${String(functionName)}" selects the output "${selector}", which that function does not declare (declared outputs: ${declared})`,
+		throw new GuardEvaluationError(
+			errorData,
+			`selects the output "${selector}", which that function does not declare (declared outputs: ${declared})`,
 		);
 	}
 	return {parameter, value: outputs.length === 1 ? value : (value as readonly unknown[])[position]};

@@ -36,6 +36,12 @@ export type {Abi, Artifact, Environment, MinimalDeployment, PendingExecution};
 export {read, readByName} from './read.js';
 export type {ReadFunction, ReadFunctionByName, ReadingArgs} from './read.js';
 
+// The error CLASS is deliberately absent from this root surface and lives on the `./errors`
+// subpath: `withEnvironment` calls every root export as `value(env)`, so a class here would
+// be refused by name the moment a user spread this package into their extensions. Its TYPE
+// is re-exported (types erase, so they cost the spread nothing).
+export type {GuardEvaluationErrorData} from './errors.js';
+
 export {evaluateGuard} from './guard.js';
 export type {
 	CallGuard,
@@ -273,8 +279,15 @@ export function execute(env: Environment): ExecuteFunction {
 		// The guard is evaluated BEFORE anything is built. A satisfied guard therefore costs one
 		// read and reaches neither the broadcast choke point nor the unknown-signer seam behind
 		// it: "is this needed" and "can we sign it" stay orthogonal (ADR 0013, ADR 0006).
-		// It never catches: a guard that throws has told us nothing, and treating that as "not
-		// satisfied" would re-execute a privileged call that may already have happened.
+		//
+		// It never catches, and MUST never catch. The asymmetry is the point: an error while
+		// evaluating is NOT evidence that the call is needed, so a `catch` here that fell through
+		// to executing would hand the operator a privileged transaction they may already have
+		// executed out of band, and rocketh cannot see that they did (ADR 0012). Fail-loud costs a
+		// re-run and a fixed script; fail-open costs a duplicated mint, transfer or nonce-bearing
+		// governance action. Every such failure arrives here as a `GuardEvaluationError` naming
+		// the guard and carrying the underlying failure (`./errors.ts`), and it propagates: the
+		// lines below, which build and broadcast the transaction, are never reached.
 		const evaluation = guard
 			? await (evaluateGuard(env) as LooseEvaluate)(guard, deployment as unknown as MinimalDeployment<Abi>)
 			: undefined;

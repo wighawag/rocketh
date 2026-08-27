@@ -37,6 +37,12 @@
 				"types": "./dist/index.d.ts",
 				"default": "./dist/index.js"
 			}
+		},
+		"./errors": {
+			"import": {
+				"types": "./dist/errors.d.ts",
+				"default": "./dist/errors.js"
+			}
 		}
 	},
 	"files": [
