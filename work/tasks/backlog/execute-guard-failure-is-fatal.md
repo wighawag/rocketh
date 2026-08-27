@@ -4,7 +4,6 @@ slug: execute-guard-failure-is-fatal
 spec: execute-state-guard
 blockedBy: [execute-guard-storage-kind]
 covers: [7]
-needsAnswers: true
 ---
 
 ## What to build
