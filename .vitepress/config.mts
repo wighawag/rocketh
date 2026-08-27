@@ -82,6 +82,7 @@ export default defineConfig({
 						{text: 'Testing Deploy Scripts', link: '/documentation/testing/'},
 						{text: 'Exporting and Verifying', link: '/documentation/exporting-and-verifying/'},
 						{text: 'Handling Unknown Signers', link: '/documentation/unknown-signers/'},
+						{text: 'Guarding Execute Calls', link: '/documentation/execute-guard/'},
 					],
 				},
 				{

@@ -203,6 +203,35 @@ Both forms are the same function: an extension package's root exports only curri
 
 It returns `null` when the action succeeded, and otherwise hardhat-deploy v1's exact shape: every key present even when `undefined`, `value` as a string. Pass `{log: false}` to suppress the printed block. Nothing is persisted: idempotency comes from on-chain state, so you execute the transaction on your Safe and re-run the idempotent script. One wrapper captures one transaction (the first unsignable one inside it), so deferring several steps means one `catchUnknownSigner` per step.
 
+### What closes the loop on the re-run
+
+"Re-run the idempotent script" is doing a lot of work in that sentence, so be precise about what makes the second run converge. rocketh did not send the deferred transaction and never saw one land, so it may not record that the step happened: the only thing that can tell run 2 the work is done is the CHAIN.
+
+That is automatic for the steps rocketh guards itself. `deploy` compares bytecode and `deployViaProxy` compares the proxy's current implementation, so a re-run after the Safe acted skips them with nothing declared by you. It is NOT automatic for an `execute`, which sends whatever it is handed: without a chain check, run 2 prints the identical privileged transaction and executing it a second time is a real loss for a mint, a transfer, an increment or a governance action carrying its own nonce.
+
+[Guarding execute calls](../execute-guard/) is how you state that check: one `guard` option declaring what to read on chain, so the deferred step is SKIPPED once its effect has landed, and the same transaction is never handed to you twice.
+
+```typescript
+const deferred = await catchUnknownSigner(() =>
+	execute(proxyAdmin, {
+		account: 'safeOwner',
+		functionName: 'upgradeAndCall',
+		args: [proxy.address, newImplementation.address, '0x'],
+		// run 1 defers this; run 2, after the Safe executed it, reads the proxy's
+		// EIP-1967 implementation slot, is satisfied, and skips the step entirely
+		guard: {
+			kind: 'storage',
+			on: proxy,
+			slot: EIP1967_IMPLEMENTATION_SLOT,
+			as: 'address',
+			equals: newImplementation.address,
+		},
+	}),
+);
+```
+
+The same applies to the `throw` path above, which is what a CI run takes: the guard is what a re-run needs, whichever way the transaction was deferred.
+
 A wrapped action never pops a prompt at you, whatever the ambient policy is, because you already said you would handle the transaction yourself. The one thing that overrides that is an EXPLICIT override written inside the wrapper, because policy frames nest and the innermost one wins, so `catchUnknownSigner(env)(() => withUnknownSignerPolicy(env)('ask', ...))` does prompt. That is deliberate: the guarantee is about the policy you did not state, not about silencing one you wrote yourself a line later.
 
 ### `catchUnknownSigner` is not a "never send" switch
