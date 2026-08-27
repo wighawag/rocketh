@@ -81,7 +81,7 @@ Remaining fields come from viem's `WriteContractParameters` (minus `address`, `a
 
 ### `tx(transactionData, {message?})`
 
-Sends a raw transaction (`{to, data, value, ...}`) with no ABI involved. For the cases that are not a contract call, such as a plain ETH transfer. Returns the transaction hash.
+Sends a raw transaction (`{to, data, value, ...}`) with no ABI involved. For the cases that are not a contract call, such as a plain ETH transfer. Like `execute`, it resolves to the transaction **receipt**.
 
 ### `evaluateGuard(guard, defaultTarget?)`
 
