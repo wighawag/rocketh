@@ -32,3 +32,9 @@ The failure lands on whichever task happens to be in the gate, and it names a pa
 - Or **move them out of the default suite** into a slower lane that does not run shoulder to shoulder with the fast unit tests.
 
 Raising the global default is the one thing not to do: the 5s default is doing useful work everywhere else.
+
+# Sharpening (same day): the trigger is the repo-wide test run itself, not extraneous load
+
+The first draft above blamed "load", which understates it. The failure reproduced on an otherwise idle machine, during a plain `pnpm test` at the repo root: 1028 of 1029 tests passed and the single red was this same test, timing out at 5000ms. Immediately afterwards, `vitest run test/export.test.ts` inside `packages/rocketh-export` passed all 35 tests.
+
+So the trigger is not a busy machine, it is the monorepo's own parallel test run, which is what CI, the acceptance gate and every contributor runs. Four tsc compilations competing with 87 other test files is enough on its own. That makes this a standing property of `pnpm test` rather than an occasional environment problem, and it moves the fix from nice-to-have to load-bearing: it bounced three separate acceptance gates during one drive of six tasks.
