@@ -1,5 +1,5 @@
 import {Abi} from 'abitype';
-import {EIP1193DATA, EIP1193TransactionData, EIP1193TransactionReceipt} from 'eip-1193';
+import {EIP1193TransactionData, EIP1193TransactionReceipt} from 'eip-1193';
 import type {Artifact, Environment, MinimalDeployment, PendingExecution} from '@rocketh/core/types';
 import type {
 	ContractFunctionArgs,
@@ -18,68 +18,173 @@ export type {
 	TransactionRequestEIP1559,
 	WriteContractParameters,
 };
-import {decodeFunctionResult, encodeFunctionData, AbiDecodingZeroDataError} from 'viem';
+import {encodeFunctionData} from 'viem';
 import {logs} from 'named-logs';
+import {evaluateGuard} from './guard.js';
+import type {ExecuteGuard, GuardEvaluation} from './guard.js';
 
 export type {Abi, Artifact, Environment, MinimalDeployment, PendingExecution};
+
+export {read, readByName} from './read.js';
+export type {ReadFunction, ReadFunctionByName, ReadingArgs} from './read.js';
+
+export {evaluateGuard} from './guard.js';
+export type {CallGuard, CallGuardEvaluation, ExecuteGuard, GuardEvaluation} from './guard.js';
 
 const logger = logs('@rocketh/read-execute');
 
 type TransactionData = Omit<TransactionRequestEIP1559, 'from' | 'nonce'> & {account: string};
 
-export type ExecuteFunction = <
+/**
+ * The guard's generics are independent of the executed contract's (it usually reads ANOTHER
+ * contract), and the implementation body does not need them: it hands the guard to the
+ * evaluator whole. They are therefore erased inside, and restored for callers by the two
+ * call signatures of {@link ExecuteFunction}.
+ */
+type AnyGuardFunctionName = ContractFunctionName<Abi, 'pure' | 'view'>;
+type AnyGuard = ExecuteGuard<Abi, AnyGuardFunctionName>;
+type LooseExecute = (
+	deployment: MinimalDeployment<Abi>,
+	args: ExecutionArgs<Abi, ContractFunctionName<Abi, 'nonpayable' | 'payable'>> & {guard?: AnyGuard},
+) => Promise<EIP1193TransactionReceipt | GuardedExecutionResult<Abi, AnyGuardFunctionName>>;
+
+/**
+ * A guarded execution: the same arguments as an unguarded one, plus the on-chain condition
+ * under which the call is still needed. The guard's ABI (`TGuardAbi`) is independent of the
+ * executed contract's, because the effect of a privileged call is usually observable on
+ * ANOTHER contract; it defaults to the executed contract's ABI when the guard names no `on`.
+ */
+export type GuardedExecutionArgs<
 	TAbi extends Abi,
 	TFunctionName extends ContractFunctionName<TAbi, 'nonpayable' | 'payable'>,
-	TArgs extends ContractFunctionArgs<TAbi, 'nonpayable' | 'payable', TFunctionName> = ContractFunctionArgs<
-		TAbi,
-		'nonpayable' | 'payable',
-		TFunctionName
-	>,
->(
-	deployment: MinimalDeployment<TAbi>,
-	args: ExecutionArgs<TAbi, TFunctionName, TArgs>,
-) => Promise<EIP1193DATA>;
+	TArgs extends ContractFunctionArgs<TAbi, 'nonpayable' | 'payable', TFunctionName>,
+	TGuardAbi extends Abi,
+	TGuardFunctionName extends ContractFunctionName<TGuardAbi, 'pure' | 'view'>,
+	TGuardArgs extends ContractFunctionArgs<TGuardAbi, 'pure' | 'view', TGuardFunctionName>,
+> = ExecutionArgs<TAbi, TFunctionName, TArgs> & {
+	guard: ExecuteGuard<TGuardAbi, TGuardFunctionName, TGuardArgs>;
+};
 
-export type ExecuteFunctionByName = <
-	TAbi extends Abi,
-	TFunctionName extends ContractFunctionName<TAbi, 'nonpayable' | 'payable'>,
-	TArgs extends ContractFunctionArgs<TAbi, 'nonpayable' | 'payable', TFunctionName> = ContractFunctionArgs<
-		TAbi,
-		'nonpayable' | 'payable',
-		TFunctionName
-	>,
->(
-	name: string,
-	args: ExecutionArgs<TAbi, TFunctionName, TArgs>,
-) => Promise<EIP1193DATA>;
+/**
+ * The call was NOT needed: the chain already satisfies the guard.
+ *
+ * Deliberately not named after a transaction, because none exists on this path: nothing was
+ * built, nothing was broadcast, and the unknown-signer seam was never consulted. The
+ * evaluation is the only evidence of why nothing happened.
+ */
+export type SkippedExecution<
+	TGuardAbi extends Abi,
+	TGuardFunctionName extends ContractFunctionName<TGuardAbi, 'pure' | 'view'>,
+> = {
+	outcome: 'skipped';
+	evaluation: GuardEvaluation<TGuardAbi, TGuardFunctionName>;
+};
 
-export type ReadFunction = <
-	TAbi extends Abi,
-	TFunctionName extends ContractFunctionName<TAbi, 'pure' | 'view'>,
-	TArgs extends ContractFunctionArgs<TAbi, 'pure' | 'view', TFunctionName> = ContractFunctionArgs<
-		TAbi,
-		'pure' | 'view',
-		TFunctionName
-	>,
->(
-	deployment: MinimalDeployment<TAbi>,
-	args: ReadingArgs<TAbi, TFunctionName, TArgs>,
-) => Promise<DecodeFunctionResultReturnType<TAbi, TFunctionName>>;
+/** The call was still needed, so it was sent exactly as an unguarded call would have been. */
+export type SentExecution<
+	TGuardAbi extends Abi,
+	TGuardFunctionName extends ContractFunctionName<TGuardAbi, 'pure' | 'view'>,
+> = {
+	outcome: 'sent';
+	receipt: EIP1193TransactionReceipt;
+	evaluation: GuardEvaluation<TGuardAbi, TGuardFunctionName>;
+};
 
-export type ReadFunctionByName = <
-	TAbi extends Abi,
-	TFunctionName extends ContractFunctionName<TAbi, 'pure' | 'view'>,
-	TArgs extends ContractFunctionArgs<TAbi, 'pure' | 'view', TFunctionName> = ContractFunctionArgs<
-		TAbi,
-		'pure' | 'view',
-		TFunctionName
-	>,
->(
-	name: string,
-	args: ReadingArgs<TAbi, TFunctionName, TArgs>,
-) => Promise<DecodeFunctionResultReturnType<TAbi, TFunctionName>>;
+/** What a GUARDED execution returns. An unguarded one still returns a bare receipt. */
+export type GuardedExecutionResult<
+	TGuardAbi extends Abi,
+	TGuardFunctionName extends ContractFunctionName<TGuardAbi, 'pure' | 'view'>,
+> = SkippedExecution<TGuardAbi, TGuardFunctionName> | SentExecution<TGuardAbi, TGuardFunctionName>;
 
-export type TxFunction = (tx: TransactionData, options?: {message?: string}) => Promise<EIP1193DATA>;
+/**
+ * `execute`'s type, conditional on the presence of a `guard`.
+ *
+ * The two call signatures are what keeps the guard ADDITIVE: without a guard the signature
+ * is identical to the one that shipped before guards existed, `Promise<EIP1193TransactionReceipt>`,
+ * so the internal call sites in `@rocketh/proxy` and `@rocketh/diamond` and every user
+ * script in the wild are untouched and nobody has to start handling an absent receipt. With
+ * a guard, the skipped-or-sent result is returned instead, and the receipt is reachable only
+ * after discriminating on `outcome`.
+ */
+export type ExecuteFunction = {
+	<
+		TAbi extends Abi,
+		TFunctionName extends ContractFunctionName<TAbi, 'nonpayable' | 'payable'>,
+		TArgs extends ContractFunctionArgs<TAbi, 'nonpayable' | 'payable', TFunctionName> = ContractFunctionArgs<
+			TAbi,
+			'nonpayable' | 'payable',
+			TFunctionName
+		>,
+		TGuardAbi extends Abi = TAbi,
+		TGuardFunctionName extends ContractFunctionName<TGuardAbi, 'pure' | 'view'> = ContractFunctionName<
+			TGuardAbi,
+			'pure' | 'view'
+		>,
+		TGuardArgs extends ContractFunctionArgs<TGuardAbi, 'pure' | 'view', TGuardFunctionName> = ContractFunctionArgs<
+			TGuardAbi,
+			'pure' | 'view',
+			TGuardFunctionName
+		>,
+	>(
+		deployment: MinimalDeployment<TAbi>,
+		args: GuardedExecutionArgs<TAbi, TFunctionName, TArgs, TGuardAbi, TGuardFunctionName, TGuardArgs>,
+	): Promise<GuardedExecutionResult<TGuardAbi, TGuardFunctionName>>;
+	<
+		TAbi extends Abi,
+		TFunctionName extends ContractFunctionName<TAbi, 'nonpayable' | 'payable'>,
+		TArgs extends ContractFunctionArgs<TAbi, 'nonpayable' | 'payable', TFunctionName> = ContractFunctionArgs<
+			TAbi,
+			'nonpayable' | 'payable',
+			TFunctionName
+		>,
+	>(
+		deployment: MinimalDeployment<TAbi>,
+		// `guard?: undefined` accepts everything the pre-guard signature accepted, while making a
+		// POSSIBLY-present guard (`guard: mayBeUndefined`) match NEITHER signature: the result type
+		// cannot be decided at compile time in that case, so it is a compile error rather than a
+		// receipt type that a skipped call would violate at runtime.
+		args: ExecutionArgs<TAbi, TFunctionName, TArgs> & {guard?: undefined},
+	): Promise<EIP1193TransactionReceipt>;
+};
+
+export type ExecuteFunctionByName = {
+	<
+		TAbi extends Abi,
+		TFunctionName extends ContractFunctionName<TAbi, 'nonpayable' | 'payable'>,
+		TArgs extends ContractFunctionArgs<TAbi, 'nonpayable' | 'payable', TFunctionName> = ContractFunctionArgs<
+			TAbi,
+			'nonpayable' | 'payable',
+			TFunctionName
+		>,
+		TGuardAbi extends Abi = TAbi,
+		TGuardFunctionName extends ContractFunctionName<TGuardAbi, 'pure' | 'view'> = ContractFunctionName<
+			TGuardAbi,
+			'pure' | 'view'
+		>,
+		TGuardArgs extends ContractFunctionArgs<TGuardAbi, 'pure' | 'view', TGuardFunctionName> = ContractFunctionArgs<
+			TGuardAbi,
+			'pure' | 'view',
+			TGuardFunctionName
+		>,
+	>(
+		name: string,
+		args: GuardedExecutionArgs<TAbi, TFunctionName, TArgs, TGuardAbi, TGuardFunctionName, TGuardArgs>,
+	): Promise<GuardedExecutionResult<TGuardAbi, TGuardFunctionName>>;
+	<
+		TAbi extends Abi,
+		TFunctionName extends ContractFunctionName<TAbi, 'nonpayable' | 'payable'>,
+		TArgs extends ContractFunctionArgs<TAbi, 'nonpayable' | 'payable', TFunctionName> = ContractFunctionArgs<
+			TAbi,
+			'nonpayable' | 'payable',
+			TFunctionName
+		>,
+	>(
+		name: string,
+		args: ExecutionArgs<TAbi, TFunctionName, TArgs> & {guard?: undefined},
+	): Promise<EIP1193TransactionReceipt>;
+};
+
+export type TxFunction = (tx: TransactionData, options?: {message?: string}) => Promise<EIP1193TransactionReceipt>;
 
 export type ExecutionArgs<
 	TAbi extends Abi,
@@ -94,36 +199,8 @@ export type ExecutionArgs<
 	message?: string;
 };
 
-export type ReadingArgs<
-	TAbi extends Abi,
-	TFunctionName extends ContractFunctionName<TAbi, 'pure' | 'view'>,
-	TArgs extends ContractFunctionArgs<TAbi, 'pure' | 'view', TFunctionName> = ContractFunctionArgs<
-		TAbi,
-		'pure' | 'view',
-		TFunctionName
-	>,
-> = Omit<
-	ReadContractParameters<TAbi, TFunctionName, TArgs>,
-	'address' | 'abi' | 'account' | 'blockOverrides' | 'factory' | 'factoryData' | 'stateOverride'
-> & {
-	account?: string;
-};
-
-export function execute(
-	env: Environment,
-): <
-	TAbi extends Abi,
-	TFunctionName extends ContractFunctionName<TAbi, 'nonpayable' | 'payable'>,
-	TArgs extends ContractFunctionArgs<TAbi, 'nonpayable' | 'payable', TFunctionName> = ContractFunctionArgs<
-		TAbi,
-		'nonpayable' | 'payable',
-		TFunctionName
-	>,
->(
-	deployment: MinimalDeployment<TAbi>,
-	args: ExecutionArgs<TAbi, TFunctionName, TArgs>,
-) => Promise<EIP1193TransactionReceipt> {
-	return async <
+export function execute(env: Environment): ExecuteFunction {
+	const executeImplementation = async <
 		TAbi extends Abi,
 		TFunctionName extends ContractFunctionName<TAbi, 'nonpayable' | 'payable'>,
 		TArgs extends ContractFunctionArgs<TAbi, 'nonpayable' | 'payable', TFunctionName> = ContractFunctionArgs<
@@ -133,9 +210,22 @@ export function execute(
 		>,
 	>(
 		deployment: MinimalDeployment<TAbi>,
-		args: ExecutionArgs<TAbi, TFunctionName, TArgs>,
-	) => {
-		const {account, ...viemArgs} = args;
+		args: ExecutionArgs<TAbi, TFunctionName, TArgs> & {guard?: AnyGuard},
+	): Promise<EIP1193TransactionReceipt | GuardedExecutionResult<Abi, AnyGuardFunctionName>> => {
+		const {account, guard, ...viemArgs} = args;
+
+		// The guard is evaluated BEFORE anything is built. A satisfied guard therefore costs one
+		// read and reaches neither the broadcast choke point nor the unknown-signer seam behind
+		// it: "is this needed" and "can we sign it" stay orthogonal (ADR 0013, ADR 0006).
+		// It never catches: a guard that throws has told us nothing, and treating that as "not
+		// satisfied" would re-execute a privileged call that may already have happened.
+		const evaluation = guard
+			? await evaluateGuard(env)(guard, deployment as unknown as MinimalDeployment<Abi>)
+			: undefined;
+		if (evaluation?.satisfied) {
+			return {outcome: 'skipped', evaluation};
+		}
+
 		const address = env.resolveAccount(account);
 
 		const artifactToUse = deployment as unknown as Artifact<TAbi>;
@@ -182,190 +272,29 @@ export function execute(
 				},
 			},
 		);
-		return receipt;
+		return evaluation ? {outcome: 'sent', receipt, evaluation} : receipt;
 	};
+
+	return executeImplementation as unknown as ExecuteFunction;
 }
 
-export function executeByName(
-	env: Environment,
-): <
-	TAbi extends Abi,
-	TFunctionName extends ContractFunctionName<TAbi, 'nonpayable' | 'payable'>,
-	TArgs extends ContractFunctionArgs<TAbi, 'nonpayable' | 'payable', TFunctionName> = ContractFunctionArgs<
-		TAbi,
-		'nonpayable' | 'payable',
-		TFunctionName
-	>,
->(
-	name: string,
-	args: ExecutionArgs<TAbi, TFunctionName, TArgs>,
-) => Promise<EIP1193TransactionReceipt> {
-	return async <
-		TAbi extends Abi,
-		TFunctionName extends ContractFunctionName<TAbi, 'nonpayable' | 'payable'>,
-		TArgs extends ContractFunctionArgs<TAbi, 'nonpayable' | 'payable', TFunctionName> = ContractFunctionArgs<
-			TAbi,
-			'nonpayable' | 'payable',
-			TFunctionName
-		>,
-	>(
+export function executeByName(env: Environment): ExecuteFunctionByName {
+	const executeByNameImplementation = async (
 		name: string,
-		args: ExecutionArgs<TAbi, TFunctionName, TArgs>,
-	) => {
-		const deployment = env.getOrNull<TAbi>(name);
+		args: ExecutionArgs<Abi, ContractFunctionName<Abi, 'nonpayable' | 'payable'>> & {guard?: AnyGuard},
+	): Promise<EIP1193TransactionReceipt | GuardedExecutionResult<Abi, AnyGuardFunctionName>> => {
+		const deployment = env.getOrNull<Abi>(name);
 		if (!deployment) {
 			throw new Error(`no deployment named ${name}`);
 		}
 
-		return execute(env)(deployment, args);
+		return (execute(env) as unknown as LooseExecute)(deployment, args);
 	};
+
+	return executeByNameImplementation as unknown as ExecuteFunctionByName;
 }
 
-export function read(
-	env: Environment,
-): <
-	TAbi extends Abi,
-	TFunctionName extends ContractFunctionName<TAbi, 'pure' | 'view'>,
-	TArgs extends ContractFunctionArgs<TAbi, 'pure' | 'view', TFunctionName> = ContractFunctionArgs<
-		TAbi,
-		'pure' | 'view',
-		TFunctionName
-	>,
->(
-	deployment: MinimalDeployment<TAbi>,
-	args: ReadingArgs<TAbi, TFunctionName, TArgs>,
-) => Promise<DecodeFunctionResultReturnType<TAbi, TFunctionName>> {
-	return async <
-		TAbi extends Abi,
-		TFunctionName extends ContractFunctionName<TAbi, 'pure' | 'view'>,
-		TArgs extends ContractFunctionArgs<TAbi, 'pure' | 'view', TFunctionName> = ContractFunctionArgs<
-			TAbi,
-			'pure' | 'view',
-			TFunctionName
-		>,
-	>(
-		deployment: MinimalDeployment<TAbi>,
-		args: ReadingArgs<TAbi, TFunctionName, TArgs>,
-	) => {
-		const {account, ...viemArgs} = args;
-		const address = account ? env.resolveAccountOrUndefined(account) : undefined;
-
-		const artifactToUse = deployment as unknown as Artifact<TAbi>;
-		const abi = artifactToUse.abi;
-		const calldata = encodeFunctionData<TAbi, TFunctionName>({
-			abi,
-			functionName: viemArgs.functionName,
-			args: viemArgs.args,
-		} as any);
-
-		const callObject: Record<string, any> = {
-			to: deployment.address,
-			data: calldata,
-		};
-		if (address) {
-			callObject.from = address;
-		}
-		if (viemArgs.authorizationList) {
-			callObject.authorizationList = viemArgs.authorizationList;
-		}
-
-		const blockNumberOrTag = viemArgs.blockNumber || viemArgs.blockTag || 'latest';
-
-		const retryConfig = env.context.retry;
-		let currentResult: `0x${string}` = (await env.network.provider.request({
-			method: 'eth_call',
-			params: [callObject, blockNumberOrTag] as any, // TODO fix eip-1193 package
-		})) as `0x${string}`;
-
-		for (let attempt = 0; attempt <= retryConfig.maxRetries; attempt++) {
-			try {
-				const parsed = decodeFunctionResult<TAbi, TFunctionName>({
-					abi,
-					functionName: viemArgs.functionName,
-					data: currentResult,
-					args: viemArgs.args,
-				} as any);
-
-				return parsed as DecodeFunctionResultReturnType<TAbi, TFunctionName>;
-			} catch (error: any) {
-				if (!(error instanceof AbiDecodingZeroDataError)) {
-					throw error;
-				}
-
-				// `fromAddressToNamedABIOrNull` can THROW despite its name: it merges the ABIs of
-				// every deployment registered at this address, and `mergeArtifacts` throws
-				// `ABI conflict: ...` when two of them share a function selector. So it returns
-				// `null` for "no match" but throws for "several conflicting matches".
-				//
-				// Here that throw would REPLACE the decode error we are in the middle of handling,
-				// which is the error the caller actually needs: an address with a conflicting ABI
-				// registration would report a bookkeeping problem instead of "this call returned no
-				// data". A conflict is treated exactly like no match — we cannot tell whether the
-				// address is still a contract worth retrying — so the original error is rethrown.
-				let deploymentInfo: ReturnType<typeof env.fromAddressToNamedABIOrNull> = null;
-				try {
-					deploymentInfo = env.fromAddressToNamedABIOrNull(deployment.address);
-				} catch (lookupError) {
-					throw error;
-				}
-				if (!deploymentInfo) {
-					throw error;
-				}
-
-				if (attempt === retryConfig.maxRetries) {
-					throw error;
-				}
-
-				await new Promise((resolve) => setTimeout(resolve, retryConfig.delay));
-
-				currentResult = (await env.network.provider.request({
-					method: 'eth_call',
-					params: [callObject, blockNumberOrTag] as any,
-				})) as `0x${string}`;
-			}
-		}
-		throw new Error('unreachable');
-	};
-}
-
-export function readByName(
-	env: Environment,
-): <
-	TAbi extends Abi,
-	TFunctionName extends ContractFunctionName<TAbi, 'pure' | 'view'>,
-	TArgs extends ContractFunctionArgs<TAbi, 'pure' | 'view', TFunctionName> = ContractFunctionArgs<
-		TAbi,
-		'pure' | 'view',
-		TFunctionName
-	>,
->(
-	name: string,
-	args: ReadingArgs<TAbi, TFunctionName, TArgs>,
-) => Promise<DecodeFunctionResultReturnType<TAbi, TFunctionName>> {
-	return async <
-		TAbi extends Abi,
-		TFunctionName extends ContractFunctionName<TAbi, 'pure' | 'view'>,
-		TArgs extends ContractFunctionArgs<TAbi, 'pure' | 'view', TFunctionName> = ContractFunctionArgs<
-			TAbi,
-			'pure' | 'view',
-			TFunctionName
-		>,
-	>(
-		name: string,
-		args: ReadingArgs<TAbi, TFunctionName, TArgs>,
-	) => {
-		const deployment = env.getOrNull<TAbi>(name);
-		if (!deployment) {
-			throw new Error(`no deployment named ${name}`);
-		}
-
-		return read(env)(deployment, args);
-	};
-}
-
-export function tx(
-	env: Environment,
-): (txData: TransactionData, options?: {message?: string}) => Promise<EIP1193TransactionReceipt> {
+export function tx(env: Environment): TxFunction {
 	return async (txData: TransactionData, options?: {message?: string}) => {
 		const {account, ...viemArgs} = txData;
 		const address = env.resolveAccount(account);

@@ -65,9 +65,9 @@ export default deployScript(
 );
 ```
 
-Guarding an `execute` with a `read`, as above, is what keeps a deploy script idempotent: re-running it sends no transaction because the on-chain state already matches.
+Guarding an `execute` with a `read`, as above, is what keeps a deploy script idempotent: re-running it sends no transaction because the on-chain state already matches. `execute` can also do that for you: see [the state guard](#the-state-guard-is-this-call-still-needed) below.
 
-## The four functions
+## The functions
 
 ### `read(deployment, {functionName, args?})`
 
@@ -83,6 +83,10 @@ Remaining fields come from viem's `WriteContractParameters` (minus `address`, `a
 
 Sends a raw transaction (`{to, data, value, ...}`) with no ABI involved. For the cases that are not a contract call, such as a plain ETH transfer. Returns the transaction hash.
 
+### `evaluateGuard(guard, defaultTarget?)`
+
+Evaluates an `execute` guard (below) on its own, without executing anything, and resolves to the evaluation record. For computing which privileged steps are still pending before doing anything about them.
+
 ### `readByName` / `executeByName`
 
 The same as `read` and `execute`, but taking a deployment **name** instead of a deployment object:
@@ -92,6 +96,40 @@ await executeByName('Token', {account: deployer, functionName: 'transferOwnershi
 ```
 
 Convenient when the contract was deployed by a different script. Note that the by-name variants look the deployment up at call time, so a typo surfaces at run time rather than at compile time.
+
+## The state guard: is this call still needed?
+
+`execute` takes an optional `guard`, which DECLARES the on-chain condition under which the call is still needed. rocketh performs the read itself before building any transaction, and skips the call when the chain already satisfies it.
+
+```typescript
+const result = await execute(registry, {
+	account: 'governance',
+	functionName: 'setPoolImpl',
+	args: [nextImplementation.address],
+	guard: {
+		kind: 'call',
+		// the effect is observable on ANOTHER contract, which is the common case.
+		// omit `on` to read the contract being called.
+		on: timelock,
+		functionName: 'getOperationState',
+		args: [operationId],
+		// the value arrives decoded and RAW: compare addresses case-insensitively yourself
+		satisfied: (state) => state === OperationState.Done,
+	},
+});
+
+if (result.outcome === 'skipped') {
+	console.log('already done, read', result.evaluation.value, 'from', result.evaluation.target);
+} else {
+	console.log('sent', result.receipt.transactionHash);
+}
+```
+
+The guard's `functionName` and `args` are typed against the ABI of the contract it READS, so a renamed getter is a compile error. A guard that throws (a reverting getter, a target that is not deployed) fails the run: it is never treated as "not satisfied", because that would re-send a privileged call that may already have happened.
+
+Nothing is persisted. The verdict is derived from the chain on every run, which is what makes a deferred call (below) converge on the re-run instead of being handed to you a second time.
+
+Without a `guard`, `execute` returns the transaction receipt exactly as it always has.
 
 ## Calls from an account you cannot sign for
 
