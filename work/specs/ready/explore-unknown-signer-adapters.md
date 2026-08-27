@@ -2,7 +2,6 @@
 title: Explore — Unknown Signer Convenience Adapters (Safe / protocol / batching)
 slug: explore-unknown-signer-adapters
 taskedAfter: [unknown-signer-core]
-needsAnswers: true
 ---
 
 > Launch snapshot — records intent at creation, NOT maintained. Current truth: `docs/adr/` (decisions) + the code; remaining work: `work/tasks/ready/` tasks. (The technical-detail sections below are trimmed by `to-task` once the work is tasked — they move into tasks/ADRs and this spec settles to its durable framing: Problem / Solution / User Stories / Out of Scope.)
@@ -13,31 +12,17 @@ dependency choices, a persisted-batch schema with no committed consumer). Do not
 tasks that would be fiction; spike the risky questions on the narrowest real case, decide, and
 emit a build plan for a follow-on build spec.
 
-<!-- open-questions -->
+## Resolved (2026-08-27), and what is left
 
-## Open questions
+All five open questions are answered in `work/questions/spec-explore-unknown-signer-adapters.md`. The exploration's deliverable was CONFIDENCE plus a sliced build plan, and that is what the answers produce. In summary:
 
-1. **Batching vs active protocols.** `catchUnknownSigner` batches naturally (collect-and-defer,
-   terminal, non-interactive). An ACTIVE signer protocol (prompt/propose per tx) is per-tx and
-   blocking, so it does NOT batch for free. Should batching live ONLY on the collect-and-defer
-   side (a post-run batch consumer over collected txs), or is a deferring-protocol lifecycle
-   hook (`flush()` after all scripts, reconcile results back into state) ever worth its weight?
-   SPIKE to a recommendation.
-2. **Persisted batch schema — driven by its consumer.** A `.unsigned_transactions.json` (or
-   similar) only earns its place once a consumer exists. What does the FIRST consumer need
-   (raw tx list? Safe MultiSend encoding? Timelock-wrapped ops? provenance/`origin.scriptId`?
-   chainId/safe address)? Design the schema AROUND that consumer, not before it.
-3. **Safe submission surface.** Raw tx list for manual paste, Safe MultiSend calldata, or a
-   direct Safe Transaction Service proposal via the Safe SDK? Which, and does the Safe SDK
-   become an OPTIONAL dependency kept out of core?
-4. **`external`/`safe` account-level protocol.** Is the v1-style account-scoped active
-   wait-for-hash protocol (alongside `privateKey`/`ledger`) still wanted once the policy/call-
-   level interactive resolver (from `unknown-signer-interactive`) exists, or does the resolver
-   subsume it?
-5. **Signing-page launcher.** Is launching a browser tab / WalletConnect signing page in scope,
-   and can it batch (one page for N txs)? Feasibility spike.
+1. **Batching lives on the collect-and-defer side, with no `flush()` hook.** Not a preference: a deferring protocol that lets the run continue would have to fabricate a transaction hash at the seam (ADR 0012), and "reconcile results back into state" means recording a proposal as though it were an observation, which the same ADR forbids.
+2. **No persisted batch schema in this milestone**, because the consumer still does not exist and the spec's own rule binds. The question stopped BLOCKING once a real producer was specced.
+3. **rocketh ships the artifact, never the proposal.** The Safe SDK does not enter this repo; if a `@rocketh/safe` package is built, the SDK is its dependency alone.
+4. **The v1 `external`/`safe` account protocol is subsumed** by the `ask` policy, and was a category error on the signer-protocol axis to begin with.
+5. **The signing-page launcher is out of scope**, and blocked beneath by an unanswered question about how a browser run asks a human anything at all.
 
-<!-- /open-questions -->
+**The build plan this exploration exists to emit is `deferred-transaction-collector`** (`work/specs/proposed/`), which builds only the producer: an in-memory scope over `catchUnknownSigner` that returns the collected transactions, persisting nothing and knowing nothing about Safe. Everything else here stays unbuilt by decision rather than by omission.
 
 ## Problem Statement
 
@@ -74,11 +59,12 @@ this) for whichever adapters are greenlit. No adapter is committed to ship from 
 
 ## Autonomy notes
 
-`needsAnswers: true` — exploration questions above gate tasking; they are spikes to resolve,
-not build tasks. `taskedAfter: [unknown-signer-core]` (builds on the core seam and, for some
+`needsAnswers` was set while the five exploration questions were open, and is now CLEARED: they
+are answered in `work/questions/spec-explore-unknown-signer-adapters.md` and summarised at the
+top of this spec. `taskedAfter: [unknown-signer-core]` (builds on the core seam and, for some
 adapters, benefits from `unknown-signer-interactive` existing). Omitting `humanOnly`. Signal:
-`explore-` slug prefix. The BUILD of any greenlit adapter is a follow-on build spec this
-exploration de-risks and orders before.
+`explore-` slug prefix. The BUILD this exploration emits is `deferred-transaction-collector`;
+every other adapter it considered is deliberately not greenlit.
 
 ## Implementation Decisions
 
