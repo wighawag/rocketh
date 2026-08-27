@@ -21,7 +21,15 @@ export type {
 import {encodeFunctionData} from 'viem';
 import {logs} from 'named-logs';
 import {evaluateGuard} from './guard.js';
-import type {ExecuteGuard, GuardEvaluation} from './guard.js';
+import type {
+	CallGuard,
+	CallGuardEvaluation,
+	ExecuteGuard,
+	GuardEvaluation,
+	SlotInterpretation,
+	StorageGuard,
+	StorageGuardEvaluation,
+} from './guard.js';
 
 export type {Abi, Artifact, Environment, MinimalDeployment, PendingExecution};
 
@@ -29,7 +37,18 @@ export {read, readByName} from './read.js';
 export type {ReadFunction, ReadFunctionByName, ReadingArgs} from './read.js';
 
 export {evaluateGuard} from './guard.js';
-export type {CallGuard, CallGuardEvaluation, ExecuteGuard, GuardEvaluation, GuardOutputSelector} from './guard.js';
+export type {
+	CallGuard,
+	CallGuardEvaluation,
+	ExecuteGuard,
+	GuardEvaluation,
+	GuardEvaluator,
+	GuardOutputSelector,
+	SlotInterpretation,
+	SlotValue,
+	StorageGuard,
+	StorageGuardEvaluation,
+} from './guard.js';
 
 const logger = logs('@rocketh/read-execute');
 
@@ -42,11 +61,18 @@ type TransactionData = Omit<TransactionRequestEIP1559, 'from' | 'nonce'> & {acco
  * call signatures of {@link ExecuteFunction}.
  */
 type AnyGuardFunctionName = ContractFunctionName<Abi, 'pure' | 'view'>;
-type AnyGuard = ExecuteGuard<Abi, AnyGuardFunctionName>;
+type AnyGuard = ExecuteGuard;
 type LooseExecute = (
 	deployment: MinimalDeployment<Abi>,
 	args: ExecutionArgs<Abi, ContractFunctionName<Abi, 'nonpayable' | 'payable'>> & {guard?: AnyGuard},
-) => Promise<EIP1193TransactionReceipt | GuardedExecutionResult<Abi, AnyGuardFunctionName>>;
+) => Promise<EIP1193TransactionReceipt | GuardedExecutionResult<GuardEvaluation>>;
+
+/**
+ * `evaluateGuard`'s two call signatures exist so a CALLER gets the evaluation its own kind
+ * of guard produces. `execute`'s implementation is the one place that holds a guard of
+ * EITHER kind, so it is the one place that has to erase them again.
+ */
+type LooseEvaluate = (guard: AnyGuard, defaultTarget?: MinimalDeployment<Abi>) => Promise<GuardEvaluation>;
 
 /**
  * A guarded execution: the same arguments as an unguarded one, plus the on-chain condition
@@ -58,11 +84,9 @@ export type GuardedExecutionArgs<
 	TAbi extends Abi,
 	TFunctionName extends ContractFunctionName<TAbi, 'nonpayable' | 'payable'>,
 	TArgs extends ContractFunctionArgs<TAbi, 'nonpayable' | 'payable', TFunctionName>,
-	TGuardAbi extends Abi,
-	TGuardFunctionName extends ContractFunctionName<TGuardAbi, 'pure' | 'view'>,
-	TGuardArgs extends ContractFunctionArgs<TGuardAbi, 'pure' | 'view', TGuardFunctionName>,
+	TGuard,
 > = ExecutionArgs<TAbi, TFunctionName, TArgs> & {
-	guard: ExecuteGuard<TGuardAbi, TGuardFunctionName, TGuardArgs>;
+	guard: TGuard;
 };
 
 /**
@@ -72,29 +96,27 @@ export type GuardedExecutionArgs<
  * built, nothing was broadcast, and the unknown-signer seam was never consulted. The
  * evaluation is the only evidence of why nothing happened.
  */
-export type SkippedExecution<
-	TGuardAbi extends Abi,
-	TGuardFunctionName extends ContractFunctionName<TGuardAbi, 'pure' | 'view'>,
-> = {
+export type SkippedExecution<TEvaluation = GuardEvaluation> = {
 	outcome: 'skipped';
-	evaluation: GuardEvaluation<TGuardAbi, TGuardFunctionName>;
+	evaluation: TEvaluation;
 };
 
 /** The call was still needed, so it was sent exactly as an unguarded call would have been. */
-export type SentExecution<
-	TGuardAbi extends Abi,
-	TGuardFunctionName extends ContractFunctionName<TGuardAbi, 'pure' | 'view'>,
-> = {
+export type SentExecution<TEvaluation = GuardEvaluation> = {
 	outcome: 'sent';
 	receipt: EIP1193TransactionReceipt;
-	evaluation: GuardEvaluation<TGuardAbi, TGuardFunctionName>;
+	evaluation: TEvaluation;
 };
 
-/** What a GUARDED execution returns. An unguarded one still returns a bare receipt. */
-export type GuardedExecutionResult<
-	TGuardAbi extends Abi,
-	TGuardFunctionName extends ContractFunctionName<TGuardAbi, 'pure' | 'view'>,
-> = SkippedExecution<TGuardAbi, TGuardFunctionName> | SentExecution<TGuardAbi, TGuardFunctionName>;
+/**
+ * What a GUARDED execution returns. An unguarded one still returns a bare receipt.
+ *
+ * Parametrised by the EVALUATION rather than by the guard's ABI and function name, because
+ * the two kinds of guard have nothing in common to parametrise over: a storage guard has no
+ * function name at all. The result carries whatever evaluation THAT guard produced.
+ */
+export type GuardedExecutionResult<TEvaluation = GuardEvaluation> =
+	SkippedExecution<TEvaluation> | SentExecution<TEvaluation>;
 
 /**
  * `execute`'s type, conditional on the presence of a `guard`.
@@ -127,8 +149,28 @@ export type ExecuteFunction = {
 		>,
 	>(
 		deployment: MinimalDeployment<TAbi>,
-		args: GuardedExecutionArgs<TAbi, TFunctionName, TArgs, TGuardAbi, TGuardFunctionName, TGuardArgs>,
-	): Promise<GuardedExecutionResult<TGuardAbi, TGuardFunctionName>>;
+		args: GuardedExecutionArgs<TAbi, TFunctionName, TArgs, CallGuard<TGuardAbi, TGuardFunctionName, TGuardArgs>>,
+	): Promise<GuardedExecutionResult<CallGuardEvaluation<TGuardAbi, TGuardFunctionName>>>;
+	/**
+	 * A STORAGE-guarded call. It is a signature of its own rather than a wider `guard` on the
+	 * one above, because the two kinds share no generics: this one is keyed off the declared
+	 * word interpretation, which is what types the value the verdict judges and the value the
+	 * evaluation reports.
+	 */
+	<
+		TAbi extends Abi,
+		TFunctionName extends ContractFunctionName<TAbi, 'nonpayable' | 'payable'>,
+		TArgs extends ContractFunctionArgs<TAbi, 'nonpayable' | 'payable', TFunctionName> = ContractFunctionArgs<
+			TAbi,
+			'nonpayable' | 'payable',
+			TFunctionName
+		>,
+		TGuardAbi extends Abi = TAbi,
+		TInterpretation extends SlotInterpretation = SlotInterpretation,
+	>(
+		deployment: MinimalDeployment<TAbi>,
+		args: GuardedExecutionArgs<TAbi, TFunctionName, TArgs, StorageGuard<TGuardAbi, TInterpretation>>,
+	): Promise<GuardedExecutionResult<StorageGuardEvaluation<TInterpretation>>>;
 	<
 		TAbi extends Abi,
 		TFunctionName extends ContractFunctionName<TAbi, 'nonpayable' | 'payable'>,
@@ -168,8 +210,22 @@ export type ExecuteFunctionByName = {
 		>,
 	>(
 		name: string,
-		args: GuardedExecutionArgs<TAbi, TFunctionName, TArgs, TGuardAbi, TGuardFunctionName, TGuardArgs>,
-	): Promise<GuardedExecutionResult<TGuardAbi, TGuardFunctionName>>;
+		args: GuardedExecutionArgs<TAbi, TFunctionName, TArgs, CallGuard<TGuardAbi, TGuardFunctionName, TGuardArgs>>,
+	): Promise<GuardedExecutionResult<CallGuardEvaluation<TGuardAbi, TGuardFunctionName>>>;
+	<
+		TAbi extends Abi,
+		TFunctionName extends ContractFunctionName<TAbi, 'nonpayable' | 'payable'>,
+		TArgs extends ContractFunctionArgs<TAbi, 'nonpayable' | 'payable', TFunctionName> = ContractFunctionArgs<
+			TAbi,
+			'nonpayable' | 'payable',
+			TFunctionName
+		>,
+		TGuardAbi extends Abi = TAbi,
+		TInterpretation extends SlotInterpretation = SlotInterpretation,
+	>(
+		name: string,
+		args: GuardedExecutionArgs<TAbi, TFunctionName, TArgs, StorageGuard<TGuardAbi, TInterpretation>>,
+	): Promise<GuardedExecutionResult<StorageGuardEvaluation<TInterpretation>>>;
 	<
 		TAbi extends Abi,
 		TFunctionName extends ContractFunctionName<TAbi, 'nonpayable' | 'payable'>,
@@ -211,7 +267,7 @@ export function execute(env: Environment): ExecuteFunction {
 	>(
 		deployment: MinimalDeployment<TAbi>,
 		args: ExecutionArgs<TAbi, TFunctionName, TArgs> & {guard?: AnyGuard},
-	): Promise<EIP1193TransactionReceipt | GuardedExecutionResult<Abi, AnyGuardFunctionName>> => {
+	): Promise<EIP1193TransactionReceipt | GuardedExecutionResult<GuardEvaluation>> => {
 		const {account, guard, ...viemArgs} = args;
 
 		// The guard is evaluated BEFORE anything is built. A satisfied guard therefore costs one
@@ -220,7 +276,7 @@ export function execute(env: Environment): ExecuteFunction {
 		// It never catches: a guard that throws has told us nothing, and treating that as "not
 		// satisfied" would re-execute a privileged call that may already have happened.
 		const evaluation = guard
-			? await evaluateGuard(env)(guard, deployment as unknown as MinimalDeployment<Abi>)
+			? await (evaluateGuard(env) as LooseEvaluate)(guard, deployment as unknown as MinimalDeployment<Abi>)
 			: undefined;
 		if (evaluation?.satisfied) {
 			return {outcome: 'skipped', evaluation};
@@ -282,7 +338,7 @@ export function executeByName(env: Environment): ExecuteFunctionByName {
 	const executeByNameImplementation = async (
 		name: string,
 		args: ExecutionArgs<Abi, ContractFunctionName<Abi, 'nonpayable' | 'payable'>> & {guard?: AnyGuard},
-	): Promise<EIP1193TransactionReceipt | GuardedExecutionResult<Abi, AnyGuardFunctionName>> => {
+	): Promise<EIP1193TransactionReceipt | GuardedExecutionResult<GuardEvaluation>> => {
 		const deployment = env.getOrNull<Abi>(name);
 		if (!deployment) {
 			throw new Error(`no deployment named ${name}`);

@@ -557,11 +557,11 @@ async function _pinGuardIsTypedAgainstTheAbiItReads(
 	registry: MinimalDeployment<typeof REGISTRY_ABI>,
 	timelock: MinimalDeployment<typeof TIMELOCK_ABI>,
 ) {
-	// @ts-expect-error `getOperationStatus` does not exist on the timelock ABI the guard reads
 	await execute(env)(registry, {
 		account: 'governance',
 		functionName: 'setPoolImpl',
 		args: [NEW_IMPLEMENTATION],
+		// @ts-expect-error `getOperationStatus` does not exist on the timelock ABI the guard reads
 		guard: {
 			kind: 'call',
 			on: timelock,
@@ -571,11 +571,11 @@ async function _pinGuardIsTypedAgainstTheAbiItReads(
 		},
 	});
 
-	// @ts-expect-error the operation id is a bytes32, not a number
 	await execute(env)(registry, {
 		account: 'governance',
 		functionName: 'setPoolImpl',
 		args: [NEW_IMPLEMENTATION],
+		// @ts-expect-error the operation id is a bytes32, not a number
 		guard: {
 			kind: 'call',
 			on: timelock,

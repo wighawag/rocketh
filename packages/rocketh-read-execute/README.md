@@ -165,6 +165,33 @@ The selector is typed against the ABI outputs, so naming an output that does not
 
 The evaluation reports all three facts behind a verdict: `value` (the whole return), `selected` (present only when an output was selected) and `expected` (present only when the verdict was an `equals`).
 
+### Reading a storage slot, when there is no getter to call
+
+The commonest upgrade topology there is exposes nothing to call: an OpenZeppelin transparent proxy has no `implementation()` getter, and the effect of upgrading it through its `ProxyAdmin` is observable only in the EIP-1967 implementation slot. `kind: 'storage'` reads that slot.
+
+```typescript
+const result = await execute(proxyAdmin, {
+	account: 'governance',
+	functionName: 'upgradeAndCall',
+	args: [proxy.address, nextImplementation.address, '0x'],
+	guard: {
+		kind: 'storage',
+		// the call goes to the ADMIN, the observable effect lands on the PROXY
+		on: proxy,
+		slot: EIP1967_IMPLEMENTATION_SLOT,
+		// a slot carries no ABI, so the guard says how to read the word
+		as: 'address',
+		equals: nextImplementation.address,
+	},
+});
+```
+
+`as` is required and closed: `address`, `bytes32`, `uint256` or `bool`. It does two jobs, decoding the word and supplying the type the comparison keys off, so an `address` read out of a slot folds case exactly as one returned from a getter does. An `address` is the low 20 bytes of the word; a word that cannot BE its declared interpretation (a `bool` slot holding neither 0 nor 1, which usually means the slot is packed) fails the run rather than being guessed at.
+
+The same shape turns up far from OpenZeppelin. Aave V3's `PoolAddressesProvider` owns its proxies directly, with no `ProxyAdmin` anywhere, and its own `getPool()` returns the same proxy address before and after an upgrade: a guard reading the registry observes nothing, and the guard again reads a slot on the proxy.
+
+The evaluation reports the `slot` and `target` read, the raw 32-byte `word`, the `as` it was read under, and the decoded `value`.
+
 Nothing is persisted. The verdict is derived from the chain on every run, which is what makes a deferred call (below) converge on the re-run instead of being handed to you a second time.
 
 Without a `guard`, `execute` returns the transaction receipt exactly as it always has.
