@@ -1,6 +1,10 @@
 /**
  * The `execute` state guard: a DECLARED read that answers "is this call still needed?".
  *
+ * Two kinds, discriminated on `kind`: a {@link CallGuard} (an `eth_call` against an ABI)
+ * and a {@link StorageGuard} (an `eth_getStorageAt` on a slot, for the topologies where
+ * there is no getter to call at all).
+ *
  * `deploy` compares bytecode and `deployViaProxy` compares the current implementation
  * address; `execute` compared nothing and ran whatever it was handed. A guard closes that
  * gap by DECLARING what to read (a target, a function, its arguments) and how to judge the
@@ -17,11 +21,15 @@
 
 import type {Abi, AbiParameter, AbiParameterToPrimitiveType} from 'abitype';
 import type {Environment, MinimalDeployment} from '@rocketh/core/types';
-import type {EIP1193Account} from 'eip-1193';
+import type {EIP1193Account, EIP1193DATA} from 'eip-1193';
 import type {ContractFunctionArgs, ContractFunctionName, DecodeFunctionResultReturnType} from 'viem';
 import {getAbiItem} from 'viem';
 import {read} from './read.js';
 import {returnValueEquals, valuesEqualForAbiType} from './abi-comparison.js';
+import {decodeSlotWord, readSlot} from './slot.js';
+import type {SlotInterpretation, SlotValue} from './slot.js';
+
+export type {SlotInterpretation, SlotValue} from './slot.js';
 
 /** The OUTPUTS a function declares in the ABI it is read against. */
 type FunctionOutputs<TAbi extends Abi, TFunctionName> =
@@ -132,10 +140,9 @@ type GuardVariants<TRead, TVerdicts> = TVerdicts extends unknown ? TRead & TVerd
 /**
  * A guard that reads by CALLING a view function through the ABI of its target.
  *
- * `kind` is present from the first commit even though `call` is the only member today,
- * so the storage kind (a raw `eth_getStorageAt` on a slot, which the commonest proxy
- * topology requires because a transparent proxy exposes no getter) is an ADDITIVE member
- * rather than a re-cut of the option.
+ * `kind` was present from the first commit, before there was anything to discriminate
+ * against, which is what let {@link StorageGuard} join as an ADDITIVE member rather than a
+ * re-cut of the option.
  *
  * `TAbi` is the ABI of the contract being READ, which is usually NOT the contract being
  * executed: you call `upgrade` on a ProxyAdmin and observe the implementation on the
@@ -155,18 +162,62 @@ export type CallGuard<
 	| SelectingVariants<FunctionOutputs<TAbi, TFunctionName>, GuardOutputSelector<TAbi, TFunctionName>>
 >;
 
+/** What a STORAGE guard reads: a target and a slot on it, plus how to read the word. */
+type StorageGuardRead<TAbi extends Abi, TInterpretation extends SlotInterpretation> = {
+	kind: 'storage';
+
+	/**
+	 * The contract whose slot to READ. Defaults to the contract being executed, which for
+	 * this kind is the rare case: you call the ProxyAdmin and read the PROXY, or call the
+	 * registry and read the proxy behind it. Its ABI is unused here (a slot has none); it is
+	 * the same target shape only so a deployment can be handed to either kind.
+	 */
+	on?: MinimalDeployment<TAbi>;
+
+	/** The slot to read: a `bytes32`, usually a standardised constant such as EIP-1967's. */
+	slot: EIP1193DATA;
+
+	/**
+	 * How to read the 32-byte word, from a CLOSED set. NOT optional and not a convenience:
+	 * a slot carries no ABI, so without this there is neither a decoded value to judge nor a
+	 * type for the comparison rule to key off, and both would have to be guessed.
+	 */
+	as: TInterpretation;
+};
+
 /**
- * The guard union, discriminated on `kind`. One member today; a `storage` kind joins it.
+ * A guard that reads a raw STORAGE SLOT.
+ *
+ * Required rather than convenient: an OZ transparent proxy exposes no getter for its
+ * implementation, so the effect of the commonest privileged call there is (upgrade through
+ * a ProxyAdmin, from an owner that is usually a Safe) is observable ONLY in the EIP-1967
+ * implementation slot, and a call-only guard could not express it at all. The same shape
+ * is reached from designs with no ProxyAdmin anywhere, such as Aave's
+ * `PoolAddressesProvider`, whose own `getPool()` returns the same proxy before and after
+ * an upgrade and therefore observes nothing
+ * (`work/notes/findings/governance-upgrade-topologies-in-the-wild.md`).
+ *
+ * There is no `output` here, because a slot declares no outputs to select from.
+ */
+export type StorageGuard<
+	TAbi extends Abi = Abi,
+	TInterpretation extends SlotInterpretation = SlotInterpretation,
+> = GuardVariants<StorageGuardRead<TAbi, TInterpretation>, GuardVerdict<SlotValue<TInterpretation>>>;
+
+/**
+ * The guard union, discriminated on `kind`: an `eth_call` against an ABI, or an
+ * `eth_getStorageAt` on a slot.
  */
 export type ExecuteGuard<
-	TAbi extends Abi,
-	TFunctionName extends ContractFunctionName<TAbi, 'pure' | 'view'>,
+	TAbi extends Abi = Abi,
+	TFunctionName extends ContractFunctionName<TAbi, 'pure' | 'view'> = ContractFunctionName<TAbi, 'pure' | 'view'>,
 	TArgs extends ContractFunctionArgs<TAbi, 'pure' | 'view', TFunctionName> = ContractFunctionArgs<
 		TAbi,
 		'pure' | 'view',
 		TFunctionName
 	>,
-> = CallGuard<TAbi, TFunctionName, TArgs>;
+	TInterpretation extends SlotInterpretation = SlotInterpretation,
+> = CallGuard<TAbi, TFunctionName, TArgs> | StorageGuard<TAbi, TInterpretation>;
 
 /**
  * What a guard EVALUATION records: what was read, from where, and the verdict.
@@ -193,10 +244,61 @@ export type CallGuardEvaluation<TAbi extends Abi, TFunctionName extends Contract
 	satisfied: boolean;
 };
 
+/**
+ * What a STORAGE guard's evaluation records.
+ *
+ * It carries the undecoded `word` AS WELL AS the decoded `value` on purpose: the word is
+ * the evidence, and the value is the thing the author wrote in their script, so a reader
+ * of a skip can check the decoding rather than having to trust it.
+ */
+export type StorageGuardEvaluation<TInterpretation extends SlotInterpretation = SlotInterpretation> = {
+	kind: 'storage';
+	/** The address actually read, after the default-to-the-executed-contract rule. */
+	target: EIP1193Account;
+	slot: EIP1193DATA;
+	/**
+	 * The word as it came off the chain, before interpretation, left-padded to a full 32
+	 * bytes because nodes disagree about how to spell an empty slot.
+	 */
+	word: `0x${string}`;
+	/** The interpretation that was declared, which decoded the word and keyed the comparison. */
+	as: TInterpretation;
+	/** The decoded value, i.e. what the verdict actually judged. */
+	value: SlotValue<TInterpretation>;
+	/** What it was compared against. Absent when the verdict was a `satisfied` predicate. */
+	expected?: SlotValue<TInterpretation>;
+	satisfied: boolean;
+};
+
+/** The evaluation union, one member per guard kind, discriminated on the same `kind`. */
 export type GuardEvaluation<
-	TAbi extends Abi,
-	TFunctionName extends ContractFunctionName<TAbi, 'pure' | 'view'>,
-> = CallGuardEvaluation<TAbi, TFunctionName>;
+	TAbi extends Abi = Abi,
+	TFunctionName extends ContractFunctionName<TAbi, 'pure' | 'view'> = ContractFunctionName<TAbi, 'pure' | 'view'>,
+	TInterpretation extends SlotInterpretation = SlotInterpretation,
+> = CallGuardEvaluation<TAbi, TFunctionName> | StorageGuardEvaluation<TInterpretation>;
+
+/**
+ * What `evaluateGuard(env)` returns: one call signature per guard KIND, so a caller gets
+ * back the evaluation its own guard produces rather than the union of both.
+ */
+export type GuardEvaluator = {
+	<TAbi extends Abi, TInterpretation extends SlotInterpretation>(
+		guard: StorageGuard<TAbi, TInterpretation>,
+		defaultTarget?: MinimalDeployment<TAbi>,
+	): Promise<StorageGuardEvaluation<TInterpretation>>;
+	<
+		TAbi extends Abi,
+		TFunctionName extends ContractFunctionName<TAbi, 'pure' | 'view'>,
+		TArgs extends ContractFunctionArgs<TAbi, 'pure' | 'view', TFunctionName> = ContractFunctionArgs<
+			TAbi,
+			'pure' | 'view',
+			TFunctionName
+		>,
+	>(
+		guard: CallGuard<TAbi, TFunctionName, TArgs>,
+		defaultTarget?: MinimalDeployment<TAbi>,
+	): Promise<CallGuardEvaluation<TAbi, TFunctionName>>;
+};
 
 /**
  * Evaluate a guard, on its own, without executing anything.
@@ -208,74 +310,119 @@ export type GuardEvaluation<
  * passes the contract it is about to call. With neither, there is nothing to read and that
  * is an error rather than a guess.
  *
- * The read goes THROUGH `read`, so the guard cannot drift from what a hand-written read
- * would do: same encoding, same decoding, same empty-return retry. Nothing here catches:
- * a guard that cannot produce a verdict must fail the run rather than be mistaken for
- * "not satisfied".
+ * A `call` guard's read goes THROUGH `read`, so it cannot drift from what a hand-written
+ * read would do: same encoding, same decoding, same empty-return retry. A `storage` guard
+ * has no such sibling to stay in step with, so it owns its read (`./slot.ts`). Nothing
+ * here catches: a guard that cannot produce a verdict must fail the run rather than be
+ * mistaken for "not satisfied".
  *
- * The ABI is what makes `equals` possible at all: the declared OUTPUTS of the function
- * being read supply both the selection (which output `output` names) and the comparison
- * rule (whether casing matters for the value at that position). See `./abi-comparison.ts`.
+ * A declared TYPE is what makes `equals` possible at all, and each kind has its own source
+ * for it: the function's declared OUTPUTS for a call (which also supply the selection
+ * `output` names), and the interpretation the guard itself declared for a slot, since a
+ * slot has no ABI. Both then compare through `./abi-comparison.ts`, so there is one rule
+ * rather than two.
  */
-export function evaluateGuard(
-	env: Environment,
-): <
-	TAbi extends Abi,
-	TFunctionName extends ContractFunctionName<TAbi, 'pure' | 'view'>,
-	TArgs extends ContractFunctionArgs<TAbi, 'pure' | 'view', TFunctionName> = ContractFunctionArgs<
-		TAbi,
-		'pure' | 'view',
-		TFunctionName
-	>,
->(
-	guard: ExecuteGuard<TAbi, TFunctionName, TArgs>,
-	defaultTarget?: MinimalDeployment<TAbi>,
-) => Promise<GuardEvaluation<TAbi, TFunctionName>> {
-	return async <
-		TAbi extends Abi,
-		TFunctionName extends ContractFunctionName<TAbi, 'pure' | 'view'>,
-		TArgs extends ContractFunctionArgs<TAbi, 'pure' | 'view', TFunctionName> = ContractFunctionArgs<
-			TAbi,
-			'pure' | 'view',
-			TFunctionName
-		>,
-	>(
-		guard: ExecuteGuard<TAbi, TFunctionName, TArgs>,
-		defaultTarget?: MinimalDeployment<TAbi>,
-	) => {
-		const target = guard.on ?? defaultTarget;
-		if (!target) {
-			throw new Error(
-				`the guard on "${String(guard.functionName)}" has no target: it names no "on" and no default target was given`,
-			);
-		}
-
-		const value = await read(env)<TAbi, TFunctionName, TArgs>(target, {
-			functionName: guard.functionName,
-			args: guard.args,
-		} as any);
-
-		// The SAME ABI item `decodeFunctionResult` decoded against, resolved the same way so an
-		// overloaded getter cannot select one item for decoding and another for comparison.
-		const abiItem = getAbiItem({
-			abi: target.abi as Abi,
-			name: guard.functionName as string,
-			args: guard.args as readonly unknown[] | undefined,
-		} as never) as {type?: string; outputs?: readonly AbiParameter[]} | undefined;
-		const outputs = abiItem?.type === 'function' ? (abiItem.outputs ?? []) : [];
-
-		const {satisfied, ...judged} = judge(guard, outputs, value);
-
-		return {
-			kind: 'call',
-			target: target.address,
-			functionName: guard.functionName,
-			args: (guard.args ?? []) as readonly unknown[],
-			value,
-			...judged,
-			satisfied,
-		} as GuardEvaluation<TAbi, TFunctionName>;
+export function evaluateGuard(env: Environment): GuardEvaluator {
+	const evaluate = async (guard: ExecuteGuard, defaultTarget?: MinimalDeployment<Abi>): Promise<GuardEvaluation> => {
+		return guard.kind === 'storage'
+			? evaluateStorageGuard(env, guard, defaultTarget)
+			: evaluateCallGuard(env, guard, defaultTarget);
 	};
+
+	// One implementation, two call signatures: the generics of the two kinds have nothing in
+	// common (one is keyed off an ABI and a function name, the other off a declared word
+	// interpretation), and a single signature returning the evaluation UNION would force every
+	// caller to discriminate on `kind` to reach a field their own guard already determined.
+	return evaluate as GuardEvaluator;
+}
+
+/** The `call` kind: an `eth_call` through `read`, judged against the function's declared outputs. */
+async function evaluateCallGuard(
+	env: Environment,
+	guard: CallGuard<Abi, ContractFunctionName<Abi, 'pure' | 'view'>>,
+	defaultTarget?: MinimalDeployment<Abi>,
+): Promise<CallGuardEvaluation<Abi, ContractFunctionName<Abi, 'pure' | 'view'>>> {
+	const target = guard.on ?? defaultTarget;
+	if (!target) {
+		throw new Error(
+			`the guard on "${String(guard.functionName)}" has no target: it names no "on" and no default target was given`,
+		);
+	}
+
+	const value = await read(env)(target, {
+		functionName: guard.functionName,
+		args: guard.args,
+	} as any);
+
+	// The SAME ABI item `decodeFunctionResult` decoded against, resolved the same way so an
+	// overloaded getter cannot select one item for decoding and another for comparison.
+	const abiItem = getAbiItem({
+		abi: target.abi as Abi,
+		name: guard.functionName as string,
+		args: guard.args as readonly unknown[] | undefined,
+	} as never) as {type?: string; outputs?: readonly AbiParameter[]} | undefined;
+	const outputs = abiItem?.type === 'function' ? (abiItem.outputs ?? []) : [];
+
+	const {satisfied, ...judged} = judge(guard, outputs, value);
+
+	return {
+		kind: 'call',
+		target: target.address,
+		functionName: guard.functionName,
+		args: (guard.args ?? []) as readonly unknown[],
+		value,
+		...judged,
+		satisfied,
+	} as CallGuardEvaluation<Abi, ContractFunctionName<Abi, 'pure' | 'view'>>;
+}
+
+/**
+ * The `storage` kind: an `eth_getStorageAt`, decoded under the DECLARED interpretation.
+ *
+ * The comparison goes through the very same module the call kind uses, handed the declared
+ * interpretation as the ABI type it keys off. That is what makes an address read from a
+ * slot fold case exactly as an address returned from a getter does, instead of this kind
+ * growing a second comparison vocabulary of its own.
+ */
+async function evaluateStorageGuard(
+	env: Environment,
+	guard: StorageGuard,
+	defaultTarget?: MinimalDeployment<Abi>,
+): Promise<StorageGuardEvaluation> {
+	const target = guard.on ?? defaultTarget;
+	if (!target) {
+		throw new Error(`the guard on slot ${guard.slot} has no target: it names no "on" and no default target was given`);
+	}
+
+	const where = `the guard on slot ${guard.slot} of ${target.address}`;
+	const word = await readSlot(env, target.address, guard.slot);
+	const value = decodeSlotWord(guard.as, word, where);
+
+	const slotRead = {
+		kind: 'storage',
+		target: target.address,
+		slot: guard.slot,
+		word,
+		as: guard.as,
+		value,
+	} as const;
+
+	if (typeof guard.satisfied === 'function') {
+		return {...slotRead, satisfied: guard.satisfied(value as never)};
+	}
+
+	if ('equals' in guard) {
+		const expected = guard.equals;
+		return {
+			...slotRead,
+			expected,
+			// `{type: guard.as}` IS the ABI parameter here: the interpretation was declared with
+			// ABI type names precisely so it can stand in for the one an ABI would have supplied.
+			satisfied: valuesEqualForAbiType({type: guard.as} as AbiParameter, value, expected),
+		};
+	}
+
+	throw new Error(`${where} states no verdict: it declares neither "equals" nor "satisfied"`);
 }
 
 /** The selection-and-verdict half of an evaluation, kept apart from the read half. */

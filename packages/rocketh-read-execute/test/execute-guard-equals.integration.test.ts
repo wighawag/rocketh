@@ -653,22 +653,22 @@ async function _pinAnUnknownOutputIsRefused(
 	env: Environment,
 	accessManager: MinimalDeployment<typeof ACCESS_MANAGER_ABI>,
 ) {
+	// @ts-expect-error `isMemebr` is not an output of `hasRole`
 	await evaluateGuard(env)({
 		kind: 'call',
 		on: accessManager,
 		functionName: 'hasRole',
 		args: [OPERATOR_ROLE, OPERATOR],
-		// @ts-expect-error `isMemebr` is not an output of `hasRole`
 		output: 'isMemebr',
 		equals: true,
 	});
 
+	// @ts-expect-error `hasRole` declares two outputs, so there is no position 2
 	await evaluateGuard(env)({
 		kind: 'call',
 		on: accessManager,
 		functionName: 'hasRole',
 		args: [OPERATOR_ROLE, OPERATOR],
-		// @ts-expect-error `hasRole` declares two outputs, so there is no position 2
 		output: 2,
 		equals: true,
 	});
