@@ -13,7 +13,7 @@ Five links, each verified in the code:
 2. `chainConfig = getChainConfigFromUserConfig(config, idToFetch, provider)`, so a fork reads the `chains[31337]` bucket.
 3. `chainInfo = chainConfig.info`, and `getChainConfigFromUserConfig` returns `chainConfig?.info || defaultChainInfo` where both carry `id: id`, the id it was ASKED for. The provider is never consulted for the id (`packages/rocketh/src/environment/chains.ts:85-110`).
 4. `resolveExecutionParams` returns `chain: chainInfo`, which becomes `env.network.chain`.
-5. `execute` and `tx` both hex-encode `env.network.chain.id` into the transaction's `chainId` field, at lines 319 and 382 of `packages/rocketh-read-execute/src/index.ts`.
+5. `execute` and `tx` both hex-encode `env.network.chain.id` into the transaction's `chainId` field, in `packages/rocketh-read-execute/src/index.ts` (two call sites, one per builder; the line numbers move, the symbols do not).
 
 So on ANY fork run, `env.network.chain.id` is 31337 and every transaction rocketh builds declares chain 31337, no matter what the node reports.
 

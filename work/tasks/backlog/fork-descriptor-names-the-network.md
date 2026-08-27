@@ -12,7 +12,9 @@ The enabling change for everything else in this spec: `fork` stops being a fact 
 
 Today the flag is derived from the environment argument not being a string. The environment argument is optional, so an ordinary in-memory run is flagged as a fork, and a fork of mainnet carries the same bare `true` as a memory run. Nothing can branch on "this is a fork of mainnet" because that is not what the flag says.
 
-**After this task**, the run either is not a fork, or is a fork of a NAMED network whose chain id is known, and both facts are readable from the environment. `if (env.network.fork)` must still read naturally, and a non-fork must be falsy, because that is how the existing consumers are written.
+**After this task**, the run either is not a fork, or is a fork of a NAMED network, and where the forked network's chain id can be determined it is readable too.
+
+**The chain id is NOT always determinable, and this is the part a reviewer caught before it was built.** Core cannot turn a network name into a chain id: the name-to-id map is built on viem's chain list and lives in `@rocketh/node`, which depends on `rocketh`, while `rocketh` has no viem dependency. And nothing in this repo declares an `environments` config section at all, in any demo, template or documentation example, so the declared route is empty in practice. So resolve in this order: an id supplied by whoever constructed the fork input, else the forked network's declared environment entry, else UNKNOWN. Unknown is a supported state, not an error: the run is still a fork, records still load from that network's folder, and the sibling task that moves the semantics lookup degrades to today's behaviour. Say so once, clearly, rather than failing. `if (env.network.fork)` must still read naturally, and a non-fork must be falsy, because that is how the existing consumers are written.
 
 **The one existing behaviour that must not regress**, and it is the whole reason the flag exists: `context.fork` is consulted when LOADING deployments, to skip the chainId and genesis-hash identity check. That is what lets a fork of mainnet read mainnet's deployment records even though the node is not mainnet. Find that site, understand it, and keep it working.
 
@@ -22,7 +24,9 @@ Today the flag is derived from the environment argument not being a string. The 
 
 ## Acceptance criteria
 
-- [ ] A run given a fork input reports WHICH network is forked, and that network's chain id, through the environment
+- [ ] A run given a fork input reports WHICH network is forked through the environment
+- [ ] The forked network's chain id is reported too WHEN it can be determined, from a caller-supplied id first and the declared environment entry second
+- [ ] A fork of a network whose chain id cannot be determined still works: it is still a fork, records still load, and the unknown state is representable rather than an error or a fabricated id
 - [ ] A run with no environment (the in-memory default) is NOT a fork
 - [ ] A run given a plain named environment is NOT a fork
 - [ ] The existing truthiness reading (`if (env.network.fork)`) still works for every current consumer

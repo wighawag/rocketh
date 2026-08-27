@@ -41,7 +41,7 @@ Separate the two chain identities a fork run has, and fix the live bug produced 
 >
 > FIRST, check this task against current reality (it is a launch snapshot and may have DRIFTED). Confirm the descriptor and the configuration split landed as the two previous tasks describe.
 >
-> READ FIRST: `docs/adr/0014-a-fork-run-simulates-one-chain-and-talks-to-another.md` for the model, and `work/notes/observations/a-fork-run-builds-transactions-declaring-chain-31337.md`, which traces the bug through all five links from the chain-config lookup to the transaction field. Verify that chain yourself before changing it; the note cites file and line for each step.
+> READ FIRST: `docs/adr/0014-a-fork-run-simulates-one-chain-and-talks-to-another.md` for the model, and `work/notes/observations/a-fork-run-builds-transactions-declaring-chain-31337.md`, which traces the bug through all five links from the chain-config lookup to the transaction field. Verify that chain yourself before changing it: the note cites line numbers that will have moved, so follow the symbols rather than the numbers.
 >
 > The rule to hold onto: **transactions follow the node, configuration follows the forked network.** A chain id in a signed transaction is not metadata, it is part of what was signed, so the only correct value is the one the node will accept. Everything else about a fork run points at the network being simulated.
 >

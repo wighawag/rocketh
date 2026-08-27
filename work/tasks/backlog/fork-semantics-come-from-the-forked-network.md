@@ -16,6 +16,8 @@ So: **connection from the local side, semantics from the forked network.** Deplo
 
 Tags deserve naming separately, because they are the sharpest edge and the least obvious. Deploy scripts branch on tags. A user whose local chain config carries a `local` tag is currently having that tag applied during what they believe is a mainnet rehearsal, so a script that takes a shortcut under `local` takes it. That is not missing configuration, it is different configuration actively applied.
 
+**When the forked network's chain id is UNKNOWN, degrade rather than fail.** The previous task makes that a representable state, and it is the common one today: nothing in this repo declares an `environments` section, so a fork of a network nobody declared has no id to key the semantics lookup on. In that case keep today's behaviour and say so once, naming what to declare to get the better one. Treating it as an error would break every existing fork user in the name of improving them.
+
 **Half the layering already works**, which makes this smaller than it sounds: the environment-level override layer already runs on fork runs, because the environment name IS the forked network's name. What is wrong is only the chain bucket underneath it. You are sliding the right bucket under a merge that already happens, not inventing a merge.
 
 The existing TODO comment about resolving the fork's chain id is answered by this task and should be deleted, not edited.
@@ -27,6 +29,7 @@ The existing TODO comment about resolving the fork's chain id is answered by thi
 - [ ] Environment TAGS on a fork come from the forked network, not from the local chain bucket
 - [ ] The discriminating test exists: configure the local chain bucket and the forked network's bucket DIFFERENTLY, run a fork, and assert which one the run adopted. Without this, an implementation that changed nothing would pass
 - [ ] A non-fork run is completely unaffected, tested
+- [ ] A fork whose simulated chain id is UNKNOWN keeps working, on today's behaviour, with one clear notice naming what to declare. Tested, since this is the path every current user is on
 - [ ] The environment-level override layer still applies on top, so a user's existing overrides keep winning
 - [ ] The stale TODO about fork chain-id resolution is gone
 - [ ] A changeset accompanies the change

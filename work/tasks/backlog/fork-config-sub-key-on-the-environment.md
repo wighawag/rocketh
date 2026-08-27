@@ -1,5 +1,5 @@
 ---
-title: 'A fork states only what differs, in a fork sub-key on the forked network own entry'
+title: 'A fork states only what differs, in a whenForked sub-key on the forked network own entry'
 slug: fork-config-sub-key-on-the-environment
 spec: fork-of-a-named-network
 blockedBy: [fork-aware-autoimpersonate-default]
@@ -16,27 +16,28 @@ A fork of mainnet should be configured like mainnet and state only what genuinel
 
 ```ts
 environments: {
-	mainnet: {chain: 1, fork: {rpcUrl: 'http://localhost:8545', autoImpersonate: true}},
+	mainnet: {chain: 1, whenForked: {rpcUrl: 'http://localhost:8545', autoImpersonate: true}},
 }
 ```
 
-A `fork` sub-key on the forked network's OWN environment entry. The layering becomes the forked network's chain config, then that environment's existing overrides, then this fork layer, most specific last, and the fork layer applies ONLY when the run is a fork.
+A `whenForked` sub-key on the forked network's OWN environment entry. The name is a CONDITION, not an imperative, and that is deliberate: a key called `fork` reads as a command, which invites exactly the mode-switch misreading this task has to warn against two paragraphs down. A conditional name makes that misreading unavailable rather than merely discouraged. The layering becomes the forked network's chain config, then that environment's existing overrides, then this fork layer, most specific last, and the fork layer applies ONLY when the run is a fork.
 
-It needs no new vocabulary: the existing environment `overrides` field is already the right bag (an endpoint, tags, impersonation, deterministic-deployment settings), so `fork` is a second override layer that happens to be conditional rather than a new kind of thing. Keep it a bag rather than a bare url, because an in-process fork engine will later add creation options (a block to fork from, a cache directory) and they belong here.
+It needs no new vocabulary: the existing environment `overrides` field is already the right bag (an endpoint, tags, impersonation, deterministic-deployment settings), so `whenForked` is a second override layer that happens to be conditional rather than a new kind of thing. Keep it a bag rather than a bare url, because an in-process fork engine will later add creation options (a block to fork from, a cache directory) and they belong here.
 
 **Two things that are easy to get wrong:**
 
-- **Declaring `fork` does NOT put a run into fork mode.** A run is a fork because of how it was invoked. If the presence of configuration were the switch, a user who described their fork once would find every later run forked.
+- **Declaring `whenForked` does NOT put a run into fork mode.** A run is a fork because of how it was invoked. If the presence of configuration were the switch, a user who described their fork once would find every later run forked.
 - **The default endpoint stays what it effectively is today**, the local node's conventional address, which is where both anvil and a hardhat node listen. Someone with a fork on the usual port should still need no configuration at all.
 
 The rejected alternative, recorded so it is not re-proposed: a conventional environment key such as `"<network>:fork"`. It costs no new type, which is a real advantage, but the environment NAME is a directory name for deployment records, so that convention invites an implementation where a fork reads and writes its own folder and forfeits the only thing forking is for.
 
 ## Acceptance criteria
 
-- [ ] A fork run picks up the `fork` layer from the forked network's environment entry
+- [ ] A fork run picks up the `whenForked` layer from the forked network's environment entry
+- [ ] Declaring the entry is CHEAP: an environment entry that exists only to carry `whenForked` is valid, since nothing in this repo declares an `environments` section today and this is the first reason to
 - [ ] The layering order holds and is tested: the forked network's chain config, then that environment's overrides, then the fork layer, most specific winning
-- [ ] The fork layer is IGNORED on a non-fork run of the same environment, tested, so configuration presence is not a mode switch
-- [ ] With no `fork` layer configured, a fork still connects to the conventional local endpoint, so the zero-configuration case is unchanged
+- [ ] The `whenForked` layer is IGNORED on a non-fork run of the same environment, tested, so configuration presence is not a mode switch
+- [ ] With no `whenForked` layer configured, a fork still connects to the conventional local endpoint, so the zero-configuration case is unchanged
 - [ ] The local endpoint no longer comes from the chain bucket of the local chain, so a user's dev-node configuration cannot leak into a fork of another network
 - [ ] The core type change is additive: every existing configuration still type-checks and behaves identically
 - [ ] A changeset accompanies the change
@@ -58,7 +59,7 @@ The rejected alternative, recorded so it is not re-proposed: a conventional envi
 >
 > The core type is public and every user's configuration is typed against it, so the change must be strictly additive: an optional field, no existing configuration invalidated, no behaviour changed for anyone who does not write it.
 >
-> Watch the mode-switch trap. It is tempting to treat the presence of a `fork` key as "this environment can be forked" or worse "fork this run", because it reads that way. It must not do either: a run is a fork because of how it was invoked, and this key only supplies the overrides once that has happened. Test the negative case, a non-fork run of an environment that HAS a fork key, and assert nothing from the key applied.
+> Watch the mode-switch trap. It is tempting to treat the presence of a `whenForked` key as "this environment can be forked" or worse "fork this run", because it reads that way. It must not do either: a run is a fork because of how it was invoked, and this key only supplies the overrides once that has happened. Test the negative case, a non-fork run of an environment that HAS a `whenForked` key, and assert nothing from the key applied.
 >
 > Keep the zero-configuration path working. Someone running anvil on the conventional port with no fork configuration at all must still just work, exactly as they effectively do today.
 >

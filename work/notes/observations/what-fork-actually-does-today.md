@@ -94,3 +94,11 @@ Section 2b said the chain-identity mismatch "THROWS" and asked for both tools to
 So the two tools do disagree, as suspected, but the consequence is milder than feared and asymmetric in an unhelpful way: **a hardhat-deploy user forking mainnet is being warned today**, and the chain id the run then uses is 31337 rather than 1, while the same run under anvil uses 1. That difference reaches `env.network.chain.id`, which is what `execute` puts in the transaction's `chainId` field, so the two tools do not merely differ in a log line.
 
 One methodological note, since it nearly went the other way: the first attempt at this measurement queried port 8546, which was already occupied by an unrelated process, and cheerfully reported `31337`. Had that been believed, this correction would have recorded the opposite result for anvil. The number came from somebody else's node.
+
+## Correction to the correction (2026-08-27, same day): the warning almost certainly never fires
+
+The section above says "a hardhat-deploy user forking mainnet is being warned today". That was reasoned, not checked, and checking it makes it false in practice.
+
+The comparison only happens when `config.environments[<name>].chain` exists (`getChainIdForEnvironment` guards on it). **Nothing in this repo declares an `environments` section at all**: grepping `environments:` across the whole tree hits exactly one file, `packages/rocketh/test/resolve-config-params.test.ts`, and no demo, no template and no documentation example writes one. So for a real user, the expected id is undefined, the comparison is skipped and the warning cannot fire. What is left is the second half, which stands: the run adopts the provider's id and it reaches the transaction's `chainId`.
+
+This is worth recording twice over. First because a note that has already been corrected once is exactly the kind of source people stop re-checking. Second because the same absence is a much larger fact than the warning: **the whole `environments` config section is, in practice, unused**, and the fork work assumes it as the place where the forked network's chain id and its fork overrides live. That assumption is what the review of the fork tasks blocked on, and it is resolved in ADR 0014 rather than here.
