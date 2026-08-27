@@ -56,6 +56,8 @@ The error unwinds the wrapped action, so the FIRST unsignable transaction inside
 
 There is no unsigned-transactions file and no other side effect, exactly as in v1. Idempotency comes from on-chain state alone: execute the deferred transaction on your Safe, re-run your idempotent script, and its on-chain state check skips the completed step.
 
+That check is not optional thinking you can skip. Under a deferral rocketh observed nothing, so it may record nothing, and a step with no on-chain check is surfaced again on every run until the chain says otherwise. For a mint, a transfer or any governance action carrying its own nonce, following the printed instructions twice is a loss. `deploy` and `deployViaProxy` bring their own check; for an `execute` you declare one with its `guard` option (`@rocketh/read-execute`), which reads the chain before building anything and skips the call when the effect is already there. See `docs/adr/0012-a-record-asserts-only-what-rocketh-observed.md`.
+
 ## Choosing the policy for one call
 
 The run-level policy (`onUnknownSigner`, resolved as run parameter > chain config > the default `'auto'`) decides what happens when a `from` is unsignable. `withUnknownSignerPolicy` overrides it for a single action:
@@ -90,5 +92,7 @@ The policy frame these wrappers push forces the `throw` path over the interactiv
 ## Worked examples
 
 [`test/scenarios.integration.test.ts`](https://github.com/wighawag/rocketh/blob/main/packages/rocketh-unknown-signer/test/scenarios.integration.test.ts) is written as documentation (linked rather than referenced by path, because the published npm tarball ships `dist` and `src` only): a Safe-governed proxy upgrade, the same mechanism firing for a plain `tx`, a deploy, an `execute` and a value transfer, a run that mixes signable and Safe-only steps, and the full execute-on-the-Safe-then-re-run loop. Each test body reads as a deploy script.
+
+[`test/guarded-convergence.integration.test.ts`](https://github.com/wighawag/rocketh/blob/main/packages/rocketh-unknown-signer/test/guarded-convergence.integration.test.ts) is the same loop for a call rocketh knows nothing about: a proxy upgrade through a ProxyAdmin owned by the Safe, guarded by the author on the proxy's EIP-1967 implementation slot. One script, two runs, unedited: it defers, you execute it on the Safe, and the re-run skips it and completes.
 
 For full documentation, visit [rocketh.dev](https://rocketh.dev).
