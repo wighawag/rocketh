@@ -4,6 +4,7 @@ slug: execute-guard-seam-and-call-kind
 spec: execute-state-guard
 blockedBy: []
 covers: [1, 4, 5, 9, 11, 12, 13]
+needsAnswers: true
 ---
 
 ## What to build
