@@ -4,7 +4,6 @@ slug: execute-guard-storage-kind
 spec: execute-state-guard
 blockedBy: [execute-guard-seam-and-call-kind, execute-guard-equals-and-output-selection]
 covers: [4, 8]
-needsAnswers: true
 ---
 
 ## What to build

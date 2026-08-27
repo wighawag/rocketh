@@ -1,7 +1,3 @@
----
-needsAnswers: true
----
-
 # What `fork` actually does today, and what a dry run would need
 
 Investigation prompted by the proposal to use a fork to discover pending privileged work (`work/notes/ideas/fork-based-discovery-of-pending-privileged-work.md`). Every claim below is from the code, with the location, because the proposal rests on this and "fork support exists" turns out to be generous.
@@ -84,3 +80,17 @@ Affecting only rocketh users who are not on hardhat:
 Only (4) and (6) are new; everything else is correcting something that already exists.
 
 Note that (1), (2), (3) and (5) are all the same shape of problem: a fact about the run ("this is a fork of mainnet") that core half-knows, with the consequences of knowing it distributed into callers or simply not drawn. Fixing (1) properly probably makes the other three fall out, since each is an answer to "what should default differently when this is a real fork". That suggests they are one piece of work rather than four.
+
+## Correction (2026-08-27): 2b is answered, and its premise was WRONG. The check WARNS, it does not throw.
+
+Section 2b said the chain-identity mismatch "THROWS" and asked for both tools to be checked before exposing a flag. Both halves have now been done, and the first sentence was wrong about our own code.
+
+**It is a `console.warn`, not a throw** (`getChainIdForEnvironment`, `packages/rocketh/src/executor/index.ts:146-150`). The line after it is `const chainIdToReturn = chainIdFromProvider || chainId`, so on a mismatch the run CONTINUES and **the provider's id wins**. Nothing aborts. The note asserted a throw and every plan built on it inherited that, which is exactly the shape of claim this repo keeps losing cycles to, so it is corrected here rather than quietly fixed elsewhere.
+
+**anvil reports the FORKED chain's id.** Verified live, not from documentation: `anvil --fork-url <mainnet>` prints `Chain ID: 1` in its own banner and answers `eth_chainId` with `0x1`. So for `-e mainnet` against a forked anvil, the expected id (1) and the provider's id (1) agree and nothing is warned.
+
+**hardhat reports 31337.** From hardhat 3.12's own resolver: `resolveEdrNetwork` sets `chainId: networkConfig.chainId ?? 31337`, and `forking` is resolved separately by `resolveForkingConfig` and never feeds the chain id. `addForkConfiguration` in `packages/hardhat-deploy/src/helpers.ts` sets `accounts` and `forking` on the generated `fork` network and does NOT set `chainId`. So a hardhat fork of mainnet reports 31337, the expected id is 1, and the warning fires.
+
+So the two tools do disagree, as suspected, but the consequence is milder than feared and asymmetric in an unhelpful way: **a hardhat-deploy user forking mainnet is being warned today**, and the chain id the run then uses is 31337 rather than 1, while the same run under anvil uses 1. That difference reaches `env.network.chain.id`, which is what `execute` puts in the transaction's `chainId` field, so the two tools do not merely differ in a log line.
+
+One methodological note, since it nearly went the other way: the first attempt at this measurement queried port 8546, which was already occupied by an unrelated process, and cheerfully reported `31337`. Had that been believed, this correction would have recorded the opposite result for anvil. The number came from somebody else's node.
