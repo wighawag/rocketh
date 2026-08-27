@@ -2,9 +2,24 @@
 title: 'A fork is a fork OF something: make the flag say which network, and derive the run defaults from it'
 slug: fork-of-a-named-network
 humanOnly: true
+needsAnswers: true
 ---
 
 > Launch snapshot — records intent at creation, NOT maintained. Current truth: `docs/adr/` (decisions) + the code; remaining work: the tasks in `work/tasks/`.
+
+<!-- open-questions -->
+
+## Open questions
+
+1. **Where does a fork's OWN configuration live, when it needs to differ from the network it forks?** Everything should be inherited from the forked network by default; this is only about the overrides (the local endpoint above all, and plausibly `autoImpersonate` and extra tags). Two shapes, both viable:
+
+   **(a) A conventional environment key, `"<network>:fork"`.** Costs no new type: it is an ordinary `environments` entry, and `overrides` already merges at exactly the right point. Three edges to respect. `DeploymentEnvironmentConfig.chain` is REQUIRED today, so the fork entry restates the chain or the field becomes optional. The key must be a CONFIG LOOKUP KEY and never the environment NAME, because the name is a directory name (`path.join(deploymentsFolder, environmentName)`) and a fork named `mainnet:fork` would read and write a `mainnet:fork/` folder, losing the one thing forking is for; a colon is also a reserved character on Windows. And the convention admits exactly one fork configuration per network.
+
+   **(b) A `fork` sub-key on the network's own entry**, e.g. `mainnet: {chain: 1, fork: {rpcUrl, autoImpersonate}}`. Same inheritance, and the two edges above stop being possible rather than being documented: it cannot be mistaken for a name, and it cannot collide with a user's own environment naming. Costs an optional field on a core type (`DeploymentEnvironmentConfig`), which `AGENTS.md` requires be agreed rather than assumed.
+
+   The recommendation is (b), on the same reasoning that replaced `pushUnknownSignerPolicy`/`popUnknownSignerPolicy` with one scoping verb: prefer making the mistake unrepresentable over documenting the pairing. The decision is a human's either way, and it gates tasking because at least one task's shape depends on it.
+
+<!-- /open-questions -->
 
 ## Problem Statement
 
@@ -72,6 +87,8 @@ No `needsAnswers`. The one empirical unknown, whether the chain-identity check t
 - **`autoImpersonate` resolves params > chain config > fork-aware default.** The default is on when the run is a fork and off otherwise. The precedence order is unchanged; only the last term stops being `undefined`.
 - **The chain-identity comparison becomes fork-aware.** For a fork, both the forked network's id and the local engine's id are legitimate answers from the provider, and neither is a misconfiguration. Which id the RUN then uses must be chosen deliberately rather than falling out of `chainIdFromProvider || chainId`, since it reaches `env.network.chain.id` and therefore the `chainId` field of every transaction `execute` builds. Whatever is chosen, a fork run under anvil and under hardhat should not silently build transactions carrying different chain ids.
 - **The descriptor must be able to grow a CREATION half, without being given one now.** Today rocketh ATTACHES to a fork somebody else started (anvil or hardhat), so the block to fork from is not rocketh's to choose: it was fixed when that node started, and pretending to configure it would be a lie. When an in-process engine lands, rocketh CREATES the fork and needs exactly what EDR's `ForkConfig` takes: `url`, `blockNumber`, `cacheDir`, `httpHeaders`. The url needs no new configuration, because the forked network's rpcUrl is already in the user's chain config, which is the same config this spec is teaching the run to read. So the growth is a `blockNumber` and a mode, and the descriptor should not foreclose it. Nothing in this spec builds it.
+- **Inheritance is the DEFAULT, overrides are the exception.** A fork of mainnet takes its configuration from mainnet and states only what genuinely differs, which is the local endpoint and plausibly impersonation and tags. Where that override lives is the open question above.
+- **Half of that layering already works, which makes this smaller than it looks.** `resolveExecutionParams` already merges `config.environments[environmentName].overrides` over the chain config, and on a fork run `environmentName` is the FORKED network's name, so `environments.mainnet.overrides` already applies to a fork of mainnet today. What is wrong is the layer underneath it: the chain config being merged is `chains[31337]` rather than `chains[1]`. The work is to slide the right bucket under a merge that already happens, not to invent a merge.
 - **The CONNECTION stops being borrowed from `chains[31337]`.** The local endpoint is a property of the FORK RUN, not of a chain the user is not using, and today the two are the same bucket. A fork should be able to say where its node is listening (defaulting to the same `http://127.0.0.1:8545` it effectively defaults to now, which is where anvil and `hardhat node` both listen) without the user having to configure chain 31337, and without a `localhost` chain config leaking its tags and policy into a mainnet rehearsal. Note that `DeploymentEnvironmentConfig.overrides` already exists and already accepts an `rpcUrl`, so the vocabulary for this is present.
 - **The run's chain IDENTITY is the forked network's**, not the local bucket's. `env.network.chain.id` reaching the `chainId` field of every transaction is what makes this load-bearing rather than cosmetic (see the observation note). A fork engine's own id, where it differs, is a fact about the connection and belongs on the connection side.
 - **What `{fork: X}` fundamentally means, stated once so the implementation can stop re-deriving it:** be the `X` environment for the purposes of deployment RECORDS, while not being `X` for the purposes of chain identity. Everything else the flag currently does to a run is incidental. The evidence is that an ordinary environment with `{chain: 1, overrides: {rpcUrl: 'http://localhost:8545'}}` already reproduces every other property of a fork run today, and the only thing it cannot do is read mainnet's deployment records.
