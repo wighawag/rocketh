@@ -4,7 +4,6 @@ slug: execute-guard-equals-and-output-selection
 spec: execute-state-guard
 blockedBy: [execute-guard-seam-and-call-kind]
 covers: [9, 10]
-needsAnswers: true
 ---
 
 ## What to build
