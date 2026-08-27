@@ -21,6 +21,7 @@ export type {
 import {encodeFunctionData} from 'viem';
 import {logs} from 'named-logs';
 import {evaluateGuard} from './guard.js';
+import {describeSkippedStep} from './guard-message.js';
 import type {
 	CallGuard,
 	CallGuardEvaluation,
@@ -292,6 +293,12 @@ export function execute(env: Environment): ExecuteFunction {
 			? await (evaluateGuard(env) as LooseEvaluate)(guard, deployment as unknown as MinimalDeployment<Abi>)
 			: undefined;
 		if (evaluation?.satisfied) {
+			// A skip is the ONE outcome with no other trace: no transaction, no receipt, no
+			// deferral block. So it says so, through the environment's user-message channel (the
+			// same one `catchUnknownSigner` prints through) rather than to `console` directly,
+			// per ADR 0009. The path that SENDS stays silent: it already leaves a transaction
+			// behind, and a script with dozens of guarded steps cannot afford two lines each.
+			env.showMessage(describeSkippedStep(String(viemArgs.functionName), evaluation));
 			return {outcome: 'skipped', evaluation};
 		}
 
