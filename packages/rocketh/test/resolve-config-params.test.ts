@@ -74,29 +74,29 @@ describe('resolveConfig - overrides merge', () => {
 });
 
 describe('getEnvironmentName', () => {
-	it('defaults to "memory" when no environment is provided', () => {
+	it('defaults to "memory" when no environment is provided, and that is NOT a fork', () => {
 		const {name, fork} = getEnvironmentName({});
 		expect(name).toBe('memory');
-		// fork is true when environmentProvided is not a string (undefined is not a string)
-		expect(fork).toBe(true);
+		// a run is a fork because it was TOLD which network it forks, never by omission
+		expect(fork).toBeUndefined();
 	});
 
 	it('uses the string form directly', () => {
 		const {name, fork} = getEnvironmentName({environment: 'sepolia'});
 		expect(name).toBe('sepolia');
-		expect(fork).toBe(false);
+		expect(fork).toBeUndefined();
 	});
 
 	it('accepts the legacy "network" key', () => {
 		const {name, fork} = getEnvironmentName({network: 'mainnet'} as any);
 		expect(name).toBe('mainnet');
-		expect(fork).toBe(false);
+		expect(fork).toBeUndefined();
 	});
 
-	it('unwraps the fork object form {fork: "mainnet"}', () => {
+	it('unwraps the fork object form {fork: "mainnet"} into a descriptor naming it', () => {
 		const {name, fork} = getEnvironmentName({environment: {fork: 'mainnet'} as any});
 		expect(name).toBe('mainnet');
-		expect(fork).toBe(true);
+		expect(fork).toEqual({networkName: 'mainnet'});
 	});
 });
 

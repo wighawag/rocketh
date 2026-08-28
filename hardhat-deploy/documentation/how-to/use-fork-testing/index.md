@@ -53,7 +53,7 @@ export default deployScript(
 		const {deployer} = env.namedAccounts;
 		const {name: networkName} = env.network;
 
-		console.log(`Deploying on ${networkName} (fork: ${env.network.fork || 'none'})`);
+		console.log(`Deploying on ${networkName} (fork of: ${env.network.fork?.networkName || 'none'})`);
 
 		// Deploy your contract
 		const deployment = await env.deploy('MyDeFiContract', {

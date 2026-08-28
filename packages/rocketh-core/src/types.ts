@@ -295,6 +295,48 @@ export type Environments = {
 	readonly [name: string]: DeploymentEnvironmentConfig;
 };
 
+/**
+ * What a caller says when it points rocketh at a node somebody else forked: WHICH network that
+ * node is simulating, and its chain id when the caller happens to know it.
+ *
+ * rocketh ATTACHES to a fork, it does not create one, so nothing here says where to fork FROM or
+ * at which block. Those belong to the creation half an in-process engine would need, and this bag
+ * is shaped to grow them (ADR 0014).
+ */
+export type ForkInput = {
+	/**
+	 * The environment NAME of the network being forked (`'mainnet'`). It is also the deployment
+	 * folder the run reads, which is the whole point of forking: BE that network for records.
+	 */
+	readonly fork: string;
+	/**
+	 * The forked network's own chain id, when the caller knows it (hardhat-deploy has the forked
+	 * network's configuration; core cannot turn a name into an id, since the name-to-chain map
+	 * lives on the other side of the dependency edge, in `@rocketh/node`).
+	 */
+	readonly chainId?: number;
+};
+
+/**
+ * What the run is SIMULATING, surfaced as `env.network.fork` and absent (falsy) when the run is
+ * not a fork at all, which is how every consumer reads it.
+ *
+ * The two chain identities of a fork run are easy to conflate, so: this describes the SIMULATED
+ * chain, the network being forked. The CONNECTED chain, whatever the node itself reports, stays
+ * `env.network.chain` and is what a transaction must declare (ADR 0014).
+ */
+export type ForkDescriptor = {
+	/** The name of the network being simulated, as named by whoever started the run. */
+	readonly networkName: string;
+	/**
+	 * The SIMULATED network's chain id, ESTABLISHED rather than assumed: supplied with the fork
+	 * input, else declared as `environments[<networkName>].chain`. Absent when neither said, and
+	 * deliberately NOT filled in from the provider, whose id is the connected chain's (under
+	 * hardhat, the local engine's 31337).
+	 */
+	readonly chainId?: number;
+};
+
 export type SignerProtocolFunction = (protocolString: string) => Promise<Signer>;
 export type SignerProtocol = {
 	getSigner: SignerProtocolFunction;
@@ -346,7 +388,8 @@ export type ResolvedUserConfig<
 };
 
 export type ExecutionParams<Extra extends Record<string, unknown> = Record<string, unknown>> = {
-	environment?: string | {fork: string};
+	/** An environment NAME, or a `ForkInput` saying which network a forked node is simulating. */
+	environment?: string | ForkInput;
 	tags?: string[];
 	saveDeployments?: boolean;
 	askBeforeProceeding?: boolean;
@@ -651,7 +694,8 @@ export type ResolvedExecutionParams<Extra extends Record<string, unknown> = Reco
 	readonly environment: {
 		readonly name: string;
 		readonly tags: readonly string[];
-		readonly fork?: boolean;
+		/** What this run simulates, or absent when it is not a fork. See `ForkDescriptor`. */
+		readonly fork?: ForkDescriptor;
 		readonly deterministicDeployment: DeterministicDeploymentInfo;
 		readonly autoImpersonate?: boolean;
 		/** Resolved as: execution param > chain config > `'auto'`. */
@@ -693,7 +737,11 @@ export interface Environment<
 	readonly network: {
 		readonly chain: Chain;
 		readonly provider: TransactionHashTracker;
-		readonly fork?: boolean;
+		/**
+		 * The network this run is a fork OF, or absent when it is not a fork. Truthy exactly when
+		 * the run is one, so `if (env.network.fork)` reads as it always has.
+		 */
+		readonly fork?: ForkDescriptor;
 		readonly deterministicDeployment: DeterministicDeploymentInfo;
 	};
 	readonly deployments: Deployments;

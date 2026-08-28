@@ -5,6 +5,7 @@ export {
 	resolveExecutionParams,
 	getChainIdForEnvironment,
 	getEnvironmentName,
+	resolveForkDescriptor,
 	createExecutor,
 } from './executor/index.js';
 export {createEnvironment, loadDeploymentsFromStore, UnsuccessfulTransactionError} from './environment/index.js';
