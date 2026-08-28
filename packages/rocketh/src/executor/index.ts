@@ -130,26 +130,57 @@ export function resolveConfig<
 	return config;
 }
 
+/**
+ * The chain id the run adopts: the CONNECTED one, the chain the node itself reports.
+ *
+ * Two things happen here and they are separate. The identity CHECK compares what the environment
+ * declares with what the node answers and warns when they disagree. The ADOPTION then picks the
+ * node's id whenever a node answered, because that id reaches `env.network.chain.id` and from
+ * there the `chainId` field of every transaction rocketh builds, which a node rejects when it is
+ * not its own.
+ *
+ * On a FORK the check is skipped, since a fork is exactly the situation where the two legitimately
+ * differ (ADR 0014); the adoption rule is unchanged there, which is the whole point.
+ */
 export async function getChainIdForEnvironment(
 	config: ResolvedUserConfig,
 	environmentName: string,
 	executionParams: ExecutionParams,
 ) {
 	const provider = executionParams.provider;
+	// Derived here rather than taken as a parameter, so every caller (`@rocketh/node`,
+	// `@rocketh/web`, `@rocketh/test-utils`, hardhat-deploy) gets the fork-awareness below without
+	// changing its call, and none of them can forget to pass it.
+	const {fork} = getEnvironmentName(executionParams);
 
-	let chainId: number | undefined;
+	let declaredChainId: number | undefined;
 
 	if (config?.environments?.[environmentName]?.chain) {
-		chainId = config.environments[environmentName].chain;
+		declaredChainId = config.environments[environmentName].chain;
 	}
 
 	const chainIdFromProvider = provider ? Number(await provider.request({method: 'eth_chainId'})) : undefined;
-	if (chainId && chainIdFromProvider && chainIdFromProvider != chainId) {
+
+	// The check asks "is this node the one this environment describes?", and on a FORK that question
+	// has no wrong answer: the declared id belongs to the network being SIMULATED while the node
+	// reports whichever engine is running. Measured rather than assumed
+	// (`work/notes/findings/fork-node-chain-identity-behaviour.md`): anvil forking mainnet reports 1,
+	// hardhat reports 31337. Neither is a misconfiguration, so neither earns a notice.
+	//
+	// The leniency stops at forks. Off one, this warning is still the only thing that tells a user
+	// their `-e mainnet` run is pointed at a local node.
+	if (!fork && declaredChainId && chainIdFromProvider && chainIdFromProvider != declaredChainId) {
 		console.warn(
-			`provider give a different chainId (${chainIdFromProvider}) than the one expected for environment named "${environmentName}" (${chainId})`,
+			`provider give a different chainId (${chainIdFromProvider}) than the one expected for environment named "${environmentName}" (${declaredChainId})`,
 		);
 	}
-	const chainIdToReturn = chainIdFromProvider || chainId;
+
+	// The adoption, stated rather than left to whichever value happened to be truthy: the node's id
+	// wins whenever a node answered, because it is the only id a transaction can be signed for. The
+	// declared id is the fallback for a run with no provider at all. `||` rather than `??` is
+	// load-bearing: it also rejects the `0`/`NaN` a node answering nonsense produces, so that run
+	// fails on the error below instead of carrying a meaningless id.
+	const chainIdToReturn = chainIdFromProvider || declaredChainId;
 
 	if (chainIdToReturn === undefined) {
 		throw new Error(
@@ -255,7 +286,18 @@ export function resolveExecutionParams<Extra extends Record<string, unknown> = R
 			? connectedChainConfig
 			: getChainSemanticsFromUserConfig(config, simulatedChainId);
 
-	let chainInfo = connectedChainConfig.info;
+	// `env.network.chain` describes what the run is CONNECTED to, and its `id` is the one thing a
+	// fork run may not read off the local bucket: `execute`, `tx` and `deploy` hex-encode it into a
+	// transaction's `chainId` field, a locally signed transaction COMMITS to that value, and the
+	// node rejects an id it does not recognise as its own. So the id is always the one the node
+	// reported (`chainId`, adopted by `getChainIdForEnvironment`), while every OTHER field keeps
+	// describing the connection, above all `rpcUrls`, which must stay the local node's: a fork run
+	// pointed at the forked network's public endpoint is the worst outcome this file can produce.
+	//
+	// Off a fork the two are the same value, since the bucket was keyed by this very id; the only
+	// other case this touches is a chain entry whose declared `info.id` contradicts its own key.
+	let chainInfo =
+		connectedChainConfig.info.id === chainId ? connectedChainConfig.info : {...connectedChainConfig.info, id: chainId};
 	const environmentConfig = config?.environments?.[environmentName];
 	// The environment-level override layer already ran on fork runs, since the environment NAME is
 	// the forked network's. It sits ON TOP of both buckets, so a user's overrides keep winning.
