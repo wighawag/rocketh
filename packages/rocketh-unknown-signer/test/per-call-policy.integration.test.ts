@@ -80,7 +80,7 @@ async function safeOwnerEnvironment(options: {
 	/** The run-level `onUnknownSigner`, i.e. what the per-call override has to beat. */
 	onUnknownSigner: 'throw' | 'ask' | 'auto';
 	promptExecutor?: PromptExecutor;
-	/** Make the run FORK-shaped (`env.network.fork === true`), as a rehearsal is. */
+	/** Make the run FORK-shaped (`env.network.fork` names the simulated network), as a rehearsal is. */
 	fork?: boolean;
 }) {
 	return createTestEnvironment({
@@ -298,7 +298,7 @@ describe('@rocketh/unknown-signer - rehearsing the interactive flow on a fork', 
 			promptExecutor,
 			fork: true,
 		});
-		expect(env.network.fork).toBe(true);
+		expect(env.network.fork?.networkName).toBe('sepolia');
 
 		const steps: string[] = [];
 		const receipt = await withUnknownSignerPolicy(env)('ask', async () => {

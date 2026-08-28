@@ -12,6 +12,7 @@ import type {
 	EnhancedEnvironment,
 	ResolvedUserConfig,
 	ConfigOverrides,
+	ForkDescriptor,
 	UserConfig,
 	PromptExecutor,
 	DeploymentStore,
@@ -168,18 +169,55 @@ export async function getChainIdForExecutionParams(
 	return getChainIdForEnvironment(config, environmentName, executionParams);
 }
 
-export function getEnvironmentName(executionParams: ExecutionParams): {name: string; fork: boolean} {
+/**
+ * The environment NAME the run uses (which is the forked network's name on a fork, since a fork
+ * reads that network's deployment records), plus the fork DESCRIPTOR when there is one.
+ *
+ * A run is a fork because of HOW IT WAS INVOKED, so the descriptor exists exactly when the caller
+ * passed a `ForkInput`. It used to be `typeof environmentProvided !== 'string'`, which made the
+ * default in-memory run (no environment at all) claim to be a fork of nothing.
+ *
+ * The descriptor built here knows only what the INPUT carried; the chain id declared for the
+ * forked network is layered on by `resolveForkDescriptor`, which has the config.
+ */
+export function getEnvironmentName(executionParams: ExecutionParams): {name: string; fork?: ForkDescriptor} {
 	const environmentProvided = executionParams.environment || (executionParams as any).network;
 	let environmentName = 'memory';
+	let fork: ForkDescriptor | undefined;
 	if (environmentProvided) {
 		if (typeof environmentProvided === 'string') {
 			environmentName = environmentProvided;
 		} else if ('fork' in environmentProvided) {
 			environmentName = environmentProvided.fork;
+			fork =
+				environmentProvided.chainId === undefined
+					? {networkName: environmentProvided.fork}
+					: {networkName: environmentProvided.fork, chainId: environmentProvided.chainId};
 		}
 	}
-	const fork = typeof environmentProvided !== 'string';
 	return {name: environmentName, fork};
+}
+
+/**
+ * The full descriptor for a run: what it simulates, and that network's chain id when it is KNOWN.
+ *
+ * Two honest sources, in order: supplied with the fork input (the caller has the forked network's
+ * own configuration), then declared as `environments[<name>].chain`. There is deliberately no
+ * third: the id the run computed from the provider is the CONNECTED chain's, and under hardhat
+ * that is the local engine's 31337 while the run simulates mainnet, so adopting it here would
+ * make the descriptor assert something nobody established (ADR 0014). Whoever needs a lookup key
+ * may fall back to the computed id itself; the descriptor may not claim it.
+ */
+export function resolveForkDescriptor(
+	config: ResolvedUserConfig,
+	executionParams: ExecutionParams,
+): ForkDescriptor | undefined {
+	const {fork} = getEnvironmentName(executionParams);
+	if (!fork || fork.chainId !== undefined) {
+		return fork;
+	}
+	const declaredChainId = config?.environments?.[fork.networkName]?.chain;
+	return declaredChainId === undefined ? fork : {...fork, chainId: declaredChainId};
 }
 
 export function resolveExecutionParams<Extra extends Record<string, unknown> = Record<string, unknown>>(
@@ -187,7 +225,8 @@ export function resolveExecutionParams<Extra extends Record<string, unknown> = R
 	executionParameters: ExecutionParams<Extra>,
 	chainId: number,
 ): ResolvedExecutionParams<Extra> {
-	const {name: environmentName, fork} = getEnvironmentName(executionParameters);
+	const {name: environmentName} = getEnvironmentName(executionParameters);
+	const fork = resolveForkDescriptor(config, executionParameters);
 
 	// TODO fork chainId resolution option to keep the network being used
 	const idToFetch = fork ? 31337 : chainId;

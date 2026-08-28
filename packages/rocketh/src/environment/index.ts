@@ -1941,6 +1941,11 @@ export async function createEnvironment<
 			await deploymentStore.deleteAll(deploymentsFolder, environmentName);
 		}
 
+		// The one behaviour the fork descriptor exists for: a fork of mainnet READS mainnet's
+		// records (the folder is keyed by the environment NAME) while the node it is connected to
+		// is not mainnet, so the chainId/genesisHash identity of the folder must NOT be checked
+		// against the connected chain. "Be X for records while not being X for chain identity" is
+		// the whole of forking (ADR 0014); `context.fork` is truthy exactly on a fork run.
 		const {deployments: deploymentsLoaded, migrations: migrationsLoaded} = await loadDeploymentsFromStore(
 			deploymentStore,
 			deploymentsFolder,
