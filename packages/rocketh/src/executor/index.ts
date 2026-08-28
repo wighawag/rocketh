@@ -251,6 +251,19 @@ export function resolveForkDescriptor(
 	return declaredChainId === undefined ? fork : {...fork, chainId: declaredChainId};
 }
 
+/**
+ * Where a local node listens when nobody said otherwise: the address anvil and `hardhat node`
+ * both default to. It is the endpoint a FORK run dials with no fork configuration at all, which
+ * is what keeps the zero-configuration case working, and it is a stated default here rather than
+ * the coincidence it used to be (it arrived through viem's `hardhat` chain entry in
+ * `chains[31337]`, a bucket that describes the user's own dev node rather than their fork).
+ *
+ * Named for the LOCAL NODE, not the fork: `fork` in a name is ambiguous across three parts of
+ * speech, and a `FORK_RPC_URL` would read as the url to fork FROM, which is the one thing this
+ * is not (see the naming section of ADR 0014).
+ */
+export const CONVENTIONAL_LOCAL_RPC_URL = 'http://127.0.0.1:8545';
+
 export function resolveExecutionParams<Extra extends Record<string, unknown> = Record<string, unknown>>(
 	config: ResolvedUserConfig,
 	executionParameters: ExecutionParams<Extra>,
@@ -258,18 +271,34 @@ export function resolveExecutionParams<Extra extends Record<string, unknown> = R
 ): ResolvedExecutionParams<Extra> {
 	const {name: environmentName} = getEnvironmentName(executionParameters);
 	const fork = resolveForkDescriptor(config, executionParameters);
+	const environmentConfig = config?.environments?.[environmentName];
+
+	// The fork's OWN layer, and the whole of the mode-switch discipline in one line: it is read
+	// only when `fork` is set, which happens because of how the run was INVOKED. Declaring
+	// `whenForked` says what differs ONCE a run is a fork; it never makes one (ADR 0014).
+	const whenForkedOverrides = fork ? environmentConfig?.whenForked : undefined;
 
 	// A fork run SIMULATES one chain and TALKS TO another (ADR 0014), and this one lookup used to
 	// answer both questions from the connected side. It SPLITS rather than swaps.
 	//
 	// The CONNECTED chain is the node this run actually talks to, which on a fork is the LOCAL fork
-	// node, hence 31337. This half must not move: this bucket supplies the PROVIDER, so sending the
-	// whole lookup to the forked network would point a fork run at production. It also stays the
-	// source of `chainInfo`, because `env.network.chain.id` is what `execute` and `tx` put in a
-	// transaction's `chainId` field and a node rejects an id it does not recognise as its own.
+	// node, hence 31337. This half must not move: the connection is what points a fork run at the
+	// fork instead of at production, so sending the whole lookup to the forked network would connect
+	// it to the real one. This bucket also stays the source of `chainInfo`, because
+	// `env.network.chain.id` is what `execute` and `tx` put in a transaction's `chainId` field and a
+	// node rejects an id it does not recognise as its own.
 	const connectedChainId = fork ? 31337 : chainId;
 
-	const connectedChainConfig = getChainConfigFromUserConfig(config, connectedChainId, executionParameters.provider);
+	// ... but the ENDPOINT of that connection is no longer read from the bucket. `chains[31337]` is
+	// where a user describes their own dev node, so its url is the port THAT node listens on, not
+	// the port a fork of another network does. A fork therefore starts from the conventional local
+	// endpoint and says the rest itself, in the `whenForked` layer applied below.
+	const connectedChainConfig = getChainConfigFromUserConfig(
+		config,
+		connectedChainId,
+		executionParameters.provider,
+		fork ? CONVENTIONAL_LOCAL_RPC_URL : undefined,
+	);
 
 	// The SIMULATED chain is the network being forked, and its configuration is what the run
 	// REHEARSES: deployment semantics, policy and TAGS (deploy scripts branch on those, so the
@@ -300,10 +329,9 @@ export function resolveExecutionParams<Extra extends Record<string, unknown> = R
 	// other case this touches is a chain entry whose declared `info.id` contradicts its own key.
 	let chainInfo =
 		connectedChainConfig.info.id === chainId ? connectedChainConfig.info : {...connectedChainConfig.info, id: chainId};
-	const environmentConfig = config?.environments?.[environmentName];
 	// The environment-level override layer already ran on fork runs, since the environment NAME is
 	// the forked network's. It sits ON TOP of both buckets, so a user's overrides keep winning.
-	const actualChainConfig = environmentConfig?.overrides
+	const overriddenChainConfig = environmentConfig?.overrides
 		? {
 				...connectedChainConfig,
 				...environmentConfig.overrides,
@@ -313,9 +341,26 @@ export function resolveExecutionParams<Extra extends Record<string, unknown> = R
 				},
 			}
 		: connectedChainConfig;
-	const actualChainSemantics = environmentConfig?.overrides
+	// And the fork's own layer sits on top of THAT, most specific last: the forked network's chain
+	// config, then this environment's overrides, then what is true of the fork alone. It is the
+	// same override bag rather than a new kind of thing, so it reaches the connection (an endpoint,
+	// properties) and the semantics (tags, impersonation, ...) exactly as `overrides` does.
+	const actualChainConfig = whenForkedOverrides
+		? {
+				...overriddenChainConfig,
+				...whenForkedOverrides,
+				properties: {
+					...overriddenChainConfig?.properties,
+					...whenForkedOverrides.properties,
+				},
+			}
+		: overriddenChainConfig;
+	const overriddenChainSemantics = environmentConfig?.overrides
 		? {...simulatedChainSemantics, ...environmentConfig.overrides}
 		: simulatedChainSemantics;
+	const actualChainSemantics = whenForkedOverrides
+		? {...overriddenChainSemantics, ...whenForkedOverrides}
+		: overriddenChainSemantics;
 
 	if (actualChainConfig?.properties) {
 		chainInfo = {...chainInfo, properties: actualChainConfig.properties};

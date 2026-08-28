@@ -106,6 +106,18 @@ export function getChainConfigFromUserConfig(
 	config: ResolvedUserConfig,
 	id: number,
 	provider?: EIP1193ProviderWithoutEvents,
+	/**
+	 * The endpoint to dial INSTEAD of the one `chains[id]` names, and the reason this parameter
+	 * exists at all: a FORK run is connected to a local node whose bucket (`chains[31337]`) is where
+	 * the user describes their OWN dev node, so that bucket must not decide the port a fork of
+	 * another network listens on. The caller that knows the run is a fork passes the endpoint the
+	 * fork's own configuration named, or the conventional local one
+	 * (`docs/adr/0014-a-fork-run-simulates-one-chain-and-talks-to-another.md`).
+	 *
+	 * It also means such a run no longer needs a `chains[id]` entry to have an endpoint at all,
+	 * which is what keeps the zero-configuration fork off the throw at the bottom of this function.
+	 */
+	rpcUrlInsteadOfConfigured?: string,
 ): ChainConfig {
 	const chainConfig = config.chains?.[id];
 
@@ -132,7 +144,7 @@ export function getChainConfigFromUserConfig(
 		);
 	}
 
-	const rpcUrl = chainConfig?.rpcUrl || chainConfig?.info?.rpcUrls.default.http[0];
+	const rpcUrl = rpcUrlInsteadOfConfigured ?? (chainConfig?.rpcUrl || chainConfig?.info?.rpcUrls.default.http[0]);
 
 	const defaultChainInfo: ChainInfo = {
 		id: id,
