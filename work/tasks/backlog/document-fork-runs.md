@@ -4,7 +4,6 @@ slug: document-fork-runs
 spec: fork-of-a-named-network
 blockedBy: [fork-config-sub-key-on-the-environment]
 covers: []
-needsAnswers: true
 ---
 
 ## What to build
