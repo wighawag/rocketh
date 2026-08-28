@@ -4,6 +4,7 @@ slug: fork-chain-identity-simulated-versus-connected
 spec: fork-of-a-named-network
 blockedBy: [fork-semantics-come-from-the-forked-network]
 covers: [7, 8, 14]
+needsAnswers: true
 ---
 
 ## What to build
