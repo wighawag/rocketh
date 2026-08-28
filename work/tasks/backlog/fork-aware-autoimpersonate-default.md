@@ -18,6 +18,8 @@ So the last term stops being nothing and becomes fork-aware: on when the run is 
 
 Note also that this interacts with the configuration split from an earlier task in this chain: a user who sets impersonation on the network they are forking now actually gets it, because the run reads that network's configuration rather than the local node's.
 
+> READ FIRST, planted by the conductor after the two tasks before this one landed. The last term is NOT currently reachable by simply appending one, and this is the whole difficulty of the task. `getChainSemanticsFromUserConfig` (`packages/rocketh/src/environment/chains.ts`) returns `autoImpersonate: chainConfig?.autoImpersonate || false`, so the value is ALWAYS defined, `false` when nobody configured it. The resolution in `resolveExecutionParams` then reads `if (autoImpersonate === undefined && actualChainSemantics.autoImpersonate !== undefined)`, which therefore always fires and always wins. A fork-aware term added after it would be DEAD CODE, and a test that only exercises a fork with no `chains` entry at all could still pass while a user with a `chains[1]` entry that simply does not mention impersonation silently gets `false`. So the real work is making "nobody configured it" distinguishable from "configured false" along that path, without disturbing the semantics split. Verify this in the code before designing around it.
+
 ## Acceptance criteria
 
 - [ ] A fork run has auto-impersonation ON without anyone configuring it
