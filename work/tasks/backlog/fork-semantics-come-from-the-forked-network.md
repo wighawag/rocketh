@@ -4,7 +4,6 @@ slug: fork-semantics-come-from-the-forked-network
 spec: fork-of-a-named-network
 blockedBy: [fork-descriptor-names-the-network]
 covers: [3, 4, 9, 13]
-needsAnswers: true
 ---
 
 ## What to build
