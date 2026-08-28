@@ -80,6 +80,7 @@ export default defineConfig({
 					items: [
 						{text: 'Using hardhat-deploy', link: '/documentation/hardhat-deploy/'},
 						{text: 'Testing Deploy Scripts', link: '/documentation/testing/'},
+						{text: 'Rehearsing on a Fork', link: '/documentation/fork-runs/'},
 						{text: 'Exporting and Verifying', link: '/documentation/exporting-and-verifying/'},
 						{text: 'Handling Unknown Signers', link: '/documentation/unknown-signers/'},
 						{text: 'Guarding Execute Calls', link: '/documentation/execute-guard/'},

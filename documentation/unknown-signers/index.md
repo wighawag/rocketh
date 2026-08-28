@@ -108,6 +108,8 @@ pnpm hardhat deploy --network sepolia --on-unknown-signer throw
 
 It is also not a dead end. On a FORK or a dev node there is a better answer than interactivity anyway: let the account be IMPERSONATED, which resolves it BEFORE the unknown-signer seam so no policy is ever consulted and nothing has to be executed out-of-band.
 
+Rehearsing your Safe-owned steps on a fork of the network you are about to upgrade is the main reason to do this, and it needs no switch: impersonation is ON by default for a fork run. [Rehearsing a deployment on a fork](../fork-runs/) covers how to start one, what it inherits from the network it simulates, and the two chain ids involved.
+
 ```typescript
 // rocketh/config.ts
 export const config = {
@@ -249,7 +251,7 @@ if (env.addressSignability[admin.toLowerCase() as `0x${string}`] !== 'unsignable
 
 `addressSignability` is computed after auto-impersonation runs, keyed by lowercase address, and answers `'local'`, `'node'`, `'impersonated'` or `'unsignable'` (an address never seen during setup answers `'unsignable'` rather than `undefined`, so there is no third case to handle). Rehearsing the whole flow on a fork remains the stronger check, since it proves the transaction works rather than only proving who could have sent it.
 
-For the same reason, neither `catchUnknownSigner` nor `withUnknownSignerPolicy` defeats impersonation: to exercise the unknown-signer path on a fork, set `autoImpersonate: false` for the run.
+For the same reason, neither `catchUnknownSigner` nor `withUnknownSignerPolicy` defeats impersonation: to exercise the unknown-signer path on a fork, set `autoImpersonate: false` for the run ([Impersonation is on by default](../fork-runs/#impersonation-is-on-by-default)).
 
 ## Overriding the policy for one call (`withUnknownSignerPolicy`)
 

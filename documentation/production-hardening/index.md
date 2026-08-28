@@ -28,7 +28,7 @@ The thing to check is that it is not switched on for a production chain in a sha
 
 ## Rehearse on a fork, then verify the chain afterwards
 
-A fork of the real chain at a recent block is the strongest check available before a privileged change, and it is stronger than any assertion about who could have signed: it proves the transaction actually does what you believe against the state that actually exists. Run the same scripts, with `autoImpersonate` on so the admin account can act, and check the invariants you care about (ownership, facet mapping, balances, access control).
+A fork of the real chain at a recent block is the strongest check available before a privileged change, and it is stronger than any assertion about who could have signed: it proves the transaction actually does what you believe against the state that actually exists. Run the same scripts, with `autoImpersonate` on so the admin account can act (it is on by default for a fork run), and check the invariants you care about (ownership, facet mapping, balances, access control). [Rehearsing a deployment on a fork](../fork-runs/) is the how-to, including the one thing to declare so the rehearsal uses the forked network's settings rather than your dev node's.
 
 After execution, read the chain again. A successful receipt says a transaction was mined, not that the intended state transition happened.
 
