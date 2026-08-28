@@ -281,10 +281,12 @@ export function resolveExecutionParams<Extra extends Record<string, unknown> = R
 	// For a non-fork run the two ids are the same one and nothing changes.
 	const simulatedChainId = fork?.chainId ?? chainId;
 
-	const simulatedChainSemantics =
-		simulatedChainId === connectedChainId
-			? connectedChainConfig
-			: getChainSemanticsFromUserConfig(config, simulatedChainId);
+	// Read through the semantics function even when the two ids coincide, although the connected
+	// config carries the very same fields for that id: it is the SEMANTICS shape that keeps
+	// `autoImpersonate` undefaulted, and reusing the connected config here would re-inject its
+	// `false` and quietly outrank the fork-aware default below on the commonest fork of all (a
+	// hardhat node, which reports 31337 for both ids).
+	const simulatedChainSemantics = getChainSemanticsFromUserConfig(config, simulatedChainId);
 
 	// `env.network.chain` describes what the run is CONNECTED to, and its `id` is the one thing a
 	// fork run may not read off the local bucket: `execute`, `tx` and `deploy` hex-encode it into a
@@ -359,10 +361,26 @@ export function resolveExecutionParams<Extra extends Record<string, unknown> = R
 		}
 	}
 
-	// Resolve auto-impersonation flag (priority: params > environment config > global config)
+	// Resolve the auto-impersonation CAPABILITY (priority: params > chain config of the SIMULATED
+	// network > on for a fork, off otherwise).
+	//
+	// The last term is the only one that is fork-aware, and it is a default rather than a rule:
+	// impersonation is what makes an account rocketh cannot sign for executable on a node that
+	// supports it, so it is the only reason a Safe-owned step runs at all during a rehearsal, and a
+	// fork with it off stops at the first privileged call (ADR 0014). An explicit `false` at either
+	// level therefore still WINS, because turning it off is the supported way to exercise the
+	// unknown-signer deferral path on a fork and the `@rocketh/unknown-signer` scenarios are built
+	// on exactly that.
+	//
+	// This stays strictly on the CAPABILITY side of ADR 0006: `autoImpersonate` is resolved BEFORE
+	// the unknown-signer seam, `onUnknownSigner` is the policy afterwards, and giving the capability
+	// a fork-aware default gives the policy no new value and does not touch the seam.
 	let autoImpersonate = executionParameters.autoImpersonate;
 	if (autoImpersonate === undefined && actualChainSemantics.autoImpersonate !== undefined) {
 		autoImpersonate = actualChainSemantics.autoImpersonate;
+	}
+	if (autoImpersonate === undefined) {
+		autoImpersonate = fork !== undefined;
 	}
 
 	// Resolve the unknown-signer policy (priority: params > chain config > top-level config >

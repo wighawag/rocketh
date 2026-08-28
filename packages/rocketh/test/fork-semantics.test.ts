@@ -291,7 +291,10 @@ describe('with NOTHING declared', () => {
 
 			expect(resolved.environment.tags).toEqual([]);
 			expect(resolved.environment.autoMine).toBe(false);
-			expect(resolved.environment.autoImpersonate).toBe(false);
+			// the impersonation default is FORK-AWARE rather than built-in `false`, which is what makes
+			// a Safe-owned step execute during a rehearsal; owned by
+			// `fork-autoimpersonate-default.test.ts`
+			expect(resolved.environment.autoImpersonate).toBe(true);
 			expect(resolved.environment.confirmationsRequired).toBeUndefined();
 			// `'auto'` is the built-in policy default, resolved here rather than by the chain bucket
 			expect(resolved.environment.onUnknownSigner).toBe('auto');

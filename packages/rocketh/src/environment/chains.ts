@@ -21,8 +21,18 @@ const KNOWN_DEV_CHAIN_IDS = new Set([1337, 31337]);
  */
 export type ChainSemantics = Pick<
 	ChainConfig,
-	'tags' | 'deterministicDeployment' | 'autoImpersonate' | 'onUnknownSigner' | 'autoMine' | 'confirmationsRequired'
->;
+	'tags' | 'deterministicDeployment' | 'onUnknownSigner' | 'autoMine' | 'confirmationsRequired'
+> & {
+	/**
+	 * Deliberately UNDEFAULTED here (unlike on `ChainConfig`, which keeps a plain `boolean`), for
+	 * the reason `onUnknownSigner` already is: the default has exactly one home,
+	 * `resolveExecutionParams`, and that home now answers FORK-AWARELY. Defaulting it to `false`
+	 * here would make "nobody configured impersonation" indistinguishable from "configured off",
+	 * and since this term outranks the default, a fork of a network whose entry simply does not
+	 * mention impersonation would silently get `false` and the default would be dead code.
+	 */
+	readonly autoImpersonate?: boolean;
+};
 
 /**
  * Read a chain's deployment semantics and policy, defaulted.
@@ -83,7 +93,8 @@ export function getChainSemanticsFromUserConfig(config: ResolvedUserConfig, id: 
 	return {
 		deterministicDeployment,
 		tags: chainConfig?.tags || defaultTags,
-		autoImpersonate: chainConfig?.autoImpersonate || false,
+		// passed through UNDEFAULTED, see the type: the fork-aware default lives in `resolveExecutionParams`
+		autoImpersonate: chainConfig?.autoImpersonate,
 		// passed through UNDEFAULTED: the `'auto'` default lives in `resolveExecutionParams`
 		onUnknownSigner: chainConfig?.onUnknownSigner,
 		autoMine: chainConfig?.autoMine || false,
@@ -139,9 +150,14 @@ export function getChainConfigFromUserConfig(
 		chainType: 'default',
 	};
 
+	// `ChainConfig` describes a chain on its own terms and its `autoImpersonate` is a plain
+	// `boolean`, so the absence the SEMANTICS half preserves is closed here rather than published.
+	// Nothing reads it off this shape to decide a run: the run reads the semantics.
+	const chainConfigSemantics = {...semantics, autoImpersonate: semantics.autoImpersonate ?? false};
+
 	if (provider) {
 		return {
-			...semantics,
+			...chainConfigSemantics,
 			info: chainConfig?.info || defaultChainInfo,
 			pollingInterval,
 			properties,
@@ -151,7 +167,7 @@ export function getChainConfigFromUserConfig(
 		};
 	} else if (rpcUrl) {
 		return {
-			...semantics,
+			...chainConfigSemantics,
 			info: chainConfig?.info || defaultChainInfo,
 			pollingInterval,
 			properties,
