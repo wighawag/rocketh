@@ -704,6 +704,7 @@ export type ResolvedExecutionParams<Extra extends Record<string, unknown> = Reco
 		readonly autoMine: boolean;
 		readonly deleteDeploymentsIfDifferentGenesisHash: boolean;
 	};
+	/** The CONNECTED chain, as surfaced on `Environment['network']['chain']`. See there. */
 	readonly chain: ChainInfo;
 	readonly tags: readonly string[];
 	readonly saveDeployments: boolean;
@@ -735,6 +736,16 @@ export interface Environment<
 	};
 	readonly tags: {readonly [tag: string]: boolean};
 	readonly network: {
+		/**
+		 * The CONNECTED chain: what this run is talking to. Its `id` is the id the NODE reported,
+		 * which is also the `chainId` every transaction rocketh builds declares, because a locally
+		 * signed transaction commits to that value and the node rejects any other (ADR 0014).
+		 *
+		 * On a FORK that is deliberately NOT the network being simulated: only the id follows the
+		 * node, while the rest of the description (the name, above all the `rpcUrls`) keeps
+		 * describing the local fork node. What the run SIMULATES is `network.fork`, and that is
+		 * what configuration, deployment records and semantics follow.
+		 */
 		readonly chain: Chain;
 		readonly provider: TransactionHashTracker;
 		/**
