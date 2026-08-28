@@ -38,3 +38,14 @@ Raising the global default is the one thing not to do: the 5s default is doing u
 The first draft above blamed "load", which understates it. The failure reproduced on an otherwise idle machine, during a plain `pnpm test` at the repo root: 1028 of 1029 tests passed and the single red was this same test, timing out at 5000ms. Immediately afterwards, `vitest run test/export.test.ts` inside `packages/rocketh-export` passed all 35 tests.
 
 So the trigger is not a busy machine, it is the monorepo's own parallel test run, which is what CI, the acceptance gate and every contributor runs. Four tsc compilations competing with 87 other test files is enough on its own. That makes this a standing property of `pnpm test` rather than an occasional environment problem, and it moves the fix from nice-to-have to load-bearing: it bounced three separate acceptance gates during one drive of six tasks.
+
+# Recurrence (2026-08-28): it bounced SIX of six acceptance gates in the `fork-of-a-named-network` drive
+
+Every one of the six fork tasks bounced on this file and nothing else. In each case the rest of the suite was green (the totals grew from 1066 to 1102 tests as the drive added its own), the failing set was between two and four of these same four tests, and each run was verified afterwards by running `packages/rocketh-export` alone, which passed 35/35. So the drive spent six full re-verification cycles distinguishing this from a real red, on six tasks that never touched `@rocketh/export`.
+
+Two new data points, both of which support the pinned-timeout fix over the alternatives:
+
+- **The isolated re-run is not always a clean signal either.** On the last task the machine was under genuine load (load average 35, from an unrelated concurrent job) and `packages/rocketh-export` alone ALSO failed, 2 of 35. Re-running that same file with `--testTimeout=60000` passed 35/35. So the discriminator that actually works is raising the timeout, not reducing the parallelism around it: it isolates the budget as the single variable.
+- **The observed overshoot is small.** The timing out tests reported 6186ms and 6670ms against the 5000ms budget, so they are failing by roughly a second, not by an order of magnitude. A pinned timeout in the tens of seconds would absorb this with room to spare, which is consistent with the 923-991ms idle measurements above.
+
+This does not change the diagnosis or the recommended fix, it only raises the cost evidence: the fix is now the single highest-value piece of test-infrastructure work in the repo, because it taxes every gate of every task regardless of what that task touched.
