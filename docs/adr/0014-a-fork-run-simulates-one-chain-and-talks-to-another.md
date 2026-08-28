@@ -31,6 +31,14 @@ The rejected alternative is worth keeping, because it is cheaper and will be pro
 
 **Declaring `whenForked` configuration does NOT put a run into fork mode.** A run is a fork because of how it was invoked. If the presence of configuration were the switch, a user who described their fork once would find every later run forked. The name is chosen so this sentence is a reminder rather than a defence.
 
+## Naming: the CLI flag is `--is-fork`, and `--fork` is reserved for the day we can honour it
+
+The standalone-user flag is named twice in the planning notes as `--fork`, and that name promises something rocketh cannot do. **`--fork` reads as an imperative**: fork it. rocketh does not fork anything; it ATTACHES to a node somebody else forked, and it will only be able to honour the imperative if an in-process engine lands, at which point it would need somewhere to fork FROM and a block to fork AT. So the attach flag is `--is-fork`: an assertion about the node being pointed at, which is exactly what the user is telling us.
+
+That also leaves the two verbs able to coexist honestly later: `--is-fork` attaches to an existing fork, and a future `--fork` creates one. Naming the attach flag `--fork` today would force the create flag to be named around it tomorrow.
+
+This is the second naming correction of the same shape in this decision, after `whenForked` (which was `fork`), and the repetition is the useful part: **in this domain the bare word `fork` is ambiguous across three parts of speech** — the noun (a forked node), the adjective (this run is against one) and the verb (create one). Every name that uses it should be explicit about which it means, because the verb reading is the one that silently promises a capability.
+
 ## Consequences
 
 - **`chains[31337]` stops being the fork run's configuration.** It is where a user configures their LOCAL DEV NODE, and all of it, tags included, was silently becoming the configuration of a fork of mainnet. Deploy scripts branch on tags, so a script taking a shortcut under a `local` tag was taking it during what the user believed was a mainnet rehearsal. That is worse than absent configuration, because it is different configuration actively applied.

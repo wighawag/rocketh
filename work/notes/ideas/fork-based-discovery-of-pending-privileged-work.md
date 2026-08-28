@@ -162,7 +162,7 @@ Do not build `deferred-transaction-collector` yet. Compare it against fork-based
 **Track B, standalone rocketh users only:**
 
 4. Move "a fork does not save" into core. A fork run must keep READING the forked network's deployments, which is the point of it and already works; it must not save into that folder. Core's default would, but the hardhat-deploy caller guards it itself (`helpers.ts:130`, `saveDeployments: isFork ? false : undefined`). So this is not a live bug, it is precisely the trap the standalone path would spring, which is why it belongs here rather than first.
-5. `--fork` in the rocketh CLI, against an already-running anvil or hardhat node. A BOOLEAN flag with no argument: `-e, --environment` already names the environment and the connection URL already comes from the local chain config, so `-e mainnet --fork` needs nothing more and nothing conflicts.
+5. `--is-fork` in the rocketh CLI, against an already-running anvil or hardhat node. A BOOLEAN flag with no argument: `-e, --environment` already names the environment and the connection URL already comes from the local chain config, so `-e mainnet --is-fork` needs nothing more and nothing conflicts. NAMED `--is-fork` rather than `--fork` (decided 2026-08-27, ADR 0014): `--fork` is an imperative that promises rocketh will fork something, which it cannot do until an in-process engine lands, and reserving the imperative leaves the two verbs able to coexist when it does.
 
 **Later, either audience:**
 

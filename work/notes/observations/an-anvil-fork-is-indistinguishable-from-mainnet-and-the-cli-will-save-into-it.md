@@ -50,3 +50,13 @@ So the two tools fail in opposite directions: hardhat is too strict to be useful
 - Moving "a fork does not save" into core is what makes saying so protective.
 
 Neither is urgent for the hardhat-deploy audience, who are guarded in the caller. Both are the difference between a safe rehearsal and overwritten production records for anyone using the CLI.
+
+## Maintainer response (2026-08-27): the blast radius is smaller, and hardhat's behaviour is CORRECT
+
+Two qualifications from the maintainer, both of which change how this should be read.
+
+**The corruption is recoverable, because the deployments folder is normally COMMITTED.** That is the intended workflow (the records are project artifacts, versioned with the code), so a fork run that overwrites `deployments/mainnet/` shows up as a dirty working tree and is undone with a checkout. It is a bad surprise, not a loss. The note above was written as though the records were the only copy, and they are not. What survives is the surprise itself: nothing tells the user their rehearsal wrote to the production folder, and a user who commits without reading the diff carries it forward.
+
+**hardhat failing early is a FEATURE, not the useless half.** The note frames "too strict to be useful" as the counterpart to anvil's "too convincing to be safe". The maintainer's judgement is the opposite: refusing to load mainnet's records against a node reporting 31337 is exactly right, because the run genuinely is not mainnet and the error names both ids. The asymmetry is therefore not "one tool is bad and the other is worse", it is that hardhat fails closed and anvil cannot fail at all, having told the truth about being mainnet in every way rocketh knows how to ask.
+
+Neither qualification changes the implication for the plan: what an anvil user lacks is a way to SAY the run is a fork, and a rule that makes saying so protective.
