@@ -1,0 +1,5 @@
+---
+'rocketh': patch
+---
+
+A fork run now builds transactions declaring the chain id its NODE reports, instead of always declaring the local chain bucket's 31337. `env.network.chain.id`, which `execute`, `tx` and `deploy` hex-encode into a transaction's `chainId` field, is the id the provider answered with, so a fork against anvil (which reports the forked network's id) no longer signs transactions a node believing itself to be chain 1 would reject, while a fork against hardhat (which reports its own 31337) is unchanged. Only the id follows the node: the rest of `env.network.chain`, above all its rpc urls, still describes the local fork node, and the configuration, deployment records and semantics still follow the network being simulated. The chain-identity warning no longer fires on a fork under either provider shape, since a fork is exactly where the declared (simulated) chain and the node's chain legitimately disagree; off a fork a genuine mismatch still warns, and the id the run adopts is the node's whenever a node answered.
