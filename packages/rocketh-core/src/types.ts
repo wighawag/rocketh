@@ -282,9 +282,32 @@ export type ChainConfig = {
 );
 
 export type DeploymentEnvironmentConfig = {
-	readonly chain: number;
+	/**
+	 * The chain this environment is on. OPTIONAL, so that an entry may exist only to say where a
+	 * fork of this network listens (`whenForked` below): declaring one is then a single line and
+	 * does not require looking up a chain id. When it is declared it is both the id the identity
+	 * check compares the node against and, on a fork, the second source for the SIMULATED chain id
+	 * (`resolveForkDescriptor`).
+	 */
+	readonly chain?: number;
 	readonly scripts?: string | readonly string[];
 	readonly overrides?: Omit<ChainUserConfig, 'info'>;
+	/**
+	 * What differs when the run is a FORK of this network, and nothing else.
+	 *
+	 * A fork of mainnet is configured LIKE mainnet: it inherits `chains[<this chain>]` and this
+	 * entry's `overrides`, and states here only what is true of the fork alone, above all the local
+	 * endpoint it listens on. It is the same override bag as `overrides` (an endpoint, tags,
+	 * impersonation, deterministic-deployment settings), layered ON TOP of it and applied only when
+	 * the run is a fork, so the order is `chains[<id>]`, then `overrides`, then this, most specific
+	 * last (`docs/adr/0014-a-fork-run-simulates-one-chain-and-talks-to-another.md`).
+	 *
+	 * Declaring it does NOT put a run into fork mode, and the CONDITIONAL name says so: a run is a
+	 * fork because of how it was INVOKED, and this key only supplies the overrides once that has
+	 * happened. Were the presence of configuration the switch, a user who described their fork once
+	 * would find every later run forked.
+	 */
+	readonly whenForked?: Omit<ChainUserConfig, 'info'>;
 };
 
 export type Chains = {

@@ -1,4 +1,5 @@
 export {
+	CONVENTIONAL_LOCAL_RPC_URL,
 	setupDeployScripts,
 	loadEnvironmentFromStore,
 	resolveConfig,
