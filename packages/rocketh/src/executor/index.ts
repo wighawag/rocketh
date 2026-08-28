@@ -26,7 +26,7 @@ import {JSONRPCHTTPProvider} from 'eip-1193-jsonrpc-provider';
 import {createEnvironment} from '../environment/index.js';
 import {formatEther, getRoughGasPriceEstimate} from '../utils/eth.js';
 import {logger, spin} from '../internal/logging.js';
-import {getChainConfigFromUserConfig} from '../environment/chains.js';
+import {getChainConfigFromUserConfig, getChainSemanticsFromUserConfig} from '../environment/chains.js';
 
 /**
  * Setup function that creates the execute function for deploy scripts. It allow to specify a set of functions that will be available in the environment.
@@ -228,30 +228,57 @@ export function resolveExecutionParams<Extra extends Record<string, unknown> = R
 	const {name: environmentName} = getEnvironmentName(executionParameters);
 	const fork = resolveForkDescriptor(config, executionParameters);
 
-	// TODO fork chainId resolution option to keep the network being used
-	const idToFetch = fork ? 31337 : chainId;
+	// A fork run SIMULATES one chain and TALKS TO another (ADR 0014), and this one lookup used to
+	// answer both questions from the connected side. It SPLITS rather than swaps.
+	//
+	// The CONNECTED chain is the node this run actually talks to, which on a fork is the LOCAL fork
+	// node, hence 31337. This half must not move: this bucket supplies the PROVIDER, so sending the
+	// whole lookup to the forked network would point a fork run at production. It also stays the
+	// source of `chainInfo`, because `env.network.chain.id` is what `execute` and `tx` put in a
+	// transaction's `chainId` field and a node rejects an id it does not recognise as its own.
+	const connectedChainId = fork ? 31337 : chainId;
 
-	const chainConfig = getChainConfigFromUserConfig(config, idToFetch, executionParameters.provider);
+	const connectedChainConfig = getChainConfigFromUserConfig(config, connectedChainId, executionParameters.provider);
 
-	let chainInfo = chainConfig.info;
+	// The SIMULATED chain is the network being forked, and its configuration is what the run
+	// REHEARSES: deployment semantics, policy and TAGS (deploy scripts branch on those, so the
+	// local node's `local` tag used to make a script take the local shortcut during a mainnet
+	// rehearsal). The key is the descriptor's chain id when one was ESTABLISHED, else the id the
+	// run computed from the provider, and that fallback is not a degraded mode: anvil forking
+	// mainnet reports 1 because it IS forking mainnet, so `chains[1]` is found with nothing
+	// declared at all, while hardhat's 31337 lands on exactly the previous behaviour.
+	// For a non-fork run the two ids are the same one and nothing changes.
+	const simulatedChainId = fork?.chainId ?? chainId;
+
+	const simulatedChainSemantics =
+		simulatedChainId === connectedChainId
+			? connectedChainConfig
+			: getChainSemanticsFromUserConfig(config, simulatedChainId);
+
+	let chainInfo = connectedChainConfig.info;
 	const environmentConfig = config?.environments?.[environmentName];
+	// The environment-level override layer already ran on fork runs, since the environment NAME is
+	// the forked network's. It sits ON TOP of both buckets, so a user's overrides keep winning.
 	const actualChainConfig = environmentConfig?.overrides
 		? {
-				...chainConfig,
+				...connectedChainConfig,
 				...environmentConfig.overrides,
 				properties: {
-					...chainConfig?.properties,
+					...connectedChainConfig?.properties,
 					...environmentConfig.overrides.properties,
 				},
 			}
-		: chainConfig;
+		: connectedChainConfig;
+	const actualChainSemantics = environmentConfig?.overrides
+		? {...simulatedChainSemantics, ...environmentConfig.overrides}
+		: simulatedChainSemantics;
 
 	if (actualChainConfig?.properties) {
 		chainInfo = {...chainInfo, properties: actualChainConfig.properties};
 	}
 
-	// let environmentTags: string[] = actualChainConfig.tags.concat(environmentConfig?.tags); // TODO
-	const environmentTags = actualChainConfig.tags;
+	// let environmentTags: string[] = actualChainSemantics.tags.concat(environmentConfig?.tags); // TODO
+	const environmentTags = actualChainSemantics.tags;
 
 	let scripts = ['deploy'];
 	if (config.scripts) {
@@ -292,8 +319,8 @@ export function resolveExecutionParams<Extra extends Record<string, unknown> = R
 
 	// Resolve auto-impersonation flag (priority: params > environment config > global config)
 	let autoImpersonate = executionParameters.autoImpersonate;
-	if (autoImpersonate === undefined && actualChainConfig.autoImpersonate !== undefined) {
-		autoImpersonate = actualChainConfig.autoImpersonate;
+	if (autoImpersonate === undefined && actualChainSemantics.autoImpersonate !== undefined) {
+		autoImpersonate = actualChainSemantics.autoImpersonate;
 	}
 
 	// Resolve the unknown-signer policy (priority: params > chain config > top-level config >
@@ -301,8 +328,8 @@ export function resolveExecutionParams<Extra extends Record<string, unknown> = R
 	// `'ask'` only where the run can actually ask a human for text, so a CI run never prompts:
 	// it is the CAPABILITY that keeps CI safe, not the absence of a resolver.
 	let onUnknownSigner = executionParameters.onUnknownSigner;
-	if (onUnknownSigner === undefined && actualChainConfig.onUnknownSigner !== undefined) {
-		onUnknownSigner = actualChainConfig.onUnknownSigner;
+	if (onUnknownSigner === undefined && actualChainSemantics.onUnknownSigner !== undefined) {
+		onUnknownSigner = actualChainSemantics.onUnknownSigner;
 	}
 	if (onUnknownSigner === undefined && config?.onUnknownSigner !== undefined) {
 		onUnknownSigner = config.onUnknownSigner;
@@ -312,8 +339,8 @@ export function resolveExecutionParams<Extra extends Record<string, unknown> = R
 	}
 
 	let autoMine = executionParameters.autoMine;
-	if (autoMine === undefined && actualChainConfig.autoMine !== undefined) {
-		autoMine = actualChainConfig.autoMine;
+	if (autoMine === undefined && actualChainSemantics.autoMine !== undefined) {
+		autoMine = actualChainSemantics.autoMine;
 	}
 	if (autoMine === undefined) {
 		autoMine = false;
@@ -330,10 +357,10 @@ export function resolveExecutionParams<Extra extends Record<string, unknown> = R
 			name: environmentName,
 			tags: environmentTags,
 			fork,
-			deterministicDeployment: actualChainConfig.deterministicDeployment,
+			deterministicDeployment: actualChainSemantics.deterministicDeployment,
 			autoImpersonate,
 			onUnknownSigner,
-			confirmationsRequired: actualChainConfig.confirmationsRequired,
+			confirmationsRequired: actualChainSemantics.confirmationsRequired,
 			autoMine,
 			deleteDeploymentsIfDifferentGenesisHash: actualChainConfig.deleteDeploymentsIfDifferentGenesisHash,
 		},

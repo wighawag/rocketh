@@ -10,11 +10,30 @@ import {
 /** Chain ids that are considered ephemeral/dev (resettable) by convention. */
 const KNOWN_DEV_CHAIN_IDS = new Set([1337, 31337]);
 
-export function getChainConfigFromUserConfig(
-	config: ResolvedUserConfig,
-	id: number,
-	provider?: EIP1193ProviderWithoutEvents,
-): ChainConfig {
+/**
+ * The DEPLOYMENT SEMANTICS and policy half of a chain's configuration: what a run DOES, as
+ * opposed to what it CONNECTS to (the rpc url / provider) or what it IS (`info`, whose id every
+ * transaction declares).
+ *
+ * It is a half rather than the whole because a FORK run answers those questions from two
+ * different chains: the semantics come from the network being SIMULATED and the connection from
+ * the local node it is CONNECTED to (`docs/adr/0014-a-fork-run-simulates-one-chain-and-talks-to-another.md`).
+ */
+export type ChainSemantics = Pick<
+	ChainConfig,
+	'tags' | 'deterministicDeployment' | 'autoImpersonate' | 'onUnknownSigner' | 'autoMine' | 'confirmationsRequired'
+>;
+
+/**
+ * Read a chain's deployment semantics and policy, defaulted.
+ *
+ * Deliberately SILENT and total: it neither warns nor throws for a chain nobody described, unlike
+ * `getChainConfigFromUserConfig`, which must produce an `info` and a way to reach a node and says
+ * so when it cannot. A fork of a network with no `chains` entry gets these built-in defaults, and
+ * that absence is not a misconfiguration worth a notice: it is strictly better than the previous
+ * behaviour, which applied the LOCAL node's configuration to a rehearsal of another network.
+ */
+export function getChainSemanticsFromUserConfig(config: ResolvedUserConfig, id: number): ChainSemantics {
 	const chainConfig = config.chains?.[id];
 
 	const defaultCreate2Info = {
@@ -32,9 +51,7 @@ export function getChainConfigFromUserConfig(
 		proxyBytecode: '0x67363d3d37363d34f03d5260086018f3',
 	} as const;
 
-	const pollingInterval = chainConfig?.pollingInterval || config.defaultPollingInterval;
-
-	let deterministicDeployment: {
+	const deterministicDeployment: {
 		create2: Create2DeterministicDeploymentInfo;
 		create3: Create3DeterministicDeploymentInfo;
 	} = {
@@ -62,6 +79,28 @@ export function getChainConfigFromUserConfig(
 	if (chainConfig?.info?.testnet) {
 		defaultTags.push('testnet');
 	}
+
+	return {
+		deterministicDeployment,
+		tags: chainConfig?.tags || defaultTags,
+		autoImpersonate: chainConfig?.autoImpersonate || false,
+		// passed through UNDEFAULTED: the `'auto'` default lives in `resolveExecutionParams`
+		onUnknownSigner: chainConfig?.onUnknownSigner,
+		autoMine: chainConfig?.autoMine || false,
+		confirmationsRequired: chainConfig?.confirmationsRequired,
+	};
+}
+
+export function getChainConfigFromUserConfig(
+	config: ResolvedUserConfig,
+	id: number,
+	provider?: EIP1193ProviderWithoutEvents,
+): ChainConfig {
+	const chainConfig = config.chains?.[id];
+
+	const semantics = getChainSemanticsFromUserConfig(config, id);
+
+	const pollingInterval = chainConfig?.pollingInterval || config.defaultPollingInterval;
 
 	const properties = chainConfig?.properties || config.defaultChainProperties || {};
 
@@ -102,33 +141,21 @@ export function getChainConfigFromUserConfig(
 
 	if (provider) {
 		return {
+			...semantics,
 			info: chainConfig?.info || defaultChainInfo,
-			deterministicDeployment,
 			pollingInterval,
 			properties,
 			provider,
-			tags: chainConfig?.tags || [...defaultTags],
-			autoImpersonate: chainConfig?.autoImpersonate || false,
-			// passed through UNDEFAULTED: the `'auto'` default lives in `resolveExecutionParams`
-			onUnknownSigner: chainConfig?.onUnknownSigner,
-			autoMine: chainConfig?.autoMine || false,
-			confirmationsRequired: chainConfig?.confirmationsRequired,
 			deleteDeploymentsIfDifferentGenesisHash:
 				chainConfig?.deleteDeploymentsIfDifferentGenesisHash ?? KNOWN_DEV_CHAIN_IDS.has(id),
 		};
 	} else if (rpcUrl) {
 		return {
+			...semantics,
 			info: chainConfig?.info || defaultChainInfo,
-			deterministicDeployment,
 			pollingInterval,
 			properties,
 			rpcUrl: rpcUrl,
-			tags: chainConfig?.tags || [...defaultTags],
-			autoImpersonate: chainConfig?.autoImpersonate || false,
-			// passed through UNDEFAULTED: the `'auto'` default lives in `resolveExecutionParams`
-			onUnknownSigner: chainConfig?.onUnknownSigner,
-			autoMine: chainConfig?.autoMine || false,
-			confirmationsRequired: chainConfig?.confirmationsRequired,
 			deleteDeploymentsIfDifferentGenesisHash:
 				chainConfig?.deleteDeploymentsIfDifferentGenesisHash ?? KNOWN_DEV_CHAIN_IDS.has(id),
 		};

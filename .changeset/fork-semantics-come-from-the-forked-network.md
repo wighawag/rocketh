@@ -1,0 +1,5 @@
+---
+'rocketh': minor
+---
+
+A fork run now takes its deployment semantics and policy from the network it SIMULATES instead of from the local node it is CONNECTED to. Deterministic deployment, the unknown-signer policy, auto-impersonation, the confirmation count, auto-mining and the environment TAGS come from `chains[<forked network's id>]`, so a fork of mainnet is configured like mainnet and a `localhost` chain entry no longer applies its own tags (which deploy scripts branch on) and policy to a mainnet rehearsal. The CONNECTION is unchanged and still resolved from the local chain entry, so a fork run keeps talking to the fork and never to the forked network's public endpoint, and `env.network.chain` still reports the connected chain, so transactions declare the same `chainId` as before. The lookup key is the fork descriptor's chain id when it is known and the id the run computed from the provider otherwise, which needs no configuration at all against a node reporting the forked chain's id (anvil), and lands on the previous behaviour against one reporting a local engine id (hardhat). Environment-level `overrides` still apply on top.
