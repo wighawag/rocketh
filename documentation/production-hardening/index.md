@@ -22,7 +22,7 @@ So a run that unexpectedly holds the admin key will send the admin transaction r
 
 ## Check `autoImpersonate` is off
 
-`autoImpersonate` is a NODE CAPABILITY switch: it asks the node to sign as an account you do not hold the key for, which only a development node will do. It is **off by default** and belongs in fork and local testing, where it is genuinely useful for rehearsing an upgrade as the real admin.
+`autoImpersonate` is a NODE CAPABILITY switch: it asks the node to sign as an account you do not hold the key for, which only a development node will do. It belongs in fork and local testing, where it is genuinely useful for rehearsing an upgrade as the real admin, and it defaults to **off** for every run except a fork, which turns it on because executing the privileged steps is the point of rehearsing. A run against a production chain is not a fork, so the default there is off.
 
 The thing to check is that it is not switched on for a production chain in a shared config, since an impersonated account is signable and therefore never reaches the unknown-signer path.
 
