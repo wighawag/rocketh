@@ -4,7 +4,6 @@ slug: fork-aware-autoimpersonate-default
 spec: fork-of-a-named-network
 blockedBy: [fork-chain-identity-simulated-versus-connected]
 covers: [5, 6]
-needsAnswers: true
 ---
 
 ## What to build
