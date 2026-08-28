@@ -14,7 +14,7 @@ The user-facing documentation for fork runs, which do not appear in the document
 
 - What a fork run IS, in the one sentence that explains every behaviour that follows: it is the forked network for the purposes of deployment RECORDS, and is not that network for the purposes of chain identity. Everything else is downstream of that.
 - How to run one, and that the connection goes to a node the user already started (anvil or a hardhat node), on the conventional local port unless configured otherwise.
-- What is INHERITED: a fork of mainnet is configured like mainnet, including the deterministic-deployment settings, the unknown-signer policy, confirmations, mining and the TAGS that deploy scripts branch on.
+- What is INHERITED, and the CONDITION on it: a fork of mainnet is configured like mainnet, including the deterministic-deployment settings, the unknown-signer policy, confirmations, mining and the TAGS that deploy scripts branch on. This works without any configuration when the node reports the forked chain's own id, which anvil does. It does NOT work on a hardhat node, which reports 31337 while simulating mainnet, so there the settings fall back to whatever is configured for 31337 unless the user declares the forked network's chain id. Say this plainly with the one-line remedy: a page that promises inheritance unconditionally would be telling exactly the wrong audience the wrong thing.
 - How to state what differs, with the `fork` key on the network's own environment entry, and the layering order.
 - That impersonation is on by default for a fork, why (the Safe-owned steps execute, which is the point of rehearsing), and how to turn it off to exercise the deferral path instead.
 - That declaring fork configuration does not fork anything by itself.
@@ -22,7 +22,7 @@ The user-facing documentation for fork runs, which do not appear in the document
 **Two non-goals that must be stated rather than left to be discovered:**
 
 1. **Saving is unchanged, and a fork run can still write into the forked network's deployment folder.** The hardhat plugin suppresses it, so hardhat users are safe today, but the rule lives in that caller rather than in core. Anyone driving core directly should know. This is deliberately not fixed yet.
-2. **There is no `--fork` flag on the CLI yet.** A fork is reachable through the hardhat plugin's environment variable, or by constructing the fork input programmatically.
+2. **There is no `--is-fork` flag on the CLI yet.** A fork is reachable through the hardhat plugin's environment variable, or by constructing the fork input programmatically. Name it `--is-fork` when referring to the planned flag, never `--fork`: the imperative is reserved for a future in-process engine that can actually create a fork (ADR 0014).
 
 **Also worth a short section**, because it is the question every reader will arrive with: which chain id things use. Configuration and records follow the network being simulated; transactions follow the node, because a signed transaction's chain id must be one the node accepts. anvil and hardhat genuinely differ here and both are fine.
 
@@ -34,6 +34,7 @@ Repo rules apply to prose: no em dashes, and no hard wrapping inside a paragraph
 - [ ] The `fork` configuration key is documented with its layering order and a worked example
 - [ ] The impersonation default is documented, with how to turn it off and why you would
 - [ ] Both non-goals are stated plainly: saving behaviour, and the absence of a CLI flag
+- [ ] Inheritance is documented as CONDITIONAL on the simulated chain id being known, with the declaration that fixes the hardhat case
 - [ ] The two-chain-ids question is answered in the reader's terms, not the implementation's
 - [ ] Every configuration sample matches the shipped types rather than being written from memory
 - [ ] The unknown-signers page gains a pointer, since rehearsing Safe-owned steps on a fork is the main reason to do this

@@ -60,3 +60,5 @@ Two qualifications from the maintainer, both of which change how this should be 
 **hardhat failing early is a FEATURE, not the useless half.** The note frames "too strict to be useful" as the counterpart to anvil's "too convincing to be safe". The maintainer's judgement is the opposite: refusing to load mainnet's records against a node reporting 31337 is exactly right, because the run genuinely is not mainnet and the error names both ids. The asymmetry is therefore not "one tool is bad and the other is worse", it is that hardhat fails closed and anvil cannot fail at all, having told the truth about being mainnet in every way rocketh knows how to ask.
 
 Neither qualification changes the implication for the plan: what an anvil user lacks is a way to SAY the run is a fork, and a rule that makes saying so protective.
+
+_The measured node behaviour behind this note (anvil's chain id and genesis answers, hardhat's 31337) is recorded with its provenance in `work/notes/findings/fork-node-chain-identity-behaviour.md`, which is the citable source; this note is the consequence for rocketh._

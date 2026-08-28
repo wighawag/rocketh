@@ -18,6 +18,8 @@ Tags deserve naming separately, because they are the sharpest edge and the least
 
 **The lookup key is the descriptor's chain id when it has one, and the id the run already computed otherwise.** That second case is not a degradation, it is what makes zero configuration work: the computed id IS the provider's, a non-fork run already resolves its settings that way, and **anvil forking mainnet reports 1**, so `chains[1]` is found with nothing declared at all. Only hardhat breaks the coincidence by reporting 31337 while simulating mainnet, and there the fallback lands on exactly today's behaviour rather than on anything worse. So no notice, no degraded mode, no new state: one expression with a fallback.
 
+**The split is THREE-way, not two, and this is the part that will bite if it is not stated.** The one chain-config object feeds three consumers: the PROVIDER, the POLICY and tags, and the chain INFO that becomes `env.network.chain`. Only the middle one moves in this task. The info stays with the CONNECTED side, because `env.network.chain.id` is what `execute` and `tx` put in the transaction's `chainId` field, and a transaction has to declare an id the node will accept. Move it here by accident and a user who declared their forked network's chain id, then ran against a hardhat node reporting 31337, would have their locally signed transactions rejected, with no test covering the combination. Making the identity deliberate is the NEXT task; this one must simply not disturb it.
+
 **Half the layering already works**, which makes this smaller than it sounds: the environment-level override layer already runs on fork runs, because the environment name IS the forked network's name. What is wrong is only the chain bucket underneath it. You are sliding the right bucket under a merge that already happens, not inventing a merge.
 
 The existing TODO comment about resolving the fork's chain id is answered by this task and should be deleted, not edited.
@@ -29,6 +31,7 @@ The existing TODO comment about resolving the fork's chain id is answered by thi
 - [ ] Environment TAGS on a fork come from the forked network, not from the local chain bucket
 - [ ] The discriminating test exists: configure the local chain bucket and the forked network's bucket DIFFERENTLY, run a fork, and assert which one the run adopted. Without this, an implementation that changed nothing would pass
 - [ ] A non-fork run is completely unaffected, tested
+- [ ] `env.network.chain` is UNCHANGED by this task, so the transactions a fork run builds declare exactly what they declare today. Tested with a declared simulated chain id that DIFFERS from the provider's, which is the combination that would otherwise break
 - [ ] With NOTHING declared, a fork against a node reporting the forked chain's id resolves that network's settings, since this is the zero-configuration path and the one most users are on
 - [ ] With nothing declared, a fork against a node reporting a local engine id behaves exactly as it does today, with no notice and no new state
 - [ ] The environment-level override layer still applies on top, so a user's existing overrides keep winning
