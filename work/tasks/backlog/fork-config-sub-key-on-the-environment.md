@@ -4,7 +4,6 @@ slug: fork-config-sub-key-on-the-environment
 spec: fork-of-a-named-network
 blockedBy: [fork-aware-autoimpersonate-default]
 covers: [15]
-needsAnswers: true
 ---
 
 ## What to build
