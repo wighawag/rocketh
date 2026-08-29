@@ -299,7 +299,18 @@ export async function getChainIdForExecutionParams(
  * forked network is layered on by `resolveForkDescriptor`, which has the config.
  */
 export function getEnvironmentName(executionParams: ExecutionParams): {name: string; fork?: ForkDescriptor} {
-	const environmentProvided = executionParams.environment || (executionParams as any).network;
+	// `network` was an undocumented alias for `environment`, readable only through a cast because it
+	// appears in no type. It is REFUSED rather than quietly ignored: ignoring it would turn
+	// `{network: 'mainnet'}` into the default in-memory run, so a caller who meant mainnet would get
+	// a run that deploys nowhere and says nothing, which is precisely the silent-misbehaviour class
+	// the option boundary in `@rocketh/node` was just rebuilt to end. An alias nobody can see in the
+	// types is not worth keeping; an actionable error costs one branch.
+	if ((executionParams as {network?: unknown}).network !== undefined) {
+		throw new Error(
+			'`network` is not an execution parameter: use `environment`. It was an undocumented alias for it and has been removed.',
+		);
+	}
+	const environmentProvided = executionParams.environment;
 	let environmentName = 'memory';
 	let fork: ForkDescriptor | undefined;
 	if (environmentProvided) {
