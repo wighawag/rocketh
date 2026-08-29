@@ -34,7 +34,7 @@ anvil --fork-url https://my-mainnet-endpoint.example/rpc
 rocketh -e mainnet --is-fork
 ```
 
-That is the whole of it, with **no configuration file change at all**. The run reads `deployments/mainnet`, takes mainnet's settings and tags, impersonates so your Safe-owned steps execute, dials `http://127.0.0.1:8545` and writes nothing back.
+That is the whole of it, with **no configuration file change at all**. The run reads `deployments/mainnet`, takes whatever you have configured for mainnet under `chains[1]`, impersonates so your Safe-owned steps execute, dials `http://127.0.0.1:8545` and writes nothing back. (If you have no `chains[1]` entry, there is nothing to inherit and the run uses the built-in defaults with no tags. That is still the point of the change: it is your mainnet configuration or nothing, never your local dev node's.)
 
 How it works with nothing declared: you handed rocketh no `provider`, so it asks the node itself which chain it is, dialling the endpoint it is about to run against. anvil forking mainnet answers `1`, so `chains[1]` (mainnet's settings) is found on its own. A `hardhat node` answers `31337` and needs one line of configuration, in [the condition](#what-a-fork-run-inherits-and-the-one-condition) below.
 
@@ -71,7 +71,7 @@ await loadAndExecuteDeploymentsFromFiles({
 });
 ```
 
-`{fork: 'mainnet'}` is the whole of the fork input. It also accepts a `chainId`, which states the SIMULATED network's id when the caller happens to know it (`{fork: 'mainnet', chainId: 1}`), and that is what hardhat-deploy would supply on your behalf.
+`{fork: 'mainnet'}` is the whole of the fork input. It also accepts a `chainId`, which states the SIMULATED network's id when the caller happens to know it (`{fork: 'mainnet', chainId: 1}`). No shipped caller supplies it today, so on the hardhat path you state it yourself with the one declaration described in [the condition](#what-a-fork-run-inherits-and-the-one-condition) below.
 
 Nothing has to be declared for the connection. You handed rocketh no `provider`, so it asks the node itself which chain it is talking to, dialling the endpoint it is about to run against: `whenForked.rpcUrl` if you named one, else the conventional local endpoint. That is fork-only, and it has to be: off a fork the endpoint is looked up under the chain id, so asking the node first would mean already knowing the answer.
 
@@ -136,7 +136,7 @@ export const config = {
 } as const satisfies UserConfig;
 ```
 
-It is the same override bag as `overrides` (an endpoint, tags, impersonation, deterministic-deployment settings, and so on), layered on top of it. The order is `chains[<forked id>]`, then `environments[<network>].overrides`, then `whenForked`, **most specific last**, and the fork layer applies only when the run is a fork. In the example above a fork run gets `confirmationsRequired: 9` and the `mainnet` tags, while a plain `-e mainnet` run gets `2` and never sees the fork's endpoint.
+It is the same override bag as `overrides` (an endpoint, tags, impersonation, deterministic-deployment settings, and so on), layered on top of it. The order is `chains[<forked id>]`, then `environments[<network>].overrides`, then `whenForked`, **most specific last**, and the fork layer applies only when the run is a fork. That order describes what a fork INHERITS: the tags, policy and deployment semantics. The connection side of a chain entry (`pollingInterval`, `properties`) still comes from the local bucket the run is actually connected to, since it describes the node you are talking to rather than the network you are simulating. In the example above a fork run gets `confirmationsRequired: 9` and the `mainnet` tags, while a plain `-e mainnet` run gets `2` and never sees the fork's endpoint.
 
 An entry that carries nothing but the fork layer is valid, so saying where a fork listens does not mean declaring a chain you are not using:
 

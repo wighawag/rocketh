@@ -75,8 +75,11 @@ jobs:
           # the registered trusted publisher. v2 dropped its own .npmrc handling,
           # which is fine because `setup-node` above sets `registry-url`.
           publish-script: pnpm release:ci
-          # changeset:version force-patches pending changesets (pre-1.0 policy,
-          # see scripts/force-patch-changesets.ts) before `changeset version`.
+          # changeset:version runs `changeset version`, re-syncs the scaffold
+          # template's pinned ranges, then refuses to let a pre-1.0 package
+          # graduate to 1.x (see scripts/check-no-major-graduation.ts). A 0.x
+          # `minor` is expressible: it is how a breaking pre-1.0 change gets a
+          # version number a consumer's `^0.19.x` range will not silently take.
           version-script: pnpm changeset:version
           # v2 REQUIRES the token as an input: it no longer reads the GITHUB_TOKEN
           # environment variable, nor the credentials `actions/checkout` configures.
