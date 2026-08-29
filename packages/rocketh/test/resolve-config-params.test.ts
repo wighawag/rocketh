@@ -87,10 +87,21 @@ describe('getEnvironmentName', () => {
 		expect(fork).toBeUndefined();
 	});
 
-	it('accepts the legacy "network" key', () => {
-		const {name, fork} = getEnvironmentName({network: 'mainnet'} as any);
-		expect(name).toBe('mainnet');
-		expect(fork).toBeUndefined();
+	/**
+	 * `network` was an undocumented alias for `environment`, readable only through a cast. It is
+	 * REFUSED rather than ignored: ignoring it would make `{network: 'mainnet'}` the default
+	 * in-memory run, so a caller who meant mainnet would get one that deploys nowhere and says
+	 * nothing. The error is the whole point of the removal, so it is what gets pinned.
+	 */
+	it('refuses the removed "network" alias instead of silently running in memory', () => {
+		expect(() => getEnvironmentName({network: 'mainnet'} as any)).toThrowError(
+			/`network` is not an execution parameter/,
+		);
+		expect(() => getEnvironmentName({network: {fork: 'mainnet'}} as any)).toThrowError(/use `environment`/);
+	});
+
+	it('is unaffected by an absent "network" key, which is every real caller', () => {
+		expect(getEnvironmentName({environment: 'sepolia', network: undefined} as any).name).toBe('sepolia');
 	});
 
 	it('unwraps the fork object form {fork: "mainnet"} into a descriptor naming it', () => {
