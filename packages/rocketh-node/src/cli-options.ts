@@ -1,5 +1,5 @@
 import {Command} from 'commander';
-import type {ForkInput} from '@rocketh/core/types';
+import type {ExecutionParams, ForkInput, UnknownSignerPolicy} from '@rocketh/core/types';
 
 /**
  * The `rocketh` command's OPTION SURFACE, defined here rather than in `cli.ts` so that it can be
@@ -39,6 +39,37 @@ export function buildCLIProgram(version: string): Command {
 }
 
 /**
+ * What commander PARSES the option surface above into: one key per declared flag, in commander's
+ * own shapes. A value-taking option is a `string` (commander does no conversion), a boolean flag
+ * is `true` when given and ABSENT otherwise, and `environment` is required so it is always there.
+ *
+ * This type is the whole point of `toExecutionParams` below. It is deliberately NOT core's
+ * `ExecutionParams`: the two differ, they differ per option, and asserting one to be the other is
+ * what let `--tags` ship broken from `e2dbd6f7` until it was noticed (see `toExecutionParams`).
+ * Declaring the parsed shape honestly is what turns the difference into something the compiler
+ * can see.
+ *
+ * Keep it in step with `buildCLIProgram`: `packages/rocketh-node/test/cli-tags.test.ts` asserts
+ * the declared options and these keys are the same set, so a flag added without a key here (the
+ * step at which its core shape gets thought about at all) goes red rather than silently never
+ * reaching core.
+ */
+export type RockethCLIOptions = {
+	scripts?: string;
+	tags?: string;
+	deployments?: string;
+	skipGasReport?: boolean;
+	/** Read by the bin script to configure the logger; core has no home for it. */
+	logLevel?: string;
+	skipPrompts?: boolean;
+	onUnknownSigner?: string;
+	saveDeployments?: boolean;
+	reset?: boolean;
+	environment: string;
+	isFork?: boolean;
+};
+
+/**
  * What core is told the run is against: an environment NAME, or the `ForkInput` that says the
  * node is simulating that network.
  *
@@ -48,12 +79,113 @@ export function buildCLIProgram(version: string): Command {
  * `@rocketh/node` does hold a name-to-chain map, but it is keyed by viem's kebab-cased chain name
  * (mainnet's key is `ethereum`), so a match against an environment name would be a coincidence.
  * The run instead asks the node itself, which on a fork is both possible and honest.
- *
- * This must be applied AFTER the raw options are spread into the execution parameters: the spread
- * carries commander's `environment`, which is always the string, and would overwrite a fork input
- * built before it. Same reason `onUnknownSigner` is fixed up after the spread.
  */
-export function resolveEnvironmentInput(options: {environment?: unknown; isFork?: unknown}): string | ForkInput {
-	const environment = options.environment as string;
-	return options.isFork ? {fork: environment} : environment;
+export function resolveEnvironmentInput(
+	options: Pick<RockethCLIOptions, 'environment' | 'isFork'>,
+): string | ForkInput {
+	return options.isFork ? {fork: options.environment} : options.environment;
+}
+
+const UNKNOWN_SIGNER_POLICIES: readonly UnknownSignerPolicy[] = ['throw', 'ask', 'auto'];
+
+function isUnknownSignerPolicy(value: string): value is UnknownSignerPolicy {
+	return (UNKNOWN_SIGNER_POLICIES as readonly string[]).includes(value);
+}
+
+/**
+ * The run-level policy for an `unsignable` `from`, or `undefined` to leave it to config (chain,
+ * then top-level). Commander hands over whatever the user typed, so the value is validated here
+ * rather than passed on raw.
+ *
+ * `--skip-prompts` says "skip any prompts", and the interactive unknown-signer resolver IS a
+ * prompt, so it must force `throw` rather than only silencing the reset/gas-price confirmations.
+ * It wins over an explicit value: asking to be prompted AND not prompted is a contradiction, and
+ * the safe half is not prompting.
+ *
+ * Throwing is how the refusal LEAVES this module: it is the bin script that owns talking to a
+ * terminal, so `cli.ts` turns this into the same message on stderr and the same exit code it
+ * always printed. Exiting from here instead would make the option surface untestable.
+ */
+export function resolveUnknownSignerPolicy(
+	options: Pick<RockethCLIOptions, 'skipPrompts' | 'onUnknownSigner'>,
+): UnknownSignerPolicy | undefined {
+	if (options.skipPrompts) {
+		return 'throw';
+	}
+	const value = options.onUnknownSigner;
+	if (value === undefined) {
+		// leave it unset so config (chain, then top-level) still decides
+		return undefined;
+	}
+	if (!isUnknownSignerPolicy(value)) {
+		throw new Error(
+			`invalid --on-unknown-signer value: ${JSON.stringify(value)}. Expected one of: ${UNKNOWN_SIGNER_POLICIES.join(', ')}.`,
+		);
+	}
+	return value;
+}
+
+/**
+ * The tags to select scripts by, as core's contract states them: a LIST, or `undefined` for no
+ * filter at all.
+ *
+ * The option is documented as "comma separated", and a script tag containing a comma is refused
+ * by an explicit throw in the executor's selection loop, so splitting on `,` is unambiguous.
+ *
+ * The empty string is guarded FIRST, and that guard is not cosmetic: splitting `''` yields
+ * `['']`, which is a non-empty list, so the filter ENGAGES and matches nothing — a run that
+ * silently does no work. `--tags ''` means the same as not passing the flag. hardhat-deploy
+ * guards it identically (`args.tags && args.tags != '' ? args.tags : undefined`).
+ *
+ * Segments are NOT trimmed, matching hardhat-deploy: a tag is whatever the user typed between
+ * commas, and quietly editing it would be a second way for the flag to mean something other than
+ * it says.
+ */
+export function parseTags(value: string | undefined): string[] | undefined {
+	if (value === undefined || value === '') {
+		return undefined;
+	}
+	return value.split(',');
+}
+
+/**
+ * The CLI's BOUNDARY: commander's parsed options in, core's `ExecutionParams` out, one explicit
+ * entry per option.
+ *
+ * It is explicit because the alternative was tried and failed three times. `cli.ts` used to hand
+ * core `...(options as ExecutionParams)` and then hand-write a fix-up for each option whose CLI
+ * shape did not match its core shape. A cast tells the compiler to stop checking, so `--tags`
+ * (a `string` reaching a `string[]` field) type-checked and shipped: the selection loop iterated
+ * the value's CHARACTERS, which meant `--tags Token` selected nothing and `--tags cat` selected a
+ * script tagged `a`. `--scripts` and `--deployments` were the other half of the same hole: they
+ * belong in `ConfigOverrides`, not on the run parameters, so the spread left them as excess
+ * properties nothing reads. `onUnknownSigner` and `environment` needed the same kind of fix-up
+ * and got it only because a human noticed.
+ *
+ * With the mapping written out, an option whose CLI shape differs from its core shape is a BUILD
+ * error at the one place that has to think about the difference. The order-sensitivity that came
+ * with the spread (a transform written before it was silently overwritten) is gone with it.
+ *
+ * Throws when an option's VALUE is not one core accepts; see `resolveUnknownSignerPolicy`.
+ */
+export function toExecutionParams(options: RockethCLIOptions): ExecutionParams {
+	return {
+		environment: resolveEnvironmentInput(options),
+		tags: parseTags(options.tags),
+		askBeforeProceeding: options.skipPrompts ? false : true,
+		reportGasUse: options.skipGasReport ? false : true,
+		// set-only flag: absent must stay `undefined` so core's own default still decides (which is
+		//  what keeps a fork run from writing into the forked network's records)
+		saveDeployments: options.saveDeployments,
+		reset: options.reset ? true : false,
+		onUnknownSigner: resolveUnknownSignerPolicy(options),
+		// Folders are CONFIG in core, not run parameters, and the sibling CLIs (`@rocketh/export`,
+		//  `@rocketh/doc`, `@rocketh/verifier`) already route `--deployments` through the same
+		//  `ConfigOverrides`. An entry left `undefined` overrides nothing (`resolveConfig` skips it),
+		//  so the config file keeps answering when the flag is absent.
+		config: {
+			scripts: options.scripts,
+			deployments: options.deployments,
+		},
+	};
 }
