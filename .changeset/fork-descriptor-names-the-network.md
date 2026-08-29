@@ -1,6 +1,0 @@
----
-'@rocketh/core': minor
-'rocketh': minor
----
-
-`env.network.fork` now says WHICH network the run simulates instead of "the environment argument was not a string". A run given `{fork: 'mainnet'}` reports `{networkName: 'mainnet'}`, with the forked network's `chainId` when it is known (supplied with the fork input, else declared as `environments['mainnet'].chain`) and absent when neither source said, rather than borrowing the connected node's id. A run with no environment, which is the in-memory default, is no longer flagged as a fork. That case is worth calling out because it is the documented test-fixture idiom (`loadAndExecuteDeploymentsFromFiles({provider})`): `env.network.fork` was previously truthy on every such run and is now absent, so a script branching on it changes course; the run now resolves its chain configuration under the id the node reports rather than always under `31337`, which is identical against a hardhat node and different against one reporting anything else; and its deployment folder is no longer exempt from the chainId/genesis identity check. Each of those was the fork exemption applying where nothing was being forked. The field stays absent (falsy) off a fork, so `if (env.network.fork)` reads exactly as before, and a fork still loads the forked network's deployment records by skipping the chain-identity check at load time.

@@ -1,5 +1,27 @@
 # @rocketh/node
 
+## 0.20.0
+
+### Minor Changes
+
+- 4f7ea46: The `rocketh` CLI can now say that the node it is attaching to is a fork: `rocketh -e mainnet --is-fork`. The flag takes no argument, because `-e` already names the environment and a fork run's environment name IS the forked network's name, so the two map straight onto the `{fork: <name>}` input core already accepts. It reaches every fork behaviour that already exists: the run reports the fork descriptor, reads `deployments/mainnet` on a node that is not mainnet, inherits the forked network's settings and tags, impersonates by default so Safe-owned steps execute, and does not write back (`--save-deployments` remains the only way to turn saving on, which is the right shape once the fork default is off). With nothing declared it dials the conventional local endpoint and asks that node which chain it is, so `anvil --fork-url ... ` plus `-e mainnet --is-fork` works with no configuration file change at all; a fork listening elsewhere is still named by `whenForked.rpcUrl`. The name is an ASSERTION about somebody else's node, not an instruction: rocketh attaches to a fork rather than creating one, and `--fork` stays reserved for a future in-process engine that could honour the imperative (ADR 0014). The CLI's option surface moved into `src/cli-options.ts` so that the flags can be parsed by a test, since importing the bin script would run a deployment.
+
+### Patch Changes
+
+- ec0142f: `rocketh --tags <value>` selects scripts again, and `--scripts` / `--deployments` reach core again. All three are REGRESSIONS, not options that never worked: the CLI's option-to-core resolution used to split `--tags` on `,` and carry both folder options, and that layer was removed in `e2dbd6f7` ("revamp of types and resolution", 2025-09-19), leaving `cli.ts` to hand commander's options to core with `...(options as ExecutionParams)`. A cast tells the compiler to stop checking, so a `string` reaching a `string[]` field type-checked: `--tags Token` arrived as the string `'Token'`, the filter engaged, and the selection loop iterated its CHARACTERS. Both failure modes are gone. `--tags Token` selected nothing at all (which read as "no scripts matched" rather than as a bug), and `--tags cat` selected a script tagged `a`, running work nobody asked for. `--tags ''` and an absent flag both mean NO filter, as before, rather than a filter for the empty tag. `--scripts` and `--deployments` were silently dropped by the same cast for a different reason: they are `ConfigOverrides` in core, not run parameters, so they arrived as excess properties nothing reads; they now travel the same route the sibling CLIs (`@rocketh/export`, `@rocketh/doc`, `@rocketh/verifier`) already use for `--deployments`. The cast itself is gone, replaced by a typed `toExecutionParams` mapping in `cli-options.ts` with one explicit entry per option, so the next option whose CLI shape differs from its core shape is a build error rather than a silent misbehaviour; the `onUnknownSigner` and `--is-fork` fix-ups that used to be hand-written after the spread are ordinary entries of it, with unchanged behaviour (an invalid `--on-unknown-signer` still prints the same message on stderr and exits 1). hardhat-deploy's own tag handling, which was already correct, is untouched.
+- 52a8a8b: `--tags "a, b"` now selects `a` and `b`. The space a person types after a comma used to become part of the tag, producing `" b"`, which matches no script and then reports itself as "no scripts matched" rather than as a typo, so the flag appeared to work while running only half of what was asked for. Segments are now trimmed and empty ones dropped, so `a,,b` and `a,` behave sensibly too. A value that collapses to nothing (`""`, `" "`, `","`) still means NO filter rather than a filter that matches nothing, which is the case that would otherwise produce a silently do-nothing run. Both entry points parse `--tags` identically, since the rocketh CLI and the hardhat-deploy task must not disagree about what a tag is.
+- Updated dependencies [f6f3049]
+- Updated dependencies [359711a]
+- Updated dependencies [a074103]
+- Updated dependencies [6a274cb]
+- Updated dependencies [d479e65]
+- Updated dependencies [ef77a3d]
+- Updated dependencies [54233e9]
+- Updated dependencies [334b260]
+- Updated dependencies [93e6ef5]
+  - rocketh@0.20.0
+  - @rocketh/core@0.20.0
+
 ## 0.19.22
 
 ### Patch Changes

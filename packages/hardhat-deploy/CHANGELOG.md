@@ -1,5 +1,26 @@
 # hardhat-deploy
 
+## 2.0.25
+
+### Patch Changes
+
+- f6f3049: A fork run no longer saves by default, so it cannot write into the deployment records of the network it simulates. A fork's environment NAME is the forked network's, because that is the folder it READS and reading those records is the point of forking, but the same name made saving default ON, so a rehearsal of mainnet wrote into `deployments/mainnet`. The rule now lives in core (`resolveExecutionParams`) rather than in each caller: hardhat-deploy paired its fork input with `saveDeployments: false` itself, so any second caller that forgot that argument corrupted production records silently, and that pairing has been removed now that core owns it. The term sits above BOTH default branches, including the no-provider short-circuit that answers before the environment name is looked at, since a fork driven without a provider is exactly the case a `--is-fork` flag will produce. An explicit `saveDeployments: true` still saves on a fork, because the explicit value is read before any default and "I know what I am doing, write it" has to stay expressible; there is deliberately no fork-saves-elsewhere destination. Non-fork runs are untouched, `memory`/`hardhat`/`default` and the no-provider case included, and the READ path is untouched: a fork still loads the forked network's folder and still skips the chain-identity check to do it.
+- 52a8a8b: `--tags "a, b"` now selects `a` and `b`. The space a person types after a comma used to become part of the tag, producing `" b"`, which matches no script and then reports itself as "no scripts matched" rather than as a typo, so the flag appeared to work while running only half of what was asked for. Segments are now trimmed and empty ones dropped, so `a,,b` and `a,` behave sensibly too. A value that collapses to nothing (`""`, `" "`, `","`) still means NO filter rather than a filter that matches nothing, which is the case that would otherwise produce a silently do-nothing run. Both entry points parse `--tags` identically, since the rocketh CLI and the hardhat-deploy task must not disagree about what a tag is.
+- Updated dependencies [f6f3049]
+- Updated dependencies [ec0142f]
+- Updated dependencies [359711a]
+- Updated dependencies [a074103]
+- Updated dependencies [6a274cb]
+- Updated dependencies [d479e65]
+- Updated dependencies [ef77a3d]
+- Updated dependencies [54233e9]
+- Updated dependencies [334b260]
+- Updated dependencies [93e6ef5]
+- Updated dependencies [4f7ea46]
+- Updated dependencies [52a8a8b]
+  - rocketh@0.20.0
+  - @rocketh/node@0.20.0
+
 ## 2.0.24
 
 ### Patch Changes

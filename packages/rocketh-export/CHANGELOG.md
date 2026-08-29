@@ -1,5 +1,25 @@
 # @rocketh/export
 
+## 0.19.25
+
+### Patch Changes
+
+- Updated dependencies [f6f3049]
+- Updated dependencies [ec0142f]
+- Updated dependencies [359711a]
+- Updated dependencies [a074103]
+- Updated dependencies [6a274cb]
+- Updated dependencies [d479e65]
+- Updated dependencies [ef77a3d]
+- Updated dependencies [54233e9]
+- Updated dependencies [334b260]
+- Updated dependencies [93e6ef5]
+- Updated dependencies [4f7ea46]
+- Updated dependencies [52a8a8b]
+  - rocketh@0.20.0
+  - @rocketh/node@0.20.0
+  - @rocketh/core@0.20.0
+
 ## 0.19.24
 
 ### Patch Changes

@@ -1,5 +1,22 @@
 # @rocketh/deploy
 
+## 0.20.0
+
+### Minor Changes
+
+- 8ea2a76: `execute` guards gain `equals`, sugar over `satisfied` that compares the value the way its ABI type says the value means (`address` and `bytesN` fold case, `string` does not, a bigint never coerces against a number, arrays and tuples compare elementwise), plus `output` to select one of the read function's declared outputs by name or position. The evaluation record now reports the whole value read, the selected value and the expected one.
+- 3e56ae0: A skipped guarded step now says so, on one line, through the environment's user-message channel (`env.showMessage`, the channel `catchUnknownSigner` already prints through): which step was skipped, which contract was read and how (a view function plus its arguments, or a slot plus the interpretation the word was decoded under), the value that came back, the selected output where one was selected, and the expected value where one was given. A skip is otherwise the only outcome with no trace at all, so a run whose guard is subtly wrong looked exactly like one where the work was already done. Everything reported is read off the evaluation record, so the line and the returned record cannot disagree. The path that sends stays silent: it already leaves a transaction behind.
+- 468db2f: A guard that cannot produce a verdict now fails the run instead of being mistaken for "not satisfied": a read that reverts, a target that returns no data once the inherited retry is exhausted, a slot that cannot be read or decoded, and a `satisfied` predicate that throws all abort before the transaction is built, so nothing is broadcast. The failure surfaces as a `GuardEvaluationError` (new, on the `@rocketh/read-execute/errors` subpath) naming the guard, the function or slot it reads and the target it reads it on, and keeping the underlying failure whole on `cause`.
+- 2bc550a: `execute` and `executeByName` accept an optional `guard`, a declared read that answers whether the call is still needed. `kind: 'call'` reads a view function on a target (another contract by default, since that is where the effect is usually observable) and judges the decoded value with `satisfied`. A satisfied guard skips the call: no transaction is built and nothing is broadcast. The evaluation record is returned on both paths, and `evaluateGuard(env)` evaluates a guard standalone without executing anything. Unguarded calls keep their exact previous signature. One type-level correction ships with this: the exported aliases `ExecuteFunction`, `ExecuteFunctionByName` and `TxFunction` said they resolved to `Promise<EIP1193DATA>`, while the implementations have always returned a receipt. They now say `Promise<EIP1193TransactionReceipt>`. Runtime behaviour is unchanged, but code annotated with those aliases rather than with `ReturnType<typeof execute>` will need updating.
+- e5e14bd: Add the `storage` guard kind to `execute`: read a slot on any contract (`kind: 'storage'`, `on`, `slot`, `as`), decode the word under a declared interpretation from a closed set (`address`, `bytes32`, `uint256`, `bool`), and compare it under the same ABI-type rule a getter's return goes through. This is what expresses the commonest upgrade topology there is, where the proxy exposes no getter and the effect is observable only in its EIP-1967 implementation slot.
+
+### Patch Changes
+
+- Updated dependencies [6a274cb]
+- Updated dependencies [d479e65]
+- Updated dependencies [ef77a3d]
+  - @rocketh/core@0.20.0
+
 ## 0.19.13
 
 ### Patch Changes

@@ -1,5 +1,21 @@
 # @rocketh/proxy
 
+## 0.19.26
+
+### Patch Changes
+
+- Updated dependencies [8ea2a76]
+- Updated dependencies [3e56ae0]
+- Updated dependencies [468db2f]
+- Updated dependencies [2bc550a]
+- Updated dependencies [e5e14bd]
+- Updated dependencies [6a274cb]
+- Updated dependencies [d479e65]
+- Updated dependencies [ef77a3d]
+  - @rocketh/read-execute@0.20.0
+  - @rocketh/core@0.20.0
+  - @rocketh/deploy@0.19.19
+
 ## 0.19.25
 
 ### Patch Changes

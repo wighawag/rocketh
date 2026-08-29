@@ -1,5 +1,18 @@
 # @rocketh/doc
 
+## 0.19.23
+
+### Patch Changes
+
+- Updated dependencies [ec0142f]
+- Updated dependencies [6a274cb]
+- Updated dependencies [d479e65]
+- Updated dependencies [ef77a3d]
+- Updated dependencies [4f7ea46]
+- Updated dependencies [52a8a8b]
+  - @rocketh/node@0.20.0
+  - @rocketh/core@0.20.0
+
 ## 0.19.22
 
 ### Patch Changes
