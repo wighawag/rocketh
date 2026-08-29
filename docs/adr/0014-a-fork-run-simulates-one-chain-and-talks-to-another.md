@@ -39,6 +39,16 @@ That also leaves the two verbs able to coexist honestly later: `--is-fork` attac
 
 This is the second naming correction of the same shape in this decision, after `whenForked` (which was `fork`), and the repetition is the useful part: **in this domain the bare word `fork` is ambiguous across three parts of speech** — the noun (a forked node), the adjective (this run is against one) and the verb (create one). Every name that uses it should be explicit about which it means, because the verb reading is the one that silently promises a capability.
 
+## Refinement: the `overrides` layer lends a fork everything EXCEPT its endpoint
+
+The layering above is stated as `chains[<forked id>]` under `environments[<name>].overrides` under `environments[<name>].whenForked`, most specific last. That is right for every field but one, and the exception was found by building it: `overrides` belongs to the environment of a REAL network, so its `rpcUrl` is **that network's own endpoint**. A fork run inheriting it dials production while the user believes they are on their fork, and does so silently, with the deployment records and every impersonated Safe step landing against the real chain. It is the same failure the `chains[31337]` correction above prevents, arriving one layer higher.
+
+So on a fork the endpoint is **withheld** from the `overrides` layer, and comes from `whenForked.rpcUrl` else the conventional local endpoint. Every other field in that same bag still crosses, so a fork keeps being configured like the network it simulates.
+
+This is not an exception to the model, it IS the model: connection from the LOCAL side, everything else from the network being SIMULATED. The endpoint is the connection, and the connection may not be inherited from the simulated network at ANY layer, which is exactly why `chains[<forked id>]` never supplied it either. Writing `whenForked: {rpcUrl}` was already the documented remedy, but a remedy nobody knows they need is not a defence: same reasoning as `whenForked`'s own naming, prefer making the mistake unrepresentable over documenting the pairing.
+
+The hazard was latent rather than live when it was closed, because the only caller that could fork (hardhat-deploy) always passes a `provider`, which beats any `rpcUrl` in the merge. It becomes reachable on the `--is-fork` path, which is precisely the path that attaches to an anvil fork with no provider of its own, so it was closed before that path exists rather than after.
+
 ## Consequences
 
 - **`chains[31337]` stops being the fork run's configuration.** It is where a user configures their LOCAL DEV NODE, and all of it, tags included, was silently becoming the configuration of a fork of mainnet. Deploy scripts branch on tags, so a script taking a shortcut under a `local` tag was taking it during what the user believed was a mainnet rehearsal. That is worse than absent configuration, because it is different configuration actively applied.

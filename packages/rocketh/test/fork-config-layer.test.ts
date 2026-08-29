@@ -268,3 +268,84 @@ describe('what this must NOT change', () => {
 		expect(resolved.environment.onUnknownSigner).toBe('ask');
 	});
 });
+
+/**
+ * The one field the `overrides` layer does NOT lend a fork: its endpoint.
+ *
+ * `environments.mainnet.overrides.rpcUrl` is how you reach the REAL mainnet, because that is the
+ * environment it describes. On a fork run it is therefore the single address that must never be
+ * dialled, and inheriting it would put a rehearsal on production silently, with every deployment
+ * record and every impersonated Safe step landing against the real chain.
+ *
+ * It is latent rather than live for today's only forking caller (hardhat-deploy always passes a
+ * `provider`, which beats any `rpcUrl` in the merge), and it becomes reachable on the `--is-fork`
+ * path, which is exactly the path that attaches to an anvil fork with no provider of its own.
+ */
+describe('a fork never inherits the endpoint of the network it simulates', () => {
+	const overridesNameProduction: UserConfig = {
+		...baseConfig,
+		environments: {
+			mainnet: {
+				chain: 1,
+				// how you reach the real mainnet, and on a fork the one address to avoid
+				overrides: {rpcUrl: MAINNET_RPC_URL, tags: ['rehearsal'], confirmationsRequired: 2},
+			},
+		},
+	};
+
+	it('falls back to the conventional local endpoint rather than dialling production', () => {
+		const resolved = resolve({
+			config: overridesNameProduction,
+			environment: {fork: 'mainnet'},
+			computedChainId: 31337,
+		});
+
+		expect(endpointOf(resolved.provider)).toBe(CONVENTIONAL_LOCAL_RPC_URL);
+		expect(endpointOf(resolved.provider)).not.toBe(MAINNET_RPC_URL);
+	});
+
+	/**
+	 * The withholding is scoped to the ENDPOINT. Everything else in the same bag still crosses,
+	 * so a fork keeps being configured like the network it simulates: without this the test above
+	 * would also pass for an implementation that dropped the whole layer on a fork.
+	 */
+	it('still inherits every OTHER override from the same bag', () => {
+		const resolved = resolve({
+			config: overridesNameProduction,
+			environment: {fork: 'mainnet'},
+			computedChainId: 31337,
+		});
+
+		expect(resolved.environment.tags).toEqual(['rehearsal']);
+		expect(resolved.environment.confirmationsRequired).toBe(2);
+	});
+
+	it('lets the fork layer name the endpoint, which is where it belongs', () => {
+		const resolved = resolve({
+			config: {
+				...baseConfig,
+				environments: {
+					mainnet: {chain: 1, overrides: {rpcUrl: MAINNET_RPC_URL}, whenForked: {rpcUrl: FORK_RPC_URL}},
+				},
+			},
+			environment: {fork: 'mainnet'},
+			computedChainId: 31337,
+		});
+
+		expect(endpointOf(resolved.provider)).toBe(FORK_RPC_URL);
+	});
+
+	/**
+	 * And nothing was loosened off a fork: a plain run of the same environment still dials the
+	 * endpoint its overrides name, which is the whole point of declaring one.
+	 */
+	it('leaves a NON-fork run of the same environment dialling its overridden endpoint', () => {
+		const resolved = resolve({
+			config: overridesNameProduction,
+			environment: 'mainnet',
+			computedChainId: 1,
+		});
+
+		expect(endpointOf(resolved.provider)).toBe(MAINNET_RPC_URL);
+	});
+});

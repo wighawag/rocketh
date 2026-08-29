@@ -331,13 +331,28 @@ export function resolveExecutionParams<Extra extends Record<string, unknown> = R
 		connectedChainConfig.info.id === chainId ? connectedChainConfig.info : {...connectedChainConfig.info, id: chainId};
 	// The environment-level override layer already ran on fork runs, since the environment NAME is
 	// the forked network's. It sits ON TOP of both buckets, so a user's overrides keep winning.
-	const overriddenChainConfig = environmentConfig?.overrides
+	//
+	// ...with ONE field withheld on a fork, and it is the dangerous one. `overrides` belongs to the
+	// environment of a REAL network, so its `rpcUrl` is that network's own endpoint: the single
+	// address a rehearsal must never dial. Inheriting it would point a fork run at production while
+	// the user believed they were on their fork, which is the worst outcome this file can produce,
+	// and it would do so silently. Withholding it is not an exception to the layering but the same
+	// rule that already governs it: connection from the LOCAL side, everything else from the network
+	// being simulated (ADR 0014). `chains[<forked id>]` does not supply the connection either.
+	// Where the fork listens is said by `whenForked.rpcUrl` below, else the conventional local
+	// endpoint. Every other override still crosses, so this costs a fork nothing it should inherit.
+	const connectionOverrides =
+		fork && environmentConfig?.overrides
+			? (({rpcUrl: _theRealNetworksEndpoint, ...rest}) => rest)(environmentConfig.overrides)
+			: environmentConfig?.overrides;
+
+	const overriddenChainConfig = connectionOverrides
 		? {
 				...connectedChainConfig,
-				...environmentConfig.overrides,
+				...connectionOverrides,
 				properties: {
 					...connectedChainConfig?.properties,
-					...environmentConfig.overrides.properties,
+					...connectionOverrides.properties,
 				},
 			}
 		: connectedChainConfig;
