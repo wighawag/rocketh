@@ -42,8 +42,6 @@ import {loadAndExecuteDeploymentsFromFiles} from '@rocketh/node';
 await loadAndExecuteDeploymentsFromFiles({
 	// `fork` names the environment being SIMULATED, which is also the deployments folder read
 	environment: {fork: 'mainnet'},
-	// see "Saving is unchanged" below: without this, a fork run writes into deployments/mainnet
-	saveDeployments: false,
 });
 ```
 
@@ -159,7 +157,6 @@ An explicit `false` still wins, at either level, and that is how you exercise th
 // for one run
 await loadAndExecuteDeploymentsFromFiles({
 	environment: {fork: 'mainnet'},
-	saveDeployments: false,
 	autoImpersonate: false,
 });
 ```
@@ -211,13 +208,25 @@ A fork run reads the forked network's folder, `deployments/mainnet`, which is th
 
 Those records were written on another chain, so the checks that normally protect a folder from being read against the wrong node (the recorded chain id and genesis hash) are skipped on a fork. The same goes for the rule that deletes a dev chain's deployments when its genesis changed: a fork never triggers it.
 
-## Two things a fork run does not do yet
+### A fork does not SAVE, and you do not have to remember that
 
-### Saving is unchanged
+Reading those records is the point of forking; writing them back is not. **A fork run does not save by default**, on every path: through the hardhat plugin, through `@rocketh/node`, or by calling core yourself. Nothing has to be passed to get that, so a rehearsal cannot write into `deployments/mainnet` because a caller forgot an argument. The rule lives in rocketh itself, which is why the example above passes no `saveDeployments`.
 
-Stated precisely, because the difference matters: **core would happily save a fork run into the forked network's folder.** It is the one caller that can fork today, the hardhat plugin, that suppresses saving itself (it passes `saveDeployments: false` whenever `HARDHAT_FORK` is set). So hardhat-deploy users are safe today, and the rule lives in that caller rather than in rocketh.
+What a fork run saves is therefore in memory only: your scripts see what they just deployed, `env.get('MyContract')` answers, and nothing reaches the folder.
 
-If you drive `@rocketh/node` (or core) directly with a fork input, nothing suppresses it for you: the environment name IS the forked network's, so the default is to save, and a rehearsal would write into the real records. Pass `saveDeployments: false` yourself, as the example above does. Moving the rule into core is deliberately deferred rather than forgotten.
+If you really do want a fork run to write, say so, and it writes into the forked network's folder because that is the environment it is:
+
+```typescript
+await loadAndExecuteDeploymentsFromFiles({
+	environment: {fork: 'mainnet'},
+	// an EXPLICIT value outranks the default: this writes into deployments/mainnet
+	saveDeployments: true,
+});
+```
+
+That is the whole escape hatch, and it is deliberately the only one: rocketh does not offer a "save a fork somewhere else" destination. There is nowhere else that would be true.
+
+## One thing a fork run does not do yet
 
 ### There is no CLI flag
 

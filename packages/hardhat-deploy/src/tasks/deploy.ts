@@ -75,6 +75,13 @@ const runScriptWithHardhat: NewTaskActionFunction<RunActionArguments> = async (a
 	await loadAndExecuteDeploymentsFromFiles({
 		provider,
 		environment: environment,
+		// This guard STAYS, although core now defaults a fork to not saving, because this task never
+		//  leaves the value undefined: `saveDeployments` above is an explicit boolean by construction
+		//  (it starts at `true`), and an explicit value outranks every default, fork-awareness
+		//  included. So core's rule cannot reach this call site, and dropping the guard would turn a
+		//  `HARDHAT_FORK` run into an explicit `true` and write into the forked network's records.
+		//  It also keeps `--save-deployments true` inert on a fork, exactly as today; making that flag
+		//  the fork escape hatch would be a user-visible change to the flag, not to this task.
 		saveDeployments: isFork ? false : saveDeployments,
 		askBeforeProceeding: skipPrompts ? false : true,
 		tags: tags?.split(','),

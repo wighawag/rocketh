@@ -406,10 +406,31 @@ export function resolveExecutionParams<Extra extends Record<string, unknown> = R
 			? actualChainConfig.provider
 			: (new JSONRPCHTTPProvider(actualChainConfig.rpcUrl) as EIP1193ProviderWithoutEvents);
 
+	// Where a run's records go, and the ONE place the fork rule lives.
+	//
+	// A fork run's environment NAME is the forked network's, because that is the folder it READS,
+	// and reading those records is the entire point of forking (ADR 0014). Saving is the other half
+	// and the name is exactly the wrong answer there: defaulting on the name alone makes a rehearsal
+	// of mainnet write into `deployments/mainnet`. So a fork defaults to NOT saving, and it says so
+	// here rather than in every caller that learns to fork: the knowledge used to live in
+	// hardhat-deploy, which paired its fork input with `saveDeployments: false` itself, and a second
+	// caller forgetting that second argument got production-record corruption with no warning.
+	// Prefer making the mistake unrepresentable over documenting the pairing.
+	//
+	// Note this does NOT send a fork's records somewhere else. If a fork run should ever save, the
+	// destination is a separate decision; this term only makes the DEFAULT safe.
 	let saveDeployments = executionParameters.saveDeployments;
 
 	if (saveDeployments === undefined) {
-		if (!executionParameters.provider) {
+		// ABOVE both branches below, deliberately. The no-provider short-circuit answers `true` before
+		// the environment name is ever looked at, and a fork driven WITHOUT a provider is precisely
+		// the `--is-fork` case (attach to an anvil fork by rpc url), so a fork term added only to the
+		// named-environment branch would leave the hazard live on the very path this exists to
+		// protect. An explicit `executionParameters.saveDeployments` is still read first, so
+		// "I know what I am doing, write it" stays expressible on a fork.
+		if (fork) {
+			saveDeployments = false;
+		} else if (!executionParameters.provider) {
 			saveDeployments = true;
 		} else {
 			if (environmentName === 'memory' || environmentName === 'hardhat' || environmentName === 'default') {
