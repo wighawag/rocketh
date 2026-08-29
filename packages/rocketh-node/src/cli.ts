@@ -1,36 +1,17 @@
 #! /usr/bin/env node
 import {hookup, setupLogger} from 'named-logs-console';
 import {loadEnv} from 'ldenv';
-import {Command} from 'commander';
 import pkg from '../package.json' with {type: 'json'};
 import {loadAndExecuteDeploymentsFromFiles} from './executor/index.js';
 import {ExecutionParams, UnknownSignerPolicy} from 'rocketh/types';
 import {packagesWithLogsEnabled} from './index.js';
+import {buildCLIProgram, resolveEnvironmentInput} from './cli-options.js';
 
 hookup();
 loadEnv();
 
-const commandName = 'rocketh';
-const program = new Command();
-program
-	.name(commandName)
-	.version(pkg.version)
-	.usage(`${commandName}`)
-	.description('execute deploy scripts and store the deployments')
-	.option('-s, --scripts <value>', 'path the folder containing the deploy scripts to execute')
-	.option('-t, --tags <value>', 'comma separated list of tags to execute')
-	.option('-d, --deployments <value>', 'folder where deployments are saved')
-	.option('--skip-gas-report', 'if set skip gas report')
-	.option('--log-level <value>', 'set the log level')
-	.option('--skip-prompts', 'if set skip any prompts (this also forces --on-unknown-signer throw)')
-	.option(
-		'--on-unknown-signer <value>',
-		"what to do when a transaction's `from` cannot be signed for: throw | ask | auto (default: auto)",
-	)
-	.option('--save-deployments', 'if set, save deployments')
-	.option('--reset', 'if set, delete all deployments first')
-	.requiredOption('-e, --environment <value>', 'environment to use')
-	.parse(process.argv);
+const program = buildCLIProgram(pkg.version);
+program.parse(process.argv);
 
 const options = program.opts();
 
@@ -98,4 +79,8 @@ loadAndExecuteDeploymentsFromFiles({
 	// AFTER the spread: commander would otherwise pass the raw, unvalidated string
 	//  through, and an omitted flag must stay `undefined` so config still decides.
 	onUnknownSigner,
+	// Also AFTER the spread, and for the same reason: `environment` is a NAME to commander, while
+	//  core takes either a name or a `ForkInput`. `--is-fork` is what turns the one into the other,
+	//  so a transform placed before the spread would be overwritten by the raw string.
+	environment: resolveEnvironmentInput(options),
 });
