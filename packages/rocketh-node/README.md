@@ -84,7 +84,7 @@ export {loadAndExecuteDeploymentsFromFiles};
 Then in a test:
 
 ```typescript
-const {deployments, accounts} = await loadAndExecuteDeploymentsFromFiles({provider, network: 'localhost'});
+const {deployments, namedAccounts} = await loadAndExecuteDeploymentsFromFiles({provider, environment: 'localhost'});
 ```
 
 ### Other exports

@@ -21,7 +21,8 @@ export interface Environment<
 	readonly network: {
 		readonly chain: Chain;
 		readonly provider: TransactionHashTracker;
-		readonly fork?: boolean;
+		/** absent off a fork; on one, `{networkName, chainId?}` naming the network being simulated */
+		readonly fork?: ForkDescriptor;
 		readonly deterministicDeployment: DeterministicDeploymentInfo;
 	};
 	readonly deployments: Deployments;
