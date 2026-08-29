@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/deploy",
-	"version": "0.19.18",
+	"version": "0.19.19",
 	"description": "Deploy EVM smart contracts with deterministic CREATE2 and CREATE3 support, for rocketh and hardhat-deploy.",
 	"keywords": [
 		"rocketh",

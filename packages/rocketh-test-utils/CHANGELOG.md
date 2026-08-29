@@ -1,5 +1,21 @@
 # @rocketh/test-utils
 
+## 0.2.18
+
+### Patch Changes
+
+- Updated dependencies [f6f3049]
+- Updated dependencies [359711a]
+- Updated dependencies [a074103]
+- Updated dependencies [6a274cb]
+- Updated dependencies [d479e65]
+- Updated dependencies [ef77a3d]
+- Updated dependencies [54233e9]
+- Updated dependencies [334b260]
+- Updated dependencies [93e6ef5]
+  - rocketh@0.20.0
+  - @rocketh/core@0.20.0
+
 ## 0.2.17
 
 ### Patch Changes

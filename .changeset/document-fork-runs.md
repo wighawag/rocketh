@@ -1,4 +1,0 @@
----
----
-
-Document fork runs on the documentation site: what a fork run is (it is the forked network for deployment records and is not that network for chain identity), how to start one through hardhat-deploy or by driving `@rocketh/node` with a fork input, what it inherits from the network it simulates and the declaration that makes that inheritance work on a node reporting its own chain id, the `whenForked` layer and its ordering, the fork-aware `autoImpersonate` default and how to turn it off, the two chain ids a fork run carries, and the two current non-goals (core still saves a fork run into the forked network's folder, which only the hardhat plugin suppresses, and there is no `--is-fork` CLI flag yet). The unknown-signers and production-hardening pages now point at it. Documentation only; no package code changes.

@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/diamond",
-	"version": "0.19.20",
+	"version": "0.19.21",
 	"description": "Deploy and upgrade EIP-2535 Diamond proxies, for rocketh and hardhat-deploy.",
 	"keywords": [
 		"rocketh",

@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/test-utils",
-	"version": "0.2.17",
+	"version": "0.2.18",
 	"description": "Test utilities for rocketh deploy scripts, running a real environment against a mock EIP-1193 provider.",
 	"keywords": [
 		"rocketh",
