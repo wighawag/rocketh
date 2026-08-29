@@ -20,7 +20,33 @@ anvil listens on `http://127.0.0.1:8545`, which is also where `hardhat node` lis
 
 ## Telling rocketh the run is a fork
 
-A run is a fork **because of how it was invoked**. There are two ways to invoke one today.
+A run is a fork **because of how it was invoked**. There are three ways to invoke one.
+
+### From the command line: `--is-fork`
+
+The flag takes no argument. `-e` already names the environment, and a fork run's environment name IS the forked network's name, so the two together say everything:
+
+```bash
+# in one terminal
+anvil --fork-url https://my-mainnet-endpoint.example/rpc
+
+# in another
+rocketh -e mainnet --is-fork
+```
+
+That is the whole of it, with **no configuration file change at all**. The run reads `deployments/mainnet`, takes mainnet's settings and tags, impersonates so your Safe-owned steps execute, dials `http://127.0.0.1:8545` and writes nothing back.
+
+How it works with nothing declared: you handed rocketh no `provider`, so it asks the node itself which chain it is, dialling the endpoint it is about to run against. anvil forking mainnet answers `1`, so `chains[1]` (mainnet's settings) is found on its own. A `hardhat node` answers `31337` and needs one line of configuration, in [the condition](#what-a-fork-run-inherits-and-the-one-condition) below.
+
+**The flag is an assertion about the node you are pointing at, not an instruction to create a fork.** rocketh attaches to a fork somebody else started; it does not start one. That is why the name is `--is-fork` and why plain `--fork` does not exist: that word reads as an imperative, and it is reserved for the day an in-process engine can honour it (it would need somewhere to fork FROM and a block to fork AT). Without the flag, `rocketh -e mainnet` is a real mainnet run, which is exactly what it should be.
+
+A fork on another port, or any other difference, is one line in [`whenForked`](#saying-what-differs-whenforked), and the flag composes with it:
+
+```bash
+rocketh -e mainnet --is-fork   # dials whenForked.rpcUrl when you named one
+```
+
+If the node is not up, the run stops and says which endpoint it tried, rather than guessing an id and signing for a chain nobody is running.
 
 ### Through hardhat-deploy
 
@@ -52,10 +78,6 @@ Nothing has to be declared for the connection. You handed rocketh no `provider`,
 The node's answer WINS over an `environments[<network>].chain` you declared, because it is the only id a transaction can be signed for. Declaring `chain: 1` therefore stays a statement about the network being SIMULATED (it is what a hardhat fork needs, see below), and never becomes the id your transactions carry.
 
 If the node is not up, the run stops and says which endpoint it tried, rather than guessing an id and signing for a chain nobody is running.
-
-### There is no `--is-fork` flag yet
-
-`rocketh -e mainnet` is never a fork run: `-e` takes an environment NAME, and a fork is a different kind of input. The planned CLI flag is spelled `--is-fork`, an assertion about the node you are pointing at, and it does not exist yet. (`--fork` is deliberately reserved for a future in-process engine that can actually create a fork, since that word reads as an imperative rocketh cannot honour today.)
 
 ## What a fork run inherits, and the one condition
 
@@ -217,13 +239,9 @@ await loadAndExecuteDeploymentsFromFiles({
 });
 ```
 
+From the command line that is `rocketh -e mainnet --is-fork --save-deployments`. The flag is set-only (there is no `--no-save-deployments`), which is the right shape once the fork default is off: on a fork it is the only way to turn saving on, and it cannot be typed by accident.
+
 That is the whole escape hatch, and it is deliberately the only one: rocketh does not offer a "save a fork somewhere else" destination. There is nowhere else that would be true.
-
-## One thing a fork run does not do yet
-
-### There is no CLI flag
-
-Covered above: a fork is reachable through the hardhat plugin's `HARDHAT_FORK` variable or by constructing the fork input programmatically. The planned flag is `--is-fork`.
 
 ## See also
 

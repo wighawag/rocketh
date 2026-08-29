@@ -32,6 +32,9 @@ rocketh -e sepolia --tags Token
 
 # start from scratch: delete existing deployment records first
 rocketh -e localhost --reset
+
+# rehearse against a node somebody else forked (anvil --fork-url ...)
+rocketh -e mainnet --is-fork
 ```
 
 ### Options
@@ -48,6 +51,11 @@ rocketh -e localhost --reset
 | `--log-level <value>`         | Set the log level.                                                                                      |
 | `--skip-prompts`              | Skip any prompts. Also forces `--on-unknown-signer throw`.                                              |
 | `--on-unknown-signer <value>` | What to do when a transaction's `from` cannot be signed for: `throw`, `ask` or `auto` (default `auto`). |
+| `--is-fork`                   | The node being attached to is a fork of the environment named by `-e`. Takes no argument.               |
+
+### Rehearsing on a fork
+
+`--is-fork` is an assertion about the node you are pointing at: rocketh attaches to a fork somebody else started, it does not create one. With `anvil --fork-url <mainnet endpoint>` running, `rocketh -e mainnet --is-fork` reads `deployments/mainnet` on that node, takes mainnet's settings and tags, impersonates so Safe-owned steps execute, and writes nothing back (pass `--save-deployments` if you really mean to). Nothing has to be configured: the run dials `http://127.0.0.1:8545` and asks that node which chain it is. A fork listening elsewhere is named by `environments[<network>].whenForked.rpcUrl`. See [Rehearsing a deployment on a fork](https://rocketh.dev/documentation/fork-runs/).
 
 ### Unattended runs
 
