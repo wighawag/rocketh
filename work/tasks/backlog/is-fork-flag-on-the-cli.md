@@ -1,7 +1,7 @@
 ---
 title: 'Give rocketh users who are not on hardhat a way to say "the node I am pointing at is a fork": `--is-fork`'
 slug: is-fork-flag-on-the-cli
-blockedBy: [a-fork-does-not-save-unless-asked]
+blockedBy: [a-fork-does-not-save-unless-asked, a-provider-less-fork-discovers-its-connected-chain-id]
 covers: []
 ---
 
@@ -14,6 +14,8 @@ Everything a fork run needs now exists in core: the descriptor names the simulat
 **The flag needs NO ARGUMENT.** `-e, --environment <value>` is already a required option naming the environment, and the environment name IS the forked network's name, so `-e mainnet --is-fork` carries everything. It maps directly onto the existing shape: `environment: options.isFork ? {fork: options.environment} : options.environment`.
 
 **It is spelled `--is-fork`, and this is not a preference.** ADR 0014 has a whole section on it. `--fork` reads as an IMPERATIVE, and rocketh does not fork anything: it ATTACHES to a node somebody else forked. `--fork` is deliberately reserved for a future in-process engine that could honour the imperative, at which point it would need somewhere to fork FROM and a block to fork AT. Naming the attach flag `--fork` today would force the create flag to be named around it tomorrow. Do not "improve" this to `--fork`.
+
+> CORRECTION (conductor, after a build agent rightly refused this task): the zero-configuration claim below was FALSE when first written, and is being made true by a prerequisite rather than by this task. `getChainIdForEnvironment` runs before `resolveExecutionParams` and only dials when the CALLER supplied a provider, which the CLI does not, so `-e mainnet --is-fork` with nothing declared used to throw `Could not find chainId for environment named "mainnet" (no provider)` before dialling anything. `a-provider-less-fork-discovers-its-connected-chain-id` makes a provider-less fork ask the node, so the criteria below hold as written. CONFIRM that landed before you build, and if it did not, stop rather than quietly requiring a declaration.
 
 **The connection needs no new option, and adding one would be a mistake.** A fork with no `whenForked` layer dials the conventional local endpoint, which is where both anvil and `hardhat node` listen, and a fork that listens elsewhere says so with `whenForked: {rpcUrl}`. So the zero-configuration case is `anvil --fork-url ... &&  rocketh -e mainnet --is-fork` with nothing declared at all. Confirm that end to end rather than assuming it: this is the headline path and the one a reader will try first.
 
