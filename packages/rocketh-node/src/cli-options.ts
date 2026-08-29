@@ -132,20 +132,28 @@ export function resolveUnknownSignerPolicy(
  * The option is documented as "comma separated", and a script tag containing a comma is refused
  * by an explicit throw in the executor's selection loop, so splitting on `,` is unambiguous.
  *
- * The empty string is guarded FIRST, and that guard is not cosmetic: splitting `''` yields
- * `['']`, which is a non-empty list, so the filter ENGAGES and matches nothing — a run that
- * silently does no work. `--tags ''` means the same as not passing the flag. hardhat-deploy
- * guards it identically (`args.tags && args.tags != '' ? args.tags : undefined`).
+ * Segments are TRIMMED and empty ones dropped, so `--tags "a, b"` selects `a` and `b`. The space
+ * after a comma is what a person types, and without this it produced the tag `" b"`, which
+ * matches nothing and reports itself as "no scripts matched" rather than as a typo. A leading
+ * space is never part of a tag anyone meant, so reading it literally served no one.
  *
- * Segments are NOT trimmed, matching hardhat-deploy: a tag is whatever the user typed between
- * commas, and quietly editing it would be a second way for the flag to mean something other than
- * it says.
+ * Everything then collapsing to nothing means NO filter, not a filter that matches nothing: that
+ * covers `''`, `' '` and `','` alike. This is the case to keep right, because splitting `''`
+ * yields `['']`, a non-empty list, so the filter would ENGAGE and select no scripts — a run that
+ * silently does no work. `--tags ''` means the same as not passing the flag.
+ *
+ * hardhat-deploy's task option parses identically (`packages/hardhat-deploy/src/tasks/deploy.ts`);
+ * the two entry points must not disagree about what a tag is.
  */
 export function parseTags(value: string | undefined): string[] | undefined {
-	if (value === undefined || value === '') {
+	if (value === undefined) {
 		return undefined;
 	}
-	return value.split(',');
+	const tags = value
+		.split(',')
+		.map((tag) => tag.trim())
+		.filter((tag) => tag !== '');
+	return tags.length > 0 ? tags : undefined;
 }
 
 /**

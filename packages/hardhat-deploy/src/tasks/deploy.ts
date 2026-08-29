@@ -33,7 +33,16 @@ const runScriptWithHardhat: NewTaskActionFunction<RunActionArguments> = async (a
 	if (args.saveDeployments) {
 		saveDeployments = args.saveDeployments == 'true' ? true : false;
 	}
-	const tags = args.tags && args.tags != '' ? args.tags : undefined;
+	// Segments are TRIMMED and empty ones dropped, so `--tags "a, b"` selects `a` and `b` rather
+	//  than `a` and the unmatchable `" b"`. Everything collapsing to nothing means NO filter, not a
+	//  filter matching nothing, which is why `''` cannot be allowed to become `['']`. `@rocketh/node`
+	//  parses `--tags` identically (`parseTags` in its `cli-options.ts`): the two entry points must
+	//  not disagree about what a tag is.
+	const tagList = args.tags
+		?.split(',')
+		.map((tag) => tag.trim())
+		.filter((tag) => tag !== '');
+	const tags = tagList && tagList.length > 0 ? tagList : undefined;
 
 	setupLogger(packagesWithLogsEnabled, {
 		enabled: true,
@@ -84,7 +93,7 @@ const runScriptWithHardhat: NewTaskActionFunction<RunActionArguments> = async (a
 		//  the fork escape hatch would be a user-visible change to the flag, not to this task.
 		saveDeployments: isFork ? false : saveDeployments,
 		askBeforeProceeding: skipPrompts ? false : true,
-		tags: tags?.split(','),
+		tags,
 		defaultPollingInterval,
 		reportGasUse: args.reportGasUsed,
 		extra: {connection},

@@ -69,6 +69,32 @@ describe('`--tags` reaches core as a LIST', () => {
 		expect(executionParamsFor(['-e', 'memory', '--tags', '']).tags).toBeUndefined();
 		expect(executionParamsFor(['-e', 'memory']).tags).toBeUndefined();
 	});
+
+	/**
+	 * The space after a comma is what a person types. Reading it literally produced the tag `' b'`,
+	 * which matches nothing and then reports itself as "no scripts matched" rather than as a typo,
+	 * so the flag appeared to work while selecting half of what was asked for.
+	 */
+	it('trims the space a person types after a comma', () => {
+		expect(executionParamsFor(['-e', 'memory', '--tags', 'a, b']).tags).toEqual(['a', 'b']);
+		expect(executionParamsFor(['-e', 'memory', '--tags', '  Token  ']).tags).toEqual(['Token']);
+	});
+
+	it('drops empty segments rather than turning them into unmatchable tags', () => {
+		expect(executionParamsFor(['-e', 'memory', '--tags', 'a,,b']).tags).toEqual(['a', 'b']);
+		expect(executionParamsFor(['-e', 'memory', '--tags', 'a,']).tags).toEqual(['a']);
+	});
+
+	/**
+	 * The case the trim must not break: a value that collapses to nothing is NO filter, exactly as
+	 * `''` is. Trimming without dropping would leave `[' ']` engaged and matching nothing, which is
+	 * the do-nothing run this whole area exists to prevent.
+	 */
+	it('treats a value that is only whitespace or commas as no filter', () => {
+		expect(executionParamsFor(['-e', 'memory', '--tags', '   ']).tags).toBeUndefined();
+		expect(executionParamsFor(['-e', 'memory', '--tags', ',']).tags).toBeUndefined();
+		expect(executionParamsFor(['-e', 'memory', '--tags', ' , ']).tags).toBeUndefined();
+	});
 });
 
 // ---------------------------------------------------------------------------------------------
@@ -162,6 +188,21 @@ describe('`rocketh --tags <value>` selects the scripts carrying that tag', () =>
 		writeTaggedScript('c-script', ['c']);
 
 		await runCLI(['--tags', 'a,b']);
+
+		expect(scriptsThatRan().sort()).toEqual(['a-script', 'b-script']);
+	});
+
+	/**
+	 * The same command with the space a person actually types. Before the segments were trimmed
+	 * this ran `a-script` ONLY, and said nothing about `b`: a partial run that looks like a
+	 * successful one, which is worse than an error.
+	 */
+	it('runs both for `--tags "a, b"`, the way a person types it', async () => {
+		writeTaggedScript('a-script', ['a']);
+		writeTaggedScript('b-script', ['b']);
+		writeTaggedScript('c-script', ['c']);
+
+		await runCLI(['--tags', 'a, b']);
 
 		expect(scriptsThatRan().sort()).toEqual(['a-script', 'b-script']);
 	});
