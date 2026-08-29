@@ -11,9 +11,11 @@
  *
  * Nothing new is being taught to core. Every fork behaviour already exists and is tested in
  * `packages/rocketh/test/fork-*.test.ts`; what this file pins is that the CLI REACHES them, which
- * is one mapping (`-e <name> --is-fork` becomes the `ForkInput` `{fork: <name>}`) and one hazard:
- * the CLI hands commander's raw options to core with a SPREAD, and the raw `environment` is a
- * string, so a transform placed before the spread is silently overwritten by it.
+ * is one mapping: `-e <name> --is-fork` becomes the `ForkInput` `{fork: <name>}`. That mapping
+ * used to be a fix-up applied AFTER a `...(options as ExecutionParams)` spread, and the ORDER was
+ * the hazard: the raw `environment` is a string, so a transform placed before the spread was
+ * silently overwritten by it. `toExecutionParams` is now the whole boundary and there is no
+ * spread left to be overwritten by, which is what the cases below go through.
  *
  * The end-to-end cases go through the real `getChainIdForEnvironment` / `resolveExecutionParams`
  * with only the network boundary faked (`fetch` is stubbed), so every claim about WHICH endpoint
@@ -27,7 +29,12 @@
  */
 
 import {describe, it, expect, vi, beforeEach, afterEach} from 'vitest';
-import {buildCLIProgram, resolveEnvironmentInput} from '../src/cli-options.js';
+import {
+	buildCLIProgram,
+	resolveEnvironmentInput,
+	toExecutionParams,
+	type RockethCLIOptions,
+} from '../src/cli-options.js';
 import {
 	CONVENTIONAL_LOCAL_RPC_URL,
 	getChainIdForEnvironment,
@@ -96,26 +103,21 @@ const baseConfig: UserConfig = {
 // ---------------------------------------------------------------------------------------------
 
 /** Parse an argv the way the shell hands it over, without commander exiting the test process. */
-function optionsFor(argv: string[]): Record<string, unknown> {
+function optionsFor(argv: string[]): RockethCLIOptions {
 	const program = buildCLIProgram('0.0.0-test');
 	program.exitOverride();
 	program.configureOutput({writeOut: () => {}, writeErr: () => {}});
 	program.parse(argv, {from: 'user'});
-	return program.opts();
+	return program.opts<RockethCLIOptions>();
 }
 
 /**
- * The execution parameters the CLI builds, in the CLI's own ORDER: commander's raw options
- * spread first, then the individual fields core cannot receive raw. `environment` is one of
- * those, and this mirrors `packages/rocketh-node/src/cli.ts` deliberately, because the order is
- * the thing that can regress.
+ * The execution parameters the CLI builds, through the CLI's own mapping rather than a copy of
+ * it: `cli.ts` does nothing to the options but hand them to `toExecutionParams`, so calling it
+ * here is calling the production boundary.
  */
 function executionParamsFor(argv: string[]): ExecutionParams {
-	const options = optionsFor(argv);
-	return {
-		...(options as ExecutionParams),
-		environment: resolveEnvironmentInput(options),
-	};
+	return toExecutionParams(optionsFor(argv));
 }
 
 function optionFlags(): string[] {
@@ -180,14 +182,14 @@ describe('the flag exists, under the name the ADR reserved for it', () => {
 	});
 
 	/**
-	 * The hazard the CLI's shape creates, pinned rather than described: the spread carries the
-	 * RAW `environment`, which is the string commander parsed. A transform written before the
-	 * spread would be overwritten by it and the run would silently not be a fork.
+	 * The hazard the CLI's shape used to create, pinned rather than described: what commander
+	 * parses is the RAW string, and it is the mapping that turns it into a fork input. Passing
+	 * the parsed options on unchanged would leave the run silently not a fork.
 	 */
-	it('transforms `environment` AFTER the spread, which would otherwise pass the raw string', () => {
+	it('turns the raw `environment` string into a fork input on the way to core', () => {
 		const options = optionsFor(['-e', 'mainnet', '--is-fork']);
 
-		expect({...(options as ExecutionParams)}.environment).toBe('mainnet');
+		expect(options.environment).toBe('mainnet');
 		expect(executionParamsFor(['-e', 'mainnet', '--is-fork']).environment).toEqual({fork: 'mainnet'});
 	});
 });
