@@ -55,7 +55,15 @@ On a memory run there is no real network for anything to be unsignable on, so th
 
 **The in-memory list is the primitive; the file is one sink.** The run has to accumulate the entries in memory regardless, so exposing them costs nothing and serves every in-process consumer directly, a hardhat plugin above all. Serialising to a file is for consumers on the other side of a process or language boundary.
 
+**Exposed as a field on the environment the run returns.** `loadAndExecuteDeploymentsFromFiles` already returns `Promise<Environment>`, so the environment IS the run's return value and there is no other place to put the list without changing that signature. It therefore sits alongside `deployments` and `tags`, which is where a run-scoped result belongs and costs no new API surface.
+
+The consequence, accepted knowingly: deploy scripts hold that same object, so a script CAN read the list mid-run. That is not the feature and is not documented as one. It buys a script nothing the feature promises, since the file is written at end of run either way, and the alternative (keeping the accumulator private behind a second capture-aware entry point) was rejected as real complexity added to prevent something nobody has asked for.
+
+**The file is turned on by a CLI flag**, and is off otherwise, so a run that does not ask for it writes nothing new. The consumer that needs the file is the operator taking a batch to their Safe, and that operator is already on the `--is-fork` path, so a flag reaches them without a config change.
+
 Deliberately NOT built: a callback hook, and a streaming/pipe mode. A hook would be more machinery than exposing the data, and nothing needs to observe entries mid-run (see the lifecycle below); writing to stdout would interleave with the run's own logging, which is a trap rather than a feature. A consumer that truly wants a stream can point the file at one.
+
+Also deliberately NOT built: a `runAtTheEnd` join point, or any documented way for one script to consume what earlier scripts captured. The predecessor spec needed that because its consumer was a script inside the run; here the consumers are outside it.
 
 **Lifecycle: written once, atomically, at the end of a successful run.** This is the whole lifecycle, and its simplicity is a consequence of the fork model rather than an accident.
 
