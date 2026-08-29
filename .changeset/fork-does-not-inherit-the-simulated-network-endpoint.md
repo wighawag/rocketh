@@ -1,0 +1,5 @@
+---
+'rocketh': patch
+---
+
+A fork run no longer inherits `environments[<name>].overrides.rpcUrl`, which on the environment of a real network is that network's own endpoint. Inheriting it pointed a fork run at production while the user believed they were on their fork, silently, with the deployment records and every impersonated step landing against the real chain. On a fork the endpoint now comes from `whenForked.rpcUrl`, else the conventional local endpoint; every other field in the `overrides` bag still crosses, so a fork keeps being configured like the network it simulates, and a NON-fork run of the same environment still dials the endpoint its overrides name. This is the same rule that already kept `chains[<forked id>]` from supplying the connection, applied one layer higher: connection from the local side, everything else from the network being simulated. The hazard was latent rather than live, since the only caller able to fork today always passes a `provider`, which beats any `rpcUrl` in the merge; it would have become reachable on the planned `--is-fork` path.
