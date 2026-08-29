@@ -118,7 +118,7 @@ export async function loadEnvironmentFromHardhat<
 	// 	useChainIdOfForkedNetwork?: boolean;
 	// }
 ): Promise<Environment<NamedAccounts, Data>> {
-	const {connection, environment, provider, isFork} = await generateForkConfig(params);
+	const {connection, environment, provider} = await generateForkConfig(params);
 	const isEDR = connection.networkConfig.type === 'edr-simulated' ? true : undefined;
 	// console.log(`loading environments...`);
 	return loadEnvironmentFromFiles<NamedAccounts, Data>({
@@ -127,7 +127,12 @@ export async function loadEnvironmentFromHardhat<
 		extra: {
 			connection,
 		},
-		saveDeployments: isFork ? false : undefined,
+		// NO `saveDeployments` here, and its absence is the point: this used to pass
+		// `isFork ? false : undefined`, which made this plugin the only thing standing between a
+		// fork rehearsal and the forked network's real records. rocketh core now defaults a fork to
+		// not saving (`resolveExecutionParams`), so leaving it undefined yields the very same value
+		// on both paths, and the rule protects every caller instead of this one. Do not restore the
+		// pairing: passing `false` again would hide a regression in core behind a local guard.
 		autoImpersonate: isEDR,
 	});
 }
