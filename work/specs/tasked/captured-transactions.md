@@ -24,24 +24,41 @@ Accumulate every transaction the run broadcasts, and make the list available. No
 
 Capture happens at the broadcast choke point, which is the single place every transaction already passes through (`packages/rocketh/src/environment/index.ts`), so there is no new seam and no path that can bypass it.
 
-**What a captured entry holds.** The INTENT, plus who sent it:
+**What a captured entry holds.** Who sent it, and what was sent. It mirrors the discriminated union the choke point already receives (`TransactionToBroadcast`), because a run genuinely broadcasts both shapes:
 
 ```typescript
 {
 	from: `0x${string}`,
-	to?: `0x${string}`,        // absent for a contract creation
-	value?: bigint,
-	data: `0x${string}`,
 	signability: Signability,  // 'local' | 'node' | 'impersonated' | 'unsignable'
-	account?: string,          // the named account, where the run resolved one
-}
+} & (
+	| {kind: 'intent'; to?: `0x${string}`; value?: `0x${string}`; data: `0x${string}`}
+	| {kind: 'raw'; raw: `0x${string}`}
+)
 ```
 
-**Intent rather than the signed transaction, and this is a decision rather than a shortcut.** A raw signed transaction commits to its nonce as part of the signature, so it can only ever be replayed by that sender at exactly that nonce. An intent can be replayed at any nonce, by any prank, in any order. For every consumer named here, intent is therefore MORE replayable than raw, not a lossy substitute for it. It is also the only option that works at all for the batch: an impersonated sender never produces a signature, because the node fabricates the sender (`eth_sendTransaction`) and no signed payload exists anywhere to capture.
+`value` is the 0x-QUANTITY form the choke point actually sees, not a bigint. Every call site already builds it that way, so a bigint would mean capture decodes the wire form and the file sink re-encodes it, and it would make the list non-serialisable by a plain `JSON.stringify`, which an in-process consumer hits before any file exists.
+
+**There is no `account` name.** The address is what a Safe consumer proposes to and what a replay pranks, and it is unambiguous where a name is not: several named accounts commonly resolve to the same address (`{deployer: {default: 0}, admin: {default: 0}}`). The general rule this follows, which settles the next question of the same shape: **capture what cannot be RECOMPUTED, omit what can.** `signability` depends on runtime node state and is gone the moment the run ends, so it must be captured; an account name is a join over config that any consumer can redo from the address.
+
+**The `raw` variant is not an exception to intent-only, it is the case where no intent exists.** A run really does broadcast a pre-signed transaction: `@rocketh/deploy` relays the Nick's-method deterministic-deployment factory transaction whenever the Create2 factory is absent, which is exactly the fresh-node case a Solidity fixture hits. rocketh did not compose that transaction and cannot decode it into a faithful intent, because the canonical factory address derives from that exact sender and nonce, so replaying it as an intent from another sender lands the factory at a DIFFERENT address. It is also designed to be replayed verbatim by anyone, so the usual objection to raw does not apply. Capture it as itself.
+
+**Intent rather than the signed transaction, everywhere rocketh composes the transaction, and this is a decision rather than a shortcut.** A raw signed transaction commits to its nonce as part of the signature, so it can only ever be replayed by that sender at exactly that nonce. An intent can be replayed at any nonce, by any prank, in any order. For every consumer named here, intent is therefore MORE replayable than raw, not a lossy substitute for it. It is also the only option that works at all for the batch: an impersonated sender never produces a signature, because the node fabricates the sender (`eth_sendTransaction`) and no signed payload exists anywhere to capture.
 
 Gas and fee fields are captured by nobody and emitted by nobody, for the same reason: recording them invites a consumer to replay them, and none of the consumers here wants the fee market of the moment the fork ran.
 
 **`signability` is the existing classification, not a new one.** `Signability` is already a public type and `env.addressSignability` already computes it per address after impersonation resolves. `impersonated` means precisely "this account could not have signed for itself, the node faked it", which on a fork is exactly the set that needs to go to the Safe. Reusing it means the batch consumer needs no new concept, and a segment boundary is simply a change in this field between consecutive entries.
+
+**It also settles what happens to a transaction a HUMAN executed out of band**, which is the one case where "what the run did" is ambiguous. Under the `ask` policy rocketh does not broadcast: it hands the operator a transaction, takes a pasted hash, verifies it landed and continues (`packages/rocketh/src/environment/index.ts`, the interactive resolution). Those are captured too, because on a real network they are part of what the run accomplished and omitting them would make the list silently incomplete.
+
+They cannot be confused with the batch, and no new field is needed to keep them apart, because the seam is entered ONLY when signability is `unsignable` (`environment/index.ts:1391`, and the comment there states that of the four states only `unsignable` reaches the policy; auto-impersonation has already run, so an account it resolved never gets here). So the field already carries the distinction:
+
+- `impersonated` = the node faked the sender and rocketh sent it. On a fork, these ARE the batch.
+- `unsignable` = rocketh did not send it. A human did, out of band, and it has already happened.
+- `local` / `node` = rocketh sent it normally.
+
+A batch consumer proposes the `impersonated` entries and never the `unsignable` ones, so it cannot re-propose something already executed. In practice a fork rehearsal should see no `unsignable` entries at all, since impersonation is what makes those steps execute; a fork run that produces them is telling the operator they turned impersonation off and will get instructions rather than replayability.
+
+**A DEFERRED transaction is not captured**, and this is the boundary that keeps this feature from turning back into the collector it replaced. Under the `throw` policy the transaction never happens, so it is not part of what the run did. This list is what the run DID, not what it still owes.
 
 **Capture is NOT a fork feature.** The two consumers are two RUN MODES, and gating on `fork` would break the second one:
 
