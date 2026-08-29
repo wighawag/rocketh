@@ -27,14 +27,15 @@ Capture happens at the broadcast choke point, which is the single place every tr
 **What a captured entry holds.** Who sent it, and what was sent. It mirrors the discriminated union the choke point already receives (`TransactionToBroadcast`), because a run genuinely broadcasts both shapes:
 
 ```typescript
-{
-	from: `0x${string}`,
-	signability: Signability,  // 'local' | 'node' | 'impersonated' | 'unsignable'
-} & (
-	| {kind: 'intent'; to?: `0x${string}`; value?: `0x${string}`; data: `0x${string}`}
-	| {kind: 'raw'; raw: `0x${string}`}
+{from: `0x${string}`} & (
+	| {type: 'intent'; to?: `0x${string}`; value?: `0x${string}`; data: `0x${string}`; signability: Signability}
+	| {type: 'raw'; raw: `0x${string}`}
 )
 ```
+
+The discriminant key is `type`, reusing the spelling of the `TransactionToBroadcast` union it mirrors rather than forking a second word for the same distinction.
+
+**`signability` is on the INTENT arm only, and that is a correction rather than an omission.** The obvious shape puts it on both, and it is wrong: `addressSignability` is a Proxy returning `'unsignable'` for any address it never saw during setup (`packages/rocketh/src/environment/index.ts:816-823`), and a raw relay's sender is not a run account (the Nick's-method deployer `0x3fab18...` comes from `deterministicDeployment` config, not from `accounts`). So a raw entry would be labelled `unsignable`, which this spec defines as _a human already sent this out of band, do not replay it_ - said of the one entry that MUST be replayed, on every fresh-node run. A raw relay has no signer question to answer: rocketh holds no signer for it and never asked for one. Leaving the field off that arm is what keeps the meaning of `unsignable` true everywhere it appears.
 
 `value` is the 0x-QUANTITY form the choke point actually sees, not a bigint. Every call site already builds it that way, so a bigint would mean capture decodes the wire form and the file sink re-encodes it, and it would make the list non-serialisable by a plain `JSON.stringify`, which an in-process consumer hits before any file exists.
 
@@ -103,7 +104,7 @@ The predecessor spec (`deferred-transaction-collector`, now dropped) needed trun
 ## Out of Scope
 
 - **Batch `ask`, and segmentation.** rocketh emits an ordered, annotated list; the user batches it. Deciding what constitutes one proposal, pausing a run at a segment boundary, and verifying a MultiSend execution by pasted hash are all a later feature, and the note that proposes them says so.
-- **Raw signed transactions.** Argued above: strictly less replayable, and impossible for the impersonated senders that matter most. Additive to add later if a consumer with a real need appears.
+- **Re-signing, or capturing a signature rocketh did not produce.** Where rocketh COMPOSES a transaction the entry is the intent, because a signature commits to a nonce and is strictly less replayable. The one place a signed payload IS captured is the `type: 'raw'` arm, and only because rocketh merely relays it and no intent exists to record.
 - **A persisted ledger.** The output is a snapshot of one run, never read back by rocketh to decide anything. ADR 0012's warning is about a record that acquires AUTHORITY; this one has none by construction.
 - **In-process EDR and just-in-time lookahead.** The fork here is a node the user already started, reached through `--is-fork` or `HARDHAT_FORK`.
 - **Deciding the Solidity integration.** See below: `hardhat test solidity` can already fork, so the plugin may not need this list at all. That choice belongs to whoever builds the plugin, and this spec must not foreclose it.

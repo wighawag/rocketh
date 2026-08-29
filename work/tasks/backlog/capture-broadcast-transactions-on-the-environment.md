@@ -3,7 +3,7 @@ title: 'Capture every transaction a run broadcasts, in order, and expose the lis
 slug: capture-broadcast-transactions-on-the-environment
 spec: captured-transactions
 blockedBy: []
-covers: [2, 3, 7, 9, 10]
+covers: [2, 7, 9, 10]
 ---
 
 ## Decisions (these were the open questions; they are answered, do not re-open)
@@ -27,15 +27,17 @@ Capture happens at the single broadcast choke point every transaction already fu
 **What an entry holds** is the INTENT plus who sent it. From the spec:
 
 ```typescript
-{
-	from: `0x${string}`,
-	to?: `0x${string}`,        // absent for a contract creation
-	value?: bigint,
-	data: `0x${string}`,
-	signability: Signability,  // 'local' | 'node' | 'impersonated' | 'unsignable'
-	account?: string,          // the named account, where the run resolved one
-}
+{from: `0x${string}`} & (
+	| {type: 'intent'; to?: `0x${string}`; value?: `0x${string}`; data: `0x${string}`; signability: Signability}
+	| {type: 'raw'; raw: `0x${string}`}
+)
 ```
+
+Three things about that shape are decided and are NOT to be re-derived (the `## Decisions` block above says why): the discriminant key is `type`, reusing the spelling of the `TransactionToBroadcast` union it mirrors; `value` is the 0x-QUANTITY form the choke point actually sees, never a bigint; and there is no `account` field, because `from` is the whole answer and a name is a join over config any consumer can redo.
+
+`signability` is on the INTENT arm ONLY. Putting it on both is the obvious shape and it is wrong: `addressSignability` is a Proxy returning `'unsignable'` for any address it never saw during setup (`packages/rocketh/src/environment/index.ts:816-823`), and a raw relay's sender is not a run account, so a raw entry would be labelled `unsignable`, which this system defines as _a human already sent it out of band, do not replay it_. That would be said of the one entry that MUST be replayed, on every fresh-node run. A raw relay has no signer question: rocketh holds no signer for it and never asked for one.
+
+Absent fields stay ABSENT rather than becoming `null` or `'0x'`: `data` is optional on `EIP1193TransactionData` and the deterministic-factory funding transfer genuinely carries none, so an entry for it has no `data` key at all. `from` is stored as the transaction carried it, NOT the lowercased lookup key (`CONTEXT.md` pins the rule: an internal KEY is lowercased so lookups work, a user-facing VALUE keeps what was resolved); any signability lookup must lowercase before reading the map.
 
 Intent rather than the signed transaction is a decision, not a shortcut: a signed transaction commits to its nonce as part of the signature and can only be replayed by that sender at that nonce, while an intent replays at any nonce, under any prank, in any order. It is also the only thing that EXISTS for an impersonated sender, because the node fabricates the sender and no signed payload is produced anywhere.
 
@@ -53,14 +55,19 @@ The ordering promise is the load-bearing one and the only one: the list must be 
 
 - [ ] After a run, the environment carries an ordered list of the transactions the run broadcast, and the order is the true broadcast order
 - [ ] Every funnel that reaches the choke point produces an entry: a deployment, an `execute` / `executeByName` / `tx`, a proxy or diamond upgrade, and the deterministic-factory funding transfer
-- [ ] Each entry carries `from`, `data`, the `to` (absent for a contract creation), the `value` where there is one, and the `signability` of the sender as the run classified it after impersonation resolved
-- [ ] An entry carries the named account where one is resolvable, per the answer to open question 2
+- [ ] An INTENT entry carries `from`, `data`, the `to` (absent for a contract creation), the `value` where there is one as a 0x quantity, and the `signability` of the sender as the run classified it after impersonation resolved
+- [ ] A RAW entry carries `from` and `raw` and NOTHING else, `signability` included, and a test pins that: the deterministic-factory bootstrap is a raw broadcast on every fresh node, and labelling it `unsignable` would tell every fixture consumer to skip the one entry it must replay
+- [ ] No entry carries an `account` name, and no entry carries a bigint
 - [ ] No gas, fee, nonce, hash or receipt field appears on an entry, and a test pins that the emitted shape has exactly the agreed keys, so a fee cannot become an accidental contract later
 - [ ] Capture is unconditional: a memory run against a fresh node captures exactly as a fork run does, with no flag and no fork descriptor involved, and a test covers both
 - [ ] A run with an impersonated sender and a node-held sender produces entries whose `signability` differs, so a consumer can see where a batch has to be split
 - [ ] The list is reachable from a caller that ran the deployment in process, with no file and no path agreed in advance
 - [ ] The entry type is EXPORTED from `@rocketh/core`'s types (where `Signability` and `TransactionToBroadcast` already live) rather than left as a local shape inside the environment module, so the file-sink task and an out-of-repo consumer can name it
-- [ ] The entry is appended at ONE explicit point inside the choke point, and a test pins what the order is when two broadcasts are issued concurrently (a deploy script can `Promise.all` them), since ordering is the only promise this feature makes
+- [ ] Capture happens on the SUCCESS path of each arm of the choke point, never at its entry. Every branch returns or throws, so there is no single post-send line today and one at the top would capture work that never happened
+- [ ] A transaction DEFERRED under the `throw` policy produces NO entry, pinned by a test. This is the boundary that stops the feature becoming the collector it replaced: the list is what the run DID, not what it still owes
+- [ ] A transaction resolved through `ask` produces EXACTLY ONE entry, pinned by a test, carrying the intent rocketh asked for and `signability: 'unsignable'`
+- [ ] A send that FAILS produces no entry
+- [ ] A test pins what the order is when two broadcasts are issued concurrently (a deploy script can `Promise.all` them), and the promise is stated as the order the run OBSERVED them complete in, since capture on the success path cannot claim more than that
 - [ ] No new capture seam is introduced: a transaction cannot reach the node without passing the place capture happens
 - [ ] Tests cover the new behaviour in `rocketh`'s own test suite (which builds a real environment locally rather than importing `@rocketh/test-utils`, to avoid the nx project-graph cycle), mirroring the existing seam tests
 - [ ] A changeset accompanies the change
@@ -76,15 +83,15 @@ The ordering promise is the load-bearing one and the only one: the list must be 
 >
 > FIRST, check this task against current reality (it is a launch snapshot and may have DRIFTED): does it still match the code, the ADRs, and the tasks it builds on? If the seam moved or an ADR superseded an assumption here, do NOT build on the stale premise; route the task to needs-attention with the discrepancy.
 >
-> DO NOT START until ALL FOUR open questions above are answered. Three of them (1, 2, 4) decide what an entry IS and the fourth (3) decides which transactions are entries at all, so guessing any one of them ships a list that is convincingly wrong.
+> The four questions this task once carried are ANSWERED, in the `## Decisions` block at the top. Read it before the body: it settles what an entry is (no `account`, 0x-quantity `value`, a `type` discriminant with a raw arm) and which transactions are entries at all (`ask`-resolved yes, deferred no). Do not re-open them, and do not take the shape from the spec if the two ever disagree - this task is the newer artifact.
 >
 > Domain vocabulary you need (`CONTEXT.md` pins these, read it): _signability_ is whether rocketh can get a transaction signed for an address (`local` / `node` / `impersonated` / `unsignable`), and it is NOT the same as having an entry in `addressSigners`; a _fork run_ is a run against a node somebody else forked, which is the forked network for RECORDS and is not that network for chain identity (ADR 0014); the _signer_ union has three variants and they are easy to get backwards.
 >
-> Where to look. The choke point is the private `broadcastTransaction` inside `packages/rocketh/src/environment/index.ts`: it is deliberately not exported and not on the `Environment` interface, and both public funnels (`broadcastExecution`, `broadcastDeployment`) go through it. The unknown-signer seam lives in the same function and shows how `env.addressSignability` is consulted per transaction, plus (in its error-enrichment branch) the existing reverse lookup from an address to deployment names, which is the prior art open question 2 is about. `Signability`, `TransactionToBroadcast` and the `Environment` interface are in `packages/rocketh-core/src/types.ts`.
+> Where to look. The choke point is the private `broadcastTransaction` inside `packages/rocketh/src/environment/index.ts`: it is deliberately not exported and not on the `Environment` interface, and both public funnels (`broadcastExecution`, `broadcastDeployment`) go through it. The unknown-signer seam lives in the same function and shows how `env.addressSignability` is consulted per transaction, plus (in its error-enrichment branch) an existing reverse lookup from an address to deployment names, which is prior art for shape only: this task captures NO account name (Decision 2). `Signability`, `TransactionToBroadcast` and the `Environment` interface are in `packages/rocketh-core/src/types.ts`.
 >
 > One funnel does NOT reach the choke point, and you should know it before you design rather than discover it late: `recoverTransactionsIfAny` (same module, around line 1023) adopts transactions a PREVIOUS run broadcast, waits for their receipts and saves the resulting deployments, all before the scripts run. Those transactions were sent by that earlier run, so they never pass this run's choke point and will be absent from this run's list. Do not widen the seam to cover them (they are not this run's intent, and a fork run does not save, so it has no pending-transaction file to recover from in the first place); DO name the gap in your `## Decisions` block, since it is the one case where the list is not the whole of what this run's node saw happen.
 >
-> Note the shape of the choke point before you design: it takes a `TransactionToBroadcast`, which is a union of `{type: 'object', data}` and `{type: 'raw', from, raw}`, and it has an early return for the raw variant before any signer lookup. Open question 1 is exactly about that branch. Enumerate the union from the type rather than from a search result. Note also what the object variant CARRIES: `EIP1193TransactionData` holds `value` as a 0x-quantity string, not a bigint, and so do all the call sites that build one. Open question 4 is which of the two forms the entry keeps; do not silently convert either way.
+> Note the shape of the choke point before you design: it takes a `TransactionToBroadcast`, which is a union of `{type: 'object', data}` and `{type: 'raw', from, raw}`, and it has an early return for the raw variant before any signer lookup. Decision 1 is exactly about that branch: the raw arm is captured as itself. Enumerate the union from the type rather than from a search result. Note also what the object variant CARRIES: `EIP1193TransactionData` holds `value` as a 0x-quantity string, not a bigint, and so do all the call sites that build one. Decision 4 keeps the 0x-quantity form; do not silently convert either way.
 >
 > Exposing the list on the environment means adding a field (and the entry type) to `@rocketh/core`'s types, which `AGENTS.md` normally lists as an ask-first change. The spec ratifies exactly this placement (alongside `deployments` and `tags`, because the environment IS what a run returns), so it is in scope here, but keep the addition to that field plus the entry type, and reshape nothing else in the interface.
 >

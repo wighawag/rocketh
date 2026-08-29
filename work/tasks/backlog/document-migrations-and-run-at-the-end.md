@@ -21,7 +21,7 @@ Two executor features are shipped, used, and documented nowhere: `documentation/
 
 **`runAtTheEnd`.** A script marked `runAtTheEnd` runs after the normal scripts. It is worth documenting on its own, and it is worth documenting for the reason production teams actually use it: it is the hook where a deferred-transaction consumer lives (collect the transactions rocketh could not sign for during the run, then propose them as one Safe batch at the end). Two teams described building exactly that on hardhat-deploy v1, and everything needed to rebuild it on v2 already exists, but nothing says so.
 
-Show the hand-rolled version, since it works today with no new API: wrap each privileged call in `catchUnknownSigner`, collect what it returns, and have a `runAtTheEnd` script propose the batch. If `deferred-transaction-collector` has landed by the time this is written, show that instead and mention that the hand-rolled form still works.
+Show the hand-rolled version, since it works today with no new API: wrap each privileged call in `catchUnknownSigner`, collect what it returns, and have a `runAtTheEnd` script propose the batch. If `captured-transactions` has landed by the time this is written, show that instead and mention that the hand-rolled form still works. (`deferred-transaction-collector` was dropped and superseded by it; do not reach for that spec.)
 
 The unknown-signers page also needs the cross-reference in the other direction: the migrations feature exists, and here is how it interacts with a deferral.
 

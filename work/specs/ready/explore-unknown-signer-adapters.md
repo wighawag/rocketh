@@ -22,7 +22,7 @@ All five open questions are answered in `work/questions/spec-explore-unknown-sig
 4. **The v1 `external`/`safe` account protocol is subsumed** by the `ask` policy, and was a category error on the signer-protocol axis to begin with.
 5. **The signing-page launcher is out of scope**, and blocked beneath by an unanswered question about how a browser run asks a human anything at all.
 
-**The build plan this exploration exists to emit is `deferred-transaction-collector`** (`work/specs/proposed/`), which builds only the producer: an in-memory scope over `catchUnknownSigner` that returns the collected transactions, persisting nothing and knowing nothing about Safe. Everything else here stays unbuilt by decision rather than by omission.
+**The build plan this exploration exists to emit is now `captured-transactions`** (`work/specs/tasked/`), which builds only the producer: an ordered list of what a run broadcast, annotated with signability, persisting nothing by default and knowing nothing about Safe. It SUPERSEDES `deferred-transaction-collector`, which was dropped (`work/specs/dropped/`) once the fork route proved able to discover the same work by executing it, with no counterfactual and with dependent steps batchable; do not revive that spec from this pointer. Everything else here stays unbuilt by decision rather than by omission.
 
 ## Problem Statement
 
@@ -63,7 +63,7 @@ this) for whichever adapters are greenlit. No adapter is committed to ship from 
 are answered in `work/questions/spec-explore-unknown-signer-adapters.md` and summarised at the
 top of this spec. `taskedAfter: [unknown-signer-core]` (builds on the core seam and, for some
 adapters, benefits from `unknown-signer-interactive` existing). Omitting `humanOnly`. Signal:
-`explore-` slug prefix. The BUILD this exploration emits is `deferred-transaction-collector`;
+`explore-` slug prefix. The BUILD this exploration emits is `captured-transactions` (which superseded the dropped `deferred-transaction-collector`);
 every other adapter it considered is deliberately not greenlit.
 
 ## Implementation Decisions
