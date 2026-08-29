@@ -146,7 +146,7 @@ environments: {
 }
 ```
 
-Two things worth knowing about that endpoint. It is only consulted when you did not hand rocketh a `provider` (a provider always wins), which is why the hardhat path never touches it. And because the fork layer sits ON TOP of `overrides`, an `overrides.rpcUrl` naming the real network's endpoint would otherwise be what a fork run dials: if your environment entry has one, name the fork's endpoint in `whenForked` as well.
+Two things worth knowing about that endpoint. It is only consulted when you did not hand rocketh a `provider` (a provider always wins), which is why the hardhat path never touches it. And you do not have to defend against your own `overrides`: a fork run never dials `overrides.rpcUrl`, because on the environment of a real network that is the REAL network's endpoint, and a rehearsal pointed at production is the one outcome none of this may produce. Only `whenForked.rpcUrl` and the conventional local endpoint are ever dialled by a fork.
 
 **Declaring `whenForked` does not fork anything.** It says what differs ONCE a run is a fork, and the conditional name is chosen to say so. A plain `-e mainnet` run of an environment carrying the key behaves exactly as though the key were not there.
 
