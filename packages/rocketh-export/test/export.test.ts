@@ -505,7 +505,6 @@ describe('@rocketh/export - CLI exit code and streams', () => {
  *
  * Generous on purpose: at roughly a second when idle, this is not a threshold these tests can
  * approach except when something is genuinely wrong, and it still bounds a hung compiler.
- * See `work/notes/observations/export-typecheck-tests-flake-under-load-on-the-default-5s-timeout.md`.
  */
 describe('@rocketh/export - the generated TypeScript compiles for real consumers', {timeout: 60_000}, () => {
 	/**
