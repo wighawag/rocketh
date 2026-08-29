@@ -490,7 +490,24 @@ describe('@rocketh/export - CLI exit code and streams', () => {
  * `readonly []`, a type that accepts nothing, so injecting an RPC endpoint at run time did not
  * compile. Every consumer had to discover and re-solve that.
  */
-describe('@rocketh/export - the generated TypeScript compiles for real consumers', () => {
+/**
+ * These four are the heaviest tests in the monorepo: each one COMPILES the generated TypeScript
+ * with tsc in a spawned process, which is CPU-bound and orders of magnitude heavier than the
+ * assertion-only tests around it. Idle they take about a second each; under the repo-wide
+ * `pnpm test`, where they compete with 90-odd other test files immediately after a full build,
+ * they have been measured at 6186ms and 6670ms and so overshoot vitest's 5s default.
+ *
+ * That made them bounce acceptance gates for tasks that never touched this package, six times in
+ * one six-task drive alone, and the first reading is always "did my change break export?". The
+ * cost is INHERENT and known rather than accidental, so the budget is pinned here, on the suite
+ * that earns it, rather than by raising the global default (which is doing useful work for every
+ * other test) or by reducing the parallelism around it.
+ *
+ * Generous on purpose: at roughly a second when idle, this is not a threshold these tests can
+ * approach except when something is genuinely wrong, and it still bounds a hung compiler.
+ * See `work/notes/observations/export-typecheck-tests-flake-under-load-on-the-default-5s-timeout.md`.
+ */
+describe('@rocketh/export - the generated TypeScript compiles for real consumers', {timeout: 60_000}, () => {
 	/**
 	 * Resolved from THIS FILE, never from `process.cwd()`.
 	 *
