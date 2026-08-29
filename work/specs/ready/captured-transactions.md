@@ -1,7 +1,6 @@
 ---
 title: 'Captured transactions: keep the list of what a run sent, so a fork run can produce a batch and a deployment can be replayed'
 slug: captured-transactions
-humanOnly: true
 taskedAfter: [execute-state-guard]
 ---
 
