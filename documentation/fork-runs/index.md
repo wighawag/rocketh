@@ -47,18 +47,11 @@ await loadAndExecuteDeploymentsFromFiles({
 
 `{fork: 'mainnet'}` is the whole of the fork input. It also accepts a `chainId`, which states the SIMULATED network's id when the caller happens to know it (`{fork: 'mainnet', chainId: 1}`), and that is what hardhat-deploy would supply on your behalf.
 
-One thing to declare on this path. rocketh asks the node for its chain id only when you hand it a `provider`, and this call does not, so the run takes the id from configuration and fails with `Could not find chainId for environment named "mainnet" (no provider)` when nothing declares one. The `chainId` in the fork input does not answer that question (it describes the simulated network, not the connection), so declare the environment's chain:
+Nothing has to be declared for the connection. You handed rocketh no `provider`, so it asks the node itself which chain it is talking to, dialling the endpoint it is about to run against: `whenForked.rpcUrl` if you named one, else the conventional local endpoint. That is fork-only, and it has to be: off a fork the endpoint is looked up under the chain id, so asking the node first would mean already knowing the answer.
 
-```typescript
-export const config = {
-	environments: {
-		mainnet: {chain: 1},
-	},
-	data: {},
-} as const satisfies UserConfig;
-```
+The node's answer WINS over an `environments[<network>].chain` you declared, because it is the only id a transaction can be signed for. Declaring `chain: 1` therefore stays a statement about the network being SIMULATED (it is what a hardhat fork needs, see below), and never becomes the id your transactions carry.
 
-Against anvil forking mainnet that is also the id the node reports, so both identities agree and nothing is at odds. If you attach to a node that reports something else (a `hardhat node` reports `31337`), pass that node's `provider` on the execution params instead, so the connected id is read from the node rather than from the file.
+If the node is not up, the run stops and says which endpoint it tried, rather than guessing an id and signing for a chain nobody is running.
 
 ### There is no `--is-fork` flag yet
 

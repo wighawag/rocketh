@@ -131,6 +131,76 @@ export function resolveConfig<
 }
 
 /**
+ * Where a local node listens when nobody said otherwise: the address anvil and `hardhat node`
+ * both default to. It is the endpoint a FORK run dials with no fork configuration at all, which
+ * is what keeps the zero-configuration case working, and it is a stated default here rather than
+ * the coincidence it used to be (it arrived through viem's `hardhat` chain entry in
+ * `chains[31337]`, a bucket that describes the user's own dev node rather than their fork).
+ *
+ * Named for the LOCAL NODE, not the fork: `fork` in a name is ambiguous across three parts of
+ * speech, and a `FORK_RPC_URL` would read as the url to fork FROM, which is the one thing this
+ * is not (see the naming section of ADR 0014).
+ */
+export const CONVENTIONAL_LOCAL_RPC_URL = 'http://127.0.0.1:8545';
+
+/**
+ * Where a FORK RUN connects, answered in ONE place because two callers need it.
+ *
+ * `resolveExecutionParams` uses it to build the run's provider, and `getChainIdForEnvironment`
+ * uses it to ask that same node which chain it is. Computed independently the two could drift,
+ * and the run would ask one node for its identity and then send transactions to another, which
+ * stays invisible until it signs for the wrong chain.
+ *
+ * Two sources and no more, both of which are known WITHOUT a chain id (that is what makes the
+ * discovery in `getChainIdForEnvironment` possible at all): the fork's own layer, else the
+ * conventional local endpoint. `chains[<forked id>].rpcUrl` and `environments[<name>].overrides
+ * .rpcUrl` are deliberately WITHHELD, the first because it describes the user's own dev node and
+ * the second because it is the REAL network's endpoint, which a rehearsal must never dial
+ * (ADR 0014 and its endpoint refinement).
+ *
+ * Named for the fork RUN rather than for the fork: a `getForkRpcUrl` would read as the url to
+ * fork FROM, which is the one thing it is not.
+ */
+export function resolveForkRunEndpoint(config: ResolvedUserConfig, forkedNetworkName: string): string {
+	return config?.environments?.[forkedNetworkName]?.whenForked?.rpcUrl ?? CONVENTIONAL_LOCAL_RPC_URL;
+}
+
+/**
+ * Ask the node a FORK run attaches to which chain it is, when nobody handed us a provider.
+ *
+ * FORK-ONLY, by necessity rather than by preference: this dials an endpoint resolved WITHOUT a
+ * chain id, which only a fork's endpoint is. Off a fork the endpoint comes from `chains[<id>]`,
+ * so asking the node first would require already knowing the answer.
+ *
+ * It THROWS rather than falling back to anything when the node does not answer usefully. The only
+ * fallback available is `environments[<name>].chain`, and on a fork that value routinely names
+ * the SIMULATED network (the docs tell a hardhat user to declare `chain: 1`), so falling back
+ * would hand the connected identity a simulated id and every transaction would be signed for a
+ * chain the node rejects. A fork run that cannot reach its node can do nothing useful anyway, so
+ * the honest outcome is to stop, naming the endpoint that was tried.
+ */
+async function askForkNodeForItsChainId(endpoint: string, environmentName: string): Promise<number> {
+	let answer: unknown;
+	try {
+		answer = await new JSONRPCHTTPProvider(endpoint).request({method: 'eth_chainId'});
+	} catch (err) {
+		throw new Error(
+			`Could not reach the node at ${endpoint} to ask which chain the fork of "${environmentName}" is connected to. ` +
+				`Start the fork node, or name its endpoint in environments.${environmentName}.whenForked.rpcUrl.`,
+			{cause: err},
+		);
+	}
+	const chainId = Number(answer);
+	if (!Number.isInteger(chainId) || chainId <= 0) {
+		throw new Error(
+			`The node at ${endpoint} answered ${JSON.stringify(answer)} when asked which chain the fork of ` +
+				`"${environmentName}" is connected to, which is not a chain id.`,
+		);
+	}
+	return chainId;
+}
+
+/**
  * The chain id the run adopts: the CONNECTED one, the chain the node itself reports.
  *
  * Two things happen here and they are separate. The identity CHECK compares what the environment
@@ -140,7 +210,9 @@ export function resolveConfig<
  * not its own.
  *
  * On a FORK the check is skipped, since a fork is exactly the situation where the two legitimately
- * differ (ADR 0014); the adoption rule is unchanged there, which is the whole point.
+ * differ (ADR 0014); the adoption rule is unchanged there, which is the whole point. A fork is
+ * also the one case where a node can be asked with NO provider supplied, since its endpoint is
+ * known without a chain id.
  */
 export async function getChainIdForEnvironment(
 	config: ResolvedUserConfig,
@@ -159,7 +231,16 @@ export async function getChainIdForEnvironment(
 		declaredChainId = config.environments[environmentName].chain;
 	}
 
-	const chainIdFromProvider = provider ? Number(await provider.request({method: 'eth_chainId'})) : undefined;
+	// Two ways to reach the node, and the second is FORK-ONLY. With a provider the caller already
+	// holds the connection (hardhat-deploy always does). Without one, a fork can still ask, because
+	// `resolveForkRunEndpoint` answers WITHOUT a chain id and is the very endpoint this run will
+	// then connect to; off a fork the endpoint lives in `chains[<id>]` and the question is circular,
+	// which is why this branch may not be widened.
+	const chainIdFromNode = provider
+		? Number(await provider.request({method: 'eth_chainId'}))
+		: fork
+			? await askForkNodeForItsChainId(resolveForkRunEndpoint(config, environmentName), environmentName)
+			: undefined;
 
 	// The check asks "is this node the one this environment describes?", and on a FORK that question
 	// has no wrong answer: the declared id belongs to the network being SIMULATED while the node
@@ -169,18 +250,24 @@ export async function getChainIdForEnvironment(
 	//
 	// The leniency stops at forks. Off one, this warning is still the only thing that tells a user
 	// their `-e mainnet` run is pointed at a local node.
-	if (!fork && declaredChainId && chainIdFromProvider && chainIdFromProvider != declaredChainId) {
+	if (!fork && declaredChainId && chainIdFromNode && chainIdFromNode != declaredChainId) {
 		console.warn(
-			`provider give a different chainId (${chainIdFromProvider}) than the one expected for environment named "${environmentName}" (${declaredChainId})`,
+			`provider give a different chainId (${chainIdFromNode}) than the one expected for environment named "${environmentName}" (${declaredChainId})`,
 		);
 	}
 
 	// The adoption, stated rather than left to whichever value happened to be truthy: the node's id
 	// wins whenever a node answered, because it is the only id a transaction can be signed for. The
-	// declared id is the fallback for a run with no provider at all. `||` rather than `??` is
-	// load-bearing: it also rejects the `0`/`NaN` a node answering nonsense produces, so that run
-	// fails on the error below instead of carrying a meaningless id.
-	const chainIdToReturn = chainIdFromProvider || declaredChainId;
+	// declared id is the fallback for a run with no node to ask at all, which after the discovery
+	// above means a NON-fork run with no provider. `||` rather than `??` is load-bearing: it also
+	// rejects the `0`/`NaN` a node answering nonsense produces, so that run fails on the error below
+	// instead of carrying a meaningless id.
+	//
+	// The order is the crux on a fork, and it is easy to get backwards: the declared id is routinely
+	// the SIMULATED network's (the docs tell a hardhat user to declare `chain: 1` so mainnet's
+	// settings are found), so preferring it would put 1 into the `chainId` of every transaction sent
+	// to a node reporting 31337.
+	const chainIdToReturn = chainIdFromNode || declaredChainId;
 
 	if (chainIdToReturn === undefined) {
 		throw new Error(
@@ -251,19 +338,6 @@ export function resolveForkDescriptor(
 	return declaredChainId === undefined ? fork : {...fork, chainId: declaredChainId};
 }
 
-/**
- * Where a local node listens when nobody said otherwise: the address anvil and `hardhat node`
- * both default to. It is the endpoint a FORK run dials with no fork configuration at all, which
- * is what keeps the zero-configuration case working, and it is a stated default here rather than
- * the coincidence it used to be (it arrived through viem's `hardhat` chain entry in
- * `chains[31337]`, a bucket that describes the user's own dev node rather than their fork).
- *
- * Named for the LOCAL NODE, not the fork: `fork` in a name is ambiguous across three parts of
- * speech, and a `FORK_RPC_URL` would read as the url to fork FROM, which is the one thing this
- * is not (see the naming section of ADR 0014).
- */
-export const CONVENTIONAL_LOCAL_RPC_URL = 'http://127.0.0.1:8545';
-
 export function resolveExecutionParams<Extra extends Record<string, unknown> = Record<string, unknown>>(
 	config: ResolvedUserConfig,
 	executionParameters: ExecutionParams<Extra>,
@@ -291,13 +365,16 @@ export function resolveExecutionParams<Extra extends Record<string, unknown> = R
 
 	// ... but the ENDPOINT of that connection is no longer read from the bucket. `chains[31337]` is
 	// where a user describes their own dev node, so its url is the port THAT node listens on, not
-	// the port a fork of another network does. A fork therefore starts from the conventional local
-	// endpoint and says the rest itself, in the `whenForked` layer applied below.
+	// the port a fork of another network does. A fork therefore starts from the endpoint its own
+	// configuration names, which the `whenForked` layer applied below then re-states identically.
+	//
+	// Read through the SAME function `getChainIdForEnvironment` asks when it discovers the connected
+	// chain id, so a provider-less fork cannot interrogate one node and then talk to another.
 	const connectedChainConfig = getChainConfigFromUserConfig(
 		config,
 		connectedChainId,
 		executionParameters.provider,
-		fork ? CONVENTIONAL_LOCAL_RPC_URL : undefined,
+		fork ? resolveForkRunEndpoint(config, environmentName) : undefined,
 	);
 
 	// The SIMULATED chain is the network being forked, and its configuration is what the run
