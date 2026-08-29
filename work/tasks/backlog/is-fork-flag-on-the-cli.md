@@ -3,7 +3,6 @@ title: 'Give rocketh users who are not on hardhat a way to say "the node I am po
 slug: is-fork-flag-on-the-cli
 blockedBy: [a-fork-does-not-save-unless-asked]
 covers: []
-needsAnswers: true
 ---
 
 ## What to build
