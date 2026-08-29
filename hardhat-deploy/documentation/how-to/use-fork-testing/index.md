@@ -51,9 +51,14 @@ import {deployScript, artifacts} from '../rocketh/deploy.js';
 export default deployScript(
 	async (env) => {
 		const {deployer} = env.namedAccounts;
-		const {name: networkName} = env.network;
+		const {name: environmentName} = env;
 
-		console.log(`Deploying on ${networkName} (fork of: ${env.network.fork?.networkName || 'none'})`);
+		// On a fork the environment name IS the forked network's, since that is the deployment
+		// folder the run reads. What differs is the chain the node reports, which is what every
+		// transaction declares.
+		console.log(
+			`Deploying on ${environmentName}, talking to chain ${env.network.chain.id}${env.network.fork ? ' (a fork)' : ''}`,
+		);
 
 		// Deploy your contract
 		const deployment = await env.deploy('MyDeFiContract', {

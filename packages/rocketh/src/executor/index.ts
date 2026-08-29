@@ -49,7 +49,7 @@ import {getChainConfigFromUserConfig, getChainSemanticsFromUserConfig} from '../
  *   await env.verify('0x123...'); // No need to pass env
  *
  *   // Original environment properties are still available
- *   console.log(env.network.name);
+ *   console.log(env.name);
  *   const deployment = env.get('MyContract');
  * }, { tags: ['deploy'] });
  * ```
