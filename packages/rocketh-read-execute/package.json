@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/read-execute",
-	"version": "0.20.1",
+	"version": "0.20.2",
 	"description": "Read from and send transactions to deployed EVM smart contracts inside rocketh deploy scripts.",
 	"keywords": [
 		"rocketh",
