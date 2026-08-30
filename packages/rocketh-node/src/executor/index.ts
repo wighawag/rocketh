@@ -30,6 +30,8 @@ import {enhanceEnvIfNeeded} from '@rocketh/core/environment';
 import {traverseMultipleDirectory} from '../utils/fs.js';
 import {createFSDeploymentStore} from '../environment/deployment-store.js';
 import {createNodePromptExecutor} from '../environment/prompt.js';
+import type {NodeExecutionParams} from '../execution-params.js';
+import {writeCapturedTransactions} from './write-transactions.js';
 import {logs} from 'named-logs';
 import {chainById} from '../environment/chains.js';
 
@@ -46,7 +48,9 @@ export function setupEnvironmentFromFiles<
 		Extra extends Record<string, unknown> = Record<string, unknown>,
 		ArgumentsType = undefined,
 	>(
-		executionParams: ExecutionParams<Extra>,
+		// the EXECUTE entry points take the node-local parameters, since only a run that executes
+		//  scripts has transactions to write (see `NodeExecutionParams`)
+		executionParams: NodeExecutionParams<Extra>,
 		args?: ArgumentsType,
 	): Promise<EnhancedEnvironment<NamedAccounts, Data, UnknownDeployments, Extensions>> {
 		const env = await loadAndExecuteDeploymentsFromFiles<NamedAccounts, Data, ArgumentsType, Extra>(
@@ -60,7 +64,7 @@ export function setupEnvironmentFromFiles<
 		Extra extends Record<string, unknown> = Record<string, unknown>,
 		ArgumentsType = undefined,
 	>(
-		executionParams: ExecutionParams<Extra>,
+		executionParams: NodeExecutionParams<Extra>,
 		config: UserConfig<NamedAccounts, Data>,
 		args?: ArgumentsType,
 	): Promise<EnhancedEnvironment<NamedAccounts, Data, UnknownDeployments, Extensions>> {
@@ -327,7 +331,7 @@ export async function loadAndExecuteDeploymentsFromFiles<
 	ArgumentsType = undefined,
 	Extra extends Record<string, unknown> = Record<string, unknown>,
 >(
-	executionParams: ExecutionParams<Extra>,
+	executionParams: NodeExecutionParams<Extra>,
 	args?: ArgumentsType,
 ): Promise<Environment<NamedAccounts, Data, UnknownDeployments>> {
 	const config = await readConfig<NamedAccounts, Data>();
@@ -345,7 +349,7 @@ async function loadAndExecuteDeploymentsFromFilesWithSpecificConfig<
 	ArgumentsType = undefined,
 	Extra extends Record<string, unknown> = Record<string, unknown>,
 >(
-	executionParams: ExecutionParams<Extra>,
+	executionParams: NodeExecutionParams<Extra>,
 	config: UserConfig<NamedAccounts, Data>,
 	args?: ArgumentsType,
 ): Promise<Environment<NamedAccounts, Data, UnknownDeployments>> {
@@ -367,7 +371,33 @@ async function loadAndExecuteDeploymentsFromFilesWithSpecificConfig<
 	// console.log(JSON.stringify(options, null, 2));
 	// console.log(JSON.stringify(resolvedConfig, null, 2));
 
-	return _executeDeployScriptsFromFiles<NamedAccounts, Data, ArgumentsType>(userConfig, resolvedExecutionParams, args);
+	const env = await _executeDeployScriptsFromFiles<NamedAccounts, Data, ArgumentsType>(
+		userConfig,
+		resolvedExecutionParams,
+		args,
+	);
+
+	// THE FILE SINK, and its whole lifecycle: written ONCE, at the END, only on SUCCESS.
+	//
+	// Here rather than in the bin script because `cli.ts` does not await the run (it ends with a
+	//  bare call), so nothing there ever holds the returned environment. Here rather than deeper in
+	//  core because only this package may touch a filesystem (ADR 0002).
+	//
+	// "Only on success" then costs nothing to enforce: a throw from the scripts propagates PAST
+	//  this line, so a failed run writes nothing and leaves any previous file at that path exactly
+	//  as it found it. That is the point rather than an accident: on a fork or a memory node
+	//  nothing real happened, so a half-finished run has not produced a smaller truth but a
+	//  misleading one, and an operator who executes a partial batch sends a subset of the work
+	//  believing it is the whole.
+	//
+	// Note the asymmetry it does NOT resolve: the flag is not gated on the run mode, so on a run
+	//  against a REAL network a mid-run throw means transactions really were sent and no file is
+	//  written. Recovering from that is what rocketh's pending-transaction records are for.
+	if (executionParams.writeTransactions !== undefined) {
+		writeCapturedTransactions(executionParams.writeTransactions, env.capturedTransactions);
+	}
+
+	return env;
 }
 
 // TODO: remove this function or export it in index.ts

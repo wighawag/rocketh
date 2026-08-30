@@ -52,6 +52,7 @@ rocketh -e mainnet --is-fork
 | `--skip-prompts`              | Skip any prompts. Also forces `--on-unknown-signer throw`.                                              |
 | `--on-unknown-signer <value>` | What to do when a transaction's `from` cannot be signed for: `throw`, `ask` or `auto` (default `auto`). |
 | `--is-fork`                   | The node being attached to is a fork of the environment named by `-e`. Takes no argument.               |
+| `--write-transactions <file>` | Write the transactions this run broadcast, in order, as JSON to `<file>`. Only when the run succeeds.   |
 
 ### Rehearsing on a fork
 

@@ -1,5 +1,6 @@
 import {Command} from 'commander';
-import type {ExecutionParams, ForkInput, UnknownSignerPolicy} from '@rocketh/core/types';
+import type {ForkInput, UnknownSignerPolicy} from '@rocketh/core/types';
+import type {NodeExecutionParams} from './execution-params.js';
 
 /**
  * The `rocketh` command's OPTION SURFACE, defined here rather than in `cli.ts` so that it can be
@@ -35,6 +36,18 @@ export function buildCLIProgram(version: string): Command {
 			//  IMPERATIVE, and rocketh forks nothing: it attaches to a node somebody else forked. See
 			//  the naming section of ADR 0014, and `resolveEnvironmentInput` below.
 			'the node being attached to is a fork of the environment named by -e (its deployments are read, and not written)',
+		)
+		.option(
+			'--write-transactions <file>',
+			// Named for the WRITE, not for the capture. A run remembers what it broadcast whether or
+			//  not this flag is given (`env.capturedTransactions`), so `--capture-transactions` would
+			//  assert a capability this flag does not control and send a plugin author looking for a
+			//  flag to get the in-process list. Same discipline as `--is-fork` above.
+			// The description says WHEN, because that is the surprising half: a run that throws writes
+			//  nothing rather than a partial batch. It must not suggest the path can be a stream: the
+			//  write is atomic via write-then-rename, which REPLACES the path rather than writing into
+			//  it.
+			'write the transactions this run broadcast, in order, as JSON to <file> (only when the run succeeds)',
 		);
 }
 
@@ -67,6 +80,7 @@ export type RockethCLIOptions = {
 	reset?: boolean;
 	environment: string;
 	isFork?: boolean;
+	writeTransactions?: string;
 };
 
 /**
@@ -157,8 +171,35 @@ export function parseTags(value: string | undefined): string[] | undefined {
 }
 
 /**
- * The CLI's BOUNDARY: commander's parsed options in, core's `ExecutionParams` out, one explicit
- * entry per option.
+ * Where the transactions this run broadcast are to be written, or `undefined` to write nothing.
+ *
+ * An EMPTY value is REFUSED rather than read as "no file", which is the opposite of how
+ * `--tags ''` is read, and deliberately so: an empty tag filter has a true meaning (select
+ * everything), while an empty PATH names nothing a file could be written to. Reading it as "no
+ * file" would end a successful rehearsal with no batch and nothing on screen to say why, and
+ * that is the one outcome an operator cannot detect. Refusing here costs the run nothing,
+ * because the boundary is crossed BEFORE the run rather than after it.
+ *
+ * The refusal LEAVES this module as a throw, exactly as `resolveUnknownSignerPolicy`'s does: the
+ * bin script owns talking to a terminal and turns it into a message on stderr and an exit code.
+ */
+export function resolveWriteTransactionsPath(
+	options: Pick<RockethCLIOptions, 'writeTransactions'>,
+): string | undefined {
+	const value = options.writeTransactions;
+	if (value === undefined) {
+		return undefined;
+	}
+	if (value.trim() === '') {
+		throw new Error('--write-transactions needs a file path to write to.');
+	}
+	return value;
+}
+
+/**
+ * The CLI's BOUNDARY: commander's parsed options in, the run parameters out, one explicit entry
+ * per option. Those are core's `ExecutionParams` plus the one thing only a filesystem runtime
+ * can honour, `writeTransactions` (see `NodeExecutionParams`).
  *
  * It is explicit because the alternative was tried and failed three times. `cli.ts` used to hand
  * core `...(options as ExecutionParams)` and then hand-write a fix-up for each option whose CLI
@@ -174,9 +215,10 @@ export function parseTags(value: string | undefined): string[] | undefined {
  * error at the one place that has to think about the difference. The order-sensitivity that came
  * with the spread (a transform written before it was silently overwritten) is gone with it.
  *
- * Throws when an option's VALUE is not one core accepts; see `resolveUnknownSignerPolicy`.
+ * Throws when an option's VALUE is not one core accepts; see `resolveUnknownSignerPolicy` and
+ * `resolveWriteTransactionsPath`.
  */
-export function toExecutionParams(options: RockethCLIOptions): ExecutionParams {
+export function toExecutionParams(options: RockethCLIOptions): NodeExecutionParams {
 	return {
 		environment: resolveEnvironmentInput(options),
 		tags: parseTags(options.tags),
@@ -195,5 +237,9 @@ export function toExecutionParams(options: RockethCLIOptions): ExecutionParams {
 			scripts: options.scripts,
 			deployments: options.deployments,
 		},
+		// A `@rocketh/node` parameter, not one of core's: the path means nothing to a browser-capable
+		//  runtime, and the whole of what it does happens after the executor returns (see
+		//  `NodeExecutionParams`).
+		writeTransactions: resolveWriteTransactionsPath(options),
 	};
 }
