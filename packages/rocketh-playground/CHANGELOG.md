@@ -1,5 +1,14 @@
 # @rocketh/playground
 
+## 0.0.11
+
+### Patch Changes
+
+- Updated dependencies [5882523]
+  - @rocketh/read-execute@0.20.2
+  - @rocketh/deploy@0.19.21
+  - @rocketh/proxy@0.19.28
+
 ## 0.0.10
 
 ### Patch Changes

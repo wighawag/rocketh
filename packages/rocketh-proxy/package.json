@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/proxy",
-	"version": "0.19.27",
+	"version": "0.19.28",
 	"description": "Deploy upgradeable EVM smart contracts behind ERC1967, UUPS, Transparent or ERC173 proxies, for rocketh and hardhat-deploy.",
 	"keywords": [
 		"rocketh",
