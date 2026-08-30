@@ -12,6 +12,16 @@ dependency choices, a persisted-batch schema with no committed consumer). Do not
 tasks that would be fiction; spike the risky questions on the narrowest real case, decide, and
 emit a build plan for a follow-on build spec.
 
+## Tasked (2026-08-30): this exploration emitted `captured-transactions`, and ZERO tasks of its own
+
+Moved to `work/specs/tasked/` having authored no task files, which is the correct terminal for it and is not an omission.
+
+An EXPLORATION spec's deliverable is CONFIDENCE plus a sliced build plan, not shipped adapters, and both halves are delivered. All six user stories are answered in `Resolved (2026-08-27)` below: where batching lives (1), no persisted batch schema this milestone (2), the Safe-consumable artifact (3), the v1 `external`/`safe` protocol subsumed by `ask` (4), the signing-page launcher out of scope (5), and the Safe SDK kept out of this repo (6). The build plan it exists to emit is **`captured-transactions`**, which was specced, tasked, built and shipped: an ordered list of what a run broadcast, annotated with signability, exposed on the environment and writable with `rocketh --write-transactions <file>`. See `documentation/captured-transactions/`.
+
+So there was nothing left to task. Authoring build tasks here would have produced exactly the fiction the `Kind` block above forbids, and the atomicity rule (every story becomes a task, or none) resolves to NONE when every story is already answered.
+
+Why `specs/tasked/` rather than `specs/dropped/`: `dropped/` is for a spec that was never tasked, and this one was CONSUMED. It produced a build spec that is now fully built, so recording it as dropped would un-record work that really happened. `specs/tasked/` is a terminal position with no exits, which is the honest resting place for a decomposition that did occur. Every adapter this exploration considered and did not greenlight stays unbuilt BY DECISION, and those decisions are below rather than lost.
+
 ## Resolved (2026-08-27), and what is left
 
 All five open questions are answered in `work/questions/spec-explore-unknown-signer-adapters.md`. The exploration's deliverable was CONFIDENCE plus a sliced build plan, and that is what the answers produce. In summary:
