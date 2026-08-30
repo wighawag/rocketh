@@ -16,6 +16,11 @@
  *   2. Fallback: regex over `source.content` for a `library <Name>`
  *      declaration.
  *
+ * Each pass takes the FIRST source it matches. That is a GUESS whenever more
+ * than one source matches, so the scan collects every candidate and warns
+ * (naming the library, all candidates, the chosen one, and which pass produced
+ * them) before returning the first. It does not change which one wins.
+ *
  * Returns the source path (e.g. `contracts/Math.sol`) or `undefined` if the
  * library cannot be located in any of the sources.
  */
@@ -75,10 +80,22 @@ export function findLibrarySourcePathFromLinkReferences(
 }
 
 /**
+ * Which pass of the fallback scan produced a set of candidates. A user fixes
+ * the two differently: `ast` candidates are all real `library <Name>`
+ * declarations (dedupe the compilation, or carry `linkReferences`), while a
+ * `content` candidate may be no declaration at all, just the words `library
+ * <Name>` inside a comment or a string literal.
+ */
+type ScanPass = 'ast' | 'content';
+
+/**
  * Resolve a library's defining source path from the compilation metadata
  * `sources` map, via structured AST first then a `library <Name>` content
  * scan. This is the FALLBACK used only when the deployment carries no usable
  * `linkReferences` (e.g. older artifacts).
+ *
+ * Both passes take the first match; this collects ALL of them so an ambiguity
+ * can be reported, then returns the first, exactly as before.
  */
 function findLibrarySourcePathBySources(
 	libraryName: string,
@@ -86,31 +103,89 @@ function findLibrarySourcePathBySources(
 	metadataSources: Record<string, {content?: string; ast?: any}>,
 ): string | undefined {
 	// 1. Structured AST lookup (most reliable when available).
+	const astCandidates = collectFromAst(libraryName, metadataSources);
+	if (astCandidates.length > 0) {
+		return chooseFirst(libraryName, astCandidates, 'ast');
+	}
+
+	// 2. Fallback: scan raw source content for a `library <Name>` declaration.
+	const contentCandidates = collectFromContent(libraryName, metadataSources);
+	if (contentCandidates.length > 0) {
+		return chooseFirst(libraryName, contentCandidates, 'content');
+	}
+
+	return undefined;
+}
+
+/** Every source whose AST declares `contractKind: 'library'` under this name. */
+function collectFromAst(
+	libraryName: string,
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	metadataSources: Record<string, {content?: string; ast?: any}>,
+): string[] {
+	const candidates: string[] = [];
 	for (const [sourcePath, source] of Object.entries(metadataSources)) {
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const ast = (source as any)?.ast;
 		if (ast && Array.isArray(ast.nodes)) {
-			for (const node of ast.nodes) {
-				if (
+			const declares = ast.nodes.some(
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				(node: any) =>
 					node &&
 					node.nodeType === 'ContractDefinition' &&
 					node.contractKind === 'library' &&
-					node.name === libraryName
-				) {
-					return sourcePath;
-				}
+					node.name === libraryName,
+			);
+			if (declares) {
+				candidates.push(sourcePath);
 			}
 		}
 	}
+	return candidates;
+}
 
-	// 2. Fallback: scan raw source content for a `library <Name>` declaration.
+/** Every source whose raw text matches a `library <Name>` declaration. */
+function collectFromContent(
+	libraryName: string,
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	metadataSources: Record<string, {content?: string; ast?: any}>,
+): string[] {
 	const escaped = libraryName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 	const regex = new RegExp(`\\blibrary\\s+${escaped}\\b`);
+	const candidates: string[] = [];
 	for (const [sourcePath, source] of Object.entries(metadataSources)) {
 		if (source?.content && regex.test(source.content)) {
-			return sourcePath;
+			candidates.push(sourcePath);
 		}
 	}
+	return candidates;
+}
 
-	return undefined;
+/**
+ * Return the first candidate — the one this scan has always returned — and,
+ * when there is more than one, make the pick VISIBLE instead of silent.
+ *
+ * The notice stays on `console.warn` rather than moving to the `named-logs`
+ * logger used elsewhere in the repo: `logs()` returns a permanent no-op unless
+ * something hooked a factory FIRST, and the `rocketh-verify` CLI (the main way
+ * this code runs) does not. Routing it through the logger would delete exactly
+ * the message this task exists to show. See
+ * `docs/adr/0009-user-facing-notices-stay-on-console.md`.
+ */
+function chooseFirst(libraryName: string, candidates: string[], pass: ScanPass): string {
+	const chosen = candidates[0];
+	if (candidates.length > 1) {
+		const origin =
+			pass === 'ast'
+				? 'each declares it in its AST, so these are real duplicate declarations'
+				: 'these come from the raw-source text scan, so a match may be a mention inside a comment or a string literal rather than a declaration';
+		console.warn(
+			`[@rocketh/verifier] ambiguous library "${libraryName}": ${candidates.length} candidate sources in the ` +
+				`compilation metadata (${origin}): ${candidates.join(', ')}. ` +
+				`Using the first one: ${chosen}. ` +
+				`Etherscan keys settings.libraries by the source file that DEFINES the library, so verification will ` +
+				`fail if that is the wrong one; a deployment carrying compiler linkReferences resolves this without guessing.`,
+		);
+	}
+	return chosen;
 }
