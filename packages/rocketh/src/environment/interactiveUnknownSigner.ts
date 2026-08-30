@@ -17,24 +17,58 @@ const SEPARATOR = '-------------------------------------------------------------
 export const CANNOT_SIGN_ANSWER = 'cannot sign';
 
 /**
- * How many times a malformed paste is re-asked before the run gives up and defers.
+ * How many times ONE unsignable transaction may be asked for a hash, in TOTAL.
+ *
  * BOUNDED on purpose: a typo deserves a second chance, but an unattended or
  * mis-wired prompt that keeps answering nonsense must not be able to spin a run
  * forever. Giving up degrades to the same defer path as "cannot sign", so nothing
  * is lost but the pause.
+ *
+ * ONE BUDGET, SHARED BY BOTH RE-ASKS. A paste can fail two different ways — it is not
+ * a well-formed hash (a SYNTAX failure, caught here) or the node has never heard of it
+ * (a LOOKUP failure, caught at the seam, which then re-asks with the value pre-filled).
+ * They deliberately spend the SAME counter, because two counters that each reset are
+ * how an unbounded loop arrives by accident: alternating one malformed answer with one
+ * unfindable hash would refill whichever budget the other kind did not touch, and the
+ * run could be paused for ever. With one budget the whole pause costs at most this many
+ * questions whatever the answers are, which is the property {@link HashPromptBudget}
+ * exists to make provable.
  */
 export const MAX_HASH_PROMPT_ATTEMPTS = 3;
+
+/**
+ * The remaining share of {@link MAX_HASH_PROMPT_ATTEMPTS} for ONE unsignable
+ * transaction: created once per pause and passed to every ask, so the two re-ask paths
+ * spend one counter rather than one each.
+ *
+ * Mutable and passed by reference on purpose. The counter has to be spent by code on
+ * BOTH sides of this module's boundary (the malformed-paste loop here, the not-found
+ * re-ask at the seam), and a returned-and-rethreaded number is the shape where one
+ * caller forgets to thread it back and the bound quietly dies.
+ */
+export type HashPromptBudget = {remaining: number};
+
+/** Open a fresh budget for one pause. Never reused across transactions. */
+export function createHashPromptBudget(): HashPromptBudget {
+	return {remaining: MAX_HASH_PROMPT_ATTEMPTS};
+}
 
 const TRANSACTION_HASH_PATTERN = /^0x[0-9a-fA-F]{64}$/;
 
 /**
  * The answer, already validated. `cannot-sign` carries WHY so the seam (and a log)
  * can tell a deliberate decline from an aborted prompt, a prompt that could not run
- * at all, or a paste that never became a hash.
+ * at all, or a pause that ran out of questions.
+ *
+ * `attempts-exhausted` is the {@link HashPromptBudget} reaching zero, whatever spent
+ * it: malformed pastes here, hashes this node never found, or a mix of the two. It is
+ * deliberately NOT named after malformed input (which it once was, as `no-valid-hash`),
+ * because the budget is shared and naming it after one of its two spenders would read
+ * as a lie on the other path.
  */
 export type InteractiveUnknownSignerAnswer =
 	| {type: 'hash'; hash: `0x${string}`}
-	| {type: 'cannot-sign'; reason: 'declined' | 'cancelled' | 'prompt-failed' | 'no-valid-hash'};
+	| {type: 'cannot-sign'; reason: 'declined' | 'cancelled' | 'prompt-failed' | 'attempts-exhausted'};
 
 /** Normalise so `Cannot-Sign`, `cannot_sign` and `CANNOT  SIGN` all mean the same thing. */
 function normaliseAnswer(value: string): string {
@@ -83,6 +117,11 @@ export function formatInteractivePresentation(details: string, from: string): st
  * which an EMPTY string is a VALUE, not a cancellation, precisely because only the
  * caller knows what its prompt can accept. This caller accepts a 32-byte hex hash
  * and reads everything else as a decision or a typo.
+ *
+ * CALLED ONCE PER ASK-AND-LOOKUP CYCLE, not once per pause: the seam calls it again
+ * when the hash it got back turned out to be unknown to this node, passing that hash
+ * as `previousAnswer`. Every call spends from the SAME `budget`, so the pause as a
+ * whole is bounded however the two kinds of bad answer are interleaved.
  */
 export async function askForExecutedTransactionHash(params: {
 	promptText: NonNullable<PromptExecutor['promptText']>;
@@ -90,18 +129,38 @@ export async function askForExecutedTransactionHash(params: {
 	/** The `UnknownSignerError` message: the transaction to execute, undegraded. */
 	details: string;
 	from: string;
+	/** Shared across every ask for this one transaction. See {@link HashPromptBudget}. */
+	budget: HashPromptBudget;
+	/**
+	 * The hash asked about a moment ago, when this is a RE-ASK of a pause the human is
+	 * ALREADY looking at (the seam looked it up and this node did not know it).
+	 *
+	 * Its PRESENCE means two things, which are one thing seen from either end: the
+	 * value is offered back as the prompt's starting point, so a truncated paste or a
+	 * dropped character costs an edit rather than a re-run; and the transaction banner is
+	 * NOT printed again, because it is still on screen above the question that produced
+	 * this value. (The malformed-paste loop below re-asks without reprinting it for the
+	 * same reason.) A first ask has no previous answer and gets the banner.
+	 */
+	previousAnswer?: string;
 }): Promise<InteractiveUnknownSignerAnswer> {
-	const {promptText, showMessage, details, from} = params;
+	const {promptText, showMessage, details, from, budget, previousAnswer} = params;
 
-	showMessage(formatInteractivePresentation(details, from));
+	if (previousAnswer === undefined) {
+		showMessage(formatInteractivePresentation(details, from));
+	}
 
-	for (let attempt = 1; attempt <= MAX_HASH_PROMPT_ATTEMPTS; attempt++) {
+	while (budget.remaining > 0) {
+		budget.remaining--;
 		let answer: TextPromptAnswer;
 		try {
 			answer = await promptText({
 				type: 'text',
 				name: 'transactionHash',
 				message: `Transaction hash executed for ${from} (or "${CANNOT_SIGN_ANSWER}")`,
+				// A HINT the runtime may ignore (see `TextPromptRequest`): where it is honoured
+				// the human presses enter to try the same hash again, or types a corrected one.
+				...(previousAnswer === undefined ? {} : {initial: previousAnswer}),
 			});
 		} catch (err) {
 			// A prompt that cannot really reach a human (no TTY behind it) must not replace
@@ -126,16 +185,27 @@ export async function askForExecutedTransactionHash(params: {
 			return {type: 'hash', hash: value.toLowerCase() as `0x${string}`};
 		}
 
-		const remaining = MAX_HASH_PROMPT_ATTEMPTS - attempt;
 		showMessage(
 			`"${value}" is not a transaction hash (expected 0x followed by 64 hex characters).` +
-				(remaining > 0
-					? ` ${remaining} attempt${remaining === 1 ? '' : 's'} left.`
-					: ' Giving up and deferring the transaction.'),
+				describeRemainingAttempts(budget),
 		);
 	}
 
-	return {type: 'cannot-sign', reason: 'no-valid-hash'};
+	return {type: 'cannot-sign', reason: 'attempts-exhausted'};
+}
+
+/**
+ * The tail of every "that answer was no good" message: how much of the shared budget is
+ * left, or that the pause is over.
+ *
+ * ONE phrasing for both re-ask paths, because they spend one budget: a user who met a
+ * malformed-paste message and then a not-found one has to be able to read the two
+ * countdowns as the same countdown, which they are.
+ */
+export function describeRemainingAttempts(budget: HashPromptBudget): string {
+	return budget.remaining > 0
+		? ` ${budget.remaining} attempt${budget.remaining === 1 ? '' : 's'} left.`
+		: ' Giving up and deferring the transaction.';
 }
 
 /** What a human types to accept a transaction rocketh could not tie to the request. */

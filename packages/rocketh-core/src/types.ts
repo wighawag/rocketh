@@ -1041,6 +1041,28 @@ export type PromptAnswer = {
  */
 export type TextPromptAnswer = {value: string} | {cancelled: true};
 
+/**
+ * What asking a human for free TEXT looks like on the wire.
+ *
+ * `initial` is a HINT, not a contract: an implementation that has no way to offer a
+ * starting value ignores it and the caller still works, which is what keeps the field
+ * safe to add to an interface every runtime implements. The caller therefore may not
+ * assume the answer came back pre-filled — it re-reads whatever the human submitted,
+ * exactly as it would without the hint.
+ *
+ * It exists so a re-ask does not throw away what the human already typed: the
+ * interactive unknown-signer resolver re-asks a hash the node could not find with that
+ * hash offered back, so a truncated paste or a dropped character costs an edit rather
+ * than a re-run.
+ */
+export type TextPromptRequest = {
+	type: 'text';
+	name: string;
+	message: string;
+	/** A starting value to offer the human, e.g. the answer they gave to the same question a moment ago. */
+	initial?: string;
+};
+
 export interface PromptExecutor {
 	prompt(request: {type: 'confirm'; name: string; message: string}): Promise<PromptAnswer>;
 	/**
@@ -1052,6 +1074,6 @@ export interface PromptExecutor {
 	 * `PromptExecutor`: `@rocketh/web` ships one whose confirm auto-proceeds without
 	 * asking anyone. Check `env.canPromptForText()` instead.
 	 */
-	promptText?(request: {type: 'text'; name: string; message: string}): Promise<TextPromptAnswer>;
+	promptText?(request: TextPromptRequest): Promise<TextPromptAnswer>;
 	exit(): void;
 }

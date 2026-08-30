@@ -24,12 +24,22 @@
  * (`{textAnswers: []}`), which is a present-but-exhausted prompt.
  */
 
-import type {PromptExecutor, TextPromptAnswer} from '@rocketh/core/types';
+import type {PromptExecutor, TextPromptAnswer, TextPromptRequest} from '@rocketh/core/types';
 
 /** A confirm ask, as `PromptExecutor.prompt` receives it. */
 export type MockConfirmPromptRequest = {type: 'confirm'; name: string; message: string};
-/** A free-text ask, as `PromptExecutor.promptText` receives it. */
-export type MockTextPromptRequest = {type: 'text'; name: string; message: string};
+/**
+ * A free-text ask, as `PromptExecutor.promptText` receives it — the request type
+ * ITSELF, so a field added to the abstraction is recorded here without this double
+ * having to be widened again.
+ *
+ * It carries `initial`, the starting value the asker offered, which is how a test
+ * proves a RE-ASK carried the previous answer over rather than asking from scratch:
+ * `promptExecutor.textRequests[1].initial`. A real prompt would show it; this one only
+ * records it, and answers from its script regardless — the script IS what the human
+ * typed, and a human is free to ignore what they were offered.
+ */
+export type MockTextPromptRequest = TextPromptRequest;
 export type MockPromptRequest = MockConfirmPromptRequest | MockTextPromptRequest;
 
 /**

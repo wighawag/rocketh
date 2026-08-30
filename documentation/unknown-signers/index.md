@@ -14,8 +14,16 @@ That is the whole workflow. There is no re-run dance, nothing to install, and an
 
 ### At the pause you have two answers
 
-- **Paste the transaction hash.** rocketh looks the transaction up on the network, waits for it to be mined, requires the receipt to report a SUCCESSFUL status, saves state through the same pending-transaction path a normal broadcast uses, records the hash for gas reporting, and returns the receipt to your script. It never sends a transaction of its own. A hash this node has never heard of (from the wrong network, or a typo that is still the right shape) is given a short grace period to show up and then reported as not found, with the transaction you still have to execute printed again, so the run stops rather than waiting for ever.
-- **`cannot sign`** (or just press enter). rocketh prints the full transaction and raises `UnknownSignerError`, which is the [defer workflow](#deferring-instead-of-asking-catchunknownsigner) below. Aborting the prompt (Ctrl-C) does the same. A paste that is not a transaction hash is re-asked a couple of times and then also defers.
+- **Paste the transaction hash.** rocketh looks the transaction up on the network, waits for it to be mined, requires the receipt to report a SUCCESSFUL status, saves state through the same pending-transaction path a normal broadcast uses, records the hash for gas reporting, and returns the receipt to your script. It never sends a transaction of its own.
+- **`cannot sign`** (or just press enter). rocketh prints the full transaction and raises `UnknownSignerError`, which is the [defer workflow](#deferring-instead-of-asking-catchunknownsigner) below. Aborting the prompt (Ctrl-C) does the same.
+
+### A hash that does not work out is asked again, not fatal
+
+A paste can be wrong in two ways, and neither ends the run. A value that is **not a transaction hash** (you pasted an address, or half a line) is rejected on the spot. A hash this node has **never heard of** (copied from the wrong network's explorer, or a character your terminal ate) is given a short grace period to show up and then reported as not found. Either way rocketh asks the same question again, and for a not-found hash it offers the value you typed BACK to you: press enter to look for that same hash once more, which is what you want when the transaction is real and the RPC had simply not caught up, or type a corrected one.
+
+The re-asking is BOUNDED: **one pause asks at most three times in total**, and the two kinds of bad answer share that budget, so a prompt nobody is really answering cannot pause a run for ever. When it runs out, the transaction is deferred exactly as `cannot sign` defers it: the full transaction is printed, `UnknownSignerError` is raised, and nothing is saved. The exits work from the re-asked question too, so you are never held at a prompt you cannot satisfy: an empty answer, `cannot sign` and Ctrl-C all defer.
+
+Nothing is recorded for a hash that was refused. The checks below all run before rocketh writes anything at all, so a rejected paste leaves no deployment record, no pending-transaction file and no gas-tracker entry, and the invariants are applied to the hash you FINALLY gave it, not to an earlier attempt.
 
 ### A hash from an earlier run is still good
 

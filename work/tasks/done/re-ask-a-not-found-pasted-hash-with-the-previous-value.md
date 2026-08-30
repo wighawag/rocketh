@@ -73,3 +73,17 @@ git fetch <remote> && git switch -c work/<slug> <remote>/main
 # on completion, in the work branch's PR/merge:
 git mv work/tasks/ready/<slug>.md work/tasks/done/<slug>.md
 ```
+
+## Decisions
+
+**1. One SHARED budget of 3 questions per pause, not two.** The malformed-paste re-ask and the new not-found re-ask spend one `HashPromptBudget` created per unsignable transaction. Alternative considered: a separate not-found budget, rejected because two counters that each reset can be alternated for ever, which is exactly the unbounded loop the old hard failure existed to prevent. Kept at the existing `MAX_HASH_PROMPT_ATTEMPTS = 3` rather than raising it, so the malformed path's observable behaviour is unchanged. Touches: `MAX_HASH_PROMPT_ATTEMPTS` (re-meaned from "malformed attempts" to "text asks per pause", documented at the constant), and any future third re-ask, which must spend this budget too. Pinned by `cannot be looped for ever by alternating malformed and not-found answers`.
+
+**2. Exhausting the budget DEFERS, it does not fail.** A not-found hash used to throw a plain `Error` naming the hash; now the run shows that message and, when the budget is gone, throws the undegraded `UnknownSignerError` exactly as "cannot sign" does. Alternative considered: keep the bespoke terminal `Error` for the not-found spender. Rejected because with a shared budget the outcome would depend on which kind of answer happened to spend the last unit, and because a plain `Error` escapes `catchUnknownSigner` and kills a run that the deferral workflow could have handled. Consequence, user-visible: a wrapper that previously died on a not-found hash now catches it and continues. Touches: `catchUnknownSigner` / `@rocketh/unknown-signer` consumers; covered by the changeset.
+
+**3. The resolver's `cannot-sign` reason `no-valid-hash` was renamed `attempts-exhausted`.** Internal (not exported from the package, only used in a `logger.debug`), but the old name says "malformed", which becomes a lie once a never-found hash can spend the same budget.
+
+**4. `previousAnswer` also suppresses the banner.** Its presence means "this is a re-ask within the same pause", so `formatInteractivePresentation` is printed once per pause rather than once per question, matching what the malformed loop already did. Alternative: a separate boolean flag, rejected as a second knob for one state. Documented at the parameter and pinned by `does not reprint the transaction banner on the re-ask`.
+
+**5. Documentation went to `documentation/unknown-signers/index.md`, not `documentation.md`.** The task names a `documentation.md` that no longer exists: the docs are now the `documentation/` site (per `work/notes/ideas/docs-site-astro-starlight.md`), and the interactive-flow text the task describes verbatim lives on the unknown-signers page. Small and self-contained, so I resolved it rather than stopping, but recording it since the task text is stale.
+
+**New named concept:** `HashPromptBudget` / `createHashPromptBudget` in `interactiveUnknownSigner.ts`. Checked against `CONTEXT.md` and the ADRs: it duplicates nothing (no existing "budget", "attempts" or "quota" concept), sits at the prompt-loop layer where both re-asks can reach it, and is module-internal, so it is not added to the glossary.
