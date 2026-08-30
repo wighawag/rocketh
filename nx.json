@@ -9,7 +9,9 @@
 		"build": {
 			"cache": true,
 			"dependsOn": ["^build"],
-			"inputs": ["production", "^production"]
+			"inputs": ["production", "^production"],
+			"comment": "OUTPUTS MUST BE DECLARED WHEREVER cache IS TRUE. With none, nx still records a cache HIT and replays a build that produced files WITHOUT producing them, then reports success. The packages build to dist via tsc, but the demoes' build is `hardhat compile`, whose products (artifacts/, cache/, and the plugin-generated generated/artifacts/index.ts) are all gitignored. So on any tree that never ran a real build, a warm cache left generated/ absent and the very next `pnpm typecheck` failed with TS2307 in demo files the task under test never touched, nondeterministically: whichever run warmed the cache passed, every later clean-tree run failed. Declared here rather than per-project because this default applies to every build, so any future target writing outside dist would otherwise inherit the same hole.",
+			"outputs": ["{projectRoot}/dist", "{projectRoot}/artifacts", "{projectRoot}/cache", "{projectRoot}/generated"]
 		},
 		"dev": {
 			"cache": false,
