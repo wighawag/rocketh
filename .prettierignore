@@ -27,3 +27,28 @@ packages/rocketh/LICENSE
 # formatter over them aborts the whole run on a missing plugin, so they format
 # themselves from within their own workspace.
 demoes
+
+#############################################
+# `work/` is COORDINATION STATE, written by the runner mid-task, and it is
+# deliberately NOT gated.
+#
+# `format:check` is the FIRST link of the verify chain, so anything it gates can
+# red a task on a file that task never touched. That is not hypothetical, and it
+# was a loop rather than an incident: the runner writes a bounce sidecar
+# (`work/questions/<type>-<slug>.md`) by quoting the gate's RAW output, which is
+# program output (vitest's indented tree, pnpm banners, nested `>` levels).
+# Prettier reflows blockquote content, so the sidecar the runner just wrote does
+# not satisfy `prettier --check`, and the next task bounces on it, writing another
+# one. The same class reached done records through transcribed `## Decisions`
+# blocks and reached `work/tasks/ready/` through a tasking run.
+#
+# Three observations recorded this, and it was being worked around by hand: tasks
+# carried "write emphasis with underscores, not asterisks, because the runner
+# transcribes this into a file the format gate checks", and drivers were told to
+# delete a leftover sidecar before re-dispatching. Ignoring the tree removes the
+# cause instead, and none of those workarounds is needed any more.
+#
+# Nothing is lost by it: `work/` ships to nobody and its formatting has no
+# consumer. It is excluded WHOLESALE, protocol docs included, on purpose. A
+# partial exclusion leaves the same hole open for whichever file is written next.
+work
