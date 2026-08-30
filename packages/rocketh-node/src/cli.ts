@@ -3,7 +3,7 @@ import {hookup, setupLogger} from 'named-logs-console';
 import {loadEnv} from 'ldenv';
 import pkg from '../package.json' with {type: 'json'};
 import {loadAndExecuteDeploymentsFromFiles} from './executor/index.js';
-import {ExecutionParams} from 'rocketh/types';
+import type {NodeExecutionParams} from './execution-params.js';
 import {packagesWithLogsEnabled} from './index.js';
 import {buildCLIProgram, toExecutionParams, type RockethCLIOptions} from './cli-options.js';
 
@@ -47,7 +47,7 @@ setupLogger(packagesWithLogsEnabled, {
 // The whole boundary, in one typed call (see `toExecutionParams`). It REFUSES an option value core
 //  cannot accept by throwing, and reporting that refusal is the bin script's job: a bad flag is a
 //  message on stderr and a non-zero exit, not a stack trace.
-let executionParams: ExecutionParams;
+let executionParams: NodeExecutionParams;
 try {
 	executionParams = toExecutionParams(options);
 } catch (err) {

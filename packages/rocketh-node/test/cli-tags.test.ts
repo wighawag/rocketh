@@ -362,6 +362,7 @@ describe('the boundary cannot lie again', () => {
 			reset: true,
 			environment: true,
 			isFork: true,
+			writeTransactions: true,
 		};
 
 		const declared = buildCLIProgram('0.0.0-test')

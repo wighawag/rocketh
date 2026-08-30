@@ -9,6 +9,10 @@ export {
 
 export {setupDeployScripts} from 'rocketh';
 
+// what the EXECUTE entry points above take: core's run parameters plus the one option only a
+// filesystem runtime can honour
+export type {NodeExecutionParams} from './execution-params.js';
+
 // used by hardhat-deploy
 export {chainByCanonicalName} from './environment/chains.js';
 
