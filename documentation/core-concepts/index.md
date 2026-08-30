@@ -122,3 +122,5 @@ Tags and dependencies allow you to control which deploy scripts are executed and
 
 - **Tags**: Labels attached to deploy scripts that can be used to selectively execute them.
 - **Dependencies**: Tags that a deploy script depends on, ensuring those scripts are executed first.
+
+Two more options in that same declaration change WHEN a script runs rather than what it does: an `id` (with a `return true`) makes a script run once and never again, and `runAtTheEnd` moves it after every ordinary script of the run. See [Running once, and running last](../script-lifecycle/).

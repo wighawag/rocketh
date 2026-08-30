@@ -12,6 +12,8 @@ You go and execute that transaction wherever its authority lives (your Safe, a h
 
 That is the whole workflow. There is no re-run dance, nothing to install, and an upgrade with several privileged steps pauses at each one and finishes them all in a single run.
 
+Because the run never gives up on the step, a script that resolves its privileged calls this way finishes normally, and rocketh watched each transaction land before saving anything. So a [run-once script](../script-lifecycle/) that ends with `return true` is telling the truth on this path. It is the CAUGHT deferral further down, not the pause, that can record a completion nobody earned.
+
 ### At the pause you have two answers
 
 - **Paste the transaction hash.** rocketh looks the transaction up on the network, waits for it to be mined, requires the receipt to report a SUCCESSFUL status, saves state through the same pending-transaction path a normal broadcast uses, records the hash for gas reporting, and returns the receipt to your script. It never sends a transaction of its own.
@@ -41,7 +43,7 @@ So a CI job, whose stdin is not a terminal, has no text capability at all and ta
 
 ### A run that threw will hand you the same transaction again
 
-The throw is not only a failure, it is an ABORT, and that has a consequence worth stating plainly. The deploy script never returns, so nothing records that this step was reached. That includes the run-once mechanism: a script that declares an `id` and ends with `return true` has its migration recorded only when the function RETURNS, and the deferral unwound the run before it could. The id is never written, and the next run runs that script again from the top.
+The throw is not only a failure, it is an ABORT, and that has a consequence worth stating plainly. The deploy script never returns, so nothing records that this step was reached. That includes the [run-once mechanism](../script-lifecycle/): a script that declares an `id` and ends with `return true` has its migration recorded only when the function RETURNS, and the deferral unwound the run before it could. The id is never written, and the next run runs that script again from the top.
 
 This is the one path on which an author who did everything right is still exposed. The same script, with a SIGNABLE account, executes the call, returns `true`, records its id and is skipped on every later run. With an UNSIGNABLE account under `throw` it records nothing at all.
 
@@ -233,6 +235,10 @@ const deferred = await catchUnknownSigner(env)(() =>
 Both forms are the same function: an extension package's root exports only curried `(env) => …` functions, which is precisely what lets the spread above turn them into methods on the environment.
 
 It returns `null` when the action succeeded, and otherwise hardhat-deploy v1's exact shape: every key present even when `undefined`, `value` as a string. Pass `{log: false}` to suppress the printed block. Nothing is persisted: idempotency comes from on-chain state, so you execute the transaction on your Safe and re-run the idempotent script. One wrapper captures one transaction (the first unsignable one inside it), so deferring several steps means one `catchUnknownSigner` per step.
+
+::: danger A caught deferral must never reach an unconditional `return true`
+Catching is what lets the script SURVIVE the deferral and run on to its end. If that end is a `return true` and the script declares an `id`, rocketh records it as complete and skips the WHOLE script on every later run, including the privileged step nobody has executed yet. Return the outcome instead of asserting one: `return deferred === null` records the script only on the run where nothing was left outstanding. [Running once, and running last](../script-lifecycle/#never-return-true-on-a-path-where-a-step-was-deferred) has the mechanism, and why rocketh documents this rather than refusing it.
+:::
 
 ### What closes the loop on the re-run
 
