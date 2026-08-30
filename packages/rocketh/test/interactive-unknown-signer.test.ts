@@ -3,12 +3,14 @@ import {LOCAL_SIGNING_RPC_RESPONSES} from './support/local-signing-responses.js'
 
 import {resolveConfig, getChainIdForEnvironment, resolveExecutionParams} from '../src/executor/index.js';
 import {createEnvironment, PASTED_TRANSACTION_LOOKUP_ROUNDS} from '../src/environment/index.js';
+import {MAX_HASH_PROMPT_ATTEMPTS} from '../src/environment/interactiveUnknownSigner.js';
 import {privateKey} from '@rocketh/signer';
 import {UnknownSignerError} from '@rocketh/core';
 import type {
 	DeploymentStore,
 	PromptExecutor,
 	TextPromptAnswer,
+	TextPromptRequest,
 	UnknownSignerPolicy,
 	UserConfig,
 } from '@rocketh/core/types';
@@ -46,6 +48,12 @@ const SENT_TX_HASH = '0x00000000000000000000000000000000000000000000000000000000
 /** What the human pastes back after executing on their Safe. */
 const PASTED_HASH = '0x00000000000000000000000000000000000000000000000000000000000000aa' as `0x${string}`;
 const SECOND_PASTED_HASH = '0x00000000000000000000000000000000000000000000000000000000000000bb' as `0x${string}`;
+/**
+ * A perfectly well-formed hash this node has never heard of, and never will: a
+ * character the terminal ate, a hash copied from the wrong chain's explorer. It is
+ * what the RE-ASK exists for, and what the malformed-paste re-ask cannot catch.
+ */
+const NOT_FOUND_HASH = '0x00000000000000000000000000000000000000000000000000000000000000cc' as `0x${string}`;
 const GENESIS_HASH = '0x0000000000000000000000000000000000000000000000000000000000000042';
 
 type Call = {method: string; params?: unknown};
@@ -71,6 +79,12 @@ function createMockProvider(options?: {
 	receipts?: Record<string, Record<string, unknown>>;
 	/** Hashes this node has never heard of: no transaction and no receipt, ever. */
 	unknownHashes?: string[];
+	/**
+	 * Hashes the node does not know YET: `eth_getTransactionByHash` answers null for the
+	 * first N asks and then knows it. Models the RPC catching up with a transaction that
+	 * really was executed, which is the case where re-submitting the SAME hash resolves.
+	 */
+	unknownTransactionRounds?: Record<string, number>;
 	/** Hashes the node knows but has not mined yet: no receipt for the first N asks. */
 	pendingReceiptRounds?: Record<string, number>;
 	/**
@@ -91,6 +105,7 @@ function createMockProvider(options?: {
 	const calls: Call[] = [];
 	const unknownHashes = new Set((options?.unknownHashes ?? []).map((h) => h.toLowerCase()));
 	const pendingRoundsLeft: Record<string, number> = {...options?.pendingReceiptRounds};
+	const unknownTransactionRoundsLeft: Record<string, number> = {...options?.unknownTransactionRounds};
 	const provider = {
 		request: (async (args: {method: string; params?: unknown}) => {
 			calls.push({method: args.method, params: args.params});
@@ -111,6 +126,10 @@ function createMockProvider(options?: {
 				case 'eth_getTransactionByHash': {
 					const hash = (args.params as string[])[0];
 					if (unknownHashes.has(hash.toLowerCase())) {
+						return null;
+					}
+					if (unknownTransactionRoundsLeft[hash] > 0) {
+						unknownTransactionRoundsLeft[hash]--;
 						return null;
 					}
 					// `to`, `input` and `value` are always present on a real `eth_getTransactionByHash`
@@ -189,7 +208,7 @@ function createInMemoryStore(): {
 
 type ScriptedPrompt = PromptExecutor & {
 	promptText: ReturnType<typeof vi.fn>;
-	requests: {type: 'text'; name: string; message: string}[];
+	requests: TextPromptRequest[];
 };
 
 /**
@@ -197,10 +216,15 @@ type ScriptedPrompt = PromptExecutor & {
  * no TTY. An entry that is an `Error` is THROWN by `promptText` (a runtime that
  * cannot really reach a human); running past the end of the script fails loudly
  * rather than looping forever.
+ *
+ * It records the WHOLE request, `initial` included, so a test can assert what the
+ * human was OFFERED as a starting point and not merely how often they were asked.
+ * The script answers regardless of what was offered, exactly as a human is free to
+ * type over it.
  */
 function createScriptedPrompt(answers: (TextPromptAnswer | Error)[]): ScriptedPrompt {
-	const requests: {type: 'text'; name: string; message: string}[] = [];
-	const promptText = vi.fn(async (request: {type: 'text'; name: string; message: string}) => {
+	const requests: TextPromptRequest[] = [];
+	const promptText = vi.fn(async (request: TextPromptRequest) => {
 		requests.push(request);
 		const next = answers.shift();
 		if (next === undefined) {
@@ -254,6 +278,7 @@ async function buildEnvironment(options: {
 	saveDeployments?: boolean;
 	receipts?: Record<string, Record<string, unknown>>;
 	unknownHashes?: string[];
+	unknownTransactionRounds?: Record<string, number>;
 	pendingReceiptRounds?: Record<string, number>;
 	transactions?: Record<string, Record<string, unknown>>;
 	latestBlockNumber?: string;
@@ -262,6 +287,7 @@ async function buildEnvironment(options: {
 		accounts: options.nodeAccounts,
 		receipts: options.receipts,
 		unknownHashes: options.unknownHashes,
+		unknownTransactionRounds: options.unknownTransactionRounds,
 		pendingReceiptRounds: options.pendingReceiptRounds,
 		transactions: options.transactions,
 		latestBlockNumber: options.latestBlockNumber,
@@ -745,12 +771,16 @@ describe('interactive resolver - receipt invariants', () => {
 	/**
 	 * A hash this node has NEVER heard of (pasted from the wrong chain, or a plausible
 	 * typo that is still 64 hex characters) must not park the run behind a spinner for
-	 * ever: the lookup is BOUNDED, and giving up names the hash as not found and hands
-	 * back the transaction that still needs executing. The test finishing at all is half
-	 * the assertion: an unbounded poll would hang it until the suite timeout.
+	 * ever: the lookup for ONE hash is BOUNDED. Giving up on it no longer ends the run
+	 * though — see the re-ask suite below — so what this pins is the bound itself: one
+	 * hash costs at most `PASTED_TRANSACTION_LOOKUP_ROUNDS` lookups, it never reaches a
+	 * receipt, and it records nothing. The test finishing at all is half the assertion:
+	 * an unbounded poll would hang it until the suite timeout.
 	 */
-	it('gives up on a hash this node has never seen, naming it as not found', async () => {
-		const promptExecutor = createScriptedPrompt([{value: PASTED_HASH}]);
+	it('stops looking for a hash this node has never seen, after a bounded number of rounds', async () => {
+		// The re-ask is declined, so this stays about the LOOKUP bound for ONE hash; the
+		// re-ask itself is exercised on its own below.
+		const promptExecutor = createScriptedPrompt([{value: PASTED_HASH}, {value: 'cannot sign'}]);
 		const {env, calls, writes} = await buildEnvironment({
 			accounts: {admin: SAFE_ADDRESS},
 			onUnknownSigner: 'ask',
@@ -758,6 +788,7 @@ describe('interactive resolver - receipt invariants', () => {
 			saveDeployments: true,
 			unknownHashes: [PASTED_HASH],
 		});
+		const shown = captureMessages(env);
 
 		const from = env.resolveAccount('admin');
 		const error = await env.broadcastExecution(safeTransaction(from)).then(
@@ -766,9 +797,10 @@ describe('interactive resolver - receipt invariants', () => {
 		);
 
 		expect(error).toBeInstanceOf(Error);
-		expect((error as Error).message).toContain(PASTED_HASH);
-		expect((error as Error).message).toContain('not found');
-		// the transaction that still needs executing comes back with it
+		// the hash and the reason are SHOWN, which is where they belong once the run goes on
+		expect(shown.join('\n')).toContain(PASTED_HASH);
+		expect(shown.join('\n')).toContain('was not found on this network');
+		// the transaction that still needs executing comes back with the deferral
 		expect((error as Error).message).toContain('0xdeadbeef');
 		// bounded: it stopped asking rather than polling for ever
 		expect(calls.filter((c) => c.method === 'eth_getTransactionByHash').length).toBeLessThanOrEqual(
@@ -846,6 +878,233 @@ describe('interactive resolver - receipt invariants', () => {
 		expect(
 			calls.filter((c) => c.method === 'eth_getTransactionReceipt' && (c.params as string[])[0] === PASTED_HASH),
 		).toHaveLength(2);
+	});
+});
+
+/**
+ * THE RE-ASK for a hash this node cannot find.
+ *
+ * Giving up on such a hash used to END THE RUN, which threw away everything the human
+ * had typed for the commonest, most trivial causes: a truncated paste, a character the
+ * terminal ate, the right hash a moment before the RPC caught up. Now the question is
+ * asked AGAIN with that hash offered back, so the fix costs an edit.
+ *
+ * Two properties hold this together and each has a test below. The re-ask is BOUNDED,
+ * because the failure it replaced existed to stop a run hanging for ever on a hash no
+ * node will ever know. And the bound is ONE budget shared with the malformed-paste
+ * re-ask that already existed, because two budgets that each reset can be alternated
+ * for ever.
+ *
+ * Note that "it threw `UnknownSignerError`" is NOT discriminating here: a run that never
+ * went interactive throws the same thing. These assert on what was ASKED (the requests,
+ * `initial` included) and what was SHOWN.
+ */
+describe('interactive resolver - a hash this node cannot find is re-asked, pre-filled', () => {
+	/**
+	 * The headline: the previous answer comes back as the prompt's starting value, the
+	 * human corrects it, and the run resolves on the CORRECTED hash. Nothing is recorded
+	 * for the hash that was never found — in particular it does not reach the gas tracker.
+	 */
+	it('re-asks with the previous answer pre-filled, and resolves on the corrected hash', async () => {
+		const promptExecutor = createScriptedPrompt([{value: NOT_FOUND_HASH}, {value: PASTED_HASH}]);
+		const {env, writes} = await buildEnvironment({
+			accounts: {admin: SAFE_ADDRESS},
+			onUnknownSigner: 'ask',
+			promptExecutor,
+			saveDeployments: true,
+			unknownHashes: [NOT_FOUND_HASH],
+		});
+		const shown = captureMessages(env);
+
+		const receipt = await env.broadcastExecution(safeTransaction(env.resolveAccount('admin')));
+
+		expect(receipt.transactionHash).toBe(PASTED_HASH);
+		// WHAT WAS ASKED: the same question twice, the second time carrying the first answer.
+		expect(promptExecutor.requests).toHaveLength(2);
+		expect(promptExecutor.requests[0].initial).toBeUndefined();
+		expect(promptExecutor.requests[1].initial).toBe(NOT_FOUND_HASH);
+		// WHAT WAS SHOWN: why it is asking again, and how many goes are left.
+		expect(shown.join('\n')).toContain(`(${NOT_FOUND_HASH}) was not found on this network`);
+		expect(shown.join('\n')).toContain('attempts left.');
+		// only the accepted hash was tracked or saved
+		expect(env.network.provider.transactionHashes).toEqual([PASTED_HASH]);
+		expect(writes.find((w) => w.name === '.pending_transactions.json')?.content).not.toContain(NOT_FOUND_HASH);
+	});
+
+	/**
+	 * The other half of the same story: the hash was RIGHT, this node just had not caught
+	 * up with it. Submitting the offered value unchanged (what pressing enter on the
+	 * pre-filled prompt sends) looks it up again, and the second look finds it.
+	 */
+	it('retries the same hash when the previous answer is submitted unchanged', async () => {
+		const promptExecutor = createScriptedPrompt([{value: PASTED_HASH}, {value: PASTED_HASH}]);
+		const {env, calls} = await buildEnvironment({
+			accounts: {admin: SAFE_ADDRESS},
+			onUnknownSigner: 'ask',
+			promptExecutor,
+			// unknown for exactly as long as the first ask is willing to look
+			unknownTransactionRounds: {[PASTED_HASH]: MAX_LOOKUPS_FOR_AN_UNKNOWN_HASH},
+		});
+
+		const receipt = await env.broadcastExecution(safeTransaction(env.resolveAccount('admin')));
+
+		expect(receipt.transactionHash).toBe(PASTED_HASH);
+		expect(promptExecutor.requests[1].initial).toBe(PASTED_HASH);
+		// it really did look a second time, rather than reusing the first verdict
+		expect(calls.filter((c) => c.method === 'eth_getTransactionByHash').length).toBeGreaterThan(
+			MAX_LOOKUPS_FOR_AN_UNKNOWN_HASH,
+		);
+		expect(env.network.provider.transactionHashes).toEqual([PASTED_HASH]);
+	});
+
+	/**
+	 * THE BOUND, which is the property the replaced failure existed to provide: a human
+	 * who never supplies a findable hash reaches a terminal outcome in FINITE time. The
+	 * proof is a COUNT, not a clock: exactly `MAX_HASH_PROMPT_ATTEMPTS` questions are
+	 * asked and then the transaction defers, so this test cannot pass by being slow and
+	 * cannot hang if the bound is removed — the scripted prompt would run out of answers.
+	 */
+	it('gives up after a bounded number of not-found hashes and defers, saving nothing', async () => {
+		const answers = [
+			{value: NOT_FOUND_HASH},
+			{value: NOT_FOUND_HASH},
+			{value: NOT_FOUND_HASH},
+			{value: NOT_FOUND_HASH},
+			{value: NOT_FOUND_HASH},
+		];
+		const promptExecutor = createScriptedPrompt(answers);
+		const {env, calls, writes} = await buildEnvironment({
+			accounts: {admin: SAFE_ADDRESS},
+			onUnknownSigner: 'ask',
+			promptExecutor,
+			saveDeployments: true,
+			unknownHashes: [NOT_FOUND_HASH],
+		});
+		const shown = captureMessages(env);
+
+		const from = env.resolveAccount('admin');
+		const error = await env.broadcastExecution(safeTransaction(from)).then(
+			() => undefined,
+			(e) => e,
+		);
+
+		// DEFERS: the same undegraded error every other giving-up exit produces, so a
+		// `catchUnknownSigner` wrapper handles it identically.
+		expect(error).toBeInstanceOf(UnknownSignerError);
+		expect((error as Error).message).toContain('0xdeadbeef');
+		expect(promptExecutor.promptText).toHaveBeenCalledTimes(MAX_HASH_PROMPT_ATTEMPTS);
+		expect(answers).toHaveLength(5 - MAX_HASH_PROMPT_ATTEMPTS);
+		expect(shown.join('\n')).toContain('Giving up and deferring the transaction.');
+		// NOTHING was saved or tracked for a transaction that does not exist
+		expect(writes).toEqual([]);
+		expect(env.network.provider.transactionHashes).toEqual([]);
+		expect(calls.filter((c) => c.method === 'eth_getTransactionReceipt')).toEqual([]);
+	});
+
+	/**
+	 * THE SHARED BUDGET. The malformed-paste re-ask and this one spend ONE counter, so
+	 * alternating the two kinds of bad answer cannot refill either. Two independent
+	 * budgets would let this script run for ever; one budget stops it at
+	 * `MAX_HASH_PROMPT_ATTEMPTS` questions, whatever the mix.
+	 */
+	it('cannot be looped for ever by alternating malformed and not-found answers', async () => {
+		const answers = [
+			{value: 'not-a-hash'},
+			{value: NOT_FOUND_HASH},
+			{value: 'still not a hash'},
+			{value: NOT_FOUND_HASH},
+			{value: 'nor this'},
+			{value: NOT_FOUND_HASH},
+		];
+		const promptExecutor = createScriptedPrompt(answers);
+		const {env, writes} = await buildEnvironment({
+			accounts: {admin: SAFE_ADDRESS},
+			onUnknownSigner: 'ask',
+			promptExecutor,
+			saveDeployments: true,
+			unknownHashes: [NOT_FOUND_HASH],
+		});
+
+		await expect(env.broadcastExecution(safeTransaction(env.resolveAccount('admin')))).rejects.toBeInstanceOf(
+			UnknownSignerError,
+		);
+
+		expect(promptExecutor.promptText).toHaveBeenCalledTimes(MAX_HASH_PROMPT_ATTEMPTS);
+		expect(answers).toHaveLength(6 - MAX_HASH_PROMPT_ATTEMPTS);
+		expect(writes).toEqual([]);
+	});
+
+	/**
+	 * The exits are the same from the RE-ASKED question as from the first one: the human
+	 * who cannot find the hash after all must be able to walk away with the transaction,
+	 * not be held at a prompt they cannot satisfy. All three produce the ordinary
+	 * deferral.
+	 */
+	it('defers on an empty answer at the re-asked prompt', async () => {
+		const promptExecutor = createScriptedPrompt([{value: NOT_FOUND_HASH}, {value: '  '}]);
+		const {env, writes} = await buildEnvironment({
+			accounts: {admin: SAFE_ADDRESS},
+			onUnknownSigner: 'ask',
+			promptExecutor,
+			saveDeployments: true,
+			unknownHashes: [NOT_FOUND_HASH],
+		});
+
+		await expect(env.broadcastExecution(safeTransaction(env.resolveAccount('admin')))).rejects.toBeInstanceOf(
+			UnknownSignerError,
+		);
+		expect(promptExecutor.promptText).toHaveBeenCalledTimes(2);
+		expect(writes).toEqual([]);
+	});
+
+	it('defers on "cannot sign" at the re-asked prompt', async () => {
+		const promptExecutor = createScriptedPrompt([{value: NOT_FOUND_HASH}, {value: 'cannot sign'}]);
+		const {env} = await buildEnvironment({
+			accounts: {admin: SAFE_ADDRESS},
+			onUnknownSigner: 'ask',
+			promptExecutor,
+			unknownHashes: [NOT_FOUND_HASH],
+		});
+
+		await expect(env.broadcastExecution(safeTransaction(env.resolveAccount('admin')))).rejects.toBeInstanceOf(
+			UnknownSignerError,
+		);
+		expect(promptExecutor.promptText).toHaveBeenCalledTimes(2);
+	});
+
+	it('defers when the re-asked prompt is aborted', async () => {
+		const promptExecutor = createScriptedPrompt([{value: NOT_FOUND_HASH}, {cancelled: true}]);
+		const {env} = await buildEnvironment({
+			accounts: {admin: SAFE_ADDRESS},
+			onUnknownSigner: 'ask',
+			promptExecutor,
+			unknownHashes: [NOT_FOUND_HASH],
+		});
+
+		await expect(env.broadcastExecution(safeTransaction(env.resolveAccount('admin')))).rejects.toBeInstanceOf(
+			UnknownSignerError,
+		);
+		expect(promptExecutor.promptText).toHaveBeenCalledTimes(2);
+	});
+
+	/**
+	 * The pause banner (the transaction to execute, and the note that an old hash is
+	 * welcome) is printed ONCE per pause, not once per question: the re-ask happens under
+	 * the banner the human is still looking at.
+	 */
+	it('does not reprint the transaction banner on the re-ask', async () => {
+		const promptExecutor = createScriptedPrompt([{value: NOT_FOUND_HASH}, {value: PASTED_HASH}]);
+		const {env} = await buildEnvironment({
+			accounts: {admin: SAFE_ADDRESS},
+			onUnknownSigner: 'ask',
+			promptExecutor,
+			unknownHashes: [NOT_FOUND_HASH],
+		});
+		const shown = captureMessages(env);
+
+		await env.broadcastExecution(safeTransaction(env.resolveAccount('admin')));
+
+		expect(shown.filter((message) => message.includes('this run is PAUSED'))).toHaveLength(1);
 	});
 });
 

@@ -1,5 +1,5 @@
 import prompts from 'prompts';
-import type {PromptExecutor} from '@rocketh/core/types';
+import type {PromptExecutor, TextPromptRequest} from '@rocketh/core/types';
 
 /**
  * The Node runtime's way of asking a human something, and the only one in this repo
@@ -70,7 +70,18 @@ export function createNodePromptExecutor(options?: {
 	};
 
 	if (isStdinInteractive()) {
-		executor.promptText = async (request: {type: 'text'; name: string; message: string}) => {
+		// `request` is handed to `prompts` WHOLE, which is what carries the optional `initial`
+		// through: `prompts` accepts it natively on a text prompt. Beware what it means there,
+		// because "pre-filled" oversells it. `initial` renders GREYED as a placeholder and
+		// becomes the answer only when the human submits an untouched line (`TextPrompt.submit`
+		// does `this.value = this.value || this.initial`); typing replaces it wholesale, and the
+		// right-arrow / tab key pulls it into the editable buffer (`TextPrompt.next`). So enter
+		// means "try that same hash again", which is exactly what the interactive re-ask wants.
+		// CTRL-C IS UNAFFECTED: an aborted text prompt REJECTS, so `prompts` returns with the
+		// key absent and the abort still reads as a cancellation rather than as the offered
+		// value. This is also why `initial` is documented as a HINT on `TextPromptRequest`: a
+		// runtime with no equivalent may ignore it and stay correct.
+		executor.promptText = async (request: TextPromptRequest) => {
 			const answer = await prompts<string>(request);
 			// `prompts` keys its answer object BY `request.name`, so read it by name. Reading a
 			// fixed key here would make every prompt not named that silently answer `undefined`.

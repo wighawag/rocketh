@@ -9,6 +9,7 @@ import type {
 	PartialDeployment,
 	PromptExecutor,
 	TextPromptAnswer,
+	TextPromptRequest,
 	UnknownSignerPolicy,
 	UserConfig,
 } from '@rocketh/core/types';
@@ -42,6 +43,8 @@ const SAFE_ADDRESS = '0x1111111111111111111111111111111111111111';
 const SENT_TX_HASH = '0x0000000000000000000000000000000000000000000000000000000000000011' as `0x${string}`;
 /** What the human pastes back after executing the deployment on their Safe. */
 const PASTED_HASH = '0x00000000000000000000000000000000000000000000000000000000000000aa' as `0x${string}`;
+/** A well-formed hash this node has never heard of: the paste that gets RE-ASKED. */
+const NOT_FOUND_HASH = '0x00000000000000000000000000000000000000000000000000000000000000cc' as `0x${string}`;
 const GENESIS_HASH = '0x0000000000000000000000000000000000000000000000000000000000000042';
 
 /** The address the pasted transaction's receipt says was created. */
@@ -62,8 +65,11 @@ function createMockProvider(options?: {
 	code?: Record<string, `0x${string}`>;
 	/** Make `eth_getCode` FAIL, as a node having an outage would. */
 	codeLookupError?: string;
+	/** Hashes this node has never heard of: no transaction and no receipt, ever. */
+	unknownHashes?: string[];
 }): {provider: EIP1193ProviderWithoutEvents; calls: Call[]} {
 	const calls: Call[] = [];
+	const unknownHashes = new Set((options?.unknownHashes ?? []).map((h) => h.toLowerCase()));
 	const code: Record<string, `0x${string}`> = {};
 	for (const [address, value] of Object.entries(options?.code ?? {})) {
 		code[address.toLowerCase()] = value;
@@ -90,10 +96,16 @@ function createMockProvider(options?: {
 					return code[(args.params as string[])[0].toLowerCase()] ?? '0x';
 				case 'eth_getTransactionByHash': {
 					const hash = (args.params as string[])[0];
+					if (unknownHashes.has(hash.toLowerCase())) {
+						return null;
+					}
 					return {hash, nonce: '0x3', from: SAFE_ADDRESS, gasPrice: '0x1', type: '0x0'};
 				}
 				case 'eth_getTransactionReceipt': {
 					const hash = (args.params as string[])[0];
+					if (unknownHashes.has(hash.toLowerCase())) {
+						return null;
+					}
 					return {
 						transactionHash: hash,
 						blockHash: '0x0000000000000000000000000000000000000000000000000000000000000001',
@@ -148,11 +160,17 @@ function createInMemoryStore(): {store: DeploymentStore; writes: {name: string; 
 	return {store, writes};
 }
 
-type ScriptedPrompt = PromptExecutor & {promptText: ReturnType<typeof vi.fn>};
+type ScriptedPrompt = PromptExecutor & {promptText: ReturnType<typeof vi.fn>; requests: TextPromptRequest[]};
 
-/** A prompt driven by a SCRIPT of answers, so the interactive path runs with no TTY. */
+/**
+ * A prompt driven by a SCRIPT of answers, so the interactive path runs with no TTY.
+ * It records the whole request, `initial` included, so a test can assert what the
+ * human was OFFERED as a starting point on a re-ask.
+ */
 function createScriptedPrompt(answers: TextPromptAnswer[]): ScriptedPrompt {
-	const promptText = vi.fn(async () => {
+	const requests: TextPromptRequest[] = [];
+	const promptText = vi.fn(async (request: TextPromptRequest) => {
+		requests.push(request);
 		const next = answers.shift();
 		if (next === undefined) {
 			throw new Error('scripted prompt: asked more times than the test scripted answers for');
@@ -165,6 +183,7 @@ function createScriptedPrompt(answers: TextPromptAnswer[]): ScriptedPrompt {
 		},
 		promptText,
 		exit() {},
+		requests,
 	};
 }
 
@@ -176,12 +195,14 @@ async function buildEnvironment(options: {
 	receipts?: Record<string, Record<string, unknown>>;
 	code?: Record<string, `0x${string}`>;
 	codeLookupError?: string;
+	unknownHashes?: string[];
 }) {
 	const {provider, calls} = createMockProvider({
 		accounts: options.nodeAccounts,
 		receipts: options.receipts,
 		code: options.code,
 		codeLookupError: options.codeLookupError,
+		unknownHashes: options.unknownHashes,
 	});
 	const {store, writes} = createInMemoryStore();
 	const config = resolveConfig({
@@ -291,6 +312,35 @@ describe('interactive deployment - the address comes from the pasted transaction
 		expect(codeCalls).toHaveLength(1);
 		expect((codeCalls[0].params as string[])[0]).toBe(EXPECTED_ADDRESS);
 	});
+
+	/**
+	 * BOTH FUNNELS BEHAVE THE SAME, because they reach one choke point: a deployment
+	 * whose pasted hash this node has never heard of is RE-ASKED with that hash offered
+	 * back, exactly as an execution is, and the deployment is then recorded for the hash
+	 * finally accepted.
+	 */
+	it('re-asks a hash this node cannot find and records the one finally accepted', async () => {
+		const promptExecutor = createScriptedPrompt([{value: NOT_FOUND_HASH}, {value: PASTED_HASH}]);
+		const {env, writes} = await buildEnvironment({
+			accounts: {admin: SAFE_ADDRESS},
+			onUnknownSigner: 'ask',
+			promptExecutor,
+			unknownHashes: [NOT_FOUND_HASH],
+		});
+
+		const deployment = await env.broadcastDeployment(
+			DEPLOYMENT_NAME,
+			deploymentTransaction(env.resolveAccount('admin')),
+			partialDeployment,
+		);
+
+		expect(deployment.transaction?.hash).toBe(PASTED_HASH);
+		expect(deployment.address).toBe(DEPLOYED_ADDRESS);
+		expect(promptExecutor.requests[1].initial).toBe(NOT_FOUND_HASH);
+		expect(JSON.parse(deploymentWrites(writes)[0].content).address).toBe(DEPLOYED_ADDRESS);
+		// only the accepted hash is counted for gas reporting
+		expect(env.network.provider.transactionHashes).toEqual([PASTED_HASH]);
+	});
 });
 
 describe('interactive deployment - a bad hash fails loudly and saves nothing', () => {
@@ -376,6 +426,36 @@ describe('interactive deployment - a bad hash fails loudly and saves nothing', (
 	 * The ordinary half, shape one: the pasted transaction created no contract at all,
 	 * so its receipt carries NO contract address.
 	 */
+	/**
+	 * The address invariants run on the hash FINALLY ACCEPTED, not on the first one
+	 * pasted: a re-ask that ends in a hash which deployed nothing must still fail and
+	 * still save nothing. Written with the second hash failing precisely because the
+	 * first one never got that far — an implementation that checked the earlier answer,
+	 * or skipped the check after a re-ask, would record a deployment here.
+	 */
+	it('runs the address invariants on the re-asked hash, and saves nothing when it created no contract', async () => {
+		const promptExecutor = createScriptedPrompt([{value: NOT_FOUND_HASH}, {value: PASTED_HASH}]);
+		const {env, writes} = await buildEnvironment({
+			accounts: {admin: SAFE_ADDRESS},
+			onUnknownSigner: 'ask',
+			promptExecutor,
+			unknownHashes: [NOT_FOUND_HASH],
+			receipts: {[PASTED_HASH]: {contractAddress: undefined}},
+		});
+
+		const from = env.resolveAccount('admin');
+		const error = await env.broadcastDeployment(DEPLOYMENT_NAME, deploymentTransaction(from), partialDeployment).then(
+			() => undefined,
+			(e) => e,
+		);
+
+		expect(error).toBeInstanceOf(Error);
+		expect((error as Error).message).toContain(PASTED_HASH);
+		expect(promptExecutor.promptText).toHaveBeenCalledTimes(2);
+		expect(writes).toEqual([]);
+		expect(env.network.provider.transactionHashes).toEqual([]);
+	});
+
 	it('fails when the receipt carries no contract address', async () => {
 		const promptExecutor = createScriptedPrompt([{value: PASTED_HASH}]);
 		const {env, writes} = await buildEnvironment({

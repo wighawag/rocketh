@@ -95,6 +95,31 @@ describe('createMockPromptExecutor', () => {
 		);
 	});
 
+	it('records the value a RE-ASK offered back as the starting point', async () => {
+		/**
+		 * `initial` is how the interactive unknown-signer resolver re-asks for a hash this
+		 * node could not find without throwing away what the human already typed. Recording
+		 * it is what lets a test prove the previous answer was CARRIED OVER, rather than the
+		 * question being asked again from scratch — which looks identical if all a test can
+		 * count is how many times the prompt was consulted.
+		 *
+		 * The double answers from its script whatever it was offered, exactly as a human is
+		 * free to type over the value in front of them.
+		 */
+		const promptExecutor = createMockPromptExecutor({textAnswers: [A_HASH, A_HASH]});
+
+		await promptExecutor.promptText!({type: 'text', name: 'transactionHash', message: 'hash?'});
+		await promptExecutor.promptText!({
+			type: 'text',
+			name: 'transactionHash',
+			message: 'hash?',
+			initial: A_HASH,
+		});
+
+		expect(promptExecutor.textRequests[0].initial).toBeUndefined();
+		expect(promptExecutor.textRequests[1].initial).toBe(A_HASH);
+	});
+
 	it('does not consume a caller-owned answers array', async () => {
 		const answers = [A_HASH];
 		const first = createMockPromptExecutor({textAnswers: answers});

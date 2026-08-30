@@ -32,7 +32,12 @@ import {
 	describeUnknownSignerCapabilityDegradation,
 	resolveUnknownSignerBehaviour,
 } from './unknownSignerPolicy.js';
-import {askForExecutedTransactionHash, confirmUnrelatedTransaction} from './interactiveUnknownSigner.js';
+import {
+	askForExecutedTransactionHash,
+	confirmUnrelatedTransaction,
+	createHashPromptBudget,
+	describeRemainingAttempts,
+} from './interactiveUnknownSigner.js';
 import {classifyPastedTransaction, describeEvidence} from './pastedTransactionIntent.js';
 import {Abi, Address} from 'abitype';
 import {InternalEnvironment} from '../internal/types.js';
@@ -239,11 +244,13 @@ function wait(numSeconds: number): Promise<void> {
 
 /**
  * How many rounds a hash PASTED at the interactive unknown-signer prompt gets to become
- * KNOWN to this node before the run gives up on it.
+ * KNOWN to this node before the run stops looking for THAT hash and asks again.
  *
  * It bounds only the "this node has never heard of that hash" case (a typo, a hash from
  * another chain), never the wait for MINING: a transaction the node knows is waited for
- * like any other. The wall-clock length is the run's own `pollingInterval` times this,
+ * like any other. Giving up on a hash no longer ends the run: the human is asked again
+ * with that hash pre-filled, and it is the shared budget of questions one pause may ask
+ * (`MAX_HASH_PROMPT_ATTEMPTS`) that bounds how often this can happen. The wall-clock length is the run's own `pollingInterval` times this,
  * so a chain configured to poll slowly stretches the grace period exactly as it
  * stretches every other wait, and a test that polls fast is fast.
  */
@@ -1541,36 +1548,76 @@ export async function createEnvironment<
 				// a DEPLOYMENT from an unsignable `from` resolves interactively too, inherits the
 				// successful-status invariant below, and then gets the ADDRESS invariants that an
 				// execution cannot have (`requireDeployedContract`).
-				const answer = await askForExecutedTransactionHash({
-					promptText: promptExecutor!.promptText!,
-					// Routed through `env` (not the local closure) so a caller/test that replaces
-					// `showMessage` sees what the human was shown.
-					showMessage: (message) => env.showMessage(message),
-					// The error MESSAGE is the deliverable of the deferral workflow, so the
-					// interactive path shows exactly it, never a summary of it.
-					details: unknownSignerError.message,
-					from: transactionData.from,
-				});
-				if (answer.type === 'cannot-sign') {
-					// "cannot sign" DEGRADES to the defer path: the same error, undegraded, so it
-					// is caught by `catchUnknownSigner` exactly as an unwrapped throw would be.
-					logger.debug(`interactive unknown-signer resolution declined (${answer.reason})`);
-					throw unknownSignerError;
-				}
+				//
+				// ASK, LOOK UP, AND ASK AGAIN IF THIS NODE HAS NEVER HEARD OF THE HASH. The loop
+				// exists because the two commonest ways a paste fails (a truncated line, a
+				// character the terminal ate, the right hash a moment before the RPC caught up)
+				// used to cost the whole run: giving up printed the transaction again and threw.
+				// Re-asking with the value pre-filled turns that into an edit.
+				//
+				// IT TERMINATES because every iteration spends at least one unit of `budget`
+				// inside `askForExecutedTransactionHash` (a single shared budget, also spent by
+				// the malformed-paste re-asks INSIDE that call), and an empty budget answers
+				// `cannot-sign` without asking anything, which leaves through the `throw` below.
+				// So the pause costs at most `MAX_HASH_PROMPT_ATTEMPTS` questions no matter how
+				// the two kinds of bad answer are interleaved, and no wall clock is involved.
+				const budget = createHashPromptBudget();
+				let previousAnswer: string | undefined;
+				let accepted:
+					{hash: `0x${string}`; receipt: EIP1193TransactionReceipt; transaction: EIP1193Transaction} | undefined;
+				while (!accepted) {
+					const answer = await askForExecutedTransactionHash({
+						promptText: promptExecutor!.promptText!,
+						// Routed through `env` (not the local closure) so a caller/test that replaces
+						// `showMessage` sees what the human was shown.
+						showMessage: (message) => env.showMessage(message),
+						// The error MESSAGE is the deliverable of the deferral workflow, so the
+						// interactive path shows exactly it, never a summary of it.
+						details: unknownSignerError.message,
+						from: transactionData.from,
+						budget,
+						previousAnswer,
+					});
+					if (answer.type === 'cannot-sign') {
+						// "cannot sign" DEGRADES to the defer path: the same error, undegraded, so it
+						// is caught by `catchUnknownSigner` exactly as an unwrapped throw would be.
+						// A budget spent on hashes nobody could find arrives HERE too, rather than at
+						// the bespoke "not found" failure this path used to raise: one pause has one
+						// giving-up outcome, and deferring is the one that a `catchUnknownSigner`
+						// wrapper can still handle.
+						logger.debug(`interactive unknown-signer resolution declined (${answer.reason})`);
+						throw unknownSignerError;
+					}
 
-				// The transaction has to be FOUND on this network and have SUCCEEDED before the
-				// run records anything: checked BEFORE anything is saved or tracked, so a failed,
-				// or simply non-existent, transaction leaves no state behind at all.
-				const {receipt, transaction: pastedTransaction} = await waitForPastedTransaction(
-					answer.hash,
-					unknownSignerError,
-				);
+					// The transaction has to be FOUND on this network and have SUCCEEDED before the
+					// run records anything: checked BEFORE anything is saved or tracked, so a failed,
+					// or simply non-existent, transaction leaves no state behind at all.
+					const located = await waitForPastedTransaction(answer.hash, unknownSignerError);
+					if (located.type === 'not-found') {
+						// The message that used to be the failure, minus the transaction to execute:
+						// the human is still looking at the pause that printed it, and the deferral at
+						// the end of the budget prints it again anyway.
+						env.showMessage(
+							`  - the transaction you pasted (${answer.hash}) was not found on this network: after ` +
+								`${PASTED_TRANSACTION_LOOKUP_ROUNDS} attempts the node still does not know it. Check you ` +
+								`pasted the hash of a transaction executed on this very network. Nothing was saved.` +
+								describeRemainingAttempts(budget),
+						);
+						// Carried into the next ask so the human edits it rather than retyping it.
+						previousAnswer = answer.hash;
+						continue;
+					}
+					accepted = {hash: answer.hash, receipt: located.receipt, transaction: located.transaction};
+				}
+				const {hash: acceptedHash, receipt, transaction: pastedTransaction} = accepted;
 
 				// A DEPLOYMENT is held to a stricter standard than an execution, because it HAS an
 				// address to anchor on. Checked here, at the same point as the status and before
 				// anything is saved or tracked, so a hash that deployed nothing leaves no state.
+				// Run on the hash finally ACCEPTED, which after a re-ask is not the first one
+				// pasted.
 				if (source.type === 'deployment') {
-					await requireDeployedContract(source, receipt, answer.hash, unknownSignerError);
+					await requireDeployedContract(source, receipt, acceptedHash, unknownSignerError);
 				} else {
 					// IS IT THE TRANSACTION WE ASKED FOR? A successful receipt used to be the whole of
 					//  the check for an execution, so an unrelated successful hash was taken at face
@@ -1587,13 +1634,13 @@ export async function createEnvironment<
 							promptText: promptExecutor!.promptText!,
 							showMessage: (message) => env.showMessage(message),
 							finding,
-							hash: answer.hash,
+							hash: acceptedHash,
 						});
 						if (confirmation.type === 'rejected') {
 							// DEGRADES to the defer path, exactly as "cannot sign" does: the same error,
 							//  undegraded, so `catchUnknownSigner` handles it identically and nothing is saved
 							//  for a transaction the user would not vouch for.
-							logger.debug(`pasted transaction ${answer.hash} not confirmed (${confirmation.reason})`);
+							logger.debug(`pasted transaction ${acceptedHash} not confirmed (${confirmation.reason})`);
 							throw unknownSignerError;
 						}
 					} else {
@@ -1606,11 +1653,11 @@ export async function createEnvironment<
 				// The tracker only records hashes it OBSERVES on `eth_sendTransaction` /
 				// `eth_sendRawTransaction`, so a transaction executed elsewhere would be invisible
 				// to it and gas reporting (which iterates this list) would silently omit it.
-				provider.transactionHashes.push(answer.hash);
+				provider.transactionHashes.push(acceptedHash);
 
 				// Hand the receipt to the pipeline about to wait for this same hash, so the user
 				// does not watch two waits for one transaction.
-				pastedTransactionReceipts.set(answer.hash, receipt);
+				pastedTransactionReceipts.set(acceptedHash, receipt);
 
 				// CAPTURED, and only HERE: every earlier exit from this branch either deferred the
 				// transaction (the `throw` policy, "cannot sign", a paste the user would not vouch
@@ -1627,7 +1674,7 @@ export async function createEnvironment<
 				// (`savePendingExecution` / `savePendingDeployment` → `eth_getTransactionByHash`
 				// → `waitForTransaction`). Nothing about pending state or receipt waiting is
 				// reimplemented here.
-				return answer.hash;
+				return acceptedHash;
 			}
 
 			const signer = env.addressSigners[from];
@@ -1706,7 +1753,8 @@ export async function createEnvironment<
 	}
 
 	/**
-	 * Turn a hash the user PASTED into a receipt this run may act on, or fail loudly.
+	 * Turn a hash the user PASTED into a receipt this run may act on, report that this
+	 * node has never heard of it, or fail loudly.
 	 *
 	 * Two things can be wrong with a pasted hash, and they need different treatment:
 	 *
@@ -1714,8 +1762,14 @@ export async function createEnvironment<
 	 *   a typo that is still 64 hex characters). The lookup is BOUNDED
 	 *   ({@link PASTED_TRANSACTION_LOOKUP_ROUNDS} rounds at the run's own polling
 	 *   interval, enough for a just-broadcast transaction to reach this node) and then
-	 *   gives up, naming the hash as not found. Polling for it for ever would park the
-	 *   run behind a spinner with Ctrl-C as the only exit.
+	 *   RETURNS `not-found`. Polling for it for ever would park the run behind a spinner
+	 *   with Ctrl-C as the only exit.
+	 *
+	 *   Returning rather than throwing is what lets the caller RE-ASK with the hash
+	 *   pre-filled instead of ending the run on a dropped character; the bound the throw
+	 *   used to enforce moves up with it, to the shared budget of questions one pause may
+	 *   ask (`MAX_HASH_PROMPT_ATTEMPTS`). This function stays bounded either way, which is
+	 *   what makes that composition safe.
 	 * - IT EXISTS BUT HAS NOT SUCCEEDED (yet). Once the node knows the transaction, the
 	 *   wait for its receipt is the ORDINARY unbounded one any transaction rocketh sends
 	 *   itself gets, confirmations included: a Safe execution can legitimately take a
@@ -1724,14 +1778,20 @@ export async function createEnvironment<
 	 *   MultiSend/Timelock payload or to match `to`/`data` (the accepted residual risk,
 	 *   documented under "Handling unknown signers").
 	 *
-	 * Both failures name BOTH the transaction rocketh needed executed and the hash that
-	 * was pasted, because those are the two things needed to work out what went wrong.
-	 * Nothing is saved and nothing is tracked when either fires: this runs before both.
+	 *   A receipt that did NOT succeed still THROWS here, and is deliberately not re-asked:
+	 *   the node knows exactly what happened to that transaction and asking again cannot
+	 *   change it, so the run stops with the reverting hash and the transaction that still
+	 *   needs executing both named.
+	 *
+	 * Nothing is saved and nothing is tracked on any of these outcomes: this runs before
+	 * the pending-transaction file, the gas tracker and the deployment record.
 	 */
 	async function waitForPastedTransaction(
 		hash: `0x${string}`,
 		unknownSignerError: UnknownSignerError,
-	): Promise<{receipt: EIP1193TransactionReceipt; transaction: EIP1193Transaction}> {
+	): Promise<
+		{type: 'found'; receipt: EIP1193TransactionReceipt; transaction: EIP1193Transaction} | {type: 'not-found'}
+	> {
 		const lookupSpinner = spin(`  - Looking for the transaction you pasted:\n      ${hash}`);
 		let transaction: EIP1193Transaction | null = null;
 		for (let round = 1; !transaction; round++) {
@@ -1746,12 +1806,9 @@ export async function createEnvironment<
 			if (!transaction) {
 				if (round >= PASTED_TRANSACTION_LOOKUP_ROUNDS) {
 					lookupSpinner.fail();
-					throw new Error(
-						`The transaction you pasted (${hash}) was not found on this network: after ` +
-							`${PASTED_TRANSACTION_LOOKUP_ROUNDS} attempts the node still does not know it. Check you ` +
-							`pasted the hash of a transaction executed on this very network. Nothing was saved.\n` +
-							`The transaction that still needs executing:\n${unknownSignerError.message}`,
-					);
+					// WHY it gave up is said by the caller, which is the one that knows whether the
+					// human gets another go at it.
+					return {type: 'not-found'};
 				}
 				await wait(resolvedExecutionParams.pollingInterval);
 			}
@@ -1776,7 +1833,7 @@ export async function createEnvironment<
 		// The TRANSACTION travels with the receipt because the caller has to weigh whether this is
 		//  the transaction it asked for, and only the transaction carries `to` / `input` / `value`.
 		//  It was fetched above anyway, so this costs no extra call.
-		return {receipt, transaction};
+		return {type: 'found', receipt, transaction};
 	}
 
 	/**

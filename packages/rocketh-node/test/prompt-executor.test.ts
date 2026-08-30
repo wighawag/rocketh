@@ -101,6 +101,32 @@ describe('@rocketh/node - prompt executor', () => {
 			expect(promptsMock).toHaveBeenCalledWith(request);
 		});
 
+		/**
+		 * THE PRE-FILL. A re-ask ("that hash is not one this node knows — try again") offers
+		 * the previous answer back, and `prompts` has native support for exactly that: an
+		 * `initial` on a text prompt renders greyed and becomes the answer when the human
+		 * submits an untouched line, so pressing enter means "try that same hash again".
+		 * Reaching the library is all this runtime has to do, and all it does.
+		 */
+		it('passes a pre-filled initial value through to the prompts library', async () => {
+			promptsMock.mockResolvedValue({txHash: '0xdeadbeef'});
+
+			const answer = await interactiveExecutor().promptText!({
+				type: 'text',
+				name: 'txHash',
+				message: 'paste the transaction hash',
+				initial: '0xdeadbeef',
+			});
+
+			expect(promptsMock).toHaveBeenCalledWith({
+				type: 'text',
+				name: 'txHash',
+				message: 'paste the transaction hash',
+				initial: '0xdeadbeef',
+			});
+			expect(answer).toEqual({value: '0xdeadbeef'});
+		});
+
 		it('reports cancellation when the user aborts (prompts answers nothing)', async () => {
 			// Ctrl-C: `prompts` resolves with the key absent rather than rejecting.
 			promptsMock.mockResolvedValue({});
