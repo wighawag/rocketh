@@ -7,6 +7,12 @@ covers: []
 
 ## What to build
 
+> **FORWARD-POINTER (added after tasking, READ THIS FIRST).** Three things landed after this task was written, and each one changes what you should write. Confirm each against the code and the shipped pages before drafting.
+>
+> 1. **The `throw` path already has SHIPPED user-facing prose about this exact mechanism, and you must not contradict it.** Point 3 below calls the plain `throw` path "safe by accident: the run aborts before the executor reaches its record site, so nothing is written and the re-run converges". That is TRUE, and it is one half of the story. The other half now ships in the deferral message itself (`describeDeferralRepeatExecution` in `packages/rocketh/src/environment/unknownSignerPolicy.ts`, plus `documentation/unknown-signers/index.md`): because nothing was recorded, the re-run surfaces the SAME transaction again, so an operator who already executed it out of band can execute it TWICE. Same mechanism, two consequences: no silent skip (safe), but a real double-execution exposure (hazardous). Write both, and reuse the shipped wording rather than coining a second description of the migration contract. Read that function's JSDoc first; it explains why the cause is the abort preceding the record and NOT a missing guard, which is the framing this page must also avoid.
+> 2. **`captured-transactions` HAS landed**, so the conditional in the `runAtTheEnd` section below resolves: show `env.capturedTransactions` and the `--write-transactions <file>` flag as the primary answer, and mention that the hand-rolled `catchUnknownSigner` collection still works. Do NOT reach for `deferred-transaction-collector`, which is dropped. There is a whole page at `documentation/captured-transactions/index.md`; link it rather than restating it, and note the boundary it already documents (a DEFERRED transaction produces no captured entry, which is precisely the interaction a reader of this page will wonder about).
+> 3. **The interactive section of `documentation/unknown-signers/index.md` was just rewritten** (a not-found pasted hash is now re-asked with the previous answer pre-filled, bounded to three attempts shared across both re-ask kinds, instead of failing the run). Point 3's clarification that the `ask` path does NOT defer is still correct, but check the current page before adding the cross-reference so you extend what is there rather than duplicating or contradicting it.
+
 Two executor features are shipped, used, and documented nowhere: `documentation/` mentions neither `migrations` nor `runAtTheEnd`.
 
 **The `id` / `return true` contract.** A deploy script that carries an `id` and returns `true` has that id written to `.migrations.json`, and is then skipped entirely on every later run. Users need to be told four things about it, only the first of which is obvious:
@@ -31,7 +37,9 @@ Constrained by ADR 0012 (`docs/adr/0012-a-record-asserts-only-what-rocketh-obser
 
 - [ ] The docs site documents `id` / `return true` / `.migrations.json`, covering all four points above
 - [ ] The docs site documents `runAtTheEnd`, including the deferred-transaction-consumer pattern as its motivating example
-- [ ] The unknown-signers page cross-references the migrations interaction
+- [ ] The unknown-signers page cross-references the migrations interaction, extending the interactive and deferral sections as they now stand rather than duplicating them
+- [ ] The page states BOTH consequences of the plain `throw` path (nothing is recorded, so no step is silently skipped, AND the same transaction is surfaced again on the re-run, so it can be executed twice) and does not contradict the wording already shipped in the deferral message
+- [ ] The `runAtTheEnd` example uses the shipped captured-transactions feature and links its page, noting that a deferred transaction produces no captured entry
 - [ ] Every claim is verified against the executor rather than against this task's description of it (the recording happens in the executor's script loop; `hasMigrationBeenDone` is on the public `Environment`, `recordMigration` is internal to `rocketh`, and that asymmetry is deliberate)
 - [ ] Prose is not hard-wrapped (one line per paragraph) and contains no em dashes, per the repo's output rules
 - [ ] Any code sample compiles against the current API (do not paste a v1 sample)
