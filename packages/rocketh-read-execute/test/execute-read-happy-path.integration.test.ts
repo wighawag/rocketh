@@ -93,6 +93,46 @@ describe('@rocketh/read-execute - execute happy path and field encodings', () =>
 		expect(params.value).toBe('0x3e8'); // 1000
 	});
 
+	/**
+	 * ZERO is a VALUE, not an absence, and it used to be neither.
+	 *
+	 * These fields were guarded on truthiness, which splits badly on `0n`. `gas` used `&&`, and
+	 * `&&` returns its LEFT operand when that operand is falsy, so `gas: 0n` reached the provider
+	 * as the BIGINT `0n` on a field typed `0x${string}`: a type violation on the wire, and one a
+	 * JSON-RPC transport cannot even serialise. The `?:` spelling on `nonce` did not leak a type
+	 * but silently DROPPED the zero, which matters most exactly there: nonce 0 is the first
+	 * transaction of any fresh account, so "nonce: 0" and "no nonce" are entirely different
+	 * instructions and used to be indistinguishable.
+	 *
+	 * Asserting the TYPE as well as the value is the point: `expect(params.gas).toBe('0x0')`
+	 * alone would still pass if a future edit reintroduced `&&` and produced `0n`, because the
+	 * comparison would simply fail rather than explain. The typeof check names the defect.
+	 */
+	it('encodes an explicit ZERO gas/fee/nonce/value rather than dropping it or leaking a bigint', async () => {
+		const {env, provider, deployment} = await setup();
+		const _execute = execute(env);
+
+		await _execute(deployment, {
+			functionName: 'setValue',
+			args: [42n],
+			account: 'deployer',
+			gas: 0n,
+			maxFeePerGas: 0n,
+			maxPriorityFeePerGas: 0n,
+			nonce: 0,
+			value: 0n,
+		} as any);
+
+		const sendTx = provider.getRequests().find((r) => r.method === 'eth_sendTransaction');
+		const params = sendTx!.params![0] as any;
+
+		for (const field of ['gas', 'maxFeePerGas', 'maxPriorityFeePerGas', 'nonce']) {
+			expect(typeof params[field], `${field} must be a 0x quantity, never a bigint`).toBe('string');
+			expect(params[field]).toBe('0x0');
+		}
+		expect(params.value).toBe('0x0');
+	});
+
 	it('leaves gas/fee/nonce/value undefined when not provided', async () => {
 		const {env, provider, deployment} = await setup();
 		const _execute = execute(env);

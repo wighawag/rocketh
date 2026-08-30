@@ -34,7 +34,7 @@ This is the "re-run is free" property, and it is distinct from the existing "re-
 
 > Goal: pin the "re-running before governance executes costs nothing" property as an executable test, distinct from the existing "re-run after execution converges" story.
 >
-> FIRST, check this task against current reality. Read `packages/rocketh-unknown-signer/test/scenarios.integration.test.ts`, especially Story 6 (mixed run) and Story 7 (re-run after execution), to see the shape and to avoid duplicating the AFTER-execution assertion. Read the spec `work/specs/ready/governance-topology-validation.md` story 4 for the precise wording of the property.
+> FIRST, check this task against current reality. Read `packages/rocketh-unknown-signer/test/scenarios.integration.test.ts`, especially Story 6 (mixed run) and Story 7 (re-run after execution), to see the shape and to avoid duplicating the AFTER-execution assertion. Read the spec `work/specs/tasked/governance-topology-validation.md` story 4 for the precise wording of the property.
 >
 > Domain vocabulary: `catchUnknownSigner`, signable/unsignable, the mock provider from `createTestEnvironment` (RPCs answered, not executed — so "broadcast count" is measurable against the provider's call log).
 >

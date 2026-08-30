@@ -41,7 +41,7 @@ Also confirm the tag-selection mechanism actually isolates scenarios: running on
 
 > Goal: make the numbered README walkthrough in `demoes/hardhat-deploy/governance/README.md` HOLD end-to-end on a fresh local hardhat node, for every one of the five tags. This is the "an evaluator can see the loop run" deliverable the spec calls for.
 >
-> FIRST, check this task against current reality (launch snapshot). The demo is largely built — contracts under `src/governance/`, deploy scripts `deploy/000..005`, operator script `scripts/act-as-governance.ts`, helpers under `demo/`. Read the README fully before doing anything; it is the specification for the walkthrough you must make true. Read the spec `work/specs/ready/governance-topology-validation.md` for the framing.
+> FIRST, check this task against current reality (launch snapshot). The demo is largely built — contracts under `src/governance/`, deploy scripts `deploy/000..005`, operator script `scripts/act-as-governance.ts`, helpers under `demo/`. Read the README fully before doing anything; it is the specification for the walkthrough you must make true. Read the spec `work/specs/tasked/governance-topology-validation.md` for the framing.
 >
 > The demo is a standalone pnpm project NOT part of the workspace, so its dependencies install alongside the workspace via the repo-root `pnpm install`, and it is not covered by `pnpm test`. Follow the README's own setup ("install from the repo root, then `pnpm local_node` here in its own terminal, then `pnpm deploy:dev localhost --tags <tag>`").
 >

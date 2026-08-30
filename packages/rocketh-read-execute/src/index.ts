@@ -318,16 +318,27 @@ export function execute(env: Environment): ExecuteFunction {
 			from: address,
 			chainId: `0x${env.network.chain.id.toString(16)}` as `0x${string}`,
 			data: calldata,
-			gas: viemArgs.gas && (`0x${viemArgs.gas.toString(16)}` as `0x${string}`),
-			maxFeePerGas: viemArgs.maxFeePerGas ? (`0x${viemArgs.maxFeePerGas.toString(16)}` as `0x${string}`) : undefined,
-			maxPriorityFeePerGas: viemArgs.maxPriorityFeePerGas
-				? (`0x${viemArgs.maxPriorityFeePerGas.toString(16)}` as `0x${string}`)
-				: undefined,
+			// Every numeric field is guarded on `!== undefined`, NOT on truthiness. `&&` returns its
+			//  LEFT operand when falsy, so `gas: 0n` used to pass through as the bigint `0n`, putting a
+			//  bigint on the wire where the type says `0x${string}`. The `?:` spelling did not leak a
+			//  type but silently DROPPED an explicit zero, which matters most for `nonce`: nonce 0 is
+			//  the first transaction of any fresh account, not a missing value.
+			gas: viemArgs.gas !== undefined ? (`0x${viemArgs.gas.toString(16)}` as `0x${string}`) : undefined,
+			maxFeePerGas:
+				viemArgs.maxFeePerGas !== undefined ? (`0x${viemArgs.maxFeePerGas.toString(16)}` as `0x${string}`) : undefined,
+			maxPriorityFeePerGas:
+				viemArgs.maxPriorityFeePerGas !== undefined
+					? (`0x${viemArgs.maxPriorityFeePerGas.toString(16)}` as `0x${string}`)
+					: undefined,
 			accessList: viemArgs.accessList as any, // TODO type
-			nonce: viemArgs.nonce ? (`0x${viemArgs.nonce.toString(16)}` as `0x${string}`) : undefined,
+			nonce: viemArgs.nonce !== undefined ? (`0x${viemArgs.nonce.toString(16)}` as `0x${string}`) : undefined,
 		};
-		if (viemArgs.value) {
-			txParam.value = `0x${viemArgs.value?.toString(16)}` as `0x${string}`;
+		// `!== undefined` for the same reason as the fields above, and to match `@rocketh/deploy`,
+		//  which already spells this one that way. An omitted `value` and `'0x0'` mean the same thing
+		//  to a node, so this changes no outcome; it keeps ONE rule for "zero is a value" rather than
+		//  leaving the reader to discover that one field of the five is guarded differently.
+		if (viemArgs.value !== undefined) {
+			txParam.value = `0x${viemArgs.value.toString(16)}` as `0x${string}`;
 		}
 
 		const receipt = await env.broadcastExecution(
@@ -381,16 +392,20 @@ export function tx(env: Environment): TxFunction {
 			from: address,
 			chainId: `0x${env.network.chain.id.toString(16)}` as `0x${string}`,
 			data: txData.data,
-			gas: viemArgs.gas ? (`0x${viemArgs.gas.toString(16)}` as `0x${string}`) : undefined,
-			maxFeePerGas: viemArgs.maxFeePerGas ? (`0x${viemArgs.maxFeePerGas.toString(16)}` as `0x${string}`) : undefined,
-			maxPriorityFeePerGas: viemArgs.maxPriorityFeePerGas
-				? (`0x${viemArgs.maxPriorityFeePerGas.toString(16)}` as `0x${string}`)
-				: undefined,
+			// `!== undefined`, not truthiness: see the note on the same fields in `execute` above.
+			gas: viemArgs.gas !== undefined ? (`0x${viemArgs.gas.toString(16)}` as `0x${string}`) : undefined,
+			maxFeePerGas:
+				viemArgs.maxFeePerGas !== undefined ? (`0x${viemArgs.maxFeePerGas.toString(16)}` as `0x${string}`) : undefined,
+			maxPriorityFeePerGas:
+				viemArgs.maxPriorityFeePerGas !== undefined
+					? (`0x${viemArgs.maxPriorityFeePerGas.toString(16)}` as `0x${string}`)
+					: undefined,
 			// nonce: viemArgs.nonce ? (`0x${viemArgs.nonce.toString(16)}` as `0x${string}`) : undefined,
 			accessList: viemArgs.accessList as any, // TODO check
 		};
-		if (viemArgs.value) {
-			txParam.value = `0x${viemArgs.value?.toString(16)}` as `0x${string}`;
+		// `!== undefined`: see the note on the same line in `execute` above.
+		if (viemArgs.value !== undefined) {
+			txParam.value = `0x${viemArgs.value.toString(16)}` as `0x${string}`;
 		}
 
 		const receipt = await env.broadcastExecution(

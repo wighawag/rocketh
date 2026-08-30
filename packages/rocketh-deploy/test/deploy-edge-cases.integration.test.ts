@@ -339,3 +339,48 @@ describe('@rocketh/deploy - anonymous deploy (name=empty)', () => {
 		expect(env.getOrNull('')).toBeNull();
 	});
 });
+
+/**
+ * ZERO is a VALUE, not an absence.
+ *
+ * `gas`, `maxFeePerGas` and `maxPriorityFeePerGas` were guarded on truthiness with `&&`, and
+ * `&&` returns its LEFT operand when that operand is falsy. So `gas: 0n` reached the provider
+ * as the BIGINT `0n`, on a field typed `0x${string}`: a type violation on the wire, and one a
+ * JSON-RPC transport cannot serialise at all.
+ *
+ * The deploy path carried the same defect as `@rocketh/read-execute` and was not named in the
+ * observation that reported it, which is why it gets its own pin here rather than being assumed
+ * to be covered by the sibling package's test.
+ *
+ * The typeof assertion is the load-bearing half: comparing to `'0x0'` alone would still fail if
+ * `&&` came back, but it would fail without saying why. This names the defect.
+ */
+describe('@rocketh/deploy - an explicit zero gas or fee is a 0x quantity, never a bigint', () => {
+	it('encodes gas, maxFeePerGas and maxPriorityFeePerGas of 0n as 0x0', async () => {
+		const {env, provider} = await createTestEnvironment({
+			accounts: STANDARD_NAMED_ACCOUNTS,
+			nodeAccounts: NODE_HELD_ACCOUNTS,
+			providerConfig: {responses: uniqueReceipts()},
+		});
+		const _deploy = deploy(env);
+		const artifact = createMockArtifact('Token', ABI);
+
+		await _deploy('Token', {
+			account: 'deployer',
+			artifact,
+			args: [42n],
+			gas: 0n,
+			maxFeePerGas: 0n,
+			maxPriorityFeePerGas: 0n,
+		} as any);
+
+		const sendTx = provider.getRequests().find((r) => r.method === 'eth_sendTransaction');
+		expect(sendTx).toBeDefined();
+		const params = sendTx!.params![0] as any;
+
+		for (const field of ['gas', 'maxFeePerGas', 'maxPriorityFeePerGas']) {
+			expect(typeof params[field], `${field} must be a 0x quantity, never a bigint`).toBe('string');
+			expect(params[field]).toBe('0x0');
+		}
+	});
+});

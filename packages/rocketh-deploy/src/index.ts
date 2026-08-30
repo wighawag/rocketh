@@ -604,16 +604,23 @@ export function deploy(env: Environment): <TAbi extends Abi>(
 		// case and fired only for an address passed literally, which has no entry at all. The
 		// seam asks the right question (signability, recorded at setup) for both spellings.
 		const chainId = `0x${env.network.chain.id.toString(16)}` as `0x${string}`;
-		const maxFeePerGas = viemArgs.maxFeePerGas && (`0x${viemArgs.maxFeePerGas.toString(16)}` as `0x${string}`);
+		// Guarded on `!== undefined`, NOT on truthiness, and the difference is not cosmetic: `&&`
+		//  returns its LEFT operand when that operand is falsy, so `0n` passed through as the bigint
+		//  `0n` rather than a 0x quantity, putting a bigint on the wire where the type says
+		//  `0x${string}`. `value` in the same literal below already does it this way; these now match.
+		const maxFeePerGas =
+			viemArgs.maxFeePerGas !== undefined ? (`0x${viemArgs.maxFeePerGas.toString(16)}` as `0x${string}`) : undefined;
 		const maxPriorityFeePerGas =
-			viemArgs.maxPriorityFeePerGas && (`0x${viemArgs.maxPriorityFeePerGas.toString(16)}` as `0x${string}`);
+			viemArgs.maxPriorityFeePerGas !== undefined
+				? (`0x${viemArgs.maxPriorityFeePerGas.toString(16)}` as `0x${string}`)
+				: undefined;
 
 		const transactionData: EIP1193TransactionData = {
 			type: '0x2',
 			from: address,
 			chainId,
 			data: calldata,
-			gas: viemArgs.gas && (`0x${viemArgs.gas.toString(16)}` as `0x${string}`),
+			gas: viemArgs.gas !== undefined ? (`0x${viemArgs.gas.toString(16)}` as `0x${string}`) : undefined,
 			maxFeePerGas,
 			maxPriorityFeePerGas,
 			// gasPrice: viemArgs.gasPrice && `0x${viemArgs.gasPrice.toString(16)}` as `0x${string}`,
