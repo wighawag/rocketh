@@ -110,6 +110,8 @@ It is also not a dead end. On a FORK or a dev node there is a better answer than
 
 Rehearsing your Safe-owned steps on a fork of the network you are about to upgrade is the main reason to do this, and it needs no switch: impersonation is ON by default for a fork run. [Rehearsing a deployment on a fork](../fork-runs/) covers how to start one, what it inherits from the network it simulates, and the two chain ids involved.
 
+That rehearsal is also how you get the whole upgrade as a list of transactions in one pass, instead of deferring each privileged call, executing it, and re-running to reach the next one. Impersonation makes every Safe-owned step EXECUTE, and the run keeps what it sent: [Captured transactions](../captured-transactions/) covers reading the list, where a batch has to be split, and what it does and does not promise.
+
 ```typescript
 // rocketh/config.ts
 export const config = {

@@ -71,6 +71,7 @@ Then, as you need them:
 - [Testing your deploy scripts](./testing/) - the `@rocketh/test-utils` harness, no node required.
 - [Exporting, verifying and documenting](./exporting-and-verifying/) - getting addresses and ABIs to a frontend, and source to a block explorer.
 - [Handling unknown signers](./unknown-signers/) - privileged calls owned by a Safe, multisig or governance key.
+- [Captured transactions](./captured-transactions/) - what a run sent, in order: a Safe batch from a fork rehearsal, or a deployment replayed in a Solidity test.
 - [Production hardening](./production-hardening/) - what to check before a deployment touches a live chain.
 - [Architecture Overview](./architecture/) - how the packages fit together.
 

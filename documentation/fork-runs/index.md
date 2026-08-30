@@ -185,6 +185,12 @@ environments: {
 
 Impersonation is a node CAPABILITY and `onUnknownSigner` is a POLICY: they stay orthogonal, and the fork-aware default gives the policy no new value. Details in [Handling unknown signers](../unknown-signers/#on-a-fork-or-in-the-browser-impersonation-instead).
 
+## Taking the rehearsal to your Safe
+
+The rehearsal executed those Safe-owned steps by impersonating the Safe, which means the run knows exactly which transactions your multisig now has to send, in what order, and from which address. It keeps that list: `env.capturedTransactions` on the environment the run returns, and `rocketh -e mainnet --is-fork --write-transactions ./batch.json` writes it to a file for whatever tool proposes to your Safe.
+
+The entries you propose are the `impersonated` ones, which is precisely the set that could not have signed for itself. rocketh does not group them for you: it promises the ORDER and tells you who sent each one, and you decide where a batch splits. [Captured transactions](../captured-transactions/) covers reading the split points, and the one case worth knowing about here: with impersonation turned OFF (above), a deferred step never happens, so it produces no entry and the list is what the run DID rather than what it still owes.
+
 ## Which chain id? Two questions, two answers
 
 This is where the tools visibly disagree, and it is not a contradiction. A fork run is answering two different questions.
@@ -245,6 +251,7 @@ That is the whole escape hatch, and it is deliberately the only one: rocketh doe
 
 ## See also
 
+- [Captured transactions](../captured-transactions/) for turning what the rehearsal sent into Safe proposals, and for replaying a deployment inside a Solidity test.
 - [Handling unknown signers](../unknown-signers/) for the Safe-owned steps a rehearsal exists to exercise, and for turning impersonation off to test the deferral path.
 - [Guarding execute calls](../execute-guard/) for making a deferred privileged step converge on the re-run.
 - [Production hardening](../production-hardening/) for where a fork rehearsal sits among the other checks before a privileged change.
