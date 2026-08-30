@@ -745,6 +745,58 @@ export type ResolvedExecutionParams<Extra extends Record<string, unknown> = Reco
 export type TransactionToBroadcast =
 	{type: 'object'; data: EIP1193TransactionData} | {type: 'raw'; from: `0x${string}`; raw: `0x${string}`};
 
+/**
+ * ONE TRANSACTION A RUN BROADCAST, as remembered by that run (see
+ * `Environment['capturedTransactions']`).
+ *
+ * It holds the INTENT plus who sent it, and nothing else. Deliberately absent: gas,
+ * fees, nonce, hash and receipt (recording them invites a consumer to replay them, and
+ * nobody wants the fee market of the moment the run happened), and any account NAME (the
+ * address is what a Safe consumer proposes to and what a replay pranks, while a name is a
+ * join over config any consumer can redo from the address, and is ambiguous where several
+ * named accounts resolve to one address). The rule behind both: capture what cannot be
+ * RECOMPUTED, omit what can.
+ *
+ * The two arms MIRROR `TransactionToBroadcast`, which is what the choke point receives,
+ * down to the spelling of the `type` discriminant:
+ *
+ * - `intent`: rocketh COMPOSED this transaction. Intent rather than the signed payload is
+ *   a decision, not a shortcut: a signature commits to a nonce, so a signed transaction can
+ *   only ever be replayed by that sender at that nonce, while an intent replays at any
+ *   nonce, under any prank, in any order. It is also the ONLY thing that exists for an
+ *   impersonated sender, since the node fabricates the sender and no signed payload is
+ *   produced anywhere.
+ * - `raw`: rocketh merely RELAYED an already-signed transaction (`@rocketh/deploy` relays
+ *   the Nick's-method deterministic-deployment factory transaction whenever the factory is
+ *   absent). No intent exists to record: the canonical factory address derives from that
+ *   exact sender and nonce, so replaying it as an intent from another sender would land the
+ *   factory somewhere else. It is designed to be replayed verbatim by anyone, so it is
+ *   captured as itself.
+ *
+ * `signability` is on the INTENT arm ONLY, and that is a correction rather than an
+ * omission. `addressSignability` reports `'unsignable'` for any address it never saw during
+ * setup, and a raw relayer is not a run account, so a raw entry would be labelled
+ * `unsignable`, which this system reads as "a human already sent it out of band, do not
+ * replay it", of the one entry that MUST be replayed on every fresh node. A raw relay has
+ * no signer question: rocketh holds no signer for it and never asked for one.
+ *
+ * Every optional field is ABSENT rather than `null` or `'0x'` when the transaction did not
+ * carry it: a deployment has no `to`, and the deterministic-factory funding transfer
+ * genuinely has no `data`. `value` is the 0x QUANTITY the choke point saw, never a bigint,
+ * so the list stays serialisable by a plain `JSON.stringify`. `from` is kept as the
+ * transaction carried it (a user-facing VALUE), not as the lowercased lookup key.
+ */
+export type CapturedTransaction = {from: `0x${string}`} & (
+	| {
+			type: 'intent';
+			to?: `0x${string}`;
+			value?: `0x${string}`;
+			data?: `0x${string}`;
+			signability: Signability;
+	  }
+	| {type: 'raw'; raw: `0x${string}`}
+);
+
 export interface Environment<
 	NamedAccounts extends UnresolvedUnknownNamedAccounts = UnresolvedUnknownNamedAccounts,
 	Data extends UnresolvedNetworkSpecificData = UnresolvedNetworkSpecificData,
@@ -779,6 +831,30 @@ export interface Environment<
 		readonly deterministicDeployment: DeterministicDeploymentInfo;
 	};
 	readonly deployments: Deployments;
+	/**
+	 * Every transaction THIS RUN broadcast, in the true order it broadcast them (see
+	 * `CapturedTransaction`).
+	 *
+	 * It sits here, alongside `deployments` and `tags`, because the environment IS what a run
+	 * returns: a caller that ran the deployment in process reads the list off it with no file
+	 * and no path agreed in advance. Accumulated at the single broadcast choke point, so no
+	 * send path can escape it, and UNCONDITIONALLY: capture is not a fork feature, and the
+	 * consumer filters.
+	 *
+	 * ORDERING IS THE ONLY PROMISE. rocketh does not group, does not batch and never decides
+	 * what belongs in one proposal: a consumer segments the list itself, watching
+	 * `signability` (and `from`) change between consecutive entries. That keeps rocketh from
+	 * ever having to be CORRECT about segmentation, only honest about ordering. Capture
+	 * happens on the SUCCESS path of each arm, so for broadcasts issued concurrently the order
+	 * is the one the run OBSERVED them complete in.
+	 *
+	 * It is what the run DID, not what it still owes: a transaction DEFERRED under the `throw`
+	 * policy never happened and produces no entry, while one resolved through `ask` DID happen
+	 * (a human executed it out of band) and is captured with `signability: 'unsignable'`. The
+	 * one thing it does not cover is transactions a PREVIOUS run broadcast and this one merely
+	 * adopted through pending-transaction recovery: those never passed this run's choke point.
+	 */
+	readonly capturedTransactions: readonly CapturedTransaction[];
 	readonly namedAccounts: ResolvedNamedAccounts<NamedAccounts>;
 	readonly data: ResolvedNetworkSpecificData<Data>;
 	readonly namedSigners: ResolvedNamedSigners<ResolvedNamedAccounts<NamedAccounts>>;

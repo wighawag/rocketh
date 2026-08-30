@@ -22,6 +22,7 @@ import type {
 	ProgressIndicator,
 	PartialDeployment,
 	TransactionToBroadcast,
+	CapturedTransaction,
 	UnknownSignerPolicyFrame,
 } from '@rocketh/core/types';
 import {UnknownSignerError, type UnknownSignerContractCall} from '@rocketh/core';
@@ -53,6 +54,36 @@ import {getRoughGasPriceEstimate} from '../utils/eth.js';
 
 function toQuantity(value: bigint): `0x${string}` {
 	return `0x${value.toString(16)}`;
+}
+
+/**
+ * Turn a transaction rocketh COMPOSED into the entry a run remembers it by (see
+ * `CapturedTransaction` in `@rocketh/core/types`).
+ *
+ * It reads the transaction as the choke point RECEIVED it, never a prepared or signed
+ * derivative of it: the locally-signing path fills nonce, gas and fees before handing the
+ * transaction to the signer, and none of that may reach an entry.
+ *
+ * A field the transaction did not carry stays ABSENT rather than becoming `null` or `'0x'`.
+ * `'0x'` data on a plain transfer would turn a replay of the deterministic-factory funding
+ * transfer into an empty CALL, and `null` is not something a non-JavaScript consumer of the
+ * eventual file should have to interpret. `value` is passed through as the 0x QUANTITY it
+ * already is: converting to a bigint here would only mean converting back at every sink, and
+ * would make the list non-serialisable by a plain `JSON.stringify`.
+ *
+ * `from` is kept AS THE TRANSACTION CARRIED IT, not as the lowercased key the signability
+ * lookup uses: an internal KEY normalises so lookups work, a user-facing VALUE keeps what was
+ * resolved (see `CONTEXT.md`, and `PendingTransaction.transaction.origin` for the same rule).
+ */
+function toCapturedIntent(transactionData: EIP1193TransactionData, signability: Signability): CapturedTransaction {
+	return {
+		type: 'intent',
+		from: transactionData.from,
+		...(transactionData.to !== undefined ? {to: transactionData.to} : {}),
+		...(transactionData.value !== undefined ? {value: transactionData.value} : {}),
+		...(transactionData.data !== undefined ? {data: transactionData.data} : {}),
+		signability,
+	};
 }
 
 /**
@@ -867,6 +898,16 @@ export async function createEnvironment<
 		}
 	}
 
+	/**
+	 * WHAT THIS RUN SENT, in the order it sent it. Exposed verbatim (same array identity) as
+	 * `Environment['capturedTransactions']`, where the contract of the list is documented.
+	 *
+	 * A plain array, appended to at the single broadcast choke point: the list is DATA on the
+	 * environment, not a service, so there is no accumulator object, no hook and no callback to
+	 * register. Nothing in rocketh ever reads it back to decide anything.
+	 */
+	const capturedTransactions: CapturedTransaction[] = [];
+
 	const perliminaryEnvironment = {
 		context: {
 			saveDeployments: context.saveDeployments,
@@ -876,6 +917,7 @@ export async function createEnvironment<
 		name: environmentName,
 		tags: context.tags,
 		deployments: deployments as Deployments,
+		capturedTransactions,
 		namedAccounts: namedAccounts as ResolvedNamedAccounts<NamedAccounts>,
 		data: resolvedData,
 		namedSigners: namedSigners as ResolvedNamedSigners<ResolvedNamedAccounts<NamedAccounts>>,
@@ -1369,6 +1411,13 @@ export async function createEnvironment<
 				method: 'eth_sendRawTransaction',
 				params: [transaction.raw],
 			});
+			// CAPTURED AS ITSELF, and with NO `signability`. rocketh did not compose this
+			// transaction and holds no signer for it (it is a relay of an already-signed payload,
+			// the Nick's-method factory deployment above all), so there is no signer question to
+			// answer for it; asking `addressSignability` would answer `'unsignable'` for a relayer
+			// that is not a run account, and this system reads that as "a human already sent it out
+			// of band, do not replay it", said of the one entry a fresh-node replay MUST send.
+			capturedTransactions.push({type: 'raw', from: transaction.from, raw: transaction.raw});
 			if (env.context.autoMine) {
 				await (env.network.provider as any).request({method: 'evm_mine', params: []});
 			}
@@ -1552,6 +1601,17 @@ export async function createEnvironment<
 				// does not watch two waits for one transaction.
 				pastedTransactionReceipts.set(answer.hash, receipt);
 
+				// CAPTURED, and only HERE: every earlier exit from this branch either deferred the
+				// transaction (the `throw` policy, "cannot sign", a paste the user would not vouch
+				// for) or failed to find it landed and successful, and none of those happened. What
+				// is recorded is the intent ROCKETH ASKED FOR, not the transaction the human sent:
+				// a Safe execution goes TO the Safe carrying the call inside it, so the intent is
+				// both the cleaner thing to replay and the only one this run composed. Its
+				// `signability` is `'unsignable'` by construction (this branch is entered on nothing
+				// else), which is exactly what tells a batch consumer a human ALREADY executed it
+				// and it must never be re-proposed.
+				capturedTransactions.push(toCapturedIntent(transactionData, 'unsignable'));
+
 				// Returning the hash lets the SAME pipeline a normal broadcast uses take over
 				// (`savePendingExecution` / `savePendingDeployment` → `eth_getTransactionByHash`
 				// → `waitForTransaction`). Nothing about pending state or receipt waiting is
@@ -1585,6 +1645,11 @@ export async function createEnvironment<
 						params: [transactionData],
 					});
 
+					// CAPTURED on the SUCCESS path of this arm, never at the entry of the function:
+					// every branch here returns or throws, so there is no single post-send line, and
+					// capturing at the top would record work a refusing node never did.
+					capturedTransactions.push(toCapturedIntent(transactionData, env.addressSignability[from]));
+
 					if (env.context.autoMine) {
 						await (env.network.provider as any).request({method: 'evm_mine', params: []});
 					}
@@ -1604,6 +1669,11 @@ export async function createEnvironment<
 						method: 'eth_sendRawTransaction',
 						params: [rawTx],
 					});
+
+					// The INTENT, not `preparedData` and not the signed payload: a locally signed
+					// transaction commits to the nonce, gas and fees filled in just above, and an entry
+					// carrying those would invite a consumer to replay them.
+					capturedTransactions.push(toCapturedIntent(transactionData, env.addressSignability[from]));
 
 					if (env.context.autoMine) {
 						await (env.network.provider as any).request({method: 'evm_mine', params: []});
