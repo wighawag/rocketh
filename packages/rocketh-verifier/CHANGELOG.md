@@ -1,5 +1,16 @@
 # @rocketh/verifier
 
+## 0.19.25
+
+### Patch Changes
+
+- 7f97d87: Verification no longer picks a library's defining source in silence. When a deployment carries no usable `linkReferences` and the metadata scan finds more than one candidate source for a linked library, the verifier now warns on `console.warn` with the library name, every candidate path and the one it chose, and says whether the candidates came from the AST scan (real duplicate declarations) or the raw-source text scan (where a match may be a comment or string literal). Which candidate wins is unchanged, and the unambiguous paths (`linkReferences`, or a single candidate) stay silent.
+- Updated dependencies [4a0525e]
+- Updated dependencies [2e06f01]
+- Updated dependencies [dbd0b67]
+  - @rocketh/core@0.21.0
+  - @rocketh/node@0.21.0
+
 ## 0.19.24
 
 ### Patch Changes
