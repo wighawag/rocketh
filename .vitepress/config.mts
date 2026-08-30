@@ -85,6 +85,7 @@ export default defineConfig({
 						{text: 'Exporting and Verifying', link: '/documentation/exporting-and-verifying/'},
 						{text: 'Handling Unknown Signers', link: '/documentation/unknown-signers/'},
 						{text: 'Guarding Execute Calls', link: '/documentation/execute-guard/'},
+						{text: 'Running Once, and Running Last', link: '/documentation/script-lifecycle/'},
 					],
 				},
 				{

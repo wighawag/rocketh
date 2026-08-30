@@ -72,6 +72,7 @@ Then, as you need them:
 - [Exporting, verifying and documenting](./exporting-and-verifying/) - getting addresses and ABIs to a frontend, and source to a block explorer.
 - [Handling unknown signers](./unknown-signers/) - privileged calls owned by a Safe, multisig or governance key.
 - [Captured transactions](./captured-transactions/) - what a run sent, in order: a Safe batch from a fork rehearsal, or a deployment replayed in a Solidity test.
+- [Running once, and running last](./script-lifecycle/) - `id` and `return true` for a script that must never run again, and `runAtTheEnd` for the one that consumes what the others left behind.
 - [Production hardening](./production-hardening/) - what to check before a deployment touches a live chain.
 - [Architecture Overview](./architecture/) - how the packages fit together.
 
