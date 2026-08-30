@@ -11,7 +11,7 @@ Start a fork with the node's own CLI and point the rocketh CLI at it, with no ha
 
 ```sh
 anvil --fork-url $ETH_NODE_URI_MAINNET     # 127.0.0.1:8545
-rocketh -e mainnet                          # there is no --fork flag today
+rocketh -e mainnet                          # WITHOUT --is-fork (see the 2026-08-30 update below)
 ```
 
 # What happens, and it is worse than an error
@@ -62,3 +62,13 @@ Two qualifications from the maintainer, both of which change how this should be 
 Neither qualification changes the implication for the plan: what an anvil user lacks is a way to SAY the run is a fork, and a rule that makes saying so protective.
 
 _The measured node behaviour behind this note (anvil's chain id and genesis answers, hardhat's 31337) is recorded with its provenance in `work/notes/findings/fork-node-chain-identity-behaviour.md`, which is the citable source; this note is the consequence for rocketh._
+
+# Update (2026-08-30): the mitigation shipped, the hazard did not fully close
+
+Kept rather than disposed, because only half of this is now stale.
+
+What changed: `--is-fork` exists (`is-fork-flag-on-the-cli`), so the scenario above has an answer. A run told it is a fork reads the simulated network's records without writing them back, since a fork run defaults to `saveDeployments: false` (`fork-does-not-save`), does not inherit the simulated network's endpoint (#119), and now REFUSES `--reset` outright rather than deleting the records it will never write back.
+
+What did NOT change, and is why this note stays: rocketh still cannot DETECT that the node it is talking to is a fork. Every identity check below still passes against a forked anvil, so the protection is entirely opt-in. A user who forgets the flag gets exactly the outcome described above, and nothing warns them. The finding note `work/notes/findings/fork-node-chain-identity-behaviour.md` measured why detection is hard: anvil forking mainnet reports chain id 1 and hardhat reports 31337, so neither the id nor the genesis hash separates a fork from the real chain in general.
+
+So read the scenario as "what happens when the flag is omitted", not as "what rocketh does".
