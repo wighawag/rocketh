@@ -711,6 +711,35 @@ export async function createEnvironment<
 		}
 	}
 
+	// REFUSED: a reset on a FORK run would delete the SIMULATED network's real records.
+	//
+	// A fork run is that network for RECORDS while not being it for chain identity (ADR 0014), so
+	//  the deployment folder it reads is keyed by the SIMULATED network's name: rehearsing mainnet
+	//  on a local fork reads `deployments/mainnet/`. Reset deletes that folder, and "a fork does not
+	//  save" then guarantees the run puts nothing back, so the combination can only ever destroy the
+	//  real records of a network this run was never going to write to. There is no reading of it
+	//  that a user could want, which is why this is a refusal rather than a warning.
+	//
+	// It is checked HERE, while the environment is being built, rather than at the deletion site in
+	//  `loadDeployments`. Two reasons: the executor asks the user to confirm the deletion BEFORE it
+	//  calls `loadDeployments`, so a check at the deletion site would confirm a destructive action
+	//  and only then refuse it; and this is a contradiction between two RUN PARAMETERS, which is
+	//  known in full before any work happens. Every caller funnels through here, so `--is-fork`,
+	//  `HARDHAT_FORK` and a configured fork input are all covered by the one check.
+	if (resolvedExecutionParams.environment.fork && resolvedExecutionParams.reset) {
+		const forkedNetworkName = resolvedExecutionParams.environment.fork.networkName;
+		throw new Error(
+			`Refusing to reset on a fork run: this would delete the deployment records of '${forkedNetworkName}', ` +
+				`the network being simulated, and a fork run never writes them back.\n` +
+				`A fork run READS '${forkedNetworkName}' records (the deployment folder is keyed by the simulated ` +
+				`network's name) while talking to a node that is not that network, so a reset here destroys real ` +
+				`deployment records and rehearses against nothing.\n` +
+				`If you meant to rehearse from a clean slate, point the run at a different environment instead of ` +
+				`resetting this one. If you really meant to delete '${forkedNetworkName}' records, do it in a run ` +
+				`that is not a fork.`,
+		);
+	}
+
 	const context = {
 		accounts: resolvedAccounts,
 		data: resolvedData,
