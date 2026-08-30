@@ -28,6 +28,7 @@ import type {
 import {UnknownSignerError, type UnknownSignerContractCall} from '@rocketh/core';
 import {
 	createUnknownSignerPolicyStack,
+	describeDeferralRepeatExecution,
 	describeUnknownSignerCapabilityDegradation,
 	resolveUnknownSignerBehaviour,
 } from './unknownSignerPolicy.js';
@@ -1514,11 +1515,21 @@ export async function createEnvironment<
 					// A run that ASKED to resolve interactively and simply could not is the most
 					// confusing way to meet this error, because the documented default pauses and
 					// takes a pasted hash. Say why that did not happen here. Silent on an explicit
-					// `'throw'` (which is every `catchUnknownSigner` action), so the defer workflow
-					// keeps the message it always had.
+					// `'throw'` (which includes every `catchUnknownSigner` action), since nothing
+					// degraded for a run that asked for exactly this.
 					const degradation = describeUnknownSignerCapabilityDegradation(policy, {canPromptForText: canAsk});
-					if (degradation) {
-						throw new UnknownSignerError(unknownSignerData, `${unknownSignerError.message}\n\n${degradation}`);
+					// And why the transaction will be handed to them AGAIN next time. This one is
+					// silent for a SCOPED `'throw'` only (`catchUnknownSigner`, whose script keeps
+					// running) rather than for every explicit `'throw'`: a run-level `'throw'` really
+					// does halt here with nothing recorded, which is the hazard ADR 0012 says nothing
+					// warns about. Both notes are composed here so the seam has ONE place that decides
+					// what a deferral message says.
+					const repeatExecution = describeDeferralRepeatExecution(behaviour, {
+						scopedPolicy: unknownSignerPolicyStack.scopedPolicy(),
+					});
+					const notes = [degradation, repeatExecution].filter((note): note is string => note !== undefined);
+					if (notes.length > 0) {
+						throw new UnknownSignerError(unknownSignerData, [unknownSignerError.message, ...notes].join('\n\n'));
 					}
 					throw unknownSignerError;
 				}

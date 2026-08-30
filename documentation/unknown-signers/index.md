@@ -17,6 +17,12 @@ That is the whole workflow. There is no re-run dance, nothing to install, and an
 - **Paste the transaction hash.** rocketh looks the transaction up on the network, waits for it to be mined, requires the receipt to report a SUCCESSFUL status, saves state through the same pending-transaction path a normal broadcast uses, records the hash for gas reporting, and returns the receipt to your script. It never sends a transaction of its own. A hash this node has never heard of (from the wrong network, or a typo that is still the right shape) is given a short grace period to show up and then reported as not found, with the transaction you still have to execute printed again, so the run stops rather than waiting for ever.
 - **`cannot sign`** (or just press enter). rocketh prints the full transaction and raises `UnknownSignerError`, which is the [defer workflow](#deferring-instead-of-asking-catchunknownsigner) below. Aborting the prompt (Ctrl-C) does the same. A paste that is not a transaction hash is re-asked a couple of times and then also defers.
 
+### A hash from an earlier run is still good
+
+The hash you paste does not have to be fresh. rocketh asks three things of it and none of them is its age: that this network knows it, that its receipt reports success, and that it carries evidence of being the call rocketh asked for (the table below). A transaction you executed hours ago, or after a previous run that stopped on this very step, is accepted and resolves the step in the run you are in now.
+
+That makes the interactive path the way OUT of a deferral that already happened. A run under `throw` printed a transaction, you executed it on your Safe, and the next run is showing it to you again: re-run from a terminal, and when rocketh pauses, paste the hash of the transaction you already executed. Nothing in the script has to change and nothing has to be executed twice.
+
 ### In CI it does not hang, it throws
 
 "Can the run ask a human for text?" is a CAPABILITY of the runtime, not a preference: it is true only when the run carries a `PromptExecutor` that implements `promptText`. `@rocketh/node` (the `rocketh` CLI and the hardhat-deploy path) supplies one **only when stdin is a terminal**; `@rocketh/web` deliberately never does, because a browser cannot sensibly ask you to paste a transaction hash.
@@ -24,6 +30,19 @@ That is the whole workflow. There is no re-run dance, nothing to install, and an
 So a CI job, whose stdin is not a terminal, has no text capability at all and takes the `throw` path. It never blocks on a prompt, even under `'auto'` and even if a script hardcodes `'ask'`. Capability is a CEILING, not a default.
 
 (The TTY check is not politeness: the underlying prompt library, asked a question with no terminal behind it, never answers and never fails, so the only safe move is not to ask.)
+
+### A run that threw will hand you the same transaction again
+
+The throw is not only a failure, it is an ABORT, and that has a consequence worth stating plainly. The deploy script never returns, so nothing records that this step was reached. That includes the run-once mechanism: a script that declares an `id` and ends with `return true` has its migration recorded only when the function RETURNS, and the deferral unwound the run before it could. The id is never written, and the next run runs that script again from the top.
+
+This is the one path on which an author who did everything right is still exposed. The same script, with a SIGNABLE account, executes the call, returns `true`, records its id and is skipped on every later run. With an UNSIGNABLE account under `throw` it records nothing at all.
+
+So after you execute the transaction on your Safe and re-run, rocketh reaches the same call and prints the SAME transaction. It did not send the first one and never saw one land, so it has no way of knowing you already executed it, and following the instructions a second time executes the call twice: a wasted round trip for an idempotent setter, and a real loss for a mint, a transfer, an increment or a governance action carrying its own nonce. The error message says so, and points at the first of the two ways out:
+
+- **Re-run from a terminal and paste the hash you already have.** [A hash from an earlier run is still good](#a-hash-from-an-earlier-run-is-still-good), so the transaction you executed after the run that threw resolves the step now. Nothing in your script changes.
+- **[Guard the step](../execute-guard/)** so that a re-run reads the chain, sees the effect has already landed, and skips the call without asking anyone. That is the durable fix, and the only one that works with no human in the loop at all, which is what a CI re-run is.
+
+Both of those are REMEDIES, and neither is the diagnosis. "You forgot a guard" does not explain this: a guard is optional, and an unguarded call re-executes on any re-run whether or not a deferral was involved. What the deferral adds is the abort, which keeps the completion from being recorded at all.
 
 ## What rocketh checks before recording anything
 

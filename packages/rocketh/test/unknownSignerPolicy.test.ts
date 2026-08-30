@@ -2,6 +2,7 @@ import {describe, it, expect} from 'vitest';
 
 import {
 	createUnknownSignerPolicyStack,
+	describeDeferralRepeatExecution,
 	describeUnknownSignerCapabilityDegradation,
 	resolveUnknownSignerBehaviour,
 } from '../src/environment/unknownSignerPolicy.js';
@@ -27,6 +28,24 @@ describe('createUnknownSignerPolicyStack', () => {
 		const stack = createUnknownSignerPolicyStack('auto');
 		stack.push({policy: 'throw'});
 		expect(stack.effective()).toBe('throw');
+	});
+
+	/**
+	 * `scopedPolicy()` answers the one question `effective()` cannot: did a WRAPPER ask
+	 * for this, or is it the run's own policy? A run-level `'throw'` and a
+	 * `catchUnknownSigner`-scoped `'throw'` are indistinguishable through `effective()`
+	 * and mean opposite things about whether the run stops.
+	 */
+	it('distinguishes a scoped policy from the resolved global', () => {
+		const stack = createUnknownSignerPolicyStack('throw');
+		expect(stack.scopedPolicy()).toBeUndefined();
+		expect(stack.effective()).toBe('throw');
+
+		stack.push({policy: 'throw'});
+		expect(stack.scopedPolicy()).toBe('throw');
+
+		stack.pop();
+		expect(stack.scopedPolicy()).toBeUndefined();
 	});
 
 	/** Popping restores whatever was in effect before the push. */
@@ -149,5 +168,68 @@ describe('describeUnknownSignerCapabilityDegradation', () => {
 	it('says nothing for an explicit `throw`, capability or not', () => {
 		expect(describeUnknownSignerCapabilityDegradation('throw', {canPromptForText: false})).toBeUndefined();
 		expect(describeUnknownSignerCapabilityDegradation('throw', {canPromptForText: true})).toBeUndefined();
+	});
+});
+
+/**
+ * The note warning that the SAME transaction comes back on the next run. Its content
+ * is pinned here rather than only at the seam because the exact diagnosis is the whole
+ * point of the note: "the run stopped before the completion was recorded" is
+ * deferral-specific, while "you forgot a guard" is true of every unguarded call and
+ * would misdiagnose the run-once script that did everything right.
+ */
+describe('describeDeferralRepeatExecution', () => {
+	const unscoped = {scopedPolicy: undefined};
+
+	it('warns on a run-level throw, naming the abort rather than a missing guard', () => {
+		const note = describeDeferralRepeatExecution('throw', unscoped);
+		expect(note).toBeDefined();
+		// the CAUSE: the run stopped before the script's completion could be recorded
+		expect(note).toContain('STOPPED');
+		expect(note).toContain('return true');
+		expect(note).toContain('migration');
+		// the CONSEQUENCE: the same transaction again, and twice may not be harmless
+		expect(note).toContain('SAME transaction again');
+		expect(note).toContain('twice');
+		// it must NOT blame the author for not guarding the step
+		expect(note).not.toMatch(/guard/i);
+	});
+
+	/** The two sentences are ONE story: the note ends by pointing at the way out. */
+	it('points at the stale-hash paste as the remedy', () => {
+		const note = describeDeferralRepeatExecution('throw', unscoped)!;
+		expect(note).toContain('paste the hash');
+		expect(note).toContain('freshness check');
+		expect(note).toContain('EARLIER run');
+	});
+
+	/** Repo rule, and this text is user-visible output. */
+	it('contains no em dash', () => {
+		expect(describeDeferralRepeatExecution('throw', unscoped)).not.toContain('\u2014');
+	});
+
+	/**
+	 * THE QUIET PATH, and the asymmetry this note inherits from the degradation one: a
+	 * SCOPED `'throw'` is what `catchUnknownSigner` pushes, and that script keeps running,
+	 * so telling it the run stopped would be both noise and false.
+	 */
+	it('says nothing when a scoped frame asked for `throw`', () => {
+		expect(describeDeferralRepeatExecution('throw', {scopedPolicy: 'throw'})).toBeUndefined();
+	});
+
+	/**
+	 * A scoped `'ask'` or `'auto'` degraded to a throw by the capability ceiling is NOT
+	 * that: nobody opted into handling the deferral, and the run halts like any other.
+	 */
+	it('still warns when a scoped `ask` or `auto` was degraded to a throw', () => {
+		expect(describeDeferralRepeatExecution('throw', {scopedPolicy: 'ask'})).toBeDefined();
+		expect(describeDeferralRepeatExecution('throw', {scopedPolicy: 'auto'})).toBeDefined();
+	});
+
+	/** Nothing stops on the interactive path: it pauses, and the prompt says the rest. */
+	it('says nothing when the run is about to ask', () => {
+		for (const scopedPolicy of [undefined, 'throw', 'ask', 'auto'] as const) {
+			expect(describeDeferralRepeatExecution('ask', {scopedPolicy})).toBeUndefined();
+		}
 	});
 });

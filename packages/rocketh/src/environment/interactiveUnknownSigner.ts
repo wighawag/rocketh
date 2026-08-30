@@ -46,6 +46,15 @@ function normaliseAnswer(value: string): string {
  * `UnknownSignerError` message, i.e. the exact transaction to execute — VERBATIM
  * and undegraded, because that message is the deliverable of the deferral workflow
  * and the interactive path must not show less than the throwing one does.
+ *
+ * IT ALSO STATES THAT AN OLD HASH IS WELCOME, because nothing else does and the
+ * property is invisible from outside. Nothing on this path looks at WHEN the pasted
+ * transaction landed: the seam requires that the node knows the hash and that its
+ * receipt succeeded, and `classifyPastedTransaction` ranks evidence that it is the
+ * call rocketh asked for. So the user who met this transaction under `'throw'` in an
+ * earlier run, executed it on their Safe and is now being shown it again can simply
+ * paste that hash, which is the documented way out of a stale deferral and does not
+ * require editing the script.
  */
 export function formatInteractivePresentation(details: string, from: string): string {
 	return [
@@ -54,6 +63,9 @@ export function formatInteractivePresentation(details: string, from: string): st
 		'Execute the transaction below out-of-band (e.g. on your Safe), then paste the',
 		`resulting transaction hash to continue this run. Answer "${CANNOT_SIGN_ANSWER}" (or press`,
 		'enter) to stop here instead and get the transaction back to defer.',
+		'ALREADY EXECUTED IT, after an earlier run stopped on it? Paste that hash: there is',
+		'no freshness check, so a transaction executed before this run started is accepted',
+		'as long as it succeeded and matches the call below.',
 		SEPARATOR,
 		details,
 		SEPARATOR,

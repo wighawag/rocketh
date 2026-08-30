@@ -82,6 +82,11 @@ function createMockProvider(options?: {
 	 * nothing to do with what was asked for.
 	 */
 	transactions?: Record<string, Record<string, unknown>>;
+	/**
+	 * The chain HEAD. Defaults to the block the mock mines everything into, so a test
+	 * that raises it is saying "the chain has moved on since that transaction landed".
+	 */
+	latestBlockNumber?: string;
 }): {provider: EIP1193ProviderWithoutEvents; calls: Call[]} {
 	const calls: Call[] = [];
 	const unknownHashes = new Set((options?.unknownHashes ?? []).map((h) => h.toLowerCase()));
@@ -136,7 +141,7 @@ function createMockProvider(options?: {
 					return successReceipt(hash, options?.receipts?.[hash]);
 				}
 				case 'eth_blockNumber':
-					return '0x1';
+					return options?.latestBlockNumber ?? '0x1';
 				default: {
 					// A `signerOnly` account signs locally, so rocketh fills nonce/fees/gas itself
 					// before signing (nobody else can). Those answers are shared rather than
@@ -251,6 +256,7 @@ async function buildEnvironment(options: {
 	unknownHashes?: string[];
 	pendingReceiptRounds?: Record<string, number>;
 	transactions?: Record<string, Record<string, unknown>>;
+	latestBlockNumber?: string;
 }) {
 	const {provider, calls} = createMockProvider({
 		accounts: options.nodeAccounts,
@@ -258,6 +264,7 @@ async function buildEnvironment(options: {
 		unknownHashes: options.unknownHashes,
 		pendingReceiptRounds: options.pendingReceiptRounds,
 		transactions: options.transactions,
+		latestBlockNumber: options.latestBlockNumber,
 	});
 	const {store, writes, deletes} = createInMemoryStore();
 	const config = resolveConfig({
@@ -492,6 +499,64 @@ describe('interactive resolver - a pasted hash resolves the execution', () => {
 		expect(pendingWrites.some((w) => w.content.includes(PASTED_HASH))).toBe(true);
 		expect(pendingWrites.some((w) => w.content.includes(SECOND_PASTED_HASH))).toBe(true);
 		expect(env.network.provider.transactionHashes).toEqual([PASTED_HASH, SECOND_PASTED_HASH]);
+	});
+
+	/**
+	 * THE STALE DEFERRAL RECOVERY, pinned as a PROPERTY: nothing on this path looks at
+	 * WHEN the pasted transaction landed.
+	 *
+	 * This is what makes the interactive path a way out of a deferral an EARLIER run
+	 * threw. That run halted before its script could return, so no migration was
+	 * recorded and this run reaches the same call and shows the same transaction; the
+	 * user, who already executed it on their Safe back then, pastes THAT hash and the
+	 * step resolves. The transaction below is a thousand blocks old, older than this run
+	 * by any measure, and it is accepted on evidence and a successful receipt alone.
+	 *
+	 * If a freshness or block-height condition is ever added to the seam or to
+	 * `classifyPastedTransaction`, this test goes red, which is the point of it: the
+	 * recovery is documented in the prompt and on the unknown-signers page, so it cannot
+	 * be dropped silently.
+	 */
+	it('accepts a hash for a transaction that landed long BEFORE this run', async () => {
+		const promptExecutor = createScriptedPrompt([{value: PASTED_HASH}]);
+		const {env, calls} = await buildEnvironment({
+			accounts: {admin: SAFE_ADDRESS},
+			onUnknownSigner: 'ask',
+			promptExecutor,
+			// executed at block 1; the chain is at block 1000 by the time this run asks
+			receipts: {[PASTED_HASH]: {blockNumber: '0x1'}},
+			latestBlockNumber: '0x3e8',
+		});
+
+		const receipt = await env.broadcastExecution(safeTransaction(env.resolveAccount('admin')));
+
+		expect(receipt.transactionHash).toBe(PASTED_HASH);
+		expect(receipt.blockNumber).toBe('0x1');
+		// resolved the step through the normal pipeline, and still sent nothing itself
+		expect(env.network.provider.transactionHashes).toEqual([PASTED_HASH]);
+		expect(calls.map((c) => c.method).filter((m) => sendMethods.includes(m))).toEqual([]);
+	});
+
+	/**
+	 * And the prompt SAYS so, because the property is invisible otherwise: a user looking
+	 * at a transaction they executed after the last run has no way to know rocketh will
+	 * take that hash rather than demand a fresh execution.
+	 */
+	it('tells the human at the pause that an already-executed hash is accepted', async () => {
+		const promptExecutor = createScriptedPrompt([{value: PASTED_HASH}]);
+		const {env} = await buildEnvironment({
+			accounts: {admin: SAFE_ADDRESS},
+			onUnknownSigner: 'ask',
+			promptExecutor,
+		});
+		const shown = captureMessages(env);
+
+		await env.broadcastExecution(safeTransaction(env.resolveAccount('admin')));
+
+		const presented = shown.join('\n');
+		expect(presented).toContain('ALREADY EXECUTED IT');
+		expect(presented).toContain('no freshness check');
+		expect(presented).not.toContain('\u2014');
 	});
 
 	/** A hash pasted with the odd character upper-cased is still the same transaction. */
