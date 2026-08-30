@@ -404,6 +404,35 @@ describe('@rocketh/unknown-signer - catchUnknownSigner', () => {
 		});
 
 		/**
+		 * THE QUIET PATH, driven end to end through the wrapper rather than at the seam.
+		 *
+		 * An UNWRAPPED deferral now warns that the run stopped before the script's
+		 * completion could be recorded, that the next run will surface the same transaction
+		 * again, and that pasting the already-executed hash is the way out. A WRAPPED one
+		 * gets none of that, and not merely as a matter of taste: this script did NOT stop.
+		 * It caught the deferral, carried on, and may well reach its own `return true`, so
+		 * the warning would be false here as well as unwanted. (The seam side of the same
+		 * asymmetry is pinned in `rocketh`'s `unknown-signer-seam.test.ts`.)
+		 */
+		it('says nothing about a repeat execution, because this run did not stop', async () => {
+			const {env} = await safeOwnerEnvironment();
+			const messages: string[] = [];
+			vi.spyOn(env, 'showMessage').mockImplementation((message: string) => {
+				messages.push(message);
+			});
+
+			const admin = env.resolveAccount('admin');
+			const deferred = await catchUnknownSigner(env)(() => upgradeCall(env, admin));
+
+			expect(deferred).not.toBe(null);
+			const printed = messages.join('\n');
+			// the v1 block, and nothing bolted onto it
+			expect(printed).toContain('Please execute the following transaction');
+			expect(printed).not.toContain('SAME transaction again');
+			expect(printed).not.toContain('freshness check');
+		});
+
+		/**
 		 * `contract.name` is optional (it is a reverse-lookup that can miss), so the
 		 * printed target falls back to the raw `to` address.
 		 */

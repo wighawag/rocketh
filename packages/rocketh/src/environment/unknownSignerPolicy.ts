@@ -65,6 +65,18 @@ export type UnknownSignerPolicyStack = {
 	pop(): void;
 	/** `top-of-stack?.policy ?? resolvedGlobal`. */
 	effective(): UnknownSignerPolicy;
+	/**
+	 * What the INNERMOST frame asks for, or `undefined` when no wrapper is in scope and
+	 * the run's own `onUnknownSigner` is what decides.
+	 *
+	 * This is the ONE thing {@link effective} cannot express: a scoped `'throw'` and a
+	 * run-level `'throw'` produce the same effective policy and a very different
+	 * situation. A frame forcing `'throw'` is what `catchUnknownSigner` pushes, so it
+	 * means the caller wrote a handler around this call, whereas the run-level value
+	 * means the run simply halts here. {@link describeDeferralRepeatExecution} is the
+	 * only reader, because that difference is exactly what its note turns on.
+	 */
+	scopedPolicy(): UnknownSignerPolicy | undefined;
 };
 
 /**
@@ -147,6 +159,63 @@ export function describeUnknownSignerCapabilityDegradation(
 	);
 }
 
+/**
+ * The note warning that this deferral will come back on the next run, and that
+ * executing the transaction twice is not always harmless.
+ *
+ * WHY THIS EXISTS, and why the OBVIOUS explanation is the wrong one. It is tempting to
+ * read the resurfacing as "you did not guard the step", but a guard is optional and an
+ * unguarded call re-executes on ANY re-run, so that framing says nothing a deferral
+ * introduced. What a deferral introduces is that it ABORTS THE RUN BEFORE THE SCRIPT'S
+ * COMPLETION IS RECORDED: the executor reaches `recordMigration` only when the script
+ * FUNCTION RETURNS `true` (`packages/rocketh/src/executor/index.ts`, the script loop),
+ * and this throw unwinds one branch earlier. So the idiomatic run-once script (`id`
+ * plus `return true`) is protected when the account is signable and NOT protected here,
+ * even though its author did everything right. That asymmetry is the message.
+ *
+ * The remedy named at the end is the interactive path, and it is the same story rather
+ * than a second note: the pasted hash has NO freshness condition (see
+ * `pastedTransactionIntent.ts`, which ranks EVIDENCE, and the seam, which additionally
+ * requires only inclusion and a successful receipt), so the transaction the operator
+ * executes after THIS run stopped is exactly what a later run can be handed.
+ *
+ * (No em dash in the message text: this repo forbids them in any output, source included.)
+ *
+ * Returns `undefined` when there is nothing to warn about:
+ * - the behaviour is `'ask'`, so the run is about to PAUSE rather than stop, and
+ *   whatever happens next it does not abort here (a decline throws the message
+ *   undegraded, and the prompt itself carries the stale-hash sentence); or
+ * - a scoped frame asked for `'throw'`, which is every `catchUnknownSigner` action.
+ *   That caller opted into handling the deferral, their script keeps running, and
+ *   telling them the run stopped would be both noise and false. This mirrors
+ *   {@link describeUnknownSignerCapabilityDegradation} staying quiet on an explicit
+ *   `'throw'`, with the difference that the RUN-LEVEL `'throw'` does get this note:
+ *   that run really did halt with nothing recorded, which is the case ADR 0012 lists
+ *   as "a real hazard ... and nothing warns about it today".
+ *
+ * Pure, for the same reason the other two functions here are: every branch is testable
+ * without building an environment.
+ */
+export function describeDeferralRepeatExecution(
+	behaviour: UnknownSignerBehaviour,
+	scope: {scopedPolicy: UnknownSignerPolicy | undefined},
+): string | undefined {
+	if (behaviour !== 'throw') return undefined;
+	if (scope.scopedPolicy === 'throw') return undefined;
+	return (
+		`Note: this run STOPPED here, before the deploy script finished, so nothing recorded that this step was ` +
+		`reached. That holds even for a run-once script: an 'id' plus a 'return true' records its migration only ` +
+		`when the script RETURNS, and this deferral unwound the run before it could. So once you have executed the ` +
+		`transaction above, the next run reaches this same point and prints the SAME transaction again, with no way ` +
+		`of knowing you already executed it. Executing it twice is a wasted round trip for an idempotent setter, and ` +
+		`a real loss for a mint, a transfer, an increment or a governance action carrying its own nonce.\n` +
+		`The way out is the interactive path: re-run from a terminal and, when rocketh pauses on this transaction, ` +
+		`paste the hash of the one you ALREADY executed. There is no freshness check on that hash, so a transaction ` +
+		`you executed after an EARLIER run is accepted: rocketh asks only that it landed successfully and that it ` +
+		`matches the call above, and then this run continues instead of handing it to you a second time.`
+	);
+}
+
 export function createUnknownSignerPolicyStack(resolvedGlobal: UnknownSignerPolicy): UnknownSignerPolicyStack {
 	const frames: UnknownSignerPolicyFrame[] = [];
 	return {
@@ -158,6 +227,9 @@ export function createUnknownSignerPolicyStack(resolvedGlobal: UnknownSignerPoli
 		},
 		effective() {
 			return frames[frames.length - 1]?.policy ?? resolvedGlobal;
+		},
+		scopedPolicy() {
+			return frames[frames.length - 1]?.policy;
 		},
 	};
 }

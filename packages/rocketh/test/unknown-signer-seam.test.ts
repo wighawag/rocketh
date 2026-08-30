@@ -552,6 +552,110 @@ describe('onUnknownSigner - precedence', () => {
 	});
 });
 
+/**
+ * The message a HALTED run leaves behind has to say that the same transaction is coming
+ * back. rocketh did not send it and never saw one land, so it records nothing; and the
+ * deferral unwinds the run before the script could return `true`, so not even a run-once
+ * `id` is written. The next run therefore reaches the same call and prints the same
+ * transaction, and following it a second time executes the call twice.
+ *
+ * Content is asserted, not merely the error type: the DIAGNOSIS is the deliverable here,
+ * and a note that blamed a missing guard would be both wrong and useless to the author
+ * who wrote `id` plus `return true` and did everything right.
+ */
+describe('unknown-signer message - the deferral comes back on the next run', () => {
+	async function deferralError(options: {
+		onUnknownSigner?: UnknownSignerPolicy;
+		/** Run the broadcast under a scoped frame, as `catchUnknownSigner` does. */
+		scopedPolicy?: UnknownSignerPolicy;
+	}): Promise<UnknownSignerError> {
+		const {env} = await buildEnvironment({
+			accounts: {admin: SAFE_ADDRESS},
+			nodeAccounts: [],
+			autoImpersonate: false,
+			onUnknownSigner: options.onUnknownSigner,
+		});
+		const broadcast = () =>
+			env.broadcastExecution({
+				type: 'object',
+				data: {type: '0x2', from: env.resolveAccount('admin'), to: TARGET_CONTRACT, chainId: '0x7a69'},
+			});
+		const run = options.scopedPolicy
+			? env.runUnderUnknownSignerPolicy({policy: options.scopedPolicy}, broadcast)
+			: broadcast();
+		return run.then(
+			() => {
+				throw new Error('expected the unsignable `from` to reject');
+			},
+			(e) => e as UnknownSignerError,
+		);
+	}
+
+	it('warns an unwrapped run-level `throw` that a re-run surfaces the same transaction', async () => {
+		const error = await deferralError({onUnknownSigner: 'throw'});
+
+		expect(error).toBeInstanceOf(UnknownSignerError);
+		expect(error.message).toContain('STOPPED');
+		expect(error.message).toContain('SAME transaction again');
+		// the transaction to execute is still the deliverable, note or no note
+		expect(error.message).toContain(SAFE_ADDRESS);
+	});
+
+	/**
+	 * THE DIAGNOSIS. The run-once script (`id` plus `return true`) is protected when the
+	 * account is signable and NOT protected here, because `recordMigration` is reached
+	 * only when the script FUNCTION RETURNS and this throw unwinds first. That, and not a
+	 * missing guard, is what the message must attribute the resurfacing to.
+	 */
+	it('attributes it to the run stopping before the completion was recorded, not to a missing guard', async () => {
+		const error = await deferralError({onUnknownSigner: 'throw'});
+
+		expect(error.message).toContain('return true');
+		expect(error.message).toContain('migration');
+		expect(error.message).not.toMatch(/guard/i);
+	});
+
+	/** The two sentences are ONE story: the warning hands the reader to the remedy. */
+	it('points at pasting the already-executed hash as the way out', async () => {
+		const error = await deferralError({onUnknownSigner: 'throw'});
+
+		expect(error.message).toContain('paste the hash');
+		expect(error.message).toContain('freshness check');
+		expect(error.message).toContain('EARLIER run');
+	});
+
+	/** A CI run under the default `'auto'` is the commonest way to halt here. */
+	it('warns a run whose `auto` degraded to a throw, alongside the degradation note', async () => {
+		const error = await deferralError({onUnknownSigner: 'auto'});
+
+		expect(error.message).toContain('SAME transaction again');
+		// both notes, in the order they are composed: why no pause, then what happens next
+		expect(error.message.indexOf('--skip-prompts')).toBeLessThan(error.message.indexOf('SAME transaction again'));
+	});
+
+	/**
+	 * THE QUIET PATH, exactly as for the capability-degradation note: this is what
+	 * `catchUnknownSigner` scopes, and that script does NOT stop. It catches the error,
+	 * carries on, and may well reach `return true` itself, so a warning that the run
+	 * halted before recording anything would be false as well as unwanted.
+	 */
+	it('says nothing under a scoped `throw`, which is what catchUnknownSigner pushes', async () => {
+		const error = await deferralError({onUnknownSigner: 'auto', scopedPolicy: 'throw'});
+
+		expect(error).toBeInstanceOf(UnknownSignerError);
+		expect(error.message).not.toContain('SAME transaction again');
+		expect(error.message).not.toContain('freshness check');
+		// still the whole transaction to execute, which is what that workflow is for
+		expect(error.message).toContain(SAFE_ADDRESS);
+	});
+
+	/** Repo rule, asserted on the message a user actually sees. */
+	it('adds no em dash to the message', async () => {
+		const error = await deferralError({onUnknownSigner: 'throw'});
+		expect(error.message).not.toContain('\u2014');
+	});
+});
+
 describe('autoImpersonate is untouched by the seam', () => {
 	/**
 	 * `autoImpersonate` is a NODE CAPABILITY switch that runs BEFORE the seam;
