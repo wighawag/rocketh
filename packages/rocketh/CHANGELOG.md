@@ -1,5 +1,20 @@
 # rocketh
 
+## 0.21.0
+
+### Minor Changes
+
+- 4a0525e: A run now remembers what it sent: `env.capturedTransactions` holds every transaction the run broadcast, in order, each carrying the intent (or the raw payload it relayed) and the sender's signability.
+- 2e06f01: A transaction hash pasted at the interactive unknown-signer prompt that this node has never heard of no longer ends the run: the question is asked again with that hash offered back as the starting value, so a truncated paste, a dropped character or an RPC that had not caught up costs an edit rather than a re-run. Pressing enter on the offered value looks for the same hash again. The re-asking is bounded and shares ONE budget of three questions per pause with the existing malformed-paste re-ask, so alternating the two cannot loop; when it runs out the transaction defers exactly as `cannot sign` does, saving nothing. `PromptExecutor.promptText` requests gain an optional `initial` (the new `TextPromptRequest` type), honoured by `@rocketh/node` through the prompt library's own initial-value support, recorded by the `@rocketh/test-utils` double, and safely ignorable elsewhere; `@rocketh/web` still supplies no text ability.
+
+### Patch Changes
+
+- 3716c63: An unknown-signer deferral that HALTS the run now says the same transaction will be surfaced again on the next run, attributing it to the abort happening before the script's completion could be recorded (so even an `id` plus `return true` script re-runs), and points at the interactive path as the way out. A `catchUnknownSigner` action stays quiet, since its script does not stop. The interactive prompt now states that a hash from a transaction executed after an earlier run is accepted.
+- 589d910: A fork run now REFUSES to reset instead of deleting the simulated network's deployment records. A fork run is the forked network for RECORDS (ADR 0014), so its deployment folder is keyed by the simulated network's name, while "a fork does not save" guarantees the run writes nothing back. `rocketh -e mainnet --is-fork --reset` therefore deleted `deployments/mainnet/` (records, `.chain` and `.migrations.json`) and then rehearsed against nothing, which no user can have wanted, so the combination is refused rather than warned about. The error names the network whose records were at stake and is raised while the environment is built, before the executor asks the user to confirm the deletion. Every route into fork mode is covered (`--is-fork`, `HARDHAT_FORK`, a configured fork input), and a reset on a run that is not a fork is unchanged.
+- Updated dependencies [4a0525e]
+- Updated dependencies [2e06f01]
+  - @rocketh/core@0.21.0
+
 ## 0.20.0
 
 ### Minor Changes

@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/router",
-	"version": "0.19.22",
+	"version": "0.19.23",
 	"description": "Deploy router-based upgradeable EVM smart contracts, for rocketh and hardhat-deploy.",
 	"keywords": [
 		"rocketh",

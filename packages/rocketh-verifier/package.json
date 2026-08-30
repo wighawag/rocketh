@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/verifier",
-	"version": "0.19.24",
+	"version": "0.19.25",
 	"description": "Verify deployed EVM smart contracts on Etherscan, Sourcify and compatible block explorers.",
 	"keywords": [
 		"rocketh",
