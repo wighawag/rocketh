@@ -1,5 +1,5 @@
 ---
-title: 'Matrix entry: pin today''s hard-throw behaviour of the deployer-to-governance handoff'
+title: "Matrix entry: pin today's hard-throw behaviour of the deployer-to-governance handoff"
 slug: unknown-signer-matrix-pin-handoff-hard-error
 spec: governance-topology-validation
 blockedBy: [unknown-signer-matrix-idempotent-rerun-before-execution]

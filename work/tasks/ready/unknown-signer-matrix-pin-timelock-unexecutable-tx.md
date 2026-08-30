@@ -1,5 +1,5 @@
 ---
-title: 'Matrix entry: pin today''s unexecutable surfaced transaction when a Timelock owns the ProxyAdmin'
+title: "Matrix entry: pin today's unexecutable surfaced transaction when a Timelock owns the ProxyAdmin"
 slug: unknown-signer-matrix-pin-timelock-unexecutable-tx
 spec: governance-topology-validation
 blockedBy: [unknown-signer-matrix-pin-handoff-hard-error]
