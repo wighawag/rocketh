@@ -20,6 +20,8 @@
 
 Framework-agnostic deployment system for EVM smart contracts, and the deployment engine behind hardhat-deploy v2.
 
+> 📚 **Full documentation is available at [rocketh.dev](https://rocketh.dev)** - guides, API reference and examples.
+
 ## Features
 
 - 🔧 **Framework Agnostic** - Works with any Ethereum development toolchain
@@ -64,10 +66,6 @@ npm install rocketh @rocketh/deploy @rocketh/node
 # Using yarn
 yarn add rocketh @rocketh/deploy @rocketh/node
 ```
-
-## Documentation
-
-For full documentation, visit [rocketh.dev](https://rocketh.dev).
 
 ## Getting Started
 
