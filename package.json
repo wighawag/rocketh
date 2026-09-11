@@ -23,7 +23,7 @@
 		"prettier": "^3.9.6",
 		"tsx": "^4.23.12",
 		"vitepress": "2.0.0-alpha.18",
-		"vitest": "^4.1.10",
+		"vitest": "^4.1.11",
 		"zellij-launcher": "^0.0.1",
 		"solc": "0.8.10",
 		"murmur-128": "^0.2.1"

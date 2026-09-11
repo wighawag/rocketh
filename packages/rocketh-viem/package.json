@@ -55,7 +55,7 @@
 		"viem": "^2.55.13",
 		"@rocketh/test-utils": "workspace:*",
 		"@types/node": "^26.2.0",
-		"vitest": "^4.1.10"
+		"vitest": "^4.1.11"
 	},
 	"peerDependencies": {
 		"viem": "^2.45.0"

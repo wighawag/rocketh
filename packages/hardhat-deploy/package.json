@@ -67,7 +67,7 @@
 		"rimraf": "^6.1.3",
 		"rocketh": "workspace:*",
 		"typescript": "^6.0.3",
-		"vitest": "^4.1.10"
+		"vitest": "^4.1.11"
 	},
 	"peerDependencies": {
 		"@rocketh/node": "workspace:^",

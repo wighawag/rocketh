@@ -59,7 +59,7 @@
 		"as-soon": "^0.1.6",
 		"rimraf": "^6.1.3",
 		"typescript": "^6.0.3",
-		"vitest": "^4.1.10",
+		"vitest": "^4.1.11",
 		"@rocketh/test-utils": "workspace:*",
 		"@types/node": "^26.2.0"
 	},
