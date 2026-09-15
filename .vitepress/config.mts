@@ -208,6 +208,13 @@ export default defineConfig({
 		// vulnerability" button); it is not a docs page, and nothing in the sidebar links to it.
 		// The user-facing half of it lives in documentation.md under "Production hardening".
 		'SECURITY.md',
+		// Same category as SECURITY.md: GitHub repo-meta files, read on GitHub (the Contribute
+		// and Code of conduct links on the repo page), never linked from the sidebar. They must
+		// be excluded rather than published, because CONTRIBUTING.md points at ./SECURITY.md and
+		// ./TESTING.md, which are excluded above: as a published page those become dead links and
+		// fail the build, while on GitHub they resolve to the files they name.
+		'CONTRIBUTING.md',
+		'CODE_OF_CONDUCT.md',
 	],
 
 	// Every page is emitted as `<name>/index.html`, never `<name>.html`, so that a URL
