@@ -57,7 +57,7 @@
 		"as-soon": "^0.1.6",
 		"rocketh": "workspace:*",
 		"typescript": "^6.0.3",
-		"vitest": "^4.1.10"
+		"vitest": "^4.1.11"
 	},
 	"scripts": {
 		"prepublishOnly": "cp ../../LICENSE LICENSE",

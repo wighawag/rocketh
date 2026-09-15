@@ -70,10 +70,13 @@ jobs:
         run: pnpm test:getting-started
 
       # Known advisories in the dependency tree, which is mostly build and docs tooling.
-      # A hard gate on purpose: the repo already keeps security floors in package.json's
-      # `pnpm.overrides`, so the way to answer this step is to add one there (or upgrade),
-      # and a warning nobody has to act on would just accumulate. `--prod` is deliberately
-      # NOT used: none of these packages ship to users, but they all run here, and a
-      # compromised build tool is the supply-chain risk this repo is set up against.
+      # A hard gate on purpose: the repo keeps security floors in `overrides:` in
+      # pnpm-workspace.yaml, so the way to answer this step is to add one there (or
+      # upgrade), and a warning nobody has to act on would just accumulate. `--prod` is
+      # deliberately NOT used: none of these packages ship to users, but they all run here,
+      # and a compromised build tool is the supply-chain risk this repo is set up against.
+      # An advisory with no patched version at all cannot be answered that way and goes in
+      # `auditConfig.ignoreGhsas` next to the floors, with a reason, so the gate stays a
+      # gate rather than a permanent red.
       - name: Audit dependencies
         run: pnpm audit

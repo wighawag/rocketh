@@ -48,12 +48,12 @@
 		"tsx": "^4.23.12"
 	},
 	"devDependencies": {
+		"@rocketh/test-utils": "workspace:*",
+		"@types/node": "^26.2.0",
 		"as-soon": "^0.1.6",
 		"rocketh": "workspace:*",
 		"typescript": "^6.0.3",
-		"vitest": "^4.1.10",
-		"@rocketh/test-utils": "workspace:*",
-		"@types/node": "^26.2.0"
+		"vitest": "^4.1.11"
 	},
 	"peerDependencies": {
 		"rocketh": "workspace:^"

@@ -61,7 +61,7 @@
 	"devDependencies": {
 		"@sveltejs/vite-plugin-svelte": "^6.2.1",
 		"@types/node": "^26.2.0",
-		"@vitest/browser-playwright": "^4.1.10",
+		"@vitest/browser-playwright": "^4.1.11",
 		"as-soon": "^0.1.6",
 		"playwright": "^1.57.0",
 		"rocketh": "workspace:*",
@@ -69,7 +69,7 @@
 		"tsx": "^4.23.12",
 		"typescript": "^6.0.3",
 		"vite": "^7.2.6",
-		"vitest": "^4.1.10"
+		"vitest": "^4.1.11"
 	},
 	"peerDependencies": {
 		"rocketh": "workspace:^"

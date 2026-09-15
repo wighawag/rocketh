@@ -90,3 +90,50 @@ allowBuilds:
   '@parcel/watcher': false
   esbuild: false
   nx: false
+
+# ---------------------------------------------------------------------------
+# Security floors for TRANSITIVE dev/test/docs tooling deps flagged by `pnpm audit`.
+#
+# These live HERE, and not in package.json's `pnpm.overrides` where they used to sit,
+# for the same reason as the settings above: pnpm 10.28 no longer reads that field. It
+# says so on every install ("The "pnpm" field in package.json is no longer read by pnpm.
+# The following keys were ignored: "pnpm.overrides""), which meant the whole floor below
+# was silently inert, surviving only as a frozen `overrides:` block in the lockfile that
+# the next re-resolution would have dropped.
+#
+# None of these are runtime deps of the published @rocketh/* packages (`pnpm audit --prod`
+# is clean); they arrive through vitepress, hardhat, nx and lws. Only entries that still
+# regress to a vulnerable version WITHOUT the override are kept: the vite advisories were
+# resolved structurally by moving to vitepress 2.x (vite 8), so no vite override is needed.
+# Two arrive through BUILD tooling rather than runtime: `tmp` through the pinned `solc`
+# that regenerates the bundled diamond/proxy artifacts, and `brace-expansion` through nx.
+# The rest come from hardhat/lws (ws, adm-zip, @koa/cors, @tootallnate/once, undici via
+# hardhat-zod-utils), vite/vitepress peers (axios, esbuild, postcss via vite 8), nx
+# (smol-toml), ipfs-gateway-emulator (hono) and wait-on (joi). Revisit when those ship
+# patched dep trees.
+overrides:
+  'axios@>=1.0.0 <1.18.0': ^1.18.0
+  'esbuild@<0.25.0': ^0.25.0
+  'esbuild@>=0.27.3 <0.28.1': ^0.28.1
+  'ws@>=8.0.0 <8.21.0': ^8.21.0
+  'adm-zip@<0.6.0': ^0.6.0
+  '@tootallnate/once@<2.0.1': ^2.0.1
+  '@koa/cors@<5.0.0': ^5.0.0
+  'undici@<6.28.0': ^6.28.0
+  'postcss@<8.5.23': ^8.5.23
+  'tmp@<0.2.6': ^0.2.6
+  'brace-expansion@>=4.0.0 <5.0.9': ^5.0.9
+  'smol-toml@<1.7.1': ^1.7.1
+  'hono@<4.13.5': ^4.13.5
+  'joi@>=18.0.0 <18.2.5': ^18.2.5
+
+# The one advisory in the tree that NO version can answer: adm-zip GHSA-vwc7-r8mq-g2x9
+# is published with `Patched versions: <0.0.0`, meaning no fixed release exists. It
+# reaches us only as demoes/hardhat-deploy/basic > hardhat > adm-zip, so it runs when a
+# demo compiles, never in a published package (`pnpm audit --prod` stays clean without
+# this entry). Without the ignore, `pnpm audit` in CI is red forever regardless of what
+# anyone here does, which turns the hard gate into noise. Drop this the day adm-zip or
+# hardhat ships a fix.
+auditConfig:
+  ignoreGhsas:
+    - GHSA-vwc7-r8mq-g2x9
