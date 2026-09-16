@@ -6,6 +6,7 @@ import {join, dirname, basename} from 'path';
 import {fileURLToPath} from 'url';
 import * as readline from 'readline';
 import pkg from '../package.json' with {type: 'json'};
+import {createIgnoreFilter, parseGitignore, type IgnoreFilter} from './utils/gitignore.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -60,21 +61,7 @@ const isFolderEmpty = (folderPath: string): boolean => {
 	}
 };
 
-const copyFile = (
-	source: string,
-	target: string,
-	replacements: Record<string, string> = {},
-	gitignorePatterns: string[] = [],
-): void => {
-	const fileName = basename(source);
-
-	// Check if file should be skipped based on gitignore patterns
-	for (const pattern of gitignorePatterns) {
-		if (fileName === pattern || fileName.endsWith(pattern.replace('*', ''))) {
-			return; // Skip this file
-		}
-	}
-
+const copyFile = (source: string, target: string, replacements: Record<string, string> = {}): void => {
 	let content = readFileSync(source, 'utf-8');
 
 	// Apply replacements
@@ -92,23 +79,19 @@ const copyFile = (
 	}
 };
 
-const parseGitignore = (gitignorePath: string): string[] => {
+const readGitignore = (gitignorePath: string): IgnoreFilter => {
 	if (!existsSync(gitignorePath)) {
-		return [];
+		return () => false;
 	}
-
-	const content = readFileSync(gitignorePath, 'utf-8');
-	return content
-		.split('\n')
-		.map((line: string) => line.trim())
-		.filter((line: string) => line && !line.startsWith('#'));
+	return createIgnoreFilter(parseGitignore(readFileSync(gitignorePath, 'utf-8')));
 };
 
 const copyFolder = (
 	source: string,
 	target: string,
 	replacements: Record<string, string> = {},
-	gitignorePatterns: string[] = [],
+	isIgnored: IgnoreFilter = () => false,
+	relativePath = '',
 ): void => {
 	if (!existsSync(target)) {
 		mkdirSync(target, {recursive: true});
@@ -119,20 +102,19 @@ const copyFolder = (
 	files.forEach((file) => {
 		const sourcePath = join(source, file);
 		const targetPath = join(target, file);
+		// Patterns in the template's .gitignore are relative to the template root, so the
+		// path has to be accumulated during the walk. Matching on basename alone would make
+		// every anchored pattern (`/dist`, `src/generated`) either miss or over-match.
+		const entryRelativePath = relativePath ? `${relativePath}/${file}` : file;
 
 		const stat = statSync(sourcePath);
 
 		if (stat.isDirectory()) {
-			// Check if directory should be skipped based on gitignore patterns
-			const shouldSkip = gitignorePatterns.some(
-				(pattern) => file === pattern.replace('/', '') || (pattern.startsWith('/') && file === pattern.slice(1)),
-			);
-
-			if (!shouldSkip) {
-				copyFolder(sourcePath, targetPath, replacements, gitignorePatterns);
+			if (!isIgnored(entryRelativePath, true)) {
+				copyFolder(sourcePath, targetPath, replacements, isIgnored, entryRelativePath);
 			}
-		} else {
-			copyFile(sourcePath, targetPath, replacements, gitignorePatterns);
+		} else if (!isIgnored(entryRelativePath, false)) {
+			copyFile(sourcePath, targetPath, replacements);
 		}
 	});
 };
@@ -143,7 +125,7 @@ const generateProject = (targetFolder: string, projectName?: string): void => {
 	const gitignorePath = join(templatePath, '.gitignore');
 
 	// Parse gitignore patterns
-	const gitignorePatterns = parseGitignore(gitignorePath);
+	const isIgnored = readGitignore(gitignorePath);
 
 	// Determine project name from folder or use placeholder
 	const folderName = projectName || basename(targetFolder === './' ? process.cwd() : targetFolder);
@@ -163,7 +145,7 @@ const generateProject = (targetFolder: string, projectName?: string): void => {
 	};
 
 	console.log(`Generating project in: ${targetFolder}`);
-	copyFolder(templatePath, targetFolder, replacements, gitignorePatterns);
+	copyFolder(templatePath, targetFolder, replacements, isIgnored);
 	console.log('✓ Project initialized successfully!');
 };
 
