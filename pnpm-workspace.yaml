@@ -47,6 +47,21 @@ minimumReleaseAge: 10080
 # waiting out the week) and it is accepted because the alternative is a
 # permanently stale getting-started test.
 minimumReleaseAgeExclude:
+  # A QUEUE JUMP, and the only entry here that is not one of our own packages. adm-zip
+  # 0.6.1 fixes GHSA-vwc7-r8mq-g2x9 and was published 2026-09-11, so it sat ~2 days short
+  # of the floor above when the override was raised to ^0.6.1; without this line
+  # `pnpm install` fails outright with ERR_PNPM_NO_MATURE_MATCHING_VERSION.
+  #
+  # It is pinned to the EXACT version rather than the package name, which is what makes it
+  # acceptable: the floor keeps protecting every future adm-zip release, and this waives it
+  # only for one release that was checked by hand. That check was a diff of the 0.6.0 and
+  # 0.6.1 tarballs: 0.6.1 adds `Utils.assertPathSafe` (walks each path component below the
+  # extraction root and rejects a symlink) and calls it from extractEntryTo, extractAllTo
+  # and extractAllToAsync, which are exactly the three entry points the advisory names. It
+  # also hardens findFiles against symlinks escaping the archive root.
+  #
+  # Safe to delete any time after 2026-09-18, when 0.6.1 passes the floor on its own.
+  - 'adm-zip@0.6.1'
   - 'rocketh'
   - '@rocketh/*'
   - 'hardhat-deploy'
@@ -116,7 +131,7 @@ overrides:
   'esbuild@<0.25.0': ^0.25.0
   'esbuild@>=0.27.3 <0.28.1': ^0.28.1
   'ws@>=8.0.0 <8.21.0': ^8.21.0
-  'adm-zip@<0.6.0': ^0.6.0
+  'adm-zip@<0.6.1': ^0.6.1
   '@tootallnate/once@<2.0.1': ^2.0.1
   '@koa/cors@<5.0.0': ^5.0.0
   'undici@<6.28.0': ^6.28.0
@@ -127,13 +142,12 @@ overrides:
   'hono@<4.13.5': ^4.13.5
   'joi@>=18.0.0 <18.2.5': ^18.2.5
 
-# The one advisory in the tree that NO version can answer: adm-zip GHSA-vwc7-r8mq-g2x9
-# is published with `Patched versions: <0.0.0`, meaning no fixed release exists. It
-# reaches us only as demoes/hardhat-deploy/basic > hardhat > adm-zip, so it runs when a
-# demo compiles, never in a published package (`pnpm audit --prod` stays clean without
-# this entry). Without the ignore, `pnpm audit` in CI is red forever regardless of what
-# anyone here does, which turns the hard gate into noise. Drop this the day adm-zip or
-# hardhat ships a fix.
+# No advisory is currently ignored, and adding one should stay a last resort: an ignore
+# entry is how a hard gate quietly becomes decoration. The previous entry here was
+# adm-zip GHSA-vwc7-r8mq-g2x9, kept only because the advisory named no fixed release
+# (`Patched versions: <0.0.0`). adm-zip 0.6.1 shipped the fix on 2026-09-11 and the
+# override above now floors us there, so the entry met its stated exit condition and is
+# gone. Note the advisory metadata still reports no patched version; what actually
+# resolves it is the vulnerable range, `>= 0.5.9, <= 0.6.0`, which 0.6.1 leaves.
 auditConfig:
-  ignoreGhsas:
-    - GHSA-vwc7-r8mq-g2x9
+  ignoreGhsas: []

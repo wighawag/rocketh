@@ -9,7 +9,7 @@ overrides:
   esbuild@<0.25.0: ^0.25.0
   esbuild@>=0.27.3 <0.28.1: ^0.28.1
   ws@>=8.0.0 <8.21.0: ^8.21.0
-  adm-zip@<0.6.0: ^0.6.0
+  adm-zip@<0.6.1: ^0.6.1
   '@tootallnate/once@<2.0.1': ^2.0.1
   '@koa/cors@<5.0.0': ^5.0.0
   undici@<6.28.0: ^6.28.0
@@ -83,7 +83,7 @@ importers:
         version: 3.1.0(hardhat@3.12.0)
       '@nomicfoundation/hardhat-viem':
         specifier: ^3.0.7
-        version: 3.0.9(hardhat@3.12.0)(viem@2.55.13(typescript@6.0.3)(zod@4.4.3))
+        version: 3.0.9(hardhat@3.12.0)(viem@2.55.13(typescript@6.0.3)(zod@3.25.76))
       '@rocketh/deploy':
         specifier: workspace:*
         version: link:../../../packages/rocketh-deploy
@@ -131,7 +131,7 @@ importers:
         version: 6.0.3
       viem:
         specifier: ^2.48.11
-        version: 2.55.13(typescript@6.0.3)(zod@4.4.3)
+        version: 2.55.13(typescript@6.0.3)(zod@3.25.76)
       wait-on:
         specifier: ^9.0.5
         version: 9.1.0
@@ -152,7 +152,7 @@ importers:
         version: 3.1.0(hardhat@3.12.0)
       '@nomicfoundation/hardhat-viem':
         specifier: ^3.0.7
-        version: 3.0.9(hardhat@3.12.0)(viem@2.55.13(typescript@6.0.3)(zod@3.25.76))
+        version: 3.0.9(hardhat@3.12.0)(viem@2.55.13(typescript@6.0.3)(zod@4.4.3))
       '@rocketh/deploy':
         specifier: workspace:*
         version: link:../../../packages/rocketh-deploy
@@ -185,7 +185,7 @@ importers:
         version: link:../../../packages/hardhat-deploy
       hardhat-external-artifacts:
         specifier: ^0.0.6
-        version: 0.0.6(hardhat@3.12.0)(typescript@6.0.3)(zod@3.25.76)
+        version: 0.0.6(hardhat@3.12.0)(typescript@6.0.3)(zod@4.4.3)
       ldenv:
         specifier: ^0.5.0
         version: 0.5.0
@@ -206,7 +206,7 @@ importers:
         version: 6.0.3
       viem:
         specifier: ^2.48.11
-        version: 2.55.13(typescript@6.0.3)(zod@3.25.76)
+        version: 2.55.13(typescript@6.0.3)(zod@4.4.3)
       wait-on:
         specifier: ^9.0.5
         version: 9.1.0
@@ -3163,8 +3163,8 @@ packages:
     resolution: {integrity: sha512-XNAb/a6TCqou+TufU8/u11HCu9x1gYvOoxLwtlXgIqmkrYQADVv6ljyW2zwiPhHz9R1gItAWpuDrdJMmrOBFEA==}
     engines: {node: '>= 16.0.0'}
 
-  adm-zip@0.6.0:
-    resolution: {integrity: sha512-XleryMhbuksdKtofnWZ9Sk+4CUTbms4Mb/EU32SZwToAyZ5RgVos/ki8n+yr0LWHOGKuakbXTuuYNHLQjhddgg==}
+  adm-zip@0.6.1:
+    resolution: {integrity: sha512-Xwrja8nx9e5o2N1my4DsKCeKpdrnACyr1wtbPxBDgGzKzKyE9kRtBFA8mWldI+RVlD7CBZNWY/wQ2+ydwOR6kQ==}
     engines: {node: '>=14.0'}
 
   agent-base@6.0.2:
@@ -7117,7 +7117,7 @@ snapshots:
 
   address@2.0.3: {}
 
-  adm-zip@0.6.0: {}
+  adm-zip@0.6.1: {}
 
   agent-base@6.0.2(supports-color@7.2.0):
     dependencies:
@@ -7693,18 +7693,6 @@ snapshots:
     optionalDependencies:
       uglify-js: 3.19.3
 
-  hardhat-external-artifacts@0.0.6(hardhat@3.12.0)(typescript@6.0.3)(zod@3.25.76):
-    dependencies:
-      '@nomicfoundation/hardhat-utils': 4.1.7
-      hardhat: 3.12.0
-      named-logs: 0.4.1
-      viem: 2.55.13(typescript@6.0.3)(zod@3.25.76)
-    transitivePeerDependencies:
-      - bufferutil
-      - typescript
-      - utf-8-validate
-      - zod
-
   hardhat-external-artifacts@0.0.6(hardhat@3.12.0)(typescript@6.0.3)(zod@4.4.3):
     dependencies:
       '@nomicfoundation/hardhat-utils': 4.1.7
@@ -7726,7 +7714,7 @@ snapshots:
       '@nomicfoundation/hardhat-zod-utils': 3.0.5(zod@3.25.76)
       '@nomicfoundation/solidity-analyzer': 0.1.2
       '@sentry/core': 9.47.1
-      adm-zip: 0.6.0
+      adm-zip: 0.6.1
       chokidar: 5.0.0
       enquirer: 2.4.1
       ethereum-cryptography: 2.2.1
