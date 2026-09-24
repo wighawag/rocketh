@@ -14,7 +14,7 @@ any governance account signed out-of-band. Today rocketh has no first-class noti
 "unsignable `from`": every leftover address is silently treated as `{type:'remote',
 signer: provider}`, so such a tx just fails at `eth_sendTransaction` with an opaque error.
 
-Users (matching the grant request) need the v1 `catchUnknownSigner` behaviour: when a
+Users need the v1 `catchUnknownSigner` behaviour: when a
 privileged call cannot be signed locally, the framework should surface the exact tx to be
 executed out-of-band, let the deploy continue, and rely on script idempotency so a later
 re-run recognises the new on-chain state and proceeds. hardhat-deploy v1 has this; rocketh
@@ -93,7 +93,7 @@ existed in v1 either); Safe is just one instance of an unsignable `from`.
 
 ### Autonomy notes
 
-Agent-taskable; omitting `humanOnly` and `needsAnswers`. This is the committed M1 slice: one
+Agent-taskable; omitting `humanOnly` and `needsAnswers`. This is the committed core slice: one
 confidence tier, fully taskable. The first tasking attempt was bounced by the acceptance gate
 over the seam predicate, the `contract.name` source, and the original wording of story 9. Those
 were answered (story 9 above is the corrected wording) and the resolutions live in
@@ -128,7 +128,7 @@ deliberately kept OFF this spec's critical path. See `CONTEXT.md` under _test en
 
 - The interactive "pause and ask for tx hash" resolver and the `'ask'` policy value →
   `unknown-signer-interactive`.
-- v1→v2 migration validation against real Aave V3 / Marcelo patterns, Timelock-in-path,
+- v1→v2 migration validation against real-world governance patterns, Timelock-in-path,
   return-shape/`{persist}` migration guarantees → `unknown-signer-migration-and-patterns`.
 - Safe proposal emitter, MultiSend batching, `external`/`safe` signer protocol, a persisted
   unsigned-tx batch file, signing-page launcher → `explore-unknown-signer-adapters`.

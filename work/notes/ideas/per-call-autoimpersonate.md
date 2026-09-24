@@ -32,7 +32,7 @@ instead of only the run/chain-level global flag.
 
 Committing only direction (1) would leave a lopsided API (`false` works, `true` doesn't).
 Resolving (2) needs a decision on eager-vs-lazy impersonation timing. Until both are
-designed together this stays an idea so it doesn't force `needsAnswers` onto the clean M1
+designed together this stays an idea so it doesn't force `needsAnswers` onto the clean
 core spec.
 
 ## For now

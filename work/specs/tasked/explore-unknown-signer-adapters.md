@@ -16,7 +16,7 @@ emit a build plan for a follow-on build spec.
 
 Moved to `work/specs/tasked/` having authored no task files, which is the correct terminal for it and is not an omission.
 
-An EXPLORATION spec's deliverable is CONFIDENCE plus a sliced build plan, not shipped adapters, and both halves are delivered. All six user stories are answered in `Resolved (2026-08-27)` below: where batching lives (1), no persisted batch schema this milestone (2), the Safe-consumable artifact (3), the v1 `external`/`safe` protocol subsumed by `ask` (4), the signing-page launcher out of scope (5), and the Safe SDK kept out of this repo (6). The build plan it exists to emit is **`captured-transactions`**, which was specced, tasked, built and shipped: an ordered list of what a run broadcast, annotated with signability, exposed on the environment and writable with `rocketh --write-transactions <file>`. See `documentation/captured-transactions/`.
+An EXPLORATION spec's deliverable is CONFIDENCE plus a sliced build plan, not shipped adapters, and both halves are delivered. All six user stories are answered in `Resolved (2026-08-27)` below: where batching lives (1), no persisted batch schema in the current scope (2), the Safe-consumable artifact (3), the v1 `external`/`safe` protocol subsumed by `ask` (4), the signing-page launcher out of scope (5), and the Safe SDK kept out of this repo (6). The build plan it exists to emit is **`captured-transactions`**, which was specced, tasked, built and shipped: an ordered list of what a run broadcast, annotated with signability, exposed on the environment and writable with `rocketh --write-transactions <file>`. See `documentation/captured-transactions/`.
 
 So there was nothing left to task. Authoring build tasks here would have produced exactly the fiction the `Kind` block above forbids, and the atomicity rule (every story becomes a task, or none) resolves to NONE when every story is already answered.
 
@@ -27,7 +27,7 @@ Why `specs/tasked/` rather than `specs/dropped/`: `dropped/` is for a spec that 
 All five open questions are answered in `work/questions/spec-explore-unknown-signer-adapters.md`. The exploration's deliverable was CONFIDENCE plus a sliced build plan, and that is what the answers produce. In summary:
 
 1. **Batching lives on the collect-and-defer side, with no `flush()` hook.** Not a preference: a deferring protocol that lets the run continue would have to fabricate a transaction hash at the seam (ADR 0012), and "reconcile results back into state" means recording a proposal as though it were an observation, which the same ADR forbids.
-2. **No persisted batch schema in this milestone**, because the consumer still does not exist and the spec's own rule binds. The question stopped BLOCKING once a real producer was specced.
+2. **No persisted batch schema in the current scope**, because the consumer still does not exist and the spec's own rule binds. The question stopped BLOCKING once a real producer was specced.
 3. **rocketh ships the artifact, never the proposal.** The Safe SDK does not enter this repo; if a `@rocketh/safe` package is built, the SDK is its dependency alone.
 4. **The v1 `external`/`safe` account protocol is subsumed** by the `ask` policy, and was a category error on the signer-protocol axis to begin with.
 5. **The signing-page launcher is out of scope**, and blocked beneath by an unanswered question about how a browser run asks a human anything at all.

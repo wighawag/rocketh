@@ -1,7 +1,7 @@
 ---
 title: 'What EVM teams actually do when they cannot sign: a deployment-workflow field study'
 slug: deployment-workflow-field-study
-source: 'Public survey of EVM smart-contract developers, 11 responses, closed 2026-04-22, plus 5 tailored follow-up conversations (2026-04-24 to 2026-04-28) and 1 unsolicited contribution. Compiled for the Ethereum Foundation ESP grant application behind hardhat-deploy v2 + rocketh. Quotes are verbatim from the replies. Respondents are ANONYMISED here by deliberate choice: names, handles, contact details and identifying project affiliations are recorded in the grant application, not in this repo.'
+source: 'Public survey of EVM smart-contract developers, 11 responses, closed 2026-04-22, plus 5 tailored follow-up conversations (2026-04-24 to 2026-04-28) and 1 unsolicited contribution. Quotes are verbatim from the replies. Respondents are ANONYMISED here by deliberate choice: names, handles, contact details and identifying project affiliations are deliberately NOT recorded in this repo, and must not be added to it.'
 ---
 
 # Why this note exists

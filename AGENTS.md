@@ -119,6 +119,7 @@ pnpm docs:build
 - Use `as const satisfies` pattern for configuration objects
 - Keep deployment logic separate from environment setup
 - Use descriptive error messages that help users debug issues
+- **Attribute a user-facing motivation to the PATTERN, never to the team, person or funder who reported it.** This repository is PUBLIC, so every file and every commit message is published the moment it is pushed, and a commit message cannot be unpublished by editing a file later. Write the shape instead: "a team whose proxies sit behind a multisig-owned ProxyAdmin", "two production DeFi teams described", "a registry contract is the proxy admin". The shape is what the code has to serve, and it stays true after the reporter moves on. Public source code read from a public URL is the one thing to cite precisely: a research note may name the protocols whose repositories it read, as long as it cites the files it read. What never goes in a file, a note, a spec, an ADR or a commit message: who funds the work, any grant/milestone/budget framing, and any respondent's name, handle, employer or protocol affiliation. Survey respondents were promised anonymity, and non-public context is kept outside this repository on purpose.
 
 ---
 
@@ -135,6 +136,7 @@ pnpm docs:build
 - Do not skip tests for new functionality
 - Do not modify hardhat-deploy-v1-artifacts unless necessary for compatibility
 - Do not use sync filesystem operations in packages that should work in browser
+- Do not name a funder, a grant, a milestone, a budget or a survey respondent anywhere in the repo, including commit messages (see the attribution rule under **Do**)
 
 ---
 
