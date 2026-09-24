@@ -26,9 +26,10 @@ import type {Abi, Deployment} from '@rocketh/core/types';
  * once, never upgraded. That is also what carries records written before the counter
  * was persisted.
  *
- * NO `history`: v1 consults one first, rocketh never wrote one, so those branches were
- * unreachable and their errors named a field users could not produce. See
- * `work/notes/observations/history-is-never-written-so-half-of-checkupgradeindex-is-dead.md`.
+ * NO `history`: v1 consults one first (`_checkUpgradeIndex`, writing it on every proxy and
+ * diamond upgrade), rocketh never wrote one, so those branches were unreachable and their
+ * errors named a field users could not produce. They were removed rather than reinstated,
+ * because `numDeployments` already carries the same information and now persists.
  */
 export function checkUpgradeIndex<TAbi extends Abi>(
 	oldDeployment: Deployment<TAbi> | null,

@@ -64,3 +64,15 @@ So it converges. It does **not** churn on every run, and the claim is withdrawn.
 The separate claim, that the same two-call shape would THROW `UnknownSignerError` on the second run when the proxy owner is unsignable, remains **untested**: the governance demo was restructured to one artifact per run before it could be observed. The run-2 redeploy above is consistent with it, since a redeployed implementation makes the on-chain slot differ and an unwrapped upgrade would then hit the seam, but consistent is not the same as demonstrated.
 
 To make demo breakage visible from now on rather than discovered years later, each demo gained `"build": "hardhat compile"`, so `pnpm build` generates their artifacts before `pnpm typecheck` (which is `pnpm -r`, and therefore now covers them) runs in CI order. `pnpm build`, `pnpm typecheck` and `pnpm test` are all green with the five demoes in the workspace.
+
+---
+
+## Update, 2026-09-23: one of the three is fixed, one is half-fixed, one is untouched
+
+Re-checked against the tree, not inferred:
+
+1. **The docs still link the UPSTREAM copies. Unchanged.** `skills/hardhat-deploy-migration/SKILL.md:1938-1940` and `hardhat-deploy/documentation/how-to/migration-from-v1/index.md:1353-1355` still point at `https://github.com/wighawag/hardhat-deploy/tree/main/demoes/{basic,diamond,proxies}`. A reader following either still lands on the other repo's copies, and the migrated ones are still referenced by no document in this tree. (Note the second path moved: the note cites `migration-from-v1.md`, the file is now `migration-from-v1/index.md`.)
+2. **Outside the workspace: fixed**, as the earlier update records — all five are members via `pnpm-workspace.yaml:14`.
+3. **Outside CI: half-fixed.** `grep demoes .github/workflows/*.yml` returns nothing, so no workflow names them. What does reach them is indirect and real: each demo gained a `build` script, so the repo-wide `pnpm build` and `pnpm -r typecheck` compile and type-check them in CI order. Nothing RUNS a demo's deploy scripts in CI, so a demo that compiles but deploys wrong still breaks silently.
+
+The live signal left in this note is items 1 and 3.

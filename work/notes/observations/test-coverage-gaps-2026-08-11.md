@@ -148,3 +148,18 @@ Each is a place where the first test would go red. They are decisions, not test 
 ## Caveat on existing tests
 
 Many current proxy/diamond tests assert only `toBeDefined()` (proxy tests 2, 3, 4; diamond tests 2, 3, 5, 6, 7). They execute lines, so they **inflate the coverage number without pinning behaviour**. Strengthening them (assert the encoded `{data}` constructor arg; assert the facet list after `defaultCutFacet: false`) is cheaper and higher value per line than new happy-path cases. The reported 65.81% is therefore an optimistic ceiling on real behavioural coverage.
+
+---
+
+## Update, 2026-09-23: re-measured against the tree, most of this note is spent
+
+The baseline this note was written from is gone. `pnpm test` is now **105 files / 1270 tests** green, against the 37 files / 444 tests measured on 2026-08-11, so every count, percentage and priority ordering above describes a tree that no longer exists. Re-run `pnpm test:coverage` before acting on any number in it.
+
+Checked file by file, not inferred:
+
+- **§1 is fully resolved.** All six packages (`signer`, `viem`, `router`, `web`, `export`, `doc`) now have a `vitest.config.ts` and at least one test file (`web` has four). The sidecar's Q1, asking approval for that wiring, is **moot**: the wiring exists.
+- **Of the eight verified bugs, five are fixed**, several with a comment at the fix site explaining the rule: 1 (`listFiles` now applies its `filter`, `packages/rocketh-node/src/environment/deployment-store.ts:53-59`), 3 (blockscout's `!url` guard now precedes `ensureTrailingSlash`, `blockscout.ts:63-72`), 4 (a metadata-less deployment now `continue`s instead of returning, `blockscout.ts:142-144`), 5 (`const facetsSet = [...options.facets]`, `packages/rocketh-diamond/src/index.ts:92`), 8 (both flags now read `=== undefined || flag`, so ERC-165 registration matches facet installation, `:98-99`).
+- **Three are still live**, and none has a task: **bug 2**, `@rocketh/doc`'s `fs.emptyDirSync(options.output || 'docs')` (`packages/rocketh-doc/src/index.ts:103,116`), which wipes a repo's top-level `docs/` when a caller omits `output` — a destructive default, the highest-value remnant of this note; **bug 6**, the proxy's zero-owner throw, still unreachable behind the owner-mismatch check (`packages/rocketh-proxy/src/index.ts:353-357`); **bug 7**, diamond's validated local `salt`, still dead because `:456` passes `options.deterministicSalt`.
+- **Dead code:** `executeDeployScriptsFromFiles` (`packages/rocketh-node/src/executor/index.ts:404`) is still defined, uncalled and unexported. `getChainIdForExecutionParams` is now exported (`packages/rocketh/src/executor/index.ts:281`), so that entry is spent.
+
+What is still a live signal in this note: bug 2, bug 6, bug 7, the one dead function, and the `toBeDefined()`-only caveat at the end (unverified today). Everything else is history. The sidecar's remaining questions (Q2 through Q5) should be answered against this update, not against the original body.
