@@ -821,36 +821,23 @@ Do you want to proceed (note that gas price can change for each tx)`,
 				logger.info(`skipping ${deployScript.id} as migrations already executed and complete`);
 				continue;
 			}
-			let skip = false;
 			const spinner = spin(`- Executing ${deployScript.id}`);
-			// if (deployScript.func.skip) {
-			// 	const spinner = spin(`  - skip?()`);
-			// 	try {
-			// 		skip = await deployScript.func.skip(external, args);
-			// 		spinner.succeed(skip ? `skipping ${filename}` : undefined);
-			// 	} catch (e) {
-			// 		spinner.fail();
-			// 		throw e;
-			// 	}
-			// }
-			if (!skip) {
-				let result;
+			let result;
 
-				try {
-					result = await deployScript.func(external, args);
-					spinner.succeed(`\n`);
-				} catch (e) {
-					spinner.fail();
-					throw e;
+			try {
+				result = await deployScript.func(external, args);
+				spinner.succeed(`\n`);
+			} catch (e) {
+				spinner.fail();
+				throw e;
+			}
+			if (result && typeof result === 'boolean') {
+				if (!deployScript.func.id) {
+					throw new Error(
+						`${deployScript.id} return true to not be executed again, but does not provide an id. the script function needs to have the field "id" to be set`,
+					);
 				}
-				if (result && typeof result === 'boolean') {
-					if (!deployScript.func.id) {
-						throw new Error(
-							`${deployScript.id} return true to not be executed again, but does not provide an id. the script function needs to have the field "id" to be set`,
-						);
-					}
-					internal.recordMigration(deployScript.func.id);
-				}
+				internal.recordMigration(deployScript.func.id);
 			}
 		}
 

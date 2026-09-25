@@ -38,3 +38,9 @@ This task deliberately does NOT implement `skip`. If the maintainer decides it s
 > Before deleting, confirm by reading that nothing assigns `skip` anywhere in the executor and that `DeployScriptModule` (`packages/rocketh-core/src/types.ts`) has no `skip` member. If either is false, stop and route to needs-attention.
 >
 > RECORD non-obvious in-scope decisions in a `## Decisions` block at the end of your FINAL REPORT. Do not write the done record or the commit message yourself.
+
+## Decisions
+
+- **Empty changeset rather than a patch.** The executor's behaviour is identical: `skip` was always `false`, so the removed branch was always taken. CONTEXT.md asks for an empty changeset when a package is touched but nothing user-visible changed. The alternative was a `rocketh` patch; I rejected it because there is nothing for users to see in a changelog. This only affects release bookkeeping.
+- **Example condition in the migration doc uses `env.tags['testnet']`.** I first wrote `'local'` but switched, because `'local'` is already a `Signability` value in `packages/rocketh-core/src/types.ts:689`, and reusing it as a tag name in the docs would give one word two meanings. Environment tags come from the config's `tags` (`ChainUserConfig.tags`), so the comment calls it "a tag you declared in rocketh/config.ts". This touches documentation only.
+- **The docs live in the migration guide, not the script-lifecycle page.** A migrating v1 user reads the migration guide first, and it links to `documentation/script-lifecycle/` for the run-once rules instead of repeating them. The script-lifecycle page itself is unchanged.
