@@ -1502,3 +1502,164 @@ describe('@rocketh/unknown-signer - Matrix PIN: the deployer-to-governance hando
 		});
 	});
 });
+
+// ============================================================================
+// Matrix PIN: a Timelock-owned ProxyAdmin surfaces a transaction nobody can send
+// ============================================================================
+
+/**
+ * THE TOPOLOGY. Governance is multisig -> Timelock -> ProxyAdmin -> proxy: the shared
+ * `ProxyAdmin` is owned by a Timelock CONTRACT (an OpenZeppelin `TimelockController` in
+ * practice; see `demoes/hardhat-deploy/governance/deploy/004_timelock_owned_admin.ts`).
+ * A timelock is a CALL-THROUGH contract: the upgrade right is exercised by CALLING it,
+ * never by sending a transaction FROM it.
+ *
+ * WHAT HAPPENS TODAY. `@rocketh/proxy` reads the admin's on-chain `owner()`, finds the
+ * Timelock, and uses it as `from` for `ProxyAdmin.upgrade(proxy, impl)`. The Timelock is
+ * not an account the run holds, so `addressSignability` classifies it `'unsignable'` and
+ * the same `broadcastTransaction` branch that defers a Safe's call fires: the wrapper hands
+ * back `{from: <the timelock>, to: <the admin>, data: upgrade(proxy, impl)}`. That is an
+ * accurate statement of intent and an IMPOSSIBLE transaction. The seam does not know the
+ * difference between a multisig and a contract that can only be called through.
+ *
+ * THE DESIRED BEHAVIOUR (not built here). The operator should be handed what can actually
+ * be sent, TO the Timelock, from an account holding its proposer/executor role (the
+ * multisig): `timelock.schedule(admin, 0, upgradeData, predecessor, salt, delay)`, then,
+ * once the delay has elapsed, `timelock.execute(admin, 0, upgradeData, predecessor, salt)`.
+ * With a DETERMINISTIC salt so a re-run finds the same operation id, and across THREE
+ * on-chain states: not scheduled (surface `schedule`), scheduled but waiting (surface
+ * nothing and say why, never a duplicate `schedule` that would revert), done (converge).
+ * That translation belongs to the `unsignable-routes` spec
+ * (`work/specs/proposed/unsignable-routes.md`); until it lands the user writes it by hand,
+ * as the demo does.
+ *
+ * THIS DESCRIBE IS A PIN, NOT AN ENDORSEMENT. It locks today's shape so that the
+ * `unsignable-routes` fix flips these assertions rather than discovering an untested path.
+ * When it lands, flip them; do not delete them.
+ *
+ * The Timelock here is a mock deployment, not a real `TimelockController`: the pin is about
+ * what the seam SURFACES given that the admin's on-chain owner is a contract address the
+ * run cannot sign for. As in the demo, that address comes from a deployment record, not
+ * from a named account.
+ */
+const TIMELOCKED_PROXY = 'TimelockedRegistry';
+const TIMELOCK_ADMIN = 'TimelockProxyAdmin';
+
+/** The deploy-script step: converge the proxy, asserting the Timelock owns its shared admin. */
+function deployTimelockedRegistry(env: Environment, timelock: `0x${string}`, version: 1 | 2) {
+	return deployViaProxy(env)(
+		TIMELOCKED_PROXY,
+		{account: 'deployer', artifact: vaultArtifact(version), args: [42n]},
+		{owner: timelock, proxyContract: {type: 'SharedAdminOptimizedTransparentProxy', proxyAdminName: TIMELOCK_ADMIN}},
+	);
+}
+
+/**
+ * The world the upgrade run starts from: a Timelock contract deployed by the deployer, and
+ * the proxy at v1 behind a shared admin whose on-chain owner is that Timelock.
+ */
+async function deployRegistryBehindTimelock() {
+	const storage = createStorage();
+	const owners = createOwners();
+	const deploymentStore = createMapDeploymentStore();
+	const {env, provider} = await runEnvironment({deploymentStore, storage, owners});
+
+	// deploying the Timelock is signable: the deployer sends it; nobody can send FROM it
+	const timelock = (await deploy(env)('Timelock', {account: 'deployer', artifact: createMockArtifact('Timelock')}))
+		.address;
+	// what the admin's constructor (`ProxyAdmin(initialOwner)`) writes
+	owners.setOwner(TIMELOCK_ADMIN, timelock);
+
+	const registry = await deployTimelockedRegistry(env, timelock, 1);
+	// the mock executes nothing, so mirror what the proxy constructor wrote
+	storage.setAddress(registry.address, IMPLEMENTATION_SLOT, env.get(`${TIMELOCKED_PROXY}_Implementation`).address);
+	storage.setAddress(registry.address, OWNER_SLOT, env.get(TIMELOCK_ADMIN).address);
+
+	return {
+		env,
+		provider,
+		storage,
+		owners,
+		deploymentStore,
+		timelock,
+		proxy: registry.address,
+		admin: env.get(TIMELOCK_ADMIN).address,
+	};
+}
+
+describe('@rocketh/unknown-signer - Matrix PIN: a ProxyAdmin owned by a Timelock', () => {
+	it('PIN: surfaces {from: <the timelock>, to: <the admin>, data: upgrade(...)}, a transaction nobody can send', async () => {
+		/**
+		 * Example: you ship v2 and your admin is owned by a Timelock. The deployer deploys the
+		 * new implementation; the upgrade itself is handed back as if the Timelock could send
+		 * it, which no one can do.
+		 */
+		const {env, provider, timelock, proxy, admin} = await deployRegistryBehindTimelock();
+		provider.clearRequests();
+		// the Timelock is not an account of this run: it reaches the seam as unsignable
+		expect(env.addressSignability[timelock.toLowerCase() as `0x${string}`]).toBe('unsignable');
+
+		const deferred = await catchUnknownSigner(env)(() => deployTimelockedRegistry(env, timelock, 2));
+
+		const v2 = env.get(`${TIMELOCKED_PROXY}_Implementation`).address;
+		// PIN (current, UNDESIRED behaviour). The DESIRED result is a `schedule(...)` call TO
+		//  the Timelock from its proposer (then, after the delay, an `execute(...)`; while
+		//  waiting, nothing and never a duplicate `schedule`). That translation belongs to the
+		//  `unsignable-routes` spec (work/specs/proposed/unsignable-routes.md); when it lands,
+		//  flip these assertions rather than deleting them.
+		expect(deferred).toStrictEqual({
+			from: timelock,
+			to: admin,
+			value: undefined,
+			data: encodeFunctionData({abi: PROXY_ADMIN_ABI, functionName: 'upgrade', args: [proxy, v2]}),
+		});
+		// the only broadcast was the deployer's v2 implementation; nothing went to the Timelock
+		expect(broadcastFrom(provider)).toEqual([DEPLOYER]);
+		const sentTo = provider
+			.getRequests()
+			.filter((r) => r.method === 'eth_sendTransaction')
+			.map((r) => ((r.params?.[0] as {to?: string}).to ?? '').toLowerCase());
+		expect(sentTo).not.toContain(timelock.toLowerCase());
+	});
+
+	it('PIN: prints the impossible instruction, telling the operator to send it FROM the Timelock', async () => {
+		/**
+		 * What makes this gap dangerous: the printed block reads exactly like the Safe case,
+		 * an instruction that looks actionable. The demo suppresses it (`{log: false}`) for
+		 * that reason and prints the real `schedule`/`execute` pair instead.
+		 */
+		const {env, timelock, admin} = await deployRegistryBehindTimelock();
+		const {printed} = capturePrinted(env);
+
+		await catchUnknownSigner(env)(() => deployTimelockedRegistry(env, timelock, 2));
+
+		// PIN (current, UNDESIRED behaviour): see the test above. After `unsignable-routes`,
+		//  the block should name a `schedule` call TO the Timelock instead.
+		expect(printed()).toContain(`from: ${timelock}`);
+		expect(printed()).toContain(`to: ${admin}`);
+		expect(printed()).toContain('method: upgrade');
+		expect(printed()).not.toContain('schedule');
+	});
+
+	it('PIN: a re-run surfaces the same impossible transaction again, with no notion of a scheduled operation', async () => {
+		/**
+		 * Today there is no state beyond "the proxy still runs v1", so every re-run hands back
+		 * the identical `upgrade` from the Timelock. The desired behaviour distinguishes three
+		 * states (not scheduled / scheduled but waiting / done) by reading the Timelock's
+		 * operation for a deterministic salt, so a re-run while the delay runs surfaces
+		 * NOTHING rather than a duplicate `schedule`.
+		 */
+		const {env, storage, owners, deploymentStore, timelock} = await deployRegistryBehindTimelock();
+
+		const firstRun = await catchUnknownSigner(env)(() => deployTimelockedRegistry(env, timelock, 2));
+
+		const {env: reRunEnv, provider: reRunProvider} = await runEnvironment({deploymentStore, storage, owners});
+		const secondRun = await catchUnknownSigner(reRunEnv)(() => deployTimelockedRegistry(reRunEnv, timelock, 2));
+
+		// PIN (current, UNDESIRED behaviour): `unsignable-routes` should replace both with the
+		//  Timelock-aware state machine described above.
+		expect(firstRun?.from).toBe(timelock);
+		expect(secondRun).toStrictEqual(firstRun);
+		expect(broadcastFrom(reRunProvider)).toEqual([]);
+	});
+});
