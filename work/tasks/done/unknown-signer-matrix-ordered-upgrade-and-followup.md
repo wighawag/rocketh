@@ -41,3 +41,7 @@ Written in the "tests as documentation" style of `scenarios.integration.test.ts`
 > Seam: the same `broadcastTransaction` signability branch — one deploy script issues two wrapped calls with the same unsignable `from`; both must reach the seam.
 >
 > "Done" means: a describe block whose two `it`s read as one narrative (surfaced pair; then re-run after upgrade only), whose assertions match the criteria, and whose narration explains WHY the ordering property is the script's responsibility (rocketh does not batch or reorder).
+
+## Decisions
+
+- **Extended the test environment's `eth_call` handling instead of adding a second one.** `runEnvironment` now takes an optional `registrar`. Its answer wins, and anything it doesn't recognise falls through to the existing `owner()` responder, then to `'0x'`. The alternative was a separate environment builder just for this scenario, which would duplicate the re-run setup. This touches only this test file, and existing callers behave as before.

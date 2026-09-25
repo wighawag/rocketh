@@ -29,13 +29,13 @@
  */
 
 import {describe, it, expect, vi} from 'vitest';
-import {decodeFunctionData, encodeFunctionData} from 'viem';
+import {decodeFunctionData, encodeFunctionData, encodeFunctionResult, zeroAddress} from 'viem';
 import type {Abi, Artifact, DeploymentStore, Environment} from '@rocketh/core/types';
 import {UnknownSignerError} from '@rocketh/core';
 import {createMockArtifact, createTestEnvironment, createMapDeploymentStore} from '@rocketh/test-utils';
 import {deploy} from '@rocketh/deploy';
 import {deployViaProxy, type ImplementationDeployer} from '@rocketh/proxy';
-import {execute, tx} from '@rocketh/read-execute';
+import {execute, read, tx} from '@rocketh/read-execute';
 
 import {catchUnknownSigner} from '../src/index.js';
 
@@ -157,6 +157,7 @@ async function runEnvironment(options?: {
 	deploymentStore?: DeploymentStore;
 	storage?: ReturnType<typeof createStorage>;
 	owners?: ReturnType<typeof createOwners>;
+	registrar?: ReturnType<typeof createRegistrar>;
 	autoImpersonate?: boolean;
 }) {
 	const responses: Record<string, (params?: unknown[]) => unknown> = {};
@@ -164,8 +165,9 @@ async function runEnvironment(options?: {
 	if (options?.storage) {
 		responses.eth_getStorageAt = (params?: unknown[]) => options.storage!.respondToGetStorageAt(params);
 	}
-	if (options?.owners) {
-		responses.eth_call = (params?: unknown[]) => options.owners!.respondToCall(params, thisRun);
+	if (options?.owners || options?.registrar) {
+		responses.eth_call = (params?: unknown[]) =>
+			options.registrar?.respondToCall(params, thisRun) ?? options.owners?.respondToCall(params, thisRun) ?? '0x';
 	}
 	const result = await createTestEnvironment({
 		accounts: {deployer: DEPLOYER, safe: SAFE},
@@ -887,5 +889,259 @@ describe('@rocketh/unknown-signer - Matrix: many proxies behind one multisig-own
 		expect(allThree.map((d) => d?.data)).toEqual(
 			proxies.map((proxy) => encodeFunctionData({abi: PROXY_ADMIN_ABI, functionName: 'upgrade', args: [proxy, v2]})),
 		);
+	});
+});
+
+// ============================================================================
+// Matrix: an upgrade plus a dependent follow-up from the same owner
+// ============================================================================
+
+/**
+ * THE TOPOLOGY. Real upgrades rarely stop at `upgrade()`: there is usually a follow-up
+ * from the SAME owner (repoint a registrar, run a migration, flip a flag). Here the proxy
+ * sits behind a shared `ProxyAdmin` owned by the multisig, and a governance-owned
+ * `Registrar` must be pointed at whichever implementation the proxy runs. Both calls have
+ * the multisig as `from`, so on an upgrade run BOTH defer, and the operator receives an
+ * ordered pair: `[ProxyAdmin.upgrade(proxy, v2), Registrar.setRegistry(v2, version + 1)]`.
+ *
+ * WHY THE ORDER IS THE SCRIPT'S RESPONSIBILITY. rocketh does not batch deferrals, does
+ * not reorder them, and does not know that one depends on the other. Each
+ * `catchUnknownSigner` catches the one transaction its action reached and hands it back
+ * as a return value; the "pair" only exists because the script collects those return
+ * values in the order it performed the steps. So the surfaced order is exactly the order
+ * of the script's `await`s, nothing more. If the script repointed the registrar before
+ * upgrading, the operator would get the pair in THAT order, and executing it would leave
+ * the registrar naming an implementation the proxy is not yet running. The contract shape
+ * that makes this matter (see `demoes/hardhat-deploy/governance`): `Registrar.setRegistry`
+ * refuses any version that is not exactly `version() + 1`, so a pair replayed out of
+ * order, or twice, reverts rather than quietly producing a wrong state.
+ *
+ * WHY THE PAIR IS IDEMPOTENT THROUGH PARTIAL EXECUTION. rocketh persists nothing between
+ * runs, so "has this step already happened?" can only be answered by the chain, and each
+ * step answers it with its OWN read: the upgrade by `@rocketh/proxy` reading the proxy's
+ * implementation slot, the follow-up by the script reading `Registrar.registry()`. Because
+ * the two reads are independent, a multisig that executed only the first transaction gets,
+ * on the next run, only the second.
+ */
+const ORDERED_PROXY = 'OrderedRegistry';
+const ORDERED_ADMIN = 'OrderedProxyAdmin';
+
+/** The governance-owned pointer; its shape mirrors the demo's `Registrar.sol`. */
+const REGISTRAR_ABI = [
+	{type: 'constructor', inputs: [{type: 'address', name: 'owner_'}], stateMutability: 'nonpayable'},
+	{type: 'function', name: 'registry', inputs: [], outputs: [{type: 'address'}], stateMutability: 'view'},
+	{type: 'function', name: 'version', inputs: [], outputs: [{type: 'uint256'}], stateMutability: 'view'},
+	{
+		type: 'function',
+		name: 'setRegistry',
+		inputs: [
+			{type: 'address', name: 'registry_'},
+			{type: 'uint256', name: 'version_'},
+		],
+		outputs: [],
+		stateMutability: 'nonpayable',
+	},
+] as const satisfies Abi;
+
+/**
+ * What the `Registrar` answers to `registry()` and `version()`, served through `eth_call`.
+ *
+ * Same trick as `createStorage` and `createOwners`: the mock executes nothing, so the test
+ * holds the registrar's state and `point` stands in for governance having executed
+ * `setRegistry`. Calls to anything other than the `Registrar` deployment return
+ * `undefined`, so the harness falls through to the other responders.
+ */
+function createRegistrar() {
+	let registry: `0x${string}` = zeroAddress;
+	let version = 0n;
+	const selectorOf = (functionName: 'registry' | 'version') =>
+		encodeFunctionData({abi: REGISTRAR_ABI, functionName}).toLowerCase();
+	return {
+		point(registry_: `0x${string}`, version_: bigint) {
+			registry = registry_;
+			version = version_;
+		},
+		respondToCall(params: unknown[] | undefined, env: Environment | undefined): `0x${string}` | undefined {
+			const [call] = params as [{to?: string; data?: string; input?: string}];
+			const data = (call.data ?? call.input ?? '').toLowerCase();
+			const registrar = env?.getOrNull('Registrar');
+			if (!registrar || call.to?.toLowerCase() !== registrar.address.toLowerCase()) return undefined;
+			if (data.startsWith(selectorOf('registry'))) {
+				return encodeFunctionResult({abi: REGISTRAR_ABI, functionName: 'registry', result: registry});
+			}
+			if (data.startsWith(selectorOf('version'))) {
+				return encodeFunctionResult({abi: REGISTRAR_ABI, functionName: 'version', result: version});
+			}
+			return undefined;
+		},
+	};
+}
+
+/** The deploy-script step that converges the proxy on `version` of the implementation. */
+function deployOrderedRegistry(env: Environment, version: 1 | 2) {
+	return deployViaProxy(env)(
+		ORDERED_PROXY,
+		{account: 'deployer', artifact: vaultArtifact(version), args: [42n]},
+		{owner: SAFE, proxyContract: {type: 'SharedAdminOptimizedTransparentProxy', proxyAdminName: ORDERED_ADMIN}},
+	);
+}
+
+/**
+ * The deploy script under test, shaped like `deploy/003_upgrade_then_migrate.ts`: STEP 1
+ * upgrades, STEP 2 repoints the registrar, each in its own `catchUnknownSigner`, and the
+ * returned array is built in the order the steps ran. That array IS the ordered pair;
+ * nothing in rocketh assembles it.
+ */
+async function upgradeThenRepoint(env: Environment) {
+	// STEP 1: converge the proxy on v2 (deferred while the proxy still runs v1)
+	const deferredUpgrade = await catchUnknownSigner(env)(() => deployOrderedRegistry(env, 2));
+
+	// STEP 2: point the registrar at the implementation the proxy should run, guarded by an
+	//  on-chain read, since nothing else can say whether governance already did it
+	const implementation = env.get(`${ORDERED_PROXY}_Implementation`).address;
+	const registrar = env.get<typeof REGISTRAR_ABI>('Registrar');
+	const currentTarget = await read(env)(registrar, {functionName: 'registry'});
+
+	let deferredFollowUp = null;
+	if (currentTarget.toLowerCase() !== implementation.toLowerCase()) {
+		const currentVersion = await read(env)(registrar, {functionName: 'version'});
+		deferredFollowUp = await catchUnknownSigner(env)(() =>
+			execute(env)(registrar, {
+				account: 'safe',
+				functionName: 'setRegistry',
+				args: [implementation, currentVersion + 1n],
+			}),
+		);
+	}
+
+	return [deferredUpgrade, deferredFollowUp] as const;
+}
+
+/**
+ * The world the upgrade run starts from: the proxy at v1 behind the multisig-owned admin,
+ * and the registrar (owned by the multisig from birth) already pointing at v1 as its
+ * version 1, i.e. governance executed the previous release's follow-up.
+ */
+async function deployRegistryWithRegistrar() {
+	const storage = createStorage();
+	const owners = createOwners();
+	const registrar = createRegistrar();
+	const deploymentStore = createMapDeploymentStore();
+	// what the admin's constructor (`ProxyAdmin(initialOwner)`) writes
+	owners.setOwner(ORDERED_ADMIN, SAFE);
+	const {env, provider} = await runEnvironment({deploymentStore, storage, owners, registrar});
+
+	// deploying the registrar is signable: the deployer sends it, the multisig owns it
+	const registrarDeployment = await deploy(env)('Registrar', {
+		account: 'deployer',
+		artifact: createMockArtifact('Registrar', REGISTRAR_ABI),
+		args: [SAFE],
+	});
+
+	const proxy = await deployOrderedRegistry(env, 1);
+	const v1 = env.get(`${ORDERED_PROXY}_Implementation`).address;
+	// the mock executes nothing, so mirror what the proxy constructor and the previous
+	//  release's (already executed) follow-up wrote
+	storage.setAddress(proxy.address, IMPLEMENTATION_SLOT, v1);
+	storage.setAddress(proxy.address, OWNER_SLOT, env.get(ORDERED_ADMIN).address);
+	registrar.point(v1, 1n);
+
+	return {
+		env,
+		provider,
+		storage,
+		owners,
+		registrar,
+		deploymentStore,
+		proxy: proxy.address,
+		admin: env.get(ORDERED_ADMIN).address,
+		registrarAddress: registrarDeployment.address,
+	};
+}
+
+describe('@rocketh/unknown-signer - Matrix: an upgrade and a dependent follow-up from the same multisig', () => {
+	it('surfaces both calls, in the order the script performed them, both from the multisig', async () => {
+		/**
+		 * Example: you ship v2. The deployer deploys the new implementation; then the
+		 * proxy has to be upgraded AND the registrar repointed, and only the multisig can
+		 * do either. Two wrapped calls with the same unsignable `from` both reach the
+		 * `broadcastTransaction` seam, so the run hands you two transactions: none
+		 * dropped, upgrade first, follow-up second, because that is the order the script
+		 * awaited them in.
+		 */
+		const {env, provider, proxy, admin, registrarAddress} = await deployRegistryWithRegistrar();
+		provider.clearRequests();
+
+		const [deferredUpgrade, deferredFollowUp] = await upgradeThenRepoint(env);
+
+		const v2 = env.get(`${ORDERED_PROXY}_Implementation`).address;
+		expect([deferredUpgrade, deferredFollowUp]).toStrictEqual([
+			{
+				from: SAFE,
+				to: admin,
+				value: undefined,
+				data: encodeFunctionData({abi: PROXY_ADMIN_ABI, functionName: 'upgrade', args: [proxy, v2]}),
+			},
+			{
+				from: SAFE,
+				to: registrarAddress,
+				value: undefined,
+				// version 2 because the registrar is at version 1: exactly the next one,
+				//  which is the only version `setRegistry` accepts
+				data: encodeFunctionData({abi: REGISTRAR_ABI, functionName: 'setRegistry', args: [v2, 2n]}),
+			},
+		]);
+
+		// the follow-up names the implementation the upgrade installs, and the next version
+		const followUp = decodeFunctionData({abi: REGISTRAR_ABI, data: deferredFollowUp!.data as `0x${string}`});
+		expect(followUp.functionName).toBe('setRegistry');
+		expect(followUp.args).toEqual([expect.stringMatching(new RegExp(`^${v2}$`, 'i')), 2n]);
+
+		// both were surfaced, neither was sent: only the deployer's v2 deploy broadcast
+		expect(broadcastFrom(provider)).toEqual([DEPLOYER]);
+	});
+
+	it('surfaces ONLY the follow-up when re-run after the multisig executed just the upgrade', async () => {
+		/**
+		 * Continuing the story: the multisig executes the first transaction of the pair
+		 * (modelled by moving the proxy's implementation slot to v2, which is all
+		 * `ProxyAdmin.upgrade` would do) and has not yet executed the second. You re-run
+		 * the same script.
+		 *
+		 * The upgrade step reads the slot, sees v2, and skips: its wrapper returns `null`.
+		 * The follow-up step reads the registrar, sees it still names v1 at version 1, and
+		 * defers the SAME `setRegistry(v2, 2)` as before. So partial execution converges
+		 * rather than duplicating: the operator is never handed the upgrade twice, and the
+		 * follow-up's version argument has not drifted to 3. Once the multisig executes the
+		 * follow-up too, a third run surfaces nothing at all.
+		 */
+		const {env, storage, owners, registrar, deploymentStore, proxy} = await deployRegistryWithRegistrar();
+
+		// ---- run 1: the ordered pair ------------------------------------------
+		const [, firstFollowUp] = await upgradeThenRepoint(env);
+		const v2 = env.get(`${ORDERED_PROXY}_Implementation`).address;
+
+		// ---- the multisig executes ONLY the upgrade ---------------------------
+		storage.setAddress(proxy, IMPLEMENTATION_SLOT, v2);
+
+		// ---- run 2: same script, fresh run ------------------------------------
+		const {env: reRunEnv, provider: reRunProvider} = await runEnvironment({
+			deploymentStore,
+			storage,
+			owners,
+			registrar,
+		});
+		const [upgradeAgain, followUpAgain] = await upgradeThenRepoint(reRunEnv);
+
+		expect(upgradeAgain).toBeNull();
+		expect(followUpAgain).toStrictEqual(firstFollowUp);
+		expect(followUpAgain?.from).toBe(SAFE);
+		// nothing broadcast: v2 was already deployed, and the multisig's call only deferred
+		expect(broadcastFrom(reRunProvider)).toEqual([]);
+
+		// ---- the multisig executes the follow-up; run 3 has nothing left -------
+		registrar.point(v2, 2n);
+		const {env: finalEnv} = await runEnvironment({deploymentStore, storage, owners, registrar});
+		expect(await upgradeThenRepoint(finalEnv)).toEqual([null, null]);
 	});
 });
