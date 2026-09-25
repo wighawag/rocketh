@@ -602,10 +602,17 @@ export type Artifact<TAbi extends Abi = Abi> = {
 
 export type AccountDefinition = EIP1193Account | string | number;
 
+/**
+ * A named account: one definition for every network, or a per-network map (environment name,
+ * chain id, then `default`). A per-network value of `null` means the account is ABSENT on that
+ * network, as in hardhat-deploy v1: the name then has no entry in `namedAccounts` or
+ * `namedSigners`, and `ResolvedNamedAccounts` types it as possibly `undefined`. Only an explicit
+ * `null` means absent; a network with no entry and no `default` is still refused.
+ */
 export type AccountType =
 	| AccountDefinition
 	| {
-			[networkOrChainId: string | number]: AccountDefinition;
+			[networkOrChainId: string | number]: AccountDefinition | null;
 	  };
 
 export type ResolvedAccount = {
@@ -621,8 +628,23 @@ export type UnresolvedUnknownNamedAccounts = {
 	[name: string]: AccountType;
 };
 
+/** `true` when an account definition is a per-network map with at least one `null` value. */
+type MayBeAbsentAccount<Def> = Def extends object ? (null extends Def[keyof Def] ? true : false) : false;
+
+/**
+ * The resolved address of every named account. A name whose per-network map holds a `null`
+ * value may be absent on the current network, so it is an OPTIONAL key (`EIP1193Account |
+ * undefined`) and a script must handle `undefined` for it; every other name stays required.
+ *
+ * It is two mapped types rather than one conditional value type on purpose: a generic
+ * `Environment<NamedAccounts>` must stay assignable to `Environment<UnresolvedUnknownNamedAccounts>`,
+ * and a deferred conditional value type is not, while an optional key is (an optional property
+ * relates to the target's index signature).
+ */
 export type ResolvedNamedAccounts<T extends UnresolvedUnknownNamedAccounts> = {
-	[Property in keyof T]: EIP1193Account;
+	[Property in keyof T as MayBeAbsentAccount<T[Property]> extends true ? never : Property]: EIP1193Account;
+} & {
+	[Property in keyof T as MayBeAbsentAccount<T[Property]> extends true ? Property : never]?: EIP1193Account;
 };
 
 export type DataType<T> = {
@@ -707,8 +729,9 @@ export type UnknownSignerPolicyFrame = {
 	readonly policy: UnknownSignerPolicy;
 };
 
-export type ResolvedNamedSigners<T extends UnknownNamedAccounts> = {
-	[Property in keyof T]: Signer;
+/** The signer of every named account; `undefined` where the account itself may be absent. */
+export type ResolvedNamedSigners<T extends {[name: string]: EIP1193Account | undefined}> = {
+	[Property in keyof T]: undefined extends T[Property] ? Signer | undefined : Signer;
 };
 
 export type UnknownDeploymentsAcrossNetworks = Record<string, UnknownDeployments>;

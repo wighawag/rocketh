@@ -537,7 +537,7 @@ export type {Extensions, Accounts, Data, Environment};
 **Transformation Rules**:
 
 1. Create `rocketh` directory: `mkdir rocketh`
-2. Move `namedAccounts` from hardhat.config.ts to `rocketh/config.ts` under `accounts`
+2. Move `namedAccounts` from hardhat.config.ts to `rocketh/config.ts` under `accounts`. A per-network `null` entry (v1: the account does not exist on that network) is kept as is: in v2 too the name is then absent from `env.namedAccounts`/`env.namedSigners` on that network (typed `` `0x${string}` | undefined ``, so scripts must handle `undefined`) and the run starts. Only an explicit `null` means absent: a name with no entry for the network and no `default` still fails with `cannot get account for <name>`.
 3. Import required rocketh extensions
 4. Export extensions as unified object
 5. Export TypeScript types for type safety
