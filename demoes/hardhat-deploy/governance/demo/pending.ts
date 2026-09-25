@@ -1,6 +1,7 @@
 import {mkdirSync, rmSync, writeFileSync} from 'node:fs';
 import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {targetVersion, type RegistryVersion} from './target.js';
 
 /**
  * What `catchUnknownSigner` hands back: v1's shape exactly.
@@ -10,6 +11,20 @@ export type DeferredTransaction = {
 	to?: string;
 	value?: string;
 	data?: string;
+};
+
+/**
+ * The shape of `pending/<scenario>.json`, shared with `scripts/act-as-governance.ts`.
+ *
+ * `registryVersion` is the `REGISTRY_VERSION` the deferring run converged on. The
+ * operator script only needs it to print the right re-run command: re-running WITHOUT
+ * it would ask the script to converge on v1 again and defer a DOWNGRADE, which is the
+ * opposite of "watch it converge".
+ */
+export type PendingFile = {
+	scenario: string;
+	registryVersion: RegistryVersion;
+	transactions: DeferredTransaction[];
 };
 
 /**
@@ -51,10 +66,12 @@ export function recordPending(
 	}
 
 	mkdirSync(dirname(file), {recursive: true});
-	writeFileSync(
-		file,
-		`${JSON.stringify({scenario, transactions: pending}, null, 2)}\n`,
-	);
+	const content: PendingFile = {
+		scenario,
+		registryVersion: targetVersion(),
+		transactions: pending,
+	};
+	writeFileSync(file, `${JSON.stringify(content, null, 2)}\n`);
 	console.log(
 		`\n[demo] ${pending.length} transaction(s) awaiting governance, written to pending/${scenario}.json`,
 	);

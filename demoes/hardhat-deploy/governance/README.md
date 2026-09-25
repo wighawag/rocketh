@@ -86,6 +86,10 @@ pnpm act-as-governance scenario-multisig                               # execute
 REGISTRY_VERSION=2 pnpm deploy:dev localhost --tags scenario-multisig  # converges, nothing left
 ```
 
+Keep `REGISTRY_VERSION=2` on that last re-run. It is the destination, not a one-off: drop it and the script converges on v1 again, which from here means deferring a DOWNGRADE. `act-as-governance` prints the exact re-run command, prefix included, for that reason.
+
+Each tag runs only its own script plus `deploy/000_governance_contracts.ts` (the multisig and timelock, tagged `governance`, pulled in as a dependency). No scenario's script runs under another scenario's tag.
+
 To start over at any point, `rm -rf deployments/localhost pending` and restart the node.
 
 ## The scenarios
@@ -153,8 +157,10 @@ Re-run WITHOUT executing and you get the identical transaction back, with nothin
 ### 2. Many proxies, one admin (`scenario-multi`)
 
 ```bash
-pnpm deploy:dev localhost --tags scenario-multi
-REGISTRY_VERSION=2 pnpm deploy:dev localhost --tags scenario-multi
+pnpm deploy:dev localhost --tags scenario-multi                        # deploys three proxies, nothing deferred
+REGISTRY_VERSION=2 pnpm deploy:dev localhost --tags scenario-multi     # defers three upgrades
+pnpm act-as-governance scenario-multi                                  # executes all three
+REGISTRY_VERSION=2 pnpm deploy:dev localhost --tags scenario-multi     # converges, nothing left
 ```
 
 Three proxies behind one multisig-owned ProxyAdmin produce three deferred transactions: same `from`, same `to`, differing in the proxy address inside `data`. They are independent, so they may be executed in any order.
@@ -164,13 +170,18 @@ Three proxies behind one multisig-owned ProxyAdmin produce three deferred transa
 ### 3. An upgrade and a dependent follow-up (`scenario-ordered`)
 
 ```bash
-pnpm deploy:dev localhost --tags scenario-ordered
-REGISTRY_VERSION=2 pnpm deploy:dev localhost --tags scenario-ordered
+pnpm deploy:dev localhost --tags scenario-ordered                      # deploys; defers ONE call, registering v1
+pnpm act-as-governance scenario-ordered                                # executes it
+REGISTRY_VERSION=2 pnpm deploy:dev localhost --tags scenario-ordered   # defers the ordered pair
+pnpm act-as-governance scenario-ordered                                # executes both, in order
+REGISTRY_VERSION=2 pnpm deploy:dev localhost --tags scenario-ordered   # converges, nothing left
 ```
 
 Real upgrades rarely stop at `upgrade()`. Here the upgrade is followed by pointing a governance-owned `Registrar` at the new implementation, from the same owner, so both defer and the operator receives an ordered pair.
 
-The order is enforced on chain: `Registrar.setRegistry` refuses any version that is not exactly the next one. Replay the pair out of order (or twice) and it reverts rather than quietly producing a wrong state. Try it: reverse the array in `pending/scenario-ordered.json` and run the operator script.
+Unlike the other scenarios, the very first run already defers something. The `Registrar` is owned by the multisig from birth, so pointing it at v1 is a governance call too. (Skip executing it and nothing breaks: the v2 run then asks for `setRegistry(v2, 1)` instead of `setRegistry(v2, 2)`.)
+
+The chain enforces part of the order, and it is worth being precise about which part. `Registrar.setRegistry` refuses any version that is not exactly the next one, so replaying the pair TWICE reverts (`Registrar: OUT_OF_ORDER`) rather than quietly producing a wrong state. Try it: run `pnpm act-as-governance scenario-ordered` a second time after the pair has executed (the operator script leaves the pending file in place; only the next deploy run clears it). The upgrade replays harmlessly and the `setRegistry` reverts. What the registrar cannot see is the proxy, so executing the pair the other way round does NOT revert: it succeeds, with the registrar naming an implementation the proxy is not running until the upgrade lands. That half of the order is on the operator, which is why the list is ordered and the operator script replays it in order.
 
 The follow-up is guarded by an on-chain read, which is what makes the pair idempotent. Since rocketh persists nothing, "have I already done this?" can only ever be answered by asking the chain.
 
@@ -180,10 +191,14 @@ The follow-up is guarded by an on-chain read, which is what makes the pair idemp
 pnpm deploy:dev localhost --tags scenario-timelock
 REGISTRY_VERSION=2 pnpm deploy:dev localhost --tags scenario-timelock
 pnpm act-as-governance scenario-timelock   # sends the schedule()
-# wait 60 seconds for the timelock delay
+REGISTRY_VERSION=2 pnpm deploy:dev localhost --tags scenario-timelock   # optional: "scheduled and waiting", nothing surfaced
+pnpm advance-time                          # moves the local node past the 60 second delay
 REGISTRY_VERSION=2 pnpm deploy:dev localhost --tags scenario-timelock
 pnpm act-as-governance scenario-timelock   # sends the execute()
+REGISTRY_VERSION=2 pnpm deploy:dev localhost --tags scenario-timelock   # converges: "Nothing to do."
 ```
+
+**Why `pnpm advance-time` rather than waiting.** The timelock checks readiness against `block.timestamp`, and a read sees the LATEST block. A local node only mines when it receives a transaction, so once the `schedule()` has gone through the chain's clock stops: waiting 60 real seconds changes nothing, and the deploy script keeps saying "scheduled and waiting". `pnpm advance-time [seconds]` (default 60) bumps the node's clock and mines a block. On a real network blocks keep coming, and you simply wait.
 
 Governance here is multisig to Timelock to ProxyAdmin. rocketh reads the ProxyAdmin's on-chain owner and uses it as `from`, so what comes back is `{from: <the timelock>, to: <the admin>, data: upgrade(...)}`.
 
@@ -199,8 +214,10 @@ The same shape applies to an OpenZeppelin `AccessManager` with a non-zero role d
 ### 5. The deployer-to-governance handoff (`scenario-handoff`)
 
 ```bash
-pnpm deploy:dev localhost --tags scenario-handoff
-REGISTRY_VERSION=2 pnpm deploy:dev localhost --tags scenario-handoff
+pnpm deploy:dev localhost --tags scenario-handoff                      # deploys under the deployer, hands the admin to the multisig
+REGISTRY_VERSION=2 pnpm deploy:dev localhost --tags scenario-handoff   # the upgrade now defers: the multisig owns the admin
+pnpm act-as-governance scenario-handoff                                # executes it
+REGISTRY_VERSION=2 pnpm deploy:dev localhost --tags scenario-handoff   # converges, nothing left
 ```
 
 Every protocol does this exactly once and cannot rehearse it: the ProxyAdmin starts owned by the deploy key and ends owned by governance.
@@ -228,10 +245,10 @@ Neither is a reason to avoid `catchUnknownSigner`: the multisig case, which is m
 
 - **`SimpleMultisig` is a stand-in for a Gnosis Safe and nothing more.** No threshold, no signature collection, no nonce, no modules: any owner executes alone. It exists because the demo needs an address that CAN be made to send a transaction, which is the only property the flow depends on. Do not read this as a Safe integration, and do not deploy it anywhere that matters.
 - **`GovernanceTimelock` is OpenZeppelin's `TimelockController`, unmodified.** The point is to exercise a contract users actually deploy. The delay is 60 seconds instead of a realistic two days so the demo is watchable.
-- **`Registrar`** exists to make an ordering constraint enforceable rather than merely described.
+- **`Registrar`** exists to make a replay constraint enforceable rather than merely described: a follow-up that already executed cannot be executed again. It does not see the proxy, so it does not enforce the upgrade-before-follow-up order (see scenario 3).
 
 ## Notes
 
 - **Auto-impersonation must be off** for any of this to happen, and it is off by default. On a fork with `autoImpersonate` on, the node can sign for the multisig, so the account is signable, so nothing defers and everything just broadcasts. That is correct behaviour, and it is why testing the deferral path on a fork means turning impersonation off for the run.
 - **The demo never prompts.** `rocketh/config.ts` sets `onUnknownSigner: 'throw'`. The default (`'auto'`) would open the interactive resolver on a TTY, which is a good feature and the wrong one here: the point is to see the transaction printed and hand it to someone.
-- This demo lives in this repo alongside its siblings, but like them it is a separate pnpm project with its own `package.json`: install and run it from this directory. It is not currently wired into the root workspace or CI, so nothing compiles it automatically. The behaviour it shows is (or will be) covered by tests in `packages/rocketh-unknown-signer/test/`.
+- This demo has its own `package.json` but, like its siblings, it is a member of the repo's pnpm workspace (see `pnpm-workspace.yaml`): install from the repo root, run commands from this directory. The root `pnpm build` compiles its contracts; nothing runs the walkthrough automatically, and `pnpm test` does not cover it. The behaviour it shows is covered by tests in `packages/rocketh-unknown-signer/test/`.

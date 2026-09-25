@@ -9,14 +9,22 @@ import {targetArtifact} from '../demo/target.js';
  * registrar, run a migration, flip a flag. When that follow-up has the SAME unsignable
  * `from`, it defers too, and the operator receives an ORDERED list of two transactions.
  *
- * The order is load-bearing, and here it is enforced on chain rather than merely
- * described: `Registrar.setRegistry` refuses any version that is not exactly the next
- * one, so replaying the pair out of order (or twice) reverts instead of quietly
- * producing a wrong state.
+ * The order is load-bearing: executed the other way round, the registrar names an
+ * implementation the proxy is not running yet. The chain enforces only PART of this:
+ * `Registrar.setRegistry` refuses any version that is not exactly the next one, so
+ * replaying the pair TWICE reverts instead of quietly producing a wrong state. It does
+ * not see the proxy, so reversing the pair does NOT revert; that order is on the
+ * operator, which is why the list is ordered and `act-as-governance` replays it in order.
+ *
+ * The registrar is governance-owned from birth, so even the FIRST run defers one call:
+ * registering v1.
  *
  * Run it:
- *   pnpm deploy:dev localhost --tags scenario-ordered
- *   REGISTRY_VERSION=2 pnpm deploy:dev localhost --tags scenario-ordered
+ *   pnpm deploy:dev localhost --tags scenario-ordered                     # defers setRegistry(v1)
+ *   pnpm act-as-governance scenario-ordered
+ *   REGISTRY_VERSION=2 pnpm deploy:dev localhost --tags scenario-ordered  # defers upgrade + setRegistry(v2)
+ *   pnpm act-as-governance scenario-ordered
+ *   REGISTRY_VERSION=2 pnpm deploy:dev localhost --tags scenario-ordered  # converges
  */
 export default deployScript(
 	async ({
