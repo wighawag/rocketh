@@ -1317,3 +1317,188 @@ describe('@rocketh/unknown-signer - Matrix: re-running a mixed script before gov
 		expect(await storedFiles(deploymentStore, reRunEnv)).toEqual(filesAfterRun1);
 	});
 });
+
+// ============================================================================
+// Matrix PIN: the deployer-to-governance handoff throws instead of deferring
+// ============================================================================
+
+/**
+ * THE TOPOLOGY. Every protocol performs this exactly once and cannot rehearse it: the
+ * shared `ProxyAdmin` starts owned by the deploy key and ends owned by governance. The
+ * moment of interest is the run in between, when the admin's ON-CHAIN owner is still the
+ * deployer but the deploy script already names the multisig as `owner`.
+ *
+ * WHY IT THROWS. `deployViaProxy`'s `owner` option is not a WISH, it is an ASSERTION about
+ * the current on-chain owner. `@rocketh/proxy` reads the admin's `owner()` and, on a
+ * mismatch, throws a plain `Error` telling you to call `transferOwnership` yourself. That
+ * throw happens INSIDE the extension, before anything reaches `broadcastTransaction`, so
+ * the unknown-signer seam never sees a transaction: there is no `UnknownSignerError`, and
+ * `catchUnknownSigner` (which only catches that error) rethrows it and the run stops.
+ *
+ * THIS DESCRIBE IS A PIN, NOT AN ENDORSEMENT. It locks today's undesired behaviour so that
+ * changing it is a deliberate test flip rather than an accidental regression, and so the
+ * fix lands against a tested path. The fix is tracked in the `unsignable-routes` spec
+ * (`work/specs/proposed/unsignable-routes.md`). Until then, the pattern that works (and
+ * that `demoes/hardhat-deploy/governance/deploy/005_ownership_handoff.ts` demonstrates) is:
+ * declare the owner you CURRENTLY have, perform the transfer as its own explicit step,
+ * then upgrade under the new owner. The last two tests below prove that pattern holds.
+ */
+const HANDOFF_PROXY = 'HandoffRegistry';
+const HANDOFF_ADMIN = 'HandoffProxyAdmin';
+
+/** The one `Ownable` function of the admin the handoff step calls. */
+const OWNABLE_ABI = [
+	{
+		type: 'function',
+		name: 'transferOwnership',
+		inputs: [{type: 'address', name: 'newOwner'}],
+		outputs: [],
+		stateMutability: 'nonpayable',
+	},
+] as const satisfies Abi;
+
+/** The deploy-script step: converge the proxy, asserting `owner` owns its shared admin. */
+function deployHandoffRegistry(env: Environment, owner: `0x${string}`, version: 1 | 2) {
+	return deployViaProxy(env)(
+		HANDOFF_PROXY,
+		{account: 'deployer', artifact: vaultArtifact(version), args: [42n]},
+		{owner, proxyContract: {type: 'SharedAdminOptimizedTransparentProxy', proxyAdminName: HANDOFF_ADMIN}},
+	);
+}
+
+/**
+ * The world BEFORE the handoff: the proxy deployed behind its shared admin, and the admin
+ * owned by the deployer that created it. Nothing here involves the multisig yet.
+ */
+async function deployBeforeHandoff() {
+	const storage = createStorage();
+	const owners = createOwners();
+	const deploymentStore = createMapDeploymentStore();
+	// what the admin's constructor (`ProxyAdmin(initialOwner)`) writes on the first run
+	owners.setOwner(HANDOFF_ADMIN, DEPLOYER);
+	const {env, provider} = await runEnvironment({deploymentStore, storage, owners});
+
+	const registry = await deployHandoffRegistry(env, DEPLOYER, 1);
+	// the mock executes nothing, so mirror what the proxy constructor wrote
+	storage.setAddress(registry.address, IMPLEMENTATION_SLOT, env.get(`${HANDOFF_PROXY}_Implementation`).address);
+	storage.setAddress(registry.address, OWNER_SLOT, env.get(HANDOFF_ADMIN).address);
+
+	return {
+		env,
+		provider,
+		storage,
+		owners,
+		deploymentStore,
+		proxy: registry.address,
+		admin: env.get(HANDOFF_ADMIN).address,
+	};
+}
+
+describe('@rocketh/unknown-signer - Matrix PIN: the deployer-to-governance handoff', () => {
+	it('PIN: naming the multisig before the transfer throws a plain Error, upstream of any broadcast', async () => {
+		/**
+		 * Example: you are ready to hand the admin to governance, so you edit the script
+		 * from `owner: deployer` to `owner: multisig` and re-run, without having called
+		 * `transferOwnership` first. Today rocketh does not defer that transfer for you.
+		 */
+		const {env, provider} = await deployBeforeHandoff();
+		provider.clearRequests();
+
+		const thrown = await deployHandoffRegistry(env, SAFE, 1).then(
+			() => undefined,
+			(err: unknown) => err,
+		);
+
+		// PIN (current, UNDESIRED behaviour). The DESIRED behaviour is that this run does not
+		//  hard-throw: it should surface a deferred `transferOwnership(multisig)` from the
+		//  CURRENT owner (here the signable deployer, so it could even just broadcast), or
+		//  otherwise route the handoff without stopping the run. That fix belongs to the
+		//  `unsignable-routes` spec (work/specs/proposed/unsignable-routes.md); when it lands,
+		//  flip these assertions rather than deleting them.
+		expect(thrown).toBeInstanceOf(Error);
+		expect(thrown).not.toBeInstanceOf(UnknownSignerError);
+		expect((thrown as Error).name).toBe('Error');
+		expect((thrown as Error).message).toBe(
+			`To change owner/admin, you need to call transferOwnership on ${HANDOFF_ADMIN}`,
+		);
+		// the throw is INSIDE `@rocketh/proxy`, before `broadcastTransaction`: nothing was sent
+		expect(broadcastFrom(provider)).toEqual([]);
+	});
+
+	it('PIN: catchUnknownSigner rethrows it rather than swallowing it as a deferral', async () => {
+		/**
+		 * The wrapper catches ONLY `UnknownSignerError`, and none was raised, so the plain
+		 * `Error` propagates and the run stops. No deferred transaction is returned and no
+		 * deferred-tx block is printed: a user who wrapped the step still meets the throw.
+		 */
+		const {env, provider, proxy} = await deployBeforeHandoff();
+		const {printed} = capturePrinted(env);
+		provider.clearRequests();
+
+		// PIN (current, UNDESIRED behaviour): see the comment on the test above. When
+		//  `unsignable-routes` lands, this should resolve to the deferred handoff instead.
+		await expect(catchUnknownSigner(env)(() => deployHandoffRegistry(env, SAFE, 1))).rejects.toThrow(
+			new Error(`To change owner/admin, you need to call transferOwnership on ${HANDOFF_ADMIN}`),
+		);
+		await expect(catchUnknownSigner(env)(() => deployHandoffRegistry(env, SAFE, 1))).rejects.not.toBeInstanceOf(
+			UnknownSignerError,
+		);
+
+		expect(printed()).not.toContain(`from: ${SAFE}`);
+		expect(broadcastFrom(provider)).toEqual([]);
+		expect(env.get(HANDOFF_PROXY).address).toBe(proxy);
+	});
+
+	it('a wrapped transferOwnership from the deployer that still owns the admin broadcasts and returns null', async () => {
+		/**
+		 * The reassuring adjacent case, and the first half of the pattern that works: do
+		 * the handoff as its own explicit step. While the deployer still owns the admin,
+		 * `transferOwnership` is SIGNABLE, so wrapping it is HARMLESS: it broadcasts from the
+		 * deployer and `catchUnknownSigner` returns `null`. The wrapper forces the throw path
+		 * only for a `from` rocketh cannot sign for; it never turns a signable call into a
+		 * deferral. (The second time a project hands over, say multisig to timelock, the same
+		 * line defers instead, with no change to the script.)
+		 */
+		const {env, provider, admin} = await deployBeforeHandoff();
+		provider.clearRequests();
+
+		const deferred = await catchUnknownSigner(env)(() =>
+			execute(env)(
+				{address: admin, abi: OWNABLE_ABI},
+				{account: 'deployer', functionName: 'transferOwnership', args: [SAFE]},
+			),
+		);
+
+		expect(deferred).toBeNull();
+		const sent = provider
+			.getRequests()
+			.filter((r) => r.method === 'eth_sendTransaction')
+			.map((r) => r.params?.[0] as {from: string; to: string; data: string});
+		expect(sent).toHaveLength(1);
+		expect(sent[0].from.toLowerCase()).toBe(DEPLOYER);
+		expect(sent[0].to.toLowerCase()).toBe(admin.toLowerCase());
+		expect(sent[0].data).toBe(encodeFunctionData({abi: OWNABLE_ABI, functionName: 'transferOwnership', args: [SAFE]}));
+	});
+
+	it('after the transfer, naming the multisig no longer throws and the upgrade defers to it', async () => {
+		/**
+		 * The second half of the pattern: once the chain says the multisig owns the admin,
+		 * the script's `owner: multisig` is a TRUE assertion, so the same `deployViaProxy`
+		 * line that threw above now reaches the seam. The v2 upgrade is an ordinary deferral
+		 * from the multisig to the shared admin.
+		 */
+		const {env, owners, proxy, admin} = await deployBeforeHandoff();
+		// the mock executes nothing, so stand in for the broadcast `transferOwnership`
+		owners.setOwner(HANDOFF_ADMIN, SAFE);
+
+		const deferred = await catchUnknownSigner(env)(() => deployHandoffRegistry(env, SAFE, 2));
+
+		const v2 = env.get(`${HANDOFF_PROXY}_Implementation`).address;
+		expect(deferred).toStrictEqual({
+			from: SAFE,
+			to: admin,
+			value: undefined,
+			data: encodeFunctionData({abi: PROXY_ADMIN_ABI, functionName: 'upgrade', args: [proxy, v2]}),
+		});
+	});
+});

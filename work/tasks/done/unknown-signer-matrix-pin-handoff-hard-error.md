@@ -39,3 +39,8 @@ Also cover the reassuring adjacent case that the demo README calls out: while th
 > Seam: `deployViaProxy` reads the admin's on-chain owner; the seam here is the pre-owner-mismatch throw INSIDE the extension, upstream of `broadcastTransaction`. The pin test forces that throw path.
 >
 > "Done" means: a describe block that (a) reproduces the throw and locks its shape, (b) asserts the wrapper does not swallow it, (c) shows the harmless-when-signable adjacent case, and (d) carries a comment describing the intended future behaviour so a reviewer can see this is a PIN, not the endorsement of a bug.
+
+## Decisions
+
+- **Where `UnknownSignerError` is imported from:** I used the file's existing `import {UnknownSignerError} from '@rocketh/core'` rather than adding a second import from `@rocketh/unknown-signer/errors`. The subpath only re-exports the same class, so the `instanceof` checks behave the same, and one file importing the class two ways would be confusing. This affects only this test file.
+- **Adding the fourth test:** I added the post-transfer "after the transfer, the upgrade defers" test, which the task did not ask for. It shows that the workaround from the demo README converges, which gives the eventual fix a checked starting point. The alternative was stopping at test 3, which would leave the second half of the workaround untested. It affects nothing outside this describe.
