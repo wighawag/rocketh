@@ -1145,3 +1145,175 @@ describe('@rocketh/unknown-signer - Matrix: an upgrade and a dependent follow-up
 		expect(await upgradeThenRepoint(finalEnv)).toEqual([null, null]);
 	});
 });
+
+// ============================================================================
+// Matrix: re-running a mixed script BEFORE governance executes
+// ============================================================================
+
+/**
+ * THE PROPERTY. Re-running a deploy script before the multisig has executed anything is
+ * FREE: the second run surfaces exactly the same deferred transactions, in the same
+ * order, and broadcasts nothing the first run already broadcast. That is what lets a
+ * team re-run whenever they lose their terminal, want the list printed again, or are
+ * simply unsure whether the last run finished: there is no cost and no risk of a
+ * duplicated deployment.
+ *
+ * WHY THIS IS NOT STORY 7. Story 7 re-runs AFTER the Safe executed, and proves the script
+ * CONVERGES: the chain moved, so the step is skipped. Here the chain does NOT move between
+ * the runs (no storage slot is written in between), so there is nothing to converge on;
+ * what is proved is that doing the same thing twice is harmless. The two properties rest
+ * on different mechanisms and are kept as separate scenarios so each stays independently
+ * verifiable.
+ *
+ * WHERE EACH HALF COMES FROM. Both runs hit the same `broadcastTransaction` signability
+ * branch for every step. The signable steps do not broadcast again because run 2 reloads
+ * the deployment records run 1 saved and finds the same bytecode already deployed. The
+ * unsignable steps defer again because nothing about them was persisted (run 1 wrote no
+ * unsigned-transaction file) and the chain still says they are outstanding.
+ */
+
+/**
+ * The deploy script under test, shaped like a real release: signable steps (a new
+ * contract, the v2 implementation) interleaved with governance steps (the proxy upgrade,
+ * a configuration call on a contract the multisig owns), each governance step in its own
+ * `catchUnknownSigner`. It returns what a script author would print or forward: the
+ * deferred transactions in script order, and the addresses of what it deployed.
+ */
+async function mixedReleaseScript(env: Environment) {
+	// signable: a fresh contract the deployer sends
+	const registry = await deploy(env)('Registry', {
+		account: 'deployer',
+		artifact: createMockArtifact('Registry', REGISTRY_ABI),
+		args: [1n],
+	});
+
+	// signable + governance: v2 of the implementation broadcasts, `upgradeTo` defers
+	const deferredUpgrade = await catchUnknownSigner(env)(() =>
+		deployViaProxy(env)('Vault', {account: 'deployer', artifact: vaultArtifact(2), args: [42n]}, {owner: SAFE}),
+	);
+
+	// governance: only the multisig may configure the registry
+	const deferredConfig = await catchUnknownSigner(env)(() =>
+		execute(env)(registry, {account: 'safe', functionName: 'setTreasury', args: [DEPLOYER]}),
+	);
+
+	// signable: the script carries on after the deferrals
+	const treasury = await deploy(env)('Treasury', {
+		account: 'deployer',
+		artifact: createMockArtifact('Treasury'),
+		args: [7n],
+	});
+
+	return {
+		deferred: [deferredUpgrade, deferredConfig],
+		deployed: {
+			Registry: registry.address,
+			Vault_Implementation: env.get('Vault_Implementation').address,
+			Treasury: treasury.address,
+		},
+	};
+}
+
+describe('@rocketh/unknown-signer - Matrix: re-running a mixed script before governance executes', () => {
+	it('surfaces the identical deferred set on the second run, in the same order', async () => {
+		/**
+		 * Example: you run the release, it prints two transactions for the multisig, and
+		 * then your terminal is gone before you copied them. Re-run the same script: the
+		 * multisig has not acted, so the same two transactions come back, byte for byte
+		 * (`from`, `to`, `value`, `data`) and in the order the script reached them.
+		 */
+		const {env, storage, deploymentStore, vault} = await deployVaultOwnedBySafe();
+
+		const firstRun = await mixedReleaseScript(env);
+
+		// no storage slot is touched here: governance has NOT executed
+		const {env: reRunEnv} = await runEnvironment({deploymentStore, storage});
+		const secondRun = await mixedReleaseScript(reRunEnv);
+
+		const v2 = firstRun.deployed.Vault_Implementation;
+		expect(firstRun.deferred).toStrictEqual([
+			{
+				from: SAFE,
+				to: vault.address,
+				value: undefined,
+				data: encodeFunctionData({abi: UPGRADE_TO_ABI, functionName: 'upgradeTo', args: [v2]}),
+			},
+			{
+				from: SAFE,
+				to: firstRun.deployed.Registry,
+				value: undefined,
+				data: encodeFunctionData({abi: REGISTRY_ABI, functionName: 'setTreasury', args: [DEPLOYER]}),
+			},
+		]);
+		expect(secondRun.deferred).toStrictEqual(firstRun.deferred);
+	});
+
+	it('broadcasts nothing on the second run: no signable step is sent twice', async () => {
+		/**
+		 * The cost of the re-run, measured on the mock provider's call log. Run 1 sends
+		 * exactly the three signable steps (Registry, the v2 implementation, Treasury), all
+		 * from the deployer, and never anything from the multisig. Run 2 sends NOTHING: every
+		 * signable step finds its deployment record with the same bytecode and is skipped,
+		 * and every governance step defers again without broadcasting. The broadcast count
+		 * stays flat across the re-run.
+		 */
+		const {env, provider, storage, deploymentStore} = await deployVaultOwnedBySafe();
+		provider.clearRequests();
+
+		await mixedReleaseScript(env);
+		expect(broadcastFrom(provider)).toEqual([DEPLOYER, DEPLOYER, DEPLOYER]);
+
+		const {env: reRunEnv, provider: reRunProvider} = await runEnvironment({deploymentStore, storage});
+		await mixedReleaseScript(reRunEnv);
+
+		expect(broadcastFrom(reRunProvider)).toEqual([]);
+	});
+
+	it('keeps the deployment records of the signable steps, at the same addresses', async () => {
+		/**
+		 * A partial run is not a corrupted run, and re-running it does not disturb it: the
+		 * contracts run 1 deployed are still recorded on run 2, at the addresses run 1
+		 * recorded, and the proxy record is untouched by the deferred upgrade.
+		 */
+		const {env, storage, deploymentStore, vault} = await deployVaultOwnedBySafe();
+
+		const firstRun = await mixedReleaseScript(env);
+
+		const {env: reRunEnv} = await runEnvironment({deploymentStore, storage});
+		const secondRun = await mixedReleaseScript(reRunEnv);
+
+		expect(secondRun.deployed).toStrictEqual(firstRun.deployed);
+		for (const [name, address] of Object.entries(firstRun.deployed)) {
+			expect(reRunEnv.get(name).address).toBe(address);
+		}
+		expect(reRunEnv.get('Vault').address).toBe(vault.address);
+	});
+
+	it('persists nothing about the deferrals between the two runs', async () => {
+		/**
+		 * Why the second run can only be free and never stale: run 1 wrote the deployment
+		 * records of what it actually deployed and nothing else. No file describes the two
+		 * transactions the multisig still has to execute, and run 2 adds no file at all.
+		 */
+		const {env, storage, deploymentStore} = await deployVaultOwnedBySafe();
+
+		await mixedReleaseScript(env);
+		const filesAfterRun1 = await storedFiles(deploymentStore, env);
+
+		const {env: reRunEnv} = await runEnvironment({deploymentStore, storage});
+		await mixedReleaseScript(reRunEnv);
+
+		expect(filesAfterRun1).toEqual(
+			[
+				'.chain',
+				'Registry.json',
+				'Treasury.json',
+				'Vault.json',
+				'Vault_Implementation.json',
+				'Vault_Proxy.json',
+			].sort(),
+		);
+		expect(filesAfterRun1.some((name) => /unsigned|to-?execute|deferred|pending/i.test(name))).toBe(false);
+		expect(await storedFiles(deploymentStore, reRunEnv)).toEqual(filesAfterRun1);
+	});
+});

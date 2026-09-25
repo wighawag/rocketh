@@ -41,3 +41,8 @@ This is the "re-run is free" property, and it is distinct from the existing "re-
 > Seam: same `broadcastTransaction` signability branch, exercised twice with no state mutation in between.
 >
 > "Done" means: a describe block that runs the script twice, asserts identical surfaced set and flat broadcast count for the already-deployed signable steps, with narration explaining why this matters (a user can re-run whenever they lose their terminal without cost).
+
+## Decisions
+
+- **"Same mock provider" means the same mocked chain, not literally one provider object.** `createTestEnvironment` always builds its own provider and cannot be handed one (`test-environment.ts`, "`provider` is always the harness's own mock provider"). So each run gets a fresh environment and provider but shares the storage and the deployment store, which is the re-run convention every existing scenario uses. "Flat broadcast count" is asserted as: run 1 makes exactly 3 deployer broadcasts, and run 2's provider log has 0 `eth_sendTransaction` calls. The alternative, changing test-utils so a provider can be shared, would be out of scope. This affects no other task or flag.
+- **This is a new mixed-topology scenario, not an extension of the many-proxies block.** The spec's coverage note says story 4 would be tasked to extend the many-proxies-one-admin topology. But that describe already has "surfaces the same set, in the same order, when re-run before the multisig acts". The task body instead asks for a mixed script (signable steps plus multisig deferrals) with deployment-record consistency, so that is what I built, as a separate block. That note in the tasked spec now reads slightly stale; I did not edit it.
