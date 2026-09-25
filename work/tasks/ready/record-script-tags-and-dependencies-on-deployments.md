@@ -2,7 +2,7 @@
 title: 'Record script tags and dependency-tags on each saved deployment'
 slug: record-script-tags-and-dependencies-on-deployments
 spec: tag-tracking-selective-reset
-blockedBy: []
+blockedBy: [deployment-record-schema-adr]
 covers: [1, 2, 3, 9]
 ---
 
@@ -41,7 +41,7 @@ Backward compatibility is a first-class requirement: reading an existing deploym
 
 ## Blocked by
 
-- None — can start immediately.
+- `deployment-record-schema-adr` (added 2026-09-24): the maintainer decided the deployment record is a published format, settled by one ADR that this task's `tags` / `dependencies` fields must be built against.
 
 ## Prompt
 
