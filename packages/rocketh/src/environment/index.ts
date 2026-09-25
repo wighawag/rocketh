@@ -574,13 +574,28 @@ export async function createEnvironment<
 	}
 	const accountCache: {[name: string]: ResolvedAccount} = {};
 
+	/**
+	 * Resolves one named account. THREE outcomes, kept apart on purpose:
+	 * - a `ResolvedAccount`;
+	 * - `null`: the config EXPLICITLY says the account is absent on this network (a per-network
+	 *   value of `null`, as in hardhat-deploy v1), or it references a name that is; the name is
+	 *   then left out of every account map and the run starts;
+	 * - `undefined`: nothing resolved it (no entry for the network and no `default`, say), which
+	 *   the caller refuses with a readable message, so a typo'd network key still fails loudly.
+	 *
+	 * `null` has to be tested before the per-network branch below, because `typeof null` is
+	 * `'object'` and it would otherwise be searched as another per-network map.
+	 */
 	async function getAccount(
 		name: string,
 		accounts: UnresolvedUnknownNamedAccounts,
-		accountDef: AccountType,
-	): Promise<ResolvedAccount | undefined> {
+		accountDef: AccountType | null,
+	): Promise<ResolvedAccount | null | undefined> {
 		if (accountCache[name]) {
 			return accountCache[name];
+		}
+		if (accountDef === null) {
+			return null;
 		}
 		let account: ResolvedAccount | undefined;
 		if (typeof accountDef === 'number') {
@@ -644,6 +659,9 @@ export async function createEnvironment<
 					};
 				} else {
 					const accountFetched = await getAccount(name, accounts, accounts[accountDef]);
+					if (accountFetched === null) {
+						return null;
+					}
 					if (accountFetched) {
 						accountCache[name] = account = accountFetched;
 					}
@@ -662,6 +680,9 @@ export async function createEnvironment<
 							: undefined;
 			if (accountForNetwork !== undefined) {
 				const accountFetched = await getAccount(name, accounts, accountForNetwork);
+				if (accountFetched === null) {
+					return null;
+				}
 				if (accountFetched) {
 					accountCache[name] = account = accountFetched;
 				}
@@ -675,6 +696,13 @@ export async function createEnvironment<
 		const accountNames = Object.keys(userConfig.accounts);
 		for (const accountName of accountNames) {
 			const account = await getAccount(accountName, userConfig.accounts, userConfig.accounts[accountName]);
+			if (account === null) {
+				// Absent on this network by explicit `null`: no entry in `namedAccounts`,
+				//  `namedSigners`, `addressSigners` or `addressSignability`, all of which derive from
+				//  `resolvedAccounts` below.
+				logger.debug(`named account "${accountName}" is absent on ${environmentName} (configured as null)`);
+				continue;
+			}
 			if (!account) {
 				throw new Error(
 					`cannot get account for ${accountName} = ${JSON.stringify(
@@ -2076,7 +2104,9 @@ export async function createEnvironment<
 		}
 
 		if (env.namedAccounts) {
-			const address = env.namedAccounts[account];
+			// The string-indexed map `env.namedAccounts` is built from: the typed view on `env` has an
+			//  optional key per possibly-absent name, which a plain `string` cannot index.
+			const address = namedAccounts[account];
 			if (!address) {
 				throw new Error(`no address for ${account}`);
 			}
@@ -2097,7 +2127,7 @@ export async function createEnvironment<
 		}
 
 		if (env.namedAccounts) {
-			return env.namedAccounts[account]?.toLowerCase() as `0x${string}` | undefined;
+			return namedAccounts[account]?.toLowerCase() as `0x${string}` | undefined;
 		}
 
 		return undefined;

@@ -7,11 +7,18 @@
  * NOT use @rocketh/test-utils (nx cycle) and build a REAL environment locally.
  */
 
-import {describe, it, expect, vi} from 'vitest';
+import {describe, it, expect, expectTypeOf, vi} from 'vitest';
 import {createEnvironment} from '../src/environment/index.js';
 import {resolveConfig, getChainIdForEnvironment, resolveExecutionParams} from '../src/executor/index.js';
 import {privateKey} from '@rocketh/signer';
-import type {DeploymentStore, PromptExecutor, UserConfig} from '@rocketh/core/types';
+import type {
+	DeploymentStore,
+	PromptExecutor,
+	ResolvedNamedAccounts,
+	ResolvedNamedSigners,
+	Signer,
+	UserConfig,
+} from '@rocketh/core/types';
 import type {EIP1193ProviderWithoutEvents} from 'eip-1193';
 
 const PRIVATE_KEY = '0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d';
@@ -79,6 +86,8 @@ const promptExecutor: PromptExecutor = {
 async function buildEnv(options: {
 	accounts: UserConfig['accounts'];
 	nodeAccounts?: string[];
+	/** Environment name the run targets. Defaults to `'memory'`. */
+	environment?: string;
 	saveDeployments?: boolean;
 	store?: DeploymentStore & {files: Record<string, string>};
 }) {
@@ -88,13 +97,14 @@ async function buildEnv(options: {
 		signerProtocols: {privateKey},
 		defaultPollingInterval: 0.001,
 	});
+	const environmentName = options.environment ?? 'memory';
 	const executionParams = {
 		provider,
-		environment: 'memory',
+		environment: environmentName,
 		saveDeployments: options.saveDeployments ?? false,
 		promptExecutor,
 	};
-	const chainId = await getChainIdForEnvironment(config, 'memory', executionParams);
+	const chainId = await getChainIdForEnvironment(config, environmentName, executionParams);
 	const resolved = resolveExecutionParams(config, executionParams, chainId);
 	const store = options.store ?? createInMemoryStore();
 	const {external: env, internal} = await createEnvironment(config, resolved, store);
@@ -143,6 +153,86 @@ describe('resolveAccountOrUndefined', () => {
 	it('returns undefined when no named accounts are set up', async () => {
 		const {env} = await buildEnv({accounts: {}});
 		expect(env.resolveAccountOrUndefined('any')).toBeUndefined();
+	});
+});
+
+/**
+ * A per-network account entry set to `null` means the account is ABSENT on that network, as it
+ * did in hardhat-deploy v1 (whose `namedAccounts` type admits `null` per network). A config
+ * migrated from v1, or written in JavaScript, can carry it, and the run must start: the name is
+ * simply missing from `namedAccounts`, so a deploy script branches on `undefined`.
+ *
+ * Only an EXPLICIT `null` means absent. A name with no entry for the network and no `default`
+ * keeps its readable refusal, so a typo'd network key still fails loudly.
+ */
+describe('a null per-network account entry', () => {
+	const ADMIN_ADDR = '0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266' as `0x${string}`;
+
+	it('makes the name absent on that network instead of crashing environment construction', async () => {
+		const {env} = await buildEnv({
+			accounts: {deployer: 0, admin: {default: 1, localhost: null}},
+			nodeAccounts: [NAMED_ADDR, ADMIN_ADDR],
+			environment: 'localhost',
+		});
+
+		expect(env.namedAccounts.deployer).toBe(NAMED_ADDR);
+		expect('admin' in env.namedAccounts).toBe(false);
+		expect(env.namedAccounts.admin).toBeUndefined();
+		expect('admin' in env.namedSigners).toBe(false);
+		expect(env.resolveAccountOrUndefined('admin')).toBeUndefined();
+
+		// No signer or signability entry is keyed by anything but an address: the absent name leaves
+		//  nothing behind, and the node's second account is merely unnamed.
+		for (const key of Object.keys(env.addressSigners)) {
+			expect(key).toMatch(/^0x[0-9a-f]{40}$/);
+		}
+		for (const key of Object.keys(env.addressSignability)) {
+			expect(key).toMatch(/^0x[0-9a-f]{40}$/);
+		}
+		expect(env.unnamedAccounts).toEqual([ADMIN_ADDR]);
+	});
+
+	it('still resolves the same name on a network where it is set', async () => {
+		const {env} = await buildEnv({
+			accounts: {deployer: 0, admin: {default: 1, localhost: null}},
+			nodeAccounts: [NAMED_ADDR, ADMIN_ADDR],
+			environment: 'memory',
+		});
+		expect(env.namedAccounts.admin).toBe(ADMIN_ADDR);
+		expect(env.addressSigners[ADMIN_ADDR]).toBeDefined();
+	});
+
+	it('makes a name that REFERENCES the absent name absent too', async () => {
+		const {env} = await buildEnv({
+			accounts: {admin: {default: 1, localhost: null}, owner: 'admin'},
+			nodeAccounts: [NAMED_ADDR, ADMIN_ADDR],
+			environment: 'localhost',
+		});
+		expect('admin' in env.namedAccounts).toBe(false);
+		expect('owner' in env.namedAccounts).toBe(false);
+	});
+
+	it('keeps the readable refusal for a name with no entry for the network and no default', async () => {
+		await expect(
+			buildEnv({
+				accounts: {admin: {mainnet: 1}},
+				nodeAccounts: [NAMED_ADDR, ADMIN_ADDR],
+				environment: 'localhost',
+			}),
+		).rejects.toThrow(/cannot get account for admin/);
+	});
+
+	it('types such a name as possibly undefined, so a script must handle it', () => {
+		const accounts = {
+			deployer: {default: 0},
+			admin: {default: 1, localhost: null},
+		} as const satisfies UserConfig['accounts'];
+		type Resolved = ResolvedNamedAccounts<typeof accounts>;
+		expectTypeOf<Resolved['deployer']>().toEqualTypeOf<`0x${string}`>();
+		expectTypeOf<Resolved['admin']>().toEqualTypeOf<`0x${string}` | undefined>();
+		type Signers = ResolvedNamedSigners<Resolved>;
+		expectTypeOf<Signers['deployer']>().toEqualTypeOf<Signer>();
+		expectTypeOf<Signers['admin']>().toEqualTypeOf<Signer | undefined>();
 	});
 });
 

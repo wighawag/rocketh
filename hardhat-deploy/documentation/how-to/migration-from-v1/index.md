@@ -456,6 +456,27 @@ type Environment = EnhancedEnvironment<Accounts, Data, UnknownDeployments, Exten
 export type {Extensions, Accounts, Data, Environment};
 ```
 
+**An account that does not exist on some networks (`null`):** v1 let a per-network entry in `namedAccounts` be `null`, meaning "this account does not exist on that network". It means the same in v2, so such an entry moves to `rocketh/config.ts` unchanged:
+
+```typescript
+accounts: {
+	deployer: {default: 0},
+	// signs on every network except mainnet, where there is no such account
+	faucetOperator: {default: 1, mainnet: null},
+},
+```
+
+On a network where the entry is `null`, the name is absent: it has no entry in `env.namedAccounts` or `env.namedSigners`, and the run starts. On every other network it resolves as usual. Because the config is typed with `as const satisfies UserConfig`, `env.namedAccounts.faucetOperator` is typed `` `0x${string}` | undefined ``, so a deploy script must handle the absent case, exactly as a v1 script branched on `undefined`:
+
+```typescript
+const {faucetOperator} = env.namedAccounts;
+if (faucetOperator) {
+	// ...
+}
+```
+
+Only an explicit `null` means absent. A name with no entry for the current network and no `default` still refuses to start with `cannot get account for <name>`, so a misspelt network name fails loudly instead of silently dropping the account. If the value is only an address that the run never signs with, `data` is the other option: a network missing there resolves to `undefined` without throwing.
+
 **rocketh/deploy.ts example:** (see [template-ethereum-contracts/rocketh/deploy.ts](https://github.com/wighawag/template-ethereum-contracts/blob/main/contracts/rocketh/deploy.ts))
 
 ```typescript
