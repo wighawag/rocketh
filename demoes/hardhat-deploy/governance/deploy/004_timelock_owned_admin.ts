@@ -31,7 +31,7 @@ import {targetArtifact, targetVersion} from '../demo/target.js';
  *   pnpm deploy:dev localhost --tags scenario-timelock
  *   REGISTRY_VERSION=2 pnpm deploy:dev localhost --tags scenario-timelock
  *   pnpm act-as-governance scenario-timelock     # sends the schedule()
- *   # wait out the delay (60s in this demo)
+ *   pnpm advance-time                             # jump the local node past the 60s delay
  *   REGISTRY_VERSION=2 pnpm deploy:dev localhost --tags scenario-timelock
  *   pnpm act-as-governance scenario-timelock     # sends the execute()
  */

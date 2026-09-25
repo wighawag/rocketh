@@ -16,7 +16,9 @@ import {targetArtifact} from '../demo/target.js';
  *
  * Run it:
  *   pnpm deploy:dev localhost --tags scenario-multi
- *   REGISTRY_VERSION=2 pnpm deploy:dev localhost --tags scenario-multi
+ *   REGISTRY_VERSION=2 pnpm deploy:dev localhost --tags scenario-multi  # defers three upgrades
+ *   pnpm act-as-governance scenario-multi
+ *   REGISTRY_VERSION=2 pnpm deploy:dev localhost --tags scenario-multi  # converges
  */
 const MARKETS = ['Alpha', 'Beta', 'Gamma'] as const;
 

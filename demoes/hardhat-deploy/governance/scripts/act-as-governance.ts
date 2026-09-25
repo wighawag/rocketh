@@ -3,7 +3,7 @@ import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import hre from 'hardhat';
 import {artifacts, loadEnvironmentFromHardhat} from '../rocketh/environment.js';
-import type {DeferredTransaction} from '../demo/pending.js';
+import type {PendingFile} from '../demo/pending.js';
 
 /**
  * The OPERATOR side of the loop, and the half a README cannot convince you of.
@@ -33,7 +33,7 @@ async function main() {
 	}
 
 	const file = join(demoRoot, 'pending', `${scenario}.json`);
-	let pending: {scenario: string; transactions: DeferredTransaction[]};
+	let pending: PendingFile;
 	try {
 		pending = JSON.parse(readFileSync(file, 'utf8'));
 	} catch {
@@ -97,8 +97,13 @@ async function main() {
 		console.log(`${label} done`);
 	}
 
+	// Re-run with the SAME target the deferring run had. Dropping `REGISTRY_VERSION=2`
+	//  here would ask the script to converge on v1 again, and it would dutifully defer a
+	//  downgrade instead of converging.
+	const version = pending.registryVersion;
+	const prefix = version === 1 ? '' : `REGISTRY_VERSION=${version} `;
 	console.log('\nGovernance has executed. Re-run the deploy script:');
-	console.log(`  pnpm deploy:dev localhost --tags ${scenario}`);
+	console.log(`  ${prefix}pnpm deploy:dev localhost --tags ${scenario}`);
 	console.log('It should now find the change on chain and skip the step.');
 }
 

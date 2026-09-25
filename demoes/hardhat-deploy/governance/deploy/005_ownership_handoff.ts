@@ -50,8 +50,10 @@ const PROXY_ADMIN_ABI = [
  * the transfer as its own step, and let subsequent runs pick up the new owner.
  *
  * Run it:
- *   pnpm deploy:dev localhost --tags scenario-handoff
- *   REGISTRY_VERSION=2 pnpm deploy:dev localhost --tags scenario-handoff
+ *   pnpm deploy:dev localhost --tags scenario-handoff                     # deploys, hands over, nothing deferred
+ *   REGISTRY_VERSION=2 pnpm deploy:dev localhost --tags scenario-handoff  # the upgrade now defers
+ *   pnpm act-as-governance scenario-handoff
+ *   REGISTRY_VERSION=2 pnpm deploy:dev localhost --tags scenario-handoff  # converges
  */
 export default deployScript(
 	async ({

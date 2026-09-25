@@ -39,6 +39,7 @@
 		"compile:watch": "as-soon -w src pnpm compile",
 		"execute": "ldenv -n HARDHAT_NETWORK -m localhost tsx @@",
 		"act-as-governance": "ldenv -n HARDHAT_NETWORK -m localhost tsx ./scripts/act-as-governance.ts",
+		"advance-time": "ldenv -n HARDHAT_NETWORK -m localhost tsx ./scripts/advance-time.ts",
 		"deploy": "pnpm compile --build-profile production && ldenv hardhat --network @@MODE deploy @@",
 		"deploy:dev": "ldenv hardhat --network @@MODE deploy --skip-prompts @@",
 		"export": "ldenv rocketh-export -e @@MODE @@",

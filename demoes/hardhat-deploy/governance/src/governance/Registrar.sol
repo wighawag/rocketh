@@ -3,12 +3,13 @@ pragma solidity ^0.8.0;
 
 /// @title Registrar
 /// @notice A governance-owned pointer to the current registry, used by the demo to make
-///         an ORDERING CONSTRAINT real rather than described.
-/// @dev `setRegistry` refuses a version that is not exactly the next one, so a pair of
-///      deferred transactions executed out of order REVERTS instead of quietly producing
-///      a wrong state. That is the property scenario 003 demonstrates: when a run defers
-///      an upgrade and a follow-up call from the same owner, the operator receives an
-///      ORDERED list and the order is load-bearing.
+///         a REPLAY constraint real rather than described.
+/// @dev `setRegistry` refuses a version that is not exactly the next one, so replaying a
+///      follow-up that already executed (or skipping one) REVERTS instead of quietly
+///      producing a wrong state. It does NOT know about the proxy, so it cannot tell
+///      whether the upgrade that precedes it in scenario 003 has landed: executing that
+///      pair the other way round succeeds, and leaves the registrar naming an
+///      implementation the proxy is not running until the upgrade follows.
 contract Registrar {
     /// @notice emitted when governance points the registrar at a new registry
     /// @param registry the new registry address
