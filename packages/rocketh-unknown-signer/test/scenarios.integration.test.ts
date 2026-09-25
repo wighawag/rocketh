@@ -29,12 +29,12 @@
  */
 
 import {describe, it, expect, vi} from 'vitest';
-import {encodeFunctionData} from 'viem';
+import {decodeFunctionData, encodeFunctionData} from 'viem';
 import type {Abi, Artifact, DeploymentStore, Environment} from '@rocketh/core/types';
 import {UnknownSignerError} from '@rocketh/core';
 import {createMockArtifact, createTestEnvironment, createMapDeploymentStore} from '@rocketh/test-utils';
 import {deploy} from '@rocketh/deploy';
-import {deployViaProxy} from '@rocketh/proxy';
+import {deployViaProxy, type ImplementationDeployer} from '@rocketh/proxy';
 import {execute, tx} from '@rocketh/read-execute';
 
 import {catchUnknownSigner} from '../src/index.js';
@@ -111,6 +111,40 @@ function createStorage() {
 }
 
 /**
+ * What an `Ownable` contract answers to `owner()`, served through `eth_call`.
+ *
+ * Needed where ownership lives in a contract's ordinary storage rather than in a proxy
+ * slot: a shared `ProxyAdmin` is `Ownable`, and `@rocketh/proxy` asks it `owner()` to
+ * learn who must send the upgrade. Same trick as `createStorage`: the mock executes
+ * nothing, so the test answers the read itself. Any other call gets the harness's `0x`.
+ *
+ * Owners are keyed by DEPLOYMENT NAME, resolved against the run's environment when the
+ * read arrives, because `@rocketh/proxy` deploys the admin and reads its owner within a
+ * single call: there is no moment in between for the test to learn the new address and
+ * mirror what the constructor wrote.
+ */
+function createOwners() {
+	const OWNER_SELECTOR = '0x8da5cb5b';
+	const owners = new Map<string, `0x${string}`>();
+	return {
+		setOwner(deploymentName: string, owner: `0x${string}`) {
+			owners.set(deploymentName, owner);
+		},
+		respondToCall(params: unknown[] | undefined, env: Environment | undefined) {
+			const [call] = params as [{to?: string; data?: string; input?: string}];
+			const data = (call.data ?? call.input ?? '').toLowerCase();
+			if (!env || !call.to || !data.startsWith(OWNER_SELECTOR)) return '0x';
+			for (const [name, owner] of owners) {
+				if (env.getOrNull(name)?.address.toLowerCase() === call.to.toLowerCase()) {
+					return `0x${owner.slice(2).toLowerCase().padStart(64, '0')}`;
+				}
+			}
+			return '0x';
+		},
+	};
+}
+
+/**
  * A run in which `safe` is unsignable: it is a named account declared as a bare
  * address, the node does not list it in `eth_accounts`, and auto-impersonation is off.
  * This is the whole configuration the feature needs (story 8 of the spec).
@@ -122,17 +156,25 @@ function createStorage() {
 async function runEnvironment(options?: {
 	deploymentStore?: DeploymentStore;
 	storage?: ReturnType<typeof createStorage>;
+	owners?: ReturnType<typeof createOwners>;
 	autoImpersonate?: boolean;
 }) {
+	const responses: Record<string, (params?: unknown[]) => unknown> = {};
+	let thisRun: Environment | undefined;
+	if (options?.storage) {
+		responses.eth_getStorageAt = (params?: unknown[]) => options.storage!.respondToGetStorageAt(params);
+	}
+	if (options?.owners) {
+		responses.eth_call = (params?: unknown[]) => options.owners!.respondToCall(params, thisRun);
+	}
 	const result = await createTestEnvironment({
 		accounts: {deployer: DEPLOYER, safe: SAFE},
 		nodeAccounts: [DEPLOYER],
 		executionParams: {autoImpersonate: options?.autoImpersonate ?? false},
 		deploymentStore: options?.deploymentStore,
-		providerConfig: options?.storage
-			? {responses: {eth_getStorageAt: (params?: unknown[]) => options.storage!.respondToGetStorageAt(params)}}
-			: undefined,
+		providerConfig: Object.keys(responses).length > 0 ? {responses} : undefined,
 	});
+	thisRun = result.env;
 	// What rocketh's executor does at the start of EVERY run: read back the deployment
 	//  records this environment already has. It is what makes a second run recognise what
 	//  the first one deployed, so a test that models a re-run has to do it too.
@@ -614,5 +656,236 @@ describe('@rocketh/unknown-signer - Story 8: autoImpersonate false routes to the
 
 		expect(deferred).toBeNull();
 		expect(broadcastFrom(provider)).toContain(SAFE);
+	});
+});
+
+// ============================================================================
+// Matrix: many proxies, one multisig-owned ProxyAdmin
+// ============================================================================
+
+/**
+ * THE TOPOLOGY. Several proxies (here three "markets" of the same `Registry`) are all
+ * transparent proxies administered by ONE shared `ProxyAdmin`, and that admin is owned
+ * by the multisig. So there is a single governance surface: one owner, one admin
+ * contract, N upgrade calls. Only the multisig can call `ProxyAdmin.upgrade(proxy, impl)`,
+ * and the run cannot sign for it (the same unsignable SAFE as every scenario above).
+ *
+ * THE DEFERRED SET TO EXPECT on an upgrade run: exactly N transactions, one per proxy, in
+ * the order the script visits the proxies. Every one has the same `from` (the multisig)
+ * and the same `to` (the shared admin, NOT the proxy: with a shared admin the proxy's
+ * own `upgradeTo` is only callable by the admin contract). Their `data` differs only in
+ * the proxy address, because the three markets share one implementation. They are
+ * independent of each other, so the multisig may execute them in any order.
+ */
+const MARKETS = ['Alpha', 'Beta', 'Gamma'] as const;
+const SHARED_ADMIN = 'SharedProxyAdmin';
+
+/** The functions of `ProxyAdmin` the multisig has to call, for decoding the deferred set. */
+const PROXY_ADMIN_ABI = [
+	{
+		type: 'function',
+		name: 'upgrade',
+		inputs: [
+			{type: 'address', name: 'proxy'},
+			{type: 'address', name: 'implementation'},
+		],
+		outputs: [],
+		stateMutability: 'nonpayable',
+	},
+] as const satisfies Abi;
+
+/**
+ * One implementation shared by every market, deployed once under its own name. The first
+ * market to ask deploys it (or redeploys it when the code changed); the others find it
+ * already deployed with the same bytecode and reuse it.
+ */
+function sharedRegistryImplementation(env: Environment, version: 1 | 2): ImplementationDeployer<typeof VAULT_ABI> {
+	return (_name, args, options) =>
+		deploy(env)('Registry_Implementation', {...args, artifact: vaultArtifact(version)}, options);
+}
+
+/** The deploy-script step for ONE market: deploy it, or upgrade it if the code changed. */
+function deployMarket(env: Environment, market: (typeof MARKETS)[number], version: 1 | 2) {
+	return deployViaProxy(env)(
+		`Registry${market}`,
+		{account: 'deployer', artifact: sharedRegistryImplementation(env, version), args: [42n]},
+		{
+			owner: SAFE,
+			proxyContract: {type: 'SharedAdminOptimizedTransparentProxy', proxyAdminName: SHARED_ADMIN},
+		},
+	);
+}
+
+/**
+ * The upgrade script, written the way it has to be: ONE `catchUnknownSigner` PER PROXY.
+ * Each wrapper holds exactly one deferrable call, so each one yields its own deferral
+ * and the loop visits every market.
+ */
+async function upgradeAllMarkets(env: Environment) {
+	const deferred = [];
+	for (const market of MARKETS) {
+		deferred.push(await catchUnknownSigner(env)(() => deployMarket(env, market, 2)));
+	}
+	return deferred;
+}
+
+/**
+ * The world the upgrade run starts from: three markets at v1, all behind the shared admin,
+ * the admin owned by the multisig. The deployer does all of this (it can sign for
+ * deployments); the multisig only ever appears as the admin's owner.
+ */
+async function deployMarketsBehindSharedAdmin() {
+	const storage = createStorage();
+	const owners = createOwners();
+	const deploymentStore = createMapDeploymentStore();
+	// what the admin's constructor (`ProxyAdmin(initialOwner)`) writes
+	owners.setOwner(SHARED_ADMIN, SAFE);
+	const {env, provider} = await runEnvironment({deploymentStore, storage, owners});
+
+	const proxies: `0x${string}`[] = [];
+	for (const market of MARKETS) {
+		const registry = await deployMarket(env, market, 1);
+		// the mock executes nothing, so mirror what each proxy constructor wrote
+		storage.setAddress(registry.address, IMPLEMENTATION_SLOT, env.get('Registry_Implementation').address);
+		storage.setAddress(registry.address, OWNER_SLOT, env.get(SHARED_ADMIN).address);
+		proxies.push(registry.address);
+	}
+
+	return {env, provider, storage, owners, deploymentStore, proxies, admin: env.get(SHARED_ADMIN).address};
+}
+
+describe('@rocketh/unknown-signer - Matrix: many proxies behind one multisig-owned ProxyAdmin', () => {
+	it('surfaces exactly one deferred upgrade per proxy, all from the multisig to the shared admin', async () => {
+		/**
+		 * Example: you ship v2 of `Registry`, which three markets share. The deployer
+		 * deploys the new implementation; each proxy then has to be pointed at it through
+		 * the shared admin, which only the multisig can do. The run hands you three
+		 * transactions: none dropped, none duplicated, in the order the script visited
+		 * the markets.
+		 */
+		const {env, proxies, admin} = await deployMarketsBehindSharedAdmin();
+
+		const deferred = await upgradeAllMarkets(env);
+
+		const v2 = env.get('Registry_Implementation').address;
+		expect(deferred).toStrictEqual(
+			proxies.map((proxy) => ({
+				from: SAFE,
+				to: admin,
+				value: undefined,
+				data: encodeFunctionData({abi: PROXY_ADMIN_ABI, functionName: 'upgrade', args: [proxy, v2]}),
+			})),
+		);
+		// three distinct proxies, so three distinct transactions: nothing surfaced twice
+		expect(new Set(proxies.map((p) => p.toLowerCase())).size).toBe(MARKETS.length);
+		expect(new Set(deferred.map((d) => d?.data)).size).toBe(MARKETS.length);
+	});
+
+	it('varies the deferred data ONLY in the proxy address', async () => {
+		/**
+		 * What the multisig operator sees when comparing the three: same method, same new
+		 * implementation, a different proxy each time. Decoding makes that explicit
+		 * rather than leaving it to eyeballing three hex blobs.
+		 */
+		const {env, proxies} = await deployMarketsBehindSharedAdmin();
+
+		const deferred = await upgradeAllMarkets(env);
+
+		const decoded = deferred.map((d) => decodeFunctionData({abi: PROXY_ADMIN_ABI, data: d!.data as `0x${string}`}));
+		// decoding returns checksummed addresses, so compare case-insensitively
+		const v2 = env.get('Registry_Implementation').address.toLowerCase();
+		expect(decoded.map((call) => call.functionName)).toEqual(['upgrade', 'upgrade', 'upgrade']);
+		expect(decoded.map((call) => call.args[1].toLowerCase())).toEqual([v2, v2, v2]);
+		expect(decoded.map((call) => call.args[0].toLowerCase())).toEqual(proxies.map((p) => p.toLowerCase()));
+	});
+
+	it('surfaces the same set, in the same order, when re-run before the multisig acts', async () => {
+		/**
+		 * You lost your terminal, or you just want the list again: re-run the same script
+		 * against the same deployments. Nothing on chain changed, so the same three
+		 * upgrades are outstanding, and they come back identical and in the same order.
+		 * The deployer broadcasts nothing the second time: v2 is already deployed.
+		 */
+		const {env, storage, owners, deploymentStore} = await deployMarketsBehindSharedAdmin();
+
+		const firstRun = await upgradeAllMarkets(env);
+
+		const {env: reRunEnv, provider: reRunProvider} = await runEnvironment({deploymentStore, storage, owners});
+		const secondRun = await upgradeAllMarkets(reRunEnv);
+
+		expect(firstRun).toHaveLength(MARKETS.length);
+		expect(secondRun).toStrictEqual(firstRun);
+		expect(broadcastFrom(reRunProvider)).toEqual([]);
+	});
+
+	it('persists no unsigned transaction for any of the N deferrals', async () => {
+		/**
+		 * Three deferrals, zero files about them. The store holds the deployment records
+		 * that would exist anyway, and no run adds anything describing what the multisig
+		 * still has to execute. The chain is the only memory.
+		 */
+		const {env, storage, owners, deploymentStore} = await deployMarketsBehindSharedAdmin();
+		const filesBefore = await storedFiles(deploymentStore, env);
+
+		await upgradeAllMarkets(env);
+		const filesAfterRun1 = await storedFiles(deploymentStore, env);
+
+		const {env: reRunEnv} = await runEnvironment({deploymentStore, storage, owners});
+		await upgradeAllMarkets(reRunEnv);
+
+		expect(filesBefore).toEqual(
+			[
+				'.chain',
+				'RegistryAlpha.json',
+				'RegistryAlpha_Proxy.json',
+				'RegistryBeta.json',
+				'RegistryBeta_Proxy.json',
+				'RegistryGamma.json',
+				'RegistryGamma_Proxy.json',
+				'Registry_Implementation.json',
+				`${SHARED_ADMIN}.json`,
+			].sort(),
+		);
+		expect(filesAfterRun1).toEqual(filesBefore);
+		expect(await storedFiles(deploymentStore, reRunEnv)).toEqual(filesBefore);
+		expect(filesAfterRun1.some((name) => /unsigned|to-?execute|deferred|pending/i.test(name))).toBe(false);
+	});
+
+	it('THE TRAP: one wrapper around the whole batch captures the first deferral and skips the rest', async () => {
+		/**
+		 * Why the script above wraps each proxy separately. A deferral does not "record and
+		 * continue" inside the action: the `UnknownSignerError` UNWINDS the action it was
+		 * thrown in, and `catchUnknownSigner` catches it at the wrapper. So with one wrapper
+		 * around the loop, the first market's upgrade is surfaced, and the loop never gets
+		 * to the second and third. No error, no warning: they are silently not attempted.
+		 *
+		 * This test pins that behaviour so the wrap-each-step rule is enforced, not folklore.
+		 */
+		const {env, proxies, admin} = await deployMarketsBehindSharedAdmin();
+		const attempted: string[] = [];
+
+		const onlyOne = await catchUnknownSigner(env)(async () => {
+			for (const market of MARKETS) {
+				attempted.push(market);
+				await deployMarket(env, market, 2);
+			}
+		});
+
+		const v2 = env.get('Registry_Implementation').address;
+		// ONE transaction came back, for the first proxy only...
+		expect(onlyOne).toStrictEqual({
+			from: SAFE,
+			to: admin,
+			value: undefined,
+			data: encodeFunctionData({abi: PROXY_ADMIN_ABI, functionName: 'upgrade', args: [proxies[0], v2]}),
+		});
+		// ...because Beta and Gamma were never even reached
+		expect(attempted).toEqual(['Alpha']);
+
+		// and they are still outstanding: the per-proxy script finds all three
+		const allThree = await upgradeAllMarkets(env);
+		expect(allThree.map((d) => d?.data)).toEqual(
+			proxies.map((proxy) => encodeFunctionData({abi: PROXY_ADMIN_ABI, functionName: 'upgrade', args: [proxy, v2]})),
+		);
 	});
 });

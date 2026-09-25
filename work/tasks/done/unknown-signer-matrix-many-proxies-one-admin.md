@@ -44,3 +44,8 @@ Also encode the wrapper-scoping lesson the demo README calls out: a single `catc
 > Seams to test at: the seam is `broadcastTransaction`'s signability branch — you exercise it by declaring a bare-address named account with `autoImpersonate: false` (the "SAFE" pattern in the existing tests). Use the same pattern for the multisig-owning-admin address.
 >
 > "Done" means: a new describe block (or blocks) added to the existing scenarios file (or a new sibling file that follows the same conventions) whose test bodies read like deploy scripts, whose assertions match the acceptance criteria above, and whose narration teaches the reader (a) what topology this is, (b) what deferred set to expect, and (c) why each upgrade needs its own wrapper.
+
+## Decisions
+
+- **All three markets share one implementation (`Registry_Implementation`).** Each market's implementation is deployed through a function that returns the one shared deployment. Why: the task requires that each proxy's `data` "differs only in the proxy address argument to `upgrade`". The demo (`002_many_proxies_one_admin.ts`) deploys a separate implementation per proxy, so there the implementation argument would differ too. Alternative considered: one implementation per proxy, which matches the demo exactly but makes that criterion false. This touches only this test file. The demo README's line "differing in the proxy address inside `data`" is slightly inaccurate for the demo as written, which a later demo task may want to check.
+- **Owner reads are answered by deployment name, not by address.** This is test-only: the admin's address does not exist yet when `deployViaProxy` reads its `owner()`. The alternative, predicting the mock's addresses from its transaction counter, would be fragile.
