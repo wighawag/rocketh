@@ -37,3 +37,8 @@ Use the mock provider's `eth_call` handler to make the admin report the Timelock
 > Seam: same `broadcastTransaction` signability branch; the Timelock address is unsignable, so the seam fires and returns the same shape as it would for any other unsignable `from`. The pin asserts that shape.
 >
 > "Done" means: a describe block that stubs an admin owned by a plausible Timelock address, runs the wrapped upgrade, and asserts today's surfaced `{from, to, data}` shape, with a comment naming the intended `schedule`/`execute` translation and citing `unsignable-routes`.
+
+## Decisions
+
+- **The Timelock is a mock deployment, not a hard-coded constant address.** Why: in the demo the owner comes from a deployment record (`get('Timelock').address`), not from a named account. That is exactly the case that reaches the seam as unsignable because nothing in the run knows the address. Alternative considered: a literal `0x7171…` address, which would also pass but models the topology less faithfully. What it touches: only this test file.
+- **I added two pins beyond the required shape assertion: the printed block and the re-run.** Why: they are the two practical harms named in the spec and the demo (an instruction that looks actionable, and no notion of an operation that is already scheduled), so the `unsignable-routes` fix will have to flip those too. Alternative considered: pinning only the returned shape. What it touches: only this test file.
