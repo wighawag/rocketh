@@ -493,6 +493,45 @@ function areLibrariesIdentical(oldLibs: Libraries, newLibs: Libraries) {
 	return true;
 }
 
+const CANNOT_CARRY_BLOBS = 'a blob (EIP-4844) transaction cannot create a contract, so a deployment cannot carry it';
+
+/**
+ * The construction options whose TYPE `deploy` accepts (it is viem's `DeployContractParameters`)
+ * but which it cannot put on a deployment transaction, each with the reason and what to do instead.
+ * An option the type accepts is either honoured or refused here, never silently dropped.
+ *
+ * Every other option of that type is used: `gas`, `value`, `maxFeePerGas`, `maxPriorityFeePerGas`
+ * and `nonce` go on the transaction, `args` is encoded into it, `type: 'eip1559'` is what is sent
+ * (any other `type` is refused below), and `assertChainId` is satisfied by construction: the
+ * `chainId` rocketh signs for is the one the connected node reported. `gasPrice` is deliberately
+ * absent from this list: it belongs to the support for chains without EIP-1559.
+ */
+const REFUSED_DEPLOY_OPTIONS: {[field: string]: string} = {
+	authorizationList:
+		'an EIP-7702 transaction cannot create a contract, so a deployment cannot carry it. Send the delegation as its own transaction',
+	blobs: CANNOT_CARRY_BLOBS,
+	blobVersionedHashes: CANNOT_CARRY_BLOBS,
+	kzg: CANNOT_CARRY_BLOBS,
+	sidecars: CANNOT_CARRY_BLOBS,
+	maxFeePerBlobGas: CANNOT_CARRY_BLOBS,
+	dataSuffix:
+		'on a deployment the suffix would become part of the init code and of the recorded constructor arguments, so a deterministic address and a verification would both include it. Pass what you need as a constructor argument instead',
+};
+
+/** Throws for an option the deploy construction type accepts but a deployment cannot honour. */
+function refuseUnsupportedDeployOptions(nameToDisplay: string, args: {[field: string]: unknown}): void {
+	for (const [field, reason] of Object.entries(REFUSED_DEPLOY_OPTIONS)) {
+		if (args[field] !== undefined) {
+			throw new Error(`deploy "${nameToDisplay}": "${field}" is not supported: ${reason}.`);
+		}
+	}
+	if (args.type !== undefined && args.type !== 'eip1559') {
+		throw new Error(
+			`deploy "${nameToDisplay}": "type: ${String(args.type)}" is not supported: a deployment is sent as an EIP-1559 (type 2) transaction. Remove \`type\`.`,
+		);
+	}
+}
+
 export function deploy(env: Environment): <TAbi extends Abi>(
 	name: string, // '' allow to not save it
 	args: DeploymentConstruction<TAbi>,
@@ -500,6 +539,9 @@ export function deploy(env: Environment): <TAbi extends Abi>(
 ) => Promise<DeployResult<TAbi>> {
 	return async <TAbi extends Abi>(name: string, args: DeploymentConstruction<TAbi>, options?: DeployOptions) => {
 		const nameToDisplay = name || '<no name>';
+		// Refused at the call, BEFORE any early return, so the answer does not depend on whether the
+		//  deployment already exists.
+		refuseUnsupportedDeployOptions(nameToDisplay, args as unknown as {[field: string]: unknown});
 		const skipIfAlreadyDeployed = options && 'skipIfAlreadyDeployed' in options && options.skipIfAlreadyDeployed;
 		const alwaysOverride = options && 'alwaysOverride' in options && options.alwaysOverride;
 		const strictBytecodeMatch = options && 'strictBytecodeMatch' in options && options.strictBytecodeMatch;
@@ -607,7 +649,10 @@ export function deploy(env: Environment): <TAbi extends Abi>(
 		// Guarded on `!== undefined`, NOT on truthiness, and the difference is not cosmetic: `&&`
 		//  returns its LEFT operand when that operand is falsy, so `0n` passed through as the bigint
 		//  `0n` rather than a 0x quantity, putting a bigint on the wire where the type says
-		//  `0x${string}`. `value` in the same literal below already does it this way; these now match.
+		//  `0x${string}`. The `?:` spelling does not leak a type but would silently DROP an explicit
+		//  zero, which matters most for `nonce`: nonce 0 is the first transaction of any fresh account,
+		//  not a missing value. Every numeric field of the literal below follows the same rule, as the
+		//  `execute` path in `@rocketh/read-execute` does.
 		const maxFeePerGas =
 			viemArgs.maxFeePerGas !== undefined ? (`0x${viemArgs.maxFeePerGas.toString(16)}` as `0x${string}`) : undefined;
 		const maxPriorityFeePerGas =
@@ -627,7 +672,7 @@ export function deploy(env: Environment): <TAbi extends Abi>(
 			...(viemArgs.value !== undefined && {
 				value: `0x${viemArgs.value.toString(16)}` as `0x${string}`,
 			}),
-			// nonce: viemArgs.nonce && (`0x${viemArgs.nonce.toString(16)}` as `0x${string}`),
+			nonce: viemArgs.nonce !== undefined ? (`0x${viemArgs.nonce.toString(16)}` as `0x${string}`) : undefined,
 		};
 
 		let expectedAddress: `0x${string}` | undefined = undefined;
