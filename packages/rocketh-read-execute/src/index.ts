@@ -262,6 +262,45 @@ export type ExecutionArgs<
 	message?: string;
 };
 
+const NOT_SENT_AS_BLOB =
+	'rocketh sends a contract call as an EIP-1559 (type 2) transaction, which cannot carry blobs. Send the blob transaction outside rocketh';
+
+/**
+ * The options whose TYPE `execute` accepts (it is viem's `WriteContractParameters`) but which it
+ * cannot put on the transaction it sends, each with the reason and what to do instead. An option
+ * the type accepts is either honoured or refused, never silently dropped (the same rule
+ * `@rocketh/deploy` applies to its construction options).
+ *
+ * Every other option of that type is used: `functionName` and `args` are encoded, `dataSuffix` is
+ * appended to that calldata, `value`, `gas`, `nonce`, `maxFeePerGas`, `maxPriorityFeePerGas` and
+ * `accessList` go on the transaction, and `type: 'eip1559'` is what is sent (any other `type` is
+ * refused below). `gasPrice` is deliberately absent from this list: it belongs to the support for
+ * chains without EIP-1559.
+ */
+const REFUSED_EXECUTE_OPTIONS: {[field: string]: string} = {
+	authorizationList:
+		'rocketh sends a contract call as an EIP-1559 (type 2) transaction, not an EIP-7702 one. Send the delegation as its own transaction',
+	blobs: NOT_SENT_AS_BLOB,
+	blobVersionedHashes: NOT_SENT_AS_BLOB,
+	kzg: NOT_SENT_AS_BLOB,
+	sidecars: NOT_SENT_AS_BLOB,
+	maxFeePerBlobGas: NOT_SENT_AS_BLOB,
+};
+
+/** Throws for an option the execute type accepts but the transaction rocketh sends cannot carry. */
+function refuseUnsupportedExecuteOptions(functionName: string, args: {[field: string]: unknown}): void {
+	for (const [field, reason] of Object.entries(REFUSED_EXECUTE_OPTIONS)) {
+		if (args[field] !== undefined) {
+			throw new Error(`execute "${functionName}": "${field}" is not supported: ${reason}.`);
+		}
+	}
+	if (args.type !== undefined && args.type !== 'eip1559') {
+		throw new Error(
+			`execute "${functionName}": "type: ${String(args.type)}" is not supported: a contract call is sent as an EIP-1559 (type 2) transaction. Remove \`type\`.`,
+		);
+	}
+}
+
 export function execute(env: Environment): ExecuteFunction {
 	const executeImplementation = async <
 		TAbi extends Abi,
@@ -276,6 +315,8 @@ export function execute(env: Environment): ExecuteFunction {
 		args: ExecutionArgs<TAbi, TFunctionName, TArgs> & {guard?: AnyGuard},
 	): Promise<EIP1193TransactionReceipt | GuardedExecutionResult<GuardEvaluation>> => {
 		const {account, guard, ...viemArgs} = args;
+		// Refused at the call, BEFORE the guard, so the answer does not depend on chain state.
+		refuseUnsupportedExecuteOptions(String(viemArgs.functionName), viemArgs as unknown as {[field: string]: unknown});
 
 		// The guard is evaluated BEFORE anything is built. A satisfied guard therefore costs one
 		// read and reaches neither the broadcast choke point nor the unknown-signer seam behind
@@ -306,11 +347,16 @@ export function execute(env: Environment): ExecuteFunction {
 
 		const artifactToUse = deployment as unknown as Artifact<TAbi>;
 		const abi = artifactToUse.abi;
-		const calldata = encodeFunctionData<TAbi, TFunctionName>({
+		const encoded = encodeFunctionData<TAbi, TFunctionName>({
 			abi,
 			functionName: viemArgs.functionName,
 			args: viemArgs.args,
 		} as any);
+		// viem's `writeContract` appends `dataSuffix` to the calldata (e.g. an attribution tag the
+		//  contract ignores); do the same rather than dropping it.
+		const calldata = viemArgs.dataSuffix
+			? (`${encoded}${viemArgs.dataSuffix.replace(/^0x/, '')}` as `0x${string}`)
+			: encoded;
 
 		const txParam: EIP1193TransactionData = {
 			to: deployment.address,

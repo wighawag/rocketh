@@ -19,7 +19,10 @@ contract Registrar {
     /// @notice emitted when ownership moves (deployer to governance, typically)
     /// @param previousOwner the outgoing owner
     /// @param newOwner the incoming owner
-    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+    event OwnershipTransferred(
+        address indexed previousOwner,
+        address indexed newOwner
+    );
 
     /// @notice who may call the setters
     address public owner;
@@ -53,7 +56,10 @@ contract Registrar {
     ///      out-of-order execution fail loudly.
     /// @param registry_ the new registry address
     /// @param version_ must equal `version() + 1`
-    function setRegistry(address registry_, uint256 version_) external onlyOwner {
+    function setRegistry(
+        address registry_,
+        uint256 version_
+    ) external onlyOwner {
         require(version_ == version + 1, "Registrar: OUT_OF_ORDER");
         registry = registry_;
         version = version_;

@@ -585,11 +585,16 @@ export async function createEnvironment<
 	 *
 	 * `null` has to be tested before the per-network branch below, because `typeof null` is
 	 * `'object'` and it would otherwise be searched as another per-network map.
+	 *
+	 * `referenceChain` is the list of names followed so far, starting with `name`: a reference to a
+	 * name that is not in `accounts`, or back to one already on the chain, is refused by name
+	 * instead of crashing on `undefined` or recursing forever.
 	 */
 	async function getAccount(
 		name: string,
 		accounts: UnresolvedUnknownNamedAccounts,
 		accountDef: AccountType | null,
+		referenceChain: readonly string[] = [name],
 	): Promise<ResolvedAccount | null | undefined> {
 		if (accountCache[name]) {
 			return accountCache[name];
@@ -658,7 +663,23 @@ export async function createEnvironment<
 						address,
 					};
 				} else {
-					const accountFetched = await getAccount(name, accounts, accounts[accountDef]);
+					// A reference to another named account.
+					if (!Object.prototype.hasOwnProperty.call(accounts, accountDef)) {
+						throw new Error(
+							`named account "${name}" is configured as "${accountDef}", which is not an address, a private key, ` +
+								`a signer protocol ('<protocol>:...') or the name of another account in \`accounts\`.` +
+								(referenceChain.length > 1 ? ` (reference chain: ${referenceChain.join(' -> ')})` : ''),
+						);
+					}
+					if (referenceChain.includes(accountDef)) {
+						throw new Error(
+							`named account "${name}" is part of a reference cycle: ${[...referenceChain, accountDef].join(' -> ')}`,
+						);
+					}
+					const accountFetched = await getAccount(name, accounts, accounts[accountDef], [
+						...referenceChain,
+						accountDef,
+					]);
 					if (accountFetched === null) {
 						return null;
 					}
@@ -679,7 +700,7 @@ export async function createEnvironment<
 							? accountDef['default']
 							: undefined;
 			if (accountForNetwork !== undefined) {
-				const accountFetched = await getAccount(name, accounts, accountForNetwork);
+				const accountFetched = await getAccount(name, accounts, accountForNetwork, referenceChain);
 				if (accountFetched === null) {
 					return null;
 				}

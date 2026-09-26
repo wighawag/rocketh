@@ -53,8 +53,10 @@ export default deployScript(
 		}
 
 		// Expect three transactions on the upgrade run, all with the same `from` (the
-		//  multisig) and the same `to` (the shared ProxyAdmin), differing only in the
-		//  proxy address inside `data`. They may be executed in any order: unlike
+		//  multisig) and the same `to` (the shared ProxyAdmin), all calling `upgrade`, with
+		//  `data` differing in the proxy address AND in the new implementation address (each
+		//  market is constructed with its own prefix, so each has its own implementation).
+		//  They may be executed in any order: unlike
 		//  scenario 003, these upgrades are independent of each other.
 		recordPending('scenario-multi', deferred);
 	},

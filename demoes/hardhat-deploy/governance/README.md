@@ -163,7 +163,7 @@ pnpm act-as-governance scenario-multi                                  # execute
 REGISTRY_VERSION=2 pnpm deploy:dev localhost --tags scenario-multi     # converges, nothing left
 ```
 
-Three proxies behind one multisig-owned ProxyAdmin produce three deferred transactions: same `from`, same `to`, differing in the proxy address inside `data`. They are independent, so they may be executed in any order.
+Three proxies behind one multisig-owned ProxyAdmin produce three deferred transactions: same `from`, same `to`, all calling `upgrade(proxy, implementation)`. Their `data` differs in both arguments: the proxy, and the new implementation, since each market is constructed with its own prefix and so gets its own implementation contract. They are independent, so they may be executed in any order.
 
 **The trap this scenario exists to teach:** one wrapper captures ONE transaction. The error unwinds the action it was thrown inside, so everything after the deferred call in that action is skipped. Wrapping all three upgrades in a single `catchUnknownSigner` would surface the first and silently drop the other two. Wrap each step separately.
 

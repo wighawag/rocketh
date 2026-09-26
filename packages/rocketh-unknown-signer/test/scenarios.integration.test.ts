@@ -913,8 +913,11 @@ describe('@rocketh/unknown-signer - Matrix: many proxies behind one multisig-own
  * upgrading, the operator would get the pair in THAT order, and executing it would leave
  * the registrar naming an implementation the proxy is not yet running. The contract shape
  * that makes this matter (see `demoes/hardhat-deploy/governance`): `Registrar.setRegistry`
- * refuses any version that is not exactly `version() + 1`, so a pair replayed out of
- * order, or twice, reverts rather than quietly producing a wrong state.
+ * refuses any version that is not exactly `version() + 1`, so a follow-up replayed twice
+ * reverts rather than quietly producing a wrong state. It does NOT enforce the order: the
+ * registrar cannot see the proxy, so the pair executed in reverse succeeds, leaving the
+ * registrar ahead of the proxy until the upgrade lands. That half of the order is on the
+ * operator, which is exactly why the script hands the pair back in the order it matters.
  *
  * WHY THE PAIR IS IDEMPOTENT THROUGH PARTIAL EXECUTION. rocketh persists nothing between
  * runs, so "has this step already happened?" can only be answered by the chain, and each

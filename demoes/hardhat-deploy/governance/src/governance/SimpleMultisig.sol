@@ -14,7 +14,12 @@ contract SimpleMultisig {
     /// @param to the target of the call
     /// @param value the wei forwarded
     /// @param data the calldata forwarded
-    event Executed(address indexed sender, address indexed to, uint256 value, bytes data);
+    event Executed(
+        address indexed sender,
+        address indexed to,
+        uint256 value,
+        bytes data
+    );
 
     /// @notice whether an address may execute through this multisig
     mapping(address => bool) public isOwner;

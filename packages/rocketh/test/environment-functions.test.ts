@@ -236,6 +236,53 @@ describe('a null per-network account entry', () => {
 	});
 });
 
+/**
+ * A named account can be configured as the NAME of another account (`owner: 'admin'`). A name that
+ * is not in the config, or a chain of references that loops back on itself, is a configuration
+ * mistake: it is refused by name, rather than crashing with a raw `TypeError` or recursing
+ * forever. (Unlike an explicit per-network `null`, a typo must never read as "absent".)
+ */
+describe('an account that references another account by name', () => {
+	const ADMIN_ADDR = '0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266' as `0x${string}`;
+
+	it('resolves to the referenced account', async () => {
+		const {env} = await buildEnv({
+			accounts: {admin: ADMIN_ADDR, owner: 'admin'},
+			nodeAccounts: [ADMIN_ADDR],
+		});
+		expect(env.namedAccounts.owner).toBe(ADMIN_ADDR);
+	});
+
+	it('refuses a reference to a name that is not in the config, naming both', async () => {
+		await expect(
+			buildEnv({accounts: {owner: 'nosuchname'}, nodeAccounts: [ADMIN_ADDR], environment: 'localhost'}),
+		).rejects.toThrow(
+			/named account "owner" is configured as "nosuchname", which is not .* another account in `accounts`/,
+		);
+	});
+
+	it('refuses an unknown name reached through a per-network map, with the reference chain', async () => {
+		await expect(
+			buildEnv({
+				accounts: {owner: 'admin', admin: {default: 'nosuchname'}},
+				nodeAccounts: [ADMIN_ADDR],
+			}),
+		).rejects.toThrow(/named account "owner" is configured as "nosuchname", .*\(reference chain: owner -> admin\)/);
+	});
+
+	it('refuses a reference cycle instead of recursing forever', async () => {
+		await expect(buildEnv({accounts: {a: 'b', b: 'a'}, nodeAccounts: [ADMIN_ADDR]})).rejects.toThrow(
+			'named account "a" is part of a reference cycle: a -> b -> a',
+		);
+	});
+
+	it('refuses a self-reference', async () => {
+		await expect(buildEnv({accounts: {a: 'a'}, nodeAccounts: [ADMIN_ADDR]})).rejects.toThrow(
+			'named account "a" is part of a reference cycle: a -> a',
+		);
+	});
+});
+
 describe('save and get', () => {
 	it('saves a deployment and retrieves it by name', async () => {
 		const {env} = await buildEnv({accounts: {deployer: NAMED_ADDR}, nodeAccounts: [NAMED_ADDR]});

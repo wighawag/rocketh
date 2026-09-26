@@ -630,6 +630,20 @@ export default deployScript(
 );
 ```
 
+**`env.tags.live` only works once you declare the tag.** rocketh has no built-in `live`: its only default tag is `testnet`, for a chain its chain information marks as a testnet. Without a declaration `env.tags.live` is falsy on every network, mainnet included, and the script above would deploy behind a proxy in production. v1's `live` was false for `hardhat` and `localhost` and true everywhere else, so tag every chain you deploy to for real in `rocketh/config.ts`:
+
+```typescript
+export const config = {
+	// ...
+	chains: {
+		1: {tags: ['live']},
+		11155111: {tags: ['live', 'testnet']},
+	},
+} as const satisfies UserConfig;
+```
+
+Declaring `tags` for a chain replaces its default tags, so list `testnet` again where a script also relies on it.
+
 ### Step 5: Update Tests
 
 v2 uses a different pattern for test fixtures.
@@ -1307,7 +1321,7 @@ Use this checklist to verify your migration is complete and working correctly.
 - [ ] Removed `log:` and `autoMine:` parameters
 - [ ] Moved tags to second argument object
 - [ ] Converted proxy deployments to use `env.deployViaProxy()`
-- [ ] Updated `hre.network.live` to `env.tags.live`
+- [ ] Updated `hre.network.live` to `env.tags.live`, and declared the `live` tag on every real chain in `rocketh/config.ts` (rocketh has no built-in `live` tag)
 - [ ] Imported artifacts from `../rocketh/deploy.js`
 
 ### Phase 4: Tests
