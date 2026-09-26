@@ -260,25 +260,25 @@ Every member of v1's `hre.deployments` (plus the other HRE additions), and where
 
 ## Deploy and transaction options
 
-| v1 option                                                | rocketh                                                                               |                                                                         |
-| -------------------------------------------------------- | ------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| `from`                                                   | `account`, in the first object                                                        | same, renamed                                                           |
-| `args`                                                   | `args`, typed from the artifact                                                       | same                                                                    |
-| `contract` (an artifact by name, or inline)              | `artifact: artifacts.Name`, always explicit                                           | replaced                                                                |
-| `skipIfAlreadyDeployed`, `linkedData`, `libraries`       | the same, in the options (third argument)                                             | same; `libraries` next to `args` does not compile                       |
-| `deterministicDeployment: true \| salt`                  | `deterministic: true \| salt \| {type: 'create2' \| 'create3', salt}`, in the options | same, and wider                                                         |
-| `gasLimit`                                               | `gas`                                                                                 | same, renamed                                                           |
-| `maxFeePerGas`, `maxPriorityFeePerGas`, `value`, `nonce` | the same                                                                              | same                                                                    |
-| `gasPrice` (legacy, pre-EIP-1559 transactions)           | nothing: every transaction rocketh builds is EIP-1559                                 | not supported yet. A chain without EIP-1559 cannot be deployed to today |
-| `customData`                                             | nothing                                                                               | not supported                                                           |
-| `log`                                                    | nothing per call; verbosity is run-level (`--log-level` on the `rocketh` CLI)         | not supported per call                                                  |
-| `autoMine`                                               | `autoMine` per chain in `rocketh/config.ts`, or per run                               | not supported per call                                                  |
-| `waitConfirmations`                                      | `confirmationsRequired` per chain in `rocketh/config.ts`                              | not supported per call                                                  |
-| `estimatedGasLimit`, `estimateGasExtra`                  | nothing                                                                               | not supported                                                           |
+| v1 option                                                | rocketh                                                                               |                                                                                |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `from`                                                   | `account`, in the first object                                                        | same, renamed                                                                  |
+| `args`                                                   | `args`, typed from the artifact                                                       | same                                                                           |
+| `contract` (an artifact by name, or inline)              | `artifact: artifacts.Name`, always explicit                                           | replaced                                                                       |
+| `skipIfAlreadyDeployed`, `linkedData`, `libraries`       | the same, in the options (third argument)                                             | same; `libraries` next to `args` does not compile                              |
+| `deterministicDeployment: true \| salt`                  | `deterministic: true \| salt \| {type: 'create2' \| 'create3', salt}`, in the options | same, and wider                                                                |
+| `gasLimit`                                               | `gas`                                                                                 | same, renamed                                                                  |
+| `maxFeePerGas`, `maxPriorityFeePerGas`, `value`, `nonce` | the same                                                                              | same                                                                           |
+| `gasPrice` (legacy, pre-EIP-1559 transactions)           | `gasPrice` on `deploy`, `execute` and `tx`, or `transactionType: 'legacy'` per chain  | same, see [Chains without EIP-1559](../core-concepts/#chains-without-eip-1559) |
+| `customData`                                             | nothing                                                                               | not supported                                                                  |
+| `log`                                                    | nothing per call; verbosity is run-level (`--log-level` on the `rocketh` CLI)         | not supported per call                                                         |
+| `autoMine`                                               | `autoMine` per chain in `rocketh/config.ts`, or per run                               | not supported per call                                                         |
+| `waitConfirmations`                                      | `confirmationsRequired` per chain in `rocketh/config.ts`                              | not supported per call                                                         |
+| `estimatedGasLimit`, `estimateGasExtra`                  | nothing                                                                               | not supported                                                                  |
 
 ## Diamonds {#diamonds}
 
-`diamond.deploy` is `diamond` from `@rocketh/diamond`. `facets` are artifact objects rather than names; `facetsArgs`, `excludeSelectors`, `defaultCutFacet`, `defaultOwnershipFacet`, `owner`, `execute`, `deterministicSalt`, `diamondContractArgs`, `libraries` and `linkedData` carry over. `execute` still rides every cut, as in v1, and there is no `{init, onUpgrade}` split for diamonds. Not supported: `diamondContract` (replacing the base diamond artifact), and cutting a diamond deployed by an older hardhat-deploy through its legacy base. `upgradeIndex` is not accepted by `diamond` today: unlike `deployViaProxy`, it has no ordered-upgrade guard.
+`diamond.deploy` is `diamond` from `@rocketh/diamond`. `facets` are artifact objects rather than names; `facetsArgs`, `excludeSelectors`, `defaultCutFacet`, `defaultOwnershipFacet`, `owner`, `execute`, `deterministicSalt`, `diamondContractArgs`, `libraries` and `linkedData` carry over. `execute` still rides every cut, as in v1, and there is no `{init, onUpgrade}` split for diamonds. Not supported: `diamondContract` (replacing the base diamond artifact), cutting a diamond deployed by an older hardhat-deploy through its legacy base, and `upgradeIndex` (unlike `deployViaProxy`, `diamond` has no ordered-upgrade guard; gate a later cut on chain state in your script instead).
 
 ## Tags, dependencies, run-once scripts
 
