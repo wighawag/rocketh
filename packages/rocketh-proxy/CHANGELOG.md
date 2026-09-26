@@ -1,5 +1,18 @@
 # @rocketh/proxy
 
+## 0.20.0
+
+### Minor Changes
+
+- 6cd8beb: Bring your own ProxyAdmin and your own upgrade call: `proxyAdminArtifact` (with `proxyAdminName`) on the `SharedAdmin*` and `custom` proxy kinds deploys or reuses an admin contract of your own, and `upgradeFunction: {methodName, args}` names the upgrade method and its `{proxy}` / `{implementation}` / `{data}` / `{admin}` argument template.
+
+### Patch Changes
+
+- Updated dependencies [66fc44f]
+  - @rocketh/core@0.23.0
+  - @rocketh/deploy@0.20.0
+  - @rocketh/read-execute@0.21.0
+
 ## 0.19.29
 
 ### Patch Changes
