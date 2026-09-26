@@ -60,13 +60,19 @@
 		"node": ">=22.0.0"
 	},
 	"devDependencies": {
+		"@rocketh/deploy": "workspace:*",
+		"@rocketh/diamond": "workspace:*",
 		"@rocketh/node": "workspace:*",
+		"@rocketh/proxy": "workspace:*",
+		"@rocketh/read-execute": "workspace:*",
+		"@rocketh/test-utils": "workspace:*",
 		"@types/node": "^26.2.0",
 		"as-soon": "^0.1.6",
 		"hardhat": "^3.12.0",
 		"rimraf": "^6.1.3",
 		"rocketh": "workspace:*",
 		"typescript": "^6.0.3",
+		"viem": "^2.55.13",
 		"vitest": "^4.1.11"
 	},
 	"peerDependencies": {

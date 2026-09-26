@@ -1056,71 +1056,60 @@ main().catch((error) => {
 
 ## Common Patterns & Examples
 
-### Pattern 1: Simple Contract Deployment
+Every pattern in this section is a **migration pair**: a hardhat-deploy v1 script and its port, kept side by side in the rocketh repository under [`packages/hardhat-deploy/test/migration-pairs/`](https://github.com/wighawag/rocketh/tree/main/packages/hardhat-deploy/test/migration-pairs). The port (the v2 half) is compiled by the repository's `pnpm typecheck` and run by its `pnpm test`, and each test checks an outcome a reader cares about: the contract that was deployed, WHICH proxy contract landed, the upgrade call that was sent. The v1 half is reference text, checked option by option against the hardhat-deploy v1.0.4 source. The code blocks below ARE those files: a test fails when a block here and its file differ. Copy from them with confidence, and when one looks wrong, the file is what to fix.
 
-**v1**:
+The pairs assume the project layout of Step 2: `rocketh/deploy.ts` exports `deployScript` and `artifacts`, and `rocketh/config.ts` spreads these extensions (Pattern 10 shows the file in full):
 
-```typescript
-module.exports = async ({getNamedAccounts, deployments}) => {
+- `@rocketh/deploy` for `deploy`
+- `@rocketh/read-execute` for `read`, `execute`, `readByName`, `executeByName`
+- `@rocketh/proxy` for `deployViaProxy`
+- `@rocketh/diamond` for `diamond` (the template's config does not include it: add it if you have diamonds)
+
+A comment in a v2 half that names the v1 spelling (`// was \`from\``) marks a translation rule.
+
+### Pattern 1: Contract deployment with constructor arguments and named accounts
+
+**v1** (`deploy/01_token.v1.ts`):
+
+<!-- migration-pair: deploy/01_token.v1.ts -->
+
+```ts
+// deploy/01_token.ts (hardhat-deploy v1)
+import {HardhatRuntimeEnvironment} from 'hardhat/types';
+import {DeployFunction} from 'hardhat-deploy/types';
+import {parseEther} from 'ethers/lib/utils';
+
+const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
+	const {deployments, getNamedAccounts} = hre;
 	const {deploy} = deployments;
-	const {deployer} = await getNamedAccounts();
+	const {deployer, tokenOwner} = await getNamedAccounts();
 
-	await deploy('MyContract', {
+	await deploy('Token', {
 		from: deployer,
-		args: ['Hello'],
+		args: [tokenOwner, parseEther('1000000'), 'My Token', 'MTK'],
 		log: true,
 	});
 };
-module.exports.tags = ['MyContract'];
+export default func;
+func.tags = ['Token'];
 ```
 
-**v2**:
+**v2** (`deploy/01_token.ts`):
 
-```typescript
-import {deployScript, artifacts} from '../rocketh/deploy.js';
+<!-- migration-pair: deploy/01_token.ts -->
 
-export default deployScript(
-	async ({deploy, namedAccounts}) => {
-		const {deployer} = namedAccounts;
-
-		await deploy('MyContract', {
-			account: deployer,
-			artifact: artifacts.MyContract,
-			args: ['Hello'],
-		});
-	},
-	{tags: ['MyContract']},
-);
-```
-
-### Pattern 2: Contract Deployment with Constructor Arguments
-
-**v1**:
-
-```typescript
-const {deploy} = deployments;
-const {deployer, tokenOwner} = await getNamedAccounts();
-
-await deploy('Token', {
-	from: deployer,
-	args: [tokenOwner, ethers.utils.parseEther('1000000'), 'My Token', 'MTK'],
-	log: true,
-});
-```
-
-**v2**:
-
-```typescript
-import {deployScript, artifacts} from '../rocketh/deploy.js';
+```ts
+// deploy/01_token.ts (rocketh)
 import {parseEther} from 'viem';
+import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(
 	async ({deploy, namedAccounts}) => {
 		const {deployer, tokenOwner} = namedAccounts;
 
 		await deploy('Token', {
-			account: deployer,
-			artifact: artifacts.Token,
+			account: deployer, // was `from`
+			artifact: artifacts.Token, // was implied by the name 'Token'
 			args: [tokenOwner, parseEther('1000000'), 'My Token', 'MTK'],
 		});
 	},
@@ -1128,165 +1117,671 @@ export default deployScript(
 );
 ```
 
-### Pattern 3: Proxy Deployment
+**Rules**: the script is a `deployScript(callback, {tags, dependencies, id})` call instead of a function with `func.tags` attached; named accounts come from `namedAccounts` on the environment instead of `await getNamedAccounts()`; `from` is `account`; the artifact is passed explicitly (v1's `contract: 'Name'`, or the deployment name, becomes `artifact: artifacts.Name`); `log` is gone (verbosity is `--log-level` for the whole run); amounts are `bigint`, and `parseEther` comes from `viem`.
 
-**v1**:
+### Pattern 2: Linked libraries
 
-```typescript
-await deploy('MyContract', {
-	from: deployer,
-	proxy: {
-		proxyContract: 'OpenZeppelinTransparentProxy',
-		viaAdminContract: 'DefaultProxyAdmin',
-	},
-	args: [initArg],
-	log: true,
-});
+**v1** (`deploy/02_calculator.v1.ts`):
+
+<!-- migration-pair: deploy/02_calculator.v1.ts -->
+
+```ts
+// deploy/02_calculator.ts (hardhat-deploy v1)
+import {HardhatRuntimeEnvironment} from 'hardhat/types';
+import {DeployFunction} from 'hardhat-deploy/types';
+
+const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
+	const {deployments, getNamedAccounts} = hre;
+	const {deploy} = deployments;
+	const {deployer} = await getNamedAccounts();
+
+	const mathLib = await deploy('MathLib', {from: deployer, log: true});
+
+	await deploy('Calculator', {
+		from: deployer,
+		args: [10],
+		libraries: {MathLib: mathLib.address},
+		log: true,
+	});
+};
+export default func;
+func.tags = ['Calculator'];
 ```
 
-**v2**:
+**v2** (`deploy/02_calculator.ts`):
 
-```typescript
+<!-- migration-pair: deploy/02_calculator.ts -->
+
+```ts
+// deploy/02_calculator.ts (rocketh)
+import {deployScript, artifacts} from '../rocketh/deploy.js';
+
+export default deployScript(
+	async ({deploy, namedAccounts}) => {
+		const {deployer} = namedAccounts;
+
+		const mathLib = await deploy('MathLib', {account: deployer, artifact: artifacts.MathLib});
+
+		await deploy(
+			'Calculator',
+			{account: deployer, artifact: artifacts.Calculator, args: [10n]},
+			// `libraries` moved out of the first object into the options, the third argument
+			{libraries: {MathLib: mathLib.address}},
+		);
+	},
+	{tags: ['Calculator']},
+);
+```
+
+**Rule**: `libraries` moves out of the first object into the OPTIONS, the third argument of `deploy`. Left next to `args`, it does not compile.
+
+### Pattern 3: Deterministic (create2) deployment
+
+**v1** (`deploy/03_registry.v1.ts`):
+
+<!-- migration-pair: deploy/03_registry.v1.ts -->
+
+```ts
+// deploy/03_registry.ts (hardhat-deploy v1)
+import {HardhatRuntimeEnvironment} from 'hardhat/types';
+import {DeployFunction} from 'hardhat-deploy/types';
+
+const SALT = '0x0000000000000000000000000000000000000000000000000000000000000001';
+
+const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
+	const {deployments, getNamedAccounts} = hre;
+	const {deploy} = deployments;
+	const {deployer} = await getNamedAccounts();
+
+	await deploy('Registry', {
+		from: deployer,
+		deterministicDeployment: SALT, // or `true` for the zero salt
+		log: true,
+	});
+};
+export default func;
+func.tags = ['Registry'];
+```
+
+**v2** (`deploy/03_registry.ts`):
+
+<!-- migration-pair: deploy/03_registry.ts -->
+
+```ts
+// deploy/03_registry.ts (rocketh)
+import {deployScript, artifacts} from '../rocketh/deploy.js';
+
+const SALT = '0x0000000000000000000000000000000000000000000000000000000000000001';
+
+export default deployScript(
+	async ({deploy, namedAccounts}) => {
+		const {deployer} = namedAccounts;
+
+		await deploy(
+			'Registry',
+			{account: deployer, artifact: artifacts.Registry},
+			// `deterministicDeployment` is now `deterministic`, in the options: `true`, a salt,
+			// or `{type: 'create2' | 'create3', salt}`
+			{deterministic: SALT},
+		);
+	},
+	{tags: ['Registry']},
+);
+```
+
+**Rules**: `deterministicDeployment` becomes `deterministic`, in the options (third argument). It accepts `true` (the zero salt), a 32-byte salt, or `{type: 'create2' | 'create3', salt}`. v1's `deployments.deterministic(name, options)`, which returned the address BEFORE deploying, has no rocketh equivalent: `deploy` with `deterministic` broadcasts.
+
+### Pattern 4: Proxies, the five built-in kinds
+
+Three of the five built-in proxy names CHANGED, and a mistake here does not fail loudly. A name outside rocketh's set throws `unknown proxy contract <name>`, but only when the script RUNS; and a port that LOSES the option (drops it, or puts the kind under a key that does not exist) gets the default, `ERC173Proxy`: a different contract, with no ProxyAdmin, deployed without complaint. There is no `proxyKind` option (an earlier version of this skill taught one; TypeScript rejects it, and silencing that error yields the default proxy). Translate the name with this table:
+
+| v1 `proxy.proxyContract`       | rocketh `proxyContract`                   | contract deployed                      | admin                                                | pair (v1 / v2)                                                                               |
+| ------------------------------ | ----------------------------------------- | -------------------------------------- | ---------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `EIP173Proxy` (the v1 default) | `ERC173Proxy` (the rocketh default)       | `EIP173Proxy`                          | the `owner` option, else the deployer; no ProxyAdmin | `deploy/04a_proxy_erc173.v1.ts` / `deploy/04a_proxy_erc173.ts`                               |
+| `EIP173ProxyWithReceive`       | `ERC173ProxyWithReceive`                  | `EIP173ProxyWithReceive`               | as above                                             | `deploy/04b_proxy_erc173_with_receive.v1.ts` / `deploy/04b_proxy_erc173_with_receive.ts`     |
+| `UUPS`                         | `UUPS`                                    | `ERC1967Proxy`                         | none: the implementation carries the upgrade logic   | `deploy/04c_proxy_uups.v1.ts` / `deploy/04c_proxy_uups.ts`                                   |
+| `OpenZeppelinTransparentProxy` | `SharedAdminOpenZeppelinTransparentProxy` | `TransparentUpgradeableProxy`          | the shared `DefaultProxyAdmin`, owned by the owner   | `deploy/04d_proxy_transparent.v1.ts` / `deploy/04d_proxy_transparent.ts`                     |
+| `OptimizedTransparentProxy`    | `SharedAdminOptimizedTransparentProxy`    | `OptimizedTransparentUpgradeableProxy` | the shared `DefaultProxyAdmin`, owned by the owner   | `deploy/04e_proxy_optimized_transparent.v1.ts` / `deploy/04e_proxy_optimized_transparent.ts` |
+
+The transparent proxy, in full:
+
+**v1** (`deploy/04d_proxy_transparent.v1.ts`):
+
+<!-- migration-pair: deploy/04d_proxy_transparent.v1.ts -->
+
+```ts
+// deploy/04d_proxy_transparent.ts (hardhat-deploy v1)
+import {HardhatRuntimeEnvironment} from 'hardhat/types';
+import {DeployFunction} from 'hardhat-deploy/types';
+
+const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
+	const {deployments, getNamedAccounts} = hre;
+	const {deploy} = deployments;
+	const {deployer} = await getNamedAccounts();
+
+	await deploy('GreetingsRegistry', {
+		from: deployer,
+		args: ['hello: '],
+		proxy: {
+			proxyContract: 'OpenZeppelinTransparentProxy',
+			viaAdminContract: 'DefaultProxyAdmin',
+		},
+		log: true,
+	});
+};
+export default func;
+func.tags = ['GreetingsRegistry'];
+```
+
+**v2** (`deploy/04d_proxy_transparent.ts`):
+
+<!-- migration-pair: deploy/04d_proxy_transparent.ts -->
+
+```ts
+// deploy/04d_proxy_transparent.ts (rocketh)
+import {deployScript, artifacts} from '../rocketh/deploy.js';
+
+export default deployScript(
+	async ({deployViaProxy, namedAccounts}) => {
+		const {deployer} = namedAccounts;
+
+		await deployViaProxy(
+			'GreetingsRegistry',
+			{account: deployer, artifact: artifacts.GreetingsRegistry, args: ['hello: ']},
+			{
+				// v1 'OpenZeppelinTransparentProxy', renamed. It implies the shared `DefaultProxyAdmin`
+				// that v1's `viaAdminContract` named; `{type: '...', proxyAdminName}` picks another name.
+				proxyContract: 'SharedAdminOpenZeppelinTransparentProxy',
+			},
+		);
+	},
+	{tags: ['GreetingsRegistry']},
+);
+```
+
+**Rules**:
+
+- A v1 `deploy(name, {..., proxy})` becomes `deployViaProxy(name, {account, artifact, args}, options)`: the contents of `proxy` move to the third argument. `proxy: true` is `deployViaProxy` with no options. `proxy: 'methodName'` (and `proxy: {methodName}`) is `{execute: 'methodName'}`.
+- `viaAdminContract: 'DefaultProxyAdmin'` is implied by the two `SharedAdmin*` names. A different admin deployment NAME is `proxyContract: {type: 'SharedAdminOpenZeppelinTransparentProxy', proxyAdminName: 'MyAdmin'}`. A custom admin ARTIFACT is not supported.
+- A user's own proxy artifact, which v1 looked up by NAME in `proxyContract`, is `proxyContract: {type: 'custom', artifact, args}`; `args` takes v1's `proxyArgs` template (`'{implementation}'`, `'{admin}'`, `'{data}'`).
+- Not supported: `implementationName` (the implementation is always recorded as `<name>_Implementation`) and `upgradeFunction` (rocketh picks `upgradeTo` / `upgradeToAndCall`, or `upgrade` / `upgradeAndCall` through a ProxyAdmin).
+
+### Pattern 5: Proxy initialization and upgrade calls, `execute: {init, onUpgrade}`
+
+**v1** (`deploy/05_vault.v1.ts`):
+
+<!-- migration-pair: deploy/05_vault.v1.ts -->
+
+```ts
+// deploy/05_vault.ts (hardhat-deploy v1)
+import {HardhatRuntimeEnvironment} from 'hardhat/types';
+import {DeployFunction} from 'hardhat-deploy/types';
+
+const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
+	const {deployments, getNamedAccounts} = hre;
+	const {deploy} = deployments;
+	const {deployer} = await getNamedAccounts();
+
+	await deploy('Vault', {
+		from: deployer,
+		proxy: {
+			execute: {
+				init: {methodName: 'initialize', args: [deployer]}, // on the first deployment
+				onUpgrade: {methodName: 'migrate', args: [2]}, // on every later upgrade
+			},
+		},
+		log: true,
+	});
+};
+export default func;
+func.tags = ['Vault'];
+```
+
+**v2** (`deploy/05_vault.ts`):
+
+<!-- migration-pair: deploy/05_vault.ts -->
+
+```ts
+// deploy/05_vault.ts (rocketh)
+import {deployScript, artifacts} from '../rocketh/deploy.js';
+
+export default deployScript(
+	async ({deployViaProxy, namedAccounts}) => {
+		const {deployer} = namedAccounts;
+
+		await deployViaProxy(
+			'Vault',
+			{account: deployer, artifact: artifacts.Vault},
+			{
+				// unchanged from v1, one level up: `execute` sits directly in the options, not under `proxy`
+				execute: {
+					init: {methodName: 'initialize', args: [deployer]}, // on the first deployment
+					onUpgrade: {methodName: 'migrate', args: [2n]}, // on every later upgrade
+				},
+			},
+		);
+	},
+	{tags: ['Vault']},
+);
+```
+
+**Rules**: the same semantics: `init` is encoded into the proxy's constructor on the first deployment; when the script runs again after the implementation changed, the proxy is upgraded with `upgradeToAndCall(newImplementation, onUpgrade call)`. rocketh also accepts a bare method name for `init` / `onUpgrade`, and an omitted `args` (then the implementation's `args` are used); v1 required the `{methodName, args}` object.
+
+### Pattern 6: Ordered upgrades with `upgradeIndex`
+
+The first step is `deploy/06a_treasury.v1.ts` / `deploy/06a_treasury.ts` (`upgradeIndex: 0`, the `Treasury` artifact); the second, in full:
+
+**v1** (`deploy/06b_treasury_upgrade.v1.ts`):
+
+<!-- migration-pair: deploy/06b_treasury_upgrade.v1.ts -->
+
+```ts
+// deploy/06b_treasury_upgrade.ts (hardhat-deploy v1)
+import {HardhatRuntimeEnvironment} from 'hardhat/types';
+import {DeployFunction} from 'hardhat-deploy/types';
+
+const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
+	const {deployments, getNamedAccounts} = hre;
+	const {deploy} = deployments;
+	const {deployer} = await getNamedAccounts();
+
+	await deploy('Treasury', {
+		from: deployer,
+		contract: 'TreasuryV2',
+		args: [5000],
+		proxy: {upgradeIndex: 1}, // step 1: the first upgrade, applied once, after step 0
+		log: true,
+	});
+};
+export default func;
+func.tags = ['Treasury'];
+```
+
+**v2** (`deploy/06b_treasury_upgrade.ts`):
+
+<!-- migration-pair: deploy/06b_treasury_upgrade.ts -->
+
+```ts
+// deploy/06b_treasury_upgrade.ts (rocketh)
+import {deployScript, artifacts} from '../rocketh/deploy.js';
+
+export default deployScript(
+	async ({deployViaProxy, namedAccounts}) => {
+		const {deployer} = namedAccounts;
+
+		await deployViaProxy(
+			'Treasury',
+			{account: deployer, artifact: artifacts.TreasuryV2, args: [5000n]}, // `contract: 'TreasuryV2'`
+			{upgradeIndex: 1}, // step 1: the first upgrade, applied once, after step 0
+		);
+	},
+	{tags: ['Treasury']},
+);
+```
+
+**Rules**: `upgradeIndex` moves to the options unchanged, and `contract: 'TreasuryV2'` becomes `artifact: artifacts.TreasuryV2`. A step that already ran is skipped; a step whose predecessor has not run throws. rocketh counts steps with the record's `numDeployments` only: it keeps no `history`.
+
+### Pattern 7: Diamonds: deploy, then cut by editing the facet list
+
+**v1** (`deploy/07a_diamond.v1.ts`):
+
+<!-- migration-pair: deploy/07a_diamond.v1.ts -->
+
+```ts
+// deploy/07_diamond.ts (hardhat-deploy v1)
+import {HardhatRuntimeEnvironment} from 'hardhat/types';
+import {DeployFunction} from 'hardhat-deploy/types';
+
+const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
+	const {deployments, getNamedAccounts} = hre;
+	const {diamond} = deployments;
+	const {deployer} = await getNamedAccounts();
+
+	await diamond.deploy('Diamond', {
+		from: deployer,
+		owner: deployer,
+		facets: ['ERC20Facet'],
+		// runs with the deployment, and again with every later cut
+		execute: {methodName: 'initialize', args: ['Diamond Token', 'DMT']},
+		log: true,
+	});
+};
+export default func;
+func.tags = ['Diamond'];
+```
+
+**v2** (`deploy/07a_diamond.ts`):
+
+<!-- migration-pair: deploy/07a_diamond.ts -->
+
+```ts
+// deploy/07_diamond.ts (rocketh)
+import {deployScript, artifacts} from '../rocketh/deploy.js';
+
+export default deployScript(
+	async ({diamond, namedAccounts}) => {
+		const {deployer} = namedAccounts;
+
+		await diamond(
+			'Diamond',
+			{account: deployer},
+			{
+				owner: deployer,
+				facets: [{artifact: artifacts.ERC20Facet}],
+				// runs with the deployment, and again with every later cut
+				execute: {type: 'facet', functionName: 'initialize', args: ['Diamond Token', 'DMT']},
+			},
+		);
+	},
+	{tags: ['Diamond']},
+);
+```
+
+A cut is the same script with the facet list edited and re-run, in both versions: `deploy/07b_diamond_with_new_facet.v1.ts` / `deploy/07b_diamond_with_new_facet.ts` add `PausableFacet`, and the re-run sends one `diamondCut` that adds its selectors.
+
+**Rules**: `diamond.deploy(name, {from, ...})` becomes `diamond(name, {account}, {...})`; facets by name become `{artifact}` objects (with optional `args`, `libraries`, `linkedData`, `deterministic`); `execute: {methodName, args}` becomes `{type: 'facet', functionName, args}` (v1's `execute.contract`, an init contract, becomes `{type: 'artifact', artifact, functionName, args}`). As in v1, `execute` rides EVERY cut, not just the first deployment, and there is no `{init, onUpgrade}` split for diamonds. `diamondContract` (a replacement base diamond) is not supported.
+
+### Pattern 8: `execute` and `read` by deployment name
+
+**v1** (`deploy/08_greeter.v1.ts`):
+
+<!-- migration-pair: deploy/08_greeter.v1.ts -->
+
+```ts
+// deploy/08_greeter.ts (hardhat-deploy v1)
+import {HardhatRuntimeEnvironment} from 'hardhat/types';
+import {DeployFunction} from 'hardhat-deploy/types';
+
+const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
+	const {deployments, getNamedAccounts} = hre;
+	const {deploy, execute, read} = deployments;
+	const {deployer} = await getNamedAccounts();
+
+	await deploy('Greeter', {from: deployer, args: ['hi'], log: true});
+
+	const greeting = await read('Greeter', 'greet');
+	if (greeting !== 'hello') {
+		await execute('Greeter', {from: deployer, log: true}, 'setGreeting', 'hello');
+	}
+};
+export default func;
+func.tags = ['Greeter'];
+```
+
+**v2** (`deploy/08_greeter.ts`):
+
+<!-- migration-pair: deploy/08_greeter.ts -->
+
+```ts
+// deploy/08_greeter.ts (rocketh)
+import {deployScript, artifacts} from '../rocketh/deploy.js';
+
+export default deployScript(
+	async ({deploy, get, read, execute, namedAccounts}) => {
+		const {deployer} = namedAccounts;
+
+		await deploy('Greeter', {account: deployer, artifact: artifacts.Greeter, args: ['hi']});
+
+		// `read` and `execute` take the DEPLOYMENT; `get` it by name, typed by its ABI.
+		// (`readByName` / `executeByName` take the name directly, untyped.)
+		const greeter = get<typeof artifacts.Greeter.abi>('Greeter');
+
+		const greeting = await read(greeter, {functionName: 'greet'});
+		if (greeting !== 'hello') {
+			await execute(greeter, {account: deployer, functionName: 'setGreeting', args: ['hello']});
+		}
+	},
+	{tags: ['Greeter']},
+);
+```
+
+**Rules**:
+
+- v1's positional `execute(name, {from}, 'method', ...args)` becomes `execute(deployment, {account, functionName: 'method', args: [...]})`, and `read(name, 'method', ...args)` becomes `read(deployment, {functionName: 'method', args: [...]})`.
+- `deployments.get(name)` / `getOrNull(name)` become `get` / `getOrNull` on the environment, typed by ABI: `get<typeof artifacts.Greeter.abi>('Greeter')`, or with the generated `Abi_Greeter` type from `generated/abis/Greeter.js`. `deployments.all()` is `env.deployments`.
+- `rawTx(tx)` is `tx(tx)` from `@rocketh/read-execute`. `ethers.getContract(...)` came from the separate `hardhat-deploy-ethers` plugin, not from v1 itself: use `get` with `read` / `execute`, or `@rocketh/viem`.
+
+### Pattern 9: Run-once scripts, and the replacement for `skip`
+
+**v1** (`deploy/09_seed_deployer_balance.v1.ts`):
+
+<!-- migration-pair: deploy/09_seed_deployer_balance.v1.ts -->
+
+```ts
+// deploy/09_seed_deployer_balance.ts (hardhat-deploy v1)
+import {HardhatRuntimeEnvironment} from 'hardhat/types';
+import {DeployFunction} from 'hardhat-deploy/types';
+import {parseEther} from 'ethers/lib/utils';
+
+const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
+	const {deployments, getNamedAccounts} = hre;
+	const {execute} = deployments;
+	const {deployer, tokenOwner} = await getNamedAccounts();
+
+	await execute('Token', {from: tokenOwner, log: true}, 'transfer', deployer, parseEther('100'));
+
+	return true; // records `func.id`: this script never runs again on this network
+};
+export default func;
+func.id = 'seed_deployer_balance';
+func.tags = ['Seed'];
+func.dependencies = ['Token'];
+```
+
+**v2** (`deploy/09_seed_deployer_balance.ts`):
+
+<!-- migration-pair: deploy/09_seed_deployer_balance.ts -->
+
+```ts
+// deploy/09_seed_deployer_balance.ts (rocketh)
+import {parseEther} from 'viem';
+import {deployScript, artifacts} from '../rocketh/deploy.js';
+
+export default deployScript(
+	async ({execute, get, namedAccounts}) => {
+		const {deployer, tokenOwner} = namedAccounts;
+
+		await execute(get<typeof artifacts.Token.abi>('Token'), {
+			account: tokenOwner,
+			functionName: 'transfer',
+			args: [deployer, parseEther('100')],
+		});
+
+		return true; // records the `id`: this script never runs again on this environment
+	},
+	{id: 'seed_deployer_balance', tags: ['Seed'], dependencies: ['Token']},
+);
+```
+
+**v1** (`deploy/10_faucet.v1.ts`):
+
+<!-- migration-pair: deploy/10_faucet.v1.ts -->
+
+```ts
+// deploy/10_faucet.ts (hardhat-deploy v1)
+import {HardhatRuntimeEnvironment} from 'hardhat/types';
+import {DeployFunction} from 'hardhat-deploy/types';
+
+const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
+	const {deployments, getNamedAccounts} = hre;
+	const {deploy, get} = deployments;
+	const {faucetOwner} = await getNamedAccounts();
+
+	const token = await get('Token');
+	await deploy('Faucet', {from: faucetOwner, args: [token.address], log: true});
+};
+export default func;
+func.tags = ['Faucet'];
+func.dependencies = ['Token'];
+// no faucet where `faucetOwner` is null (mainnet, see the named accounts)
+func.skip = async (hre: HardhatRuntimeEnvironment) => !(await hre.getNamedAccounts()).faucetOwner;
+```
+
+**v2** (`deploy/10_faucet.ts`):
+
+<!-- migration-pair: deploy/10_faucet.ts -->
+
+```ts
+// deploy/10_faucet.ts (rocketh)
+import {deployScript, artifacts} from '../rocketh/deploy.js';
+
+export default deployScript(
+	async ({deploy, get, namedAccounts}) => {
+		const {faucetOwner} = namedAccounts;
+		// no faucet where `faucetOwner` is null (mainnet, see the named accounts)
+		if (!faucetOwner) {
+			return; // what v1's `func.skip` returning true did: rocketh has no `skip` hook
+		}
+
+		await deploy('Faucet', {account: faucetOwner, artifact: artifacts.Faucet, args: [get('Token').address]});
+	},
+	{tags: ['Faucet'], dependencies: ['Token']},
+);
+```
+
+**Rules**:
+
+- `func.id` moves into the options (`{id: '...'}`), and `return true` still records it: later runs against the same environment skip the whole script. Never reach `return true` on a path where a step was deferred (see the rocketh documentation, "Script lifecycle").
+- rocketh has no `skip` hook, and it IGNORES one rather than refusing it: a ported `func.skip` silently stops working. Return early from the script body instead.
+
+### Pattern 10: Named accounts per network, and `null`
+
+**v1** (`hardhat.config.v1.ts`):
+
+<!-- migration-pair: hardhat.config.v1.ts -->
+
+```ts
+// hardhat.config.ts (hardhat-deploy v1), the named accounts only
+import {HardhatUserConfig} from 'hardhat/types';
+import 'hardhat-deploy';
+
+const config: HardhatUserConfig = {
+	namedAccounts: {
+		deployer: 0,
+		tokenOwner: {
+			default: 1,
+			sepolia: '0x5B38Da6a701c568545dCfcB03FcB875f56beddC4',
+		},
+		// `null`: this account does not exist on mainnet, and `getNamedAccounts()` leaves it out
+		faucetOwner: {
+			default: 2,
+			mainnet: null,
+		},
+	},
+	// ... solidity, networks
+};
+export default config;
+```
+
+**v2** (`rocketh/config.ts`):
+
+<!-- migration-pair: rocketh/config.ts -->
+
+```ts
+// rocketh/config.ts
+import type {UserConfig} from 'rocketh/types';
+
+import * as deployExtension from '@rocketh/deploy';
+import * as readExecuteExtension from '@rocketh/read-execute';
 import * as proxyExtension from '@rocketh/proxy';
+import * as diamondExtension from '@rocketh/diamond';
 
-// Add to extensions in rocketh/config.ts
-const extensions = {
+export const config = {
+	// v1's `namedAccounts`, moved here and renamed `accounts`. Every value keeps its v1 meaning:
+	// an index into the node's accounts, an address, or a map keyed by network, then `default`.
+	accounts: {
+		deployer: 0,
+		tokenOwner: {
+			default: 1,
+			sepolia: '0x5B38Da6a701c568545dCfcB03FcB875f56beddC4',
+		},
+		// `null`: this account does not exist on mainnet. It is absent from `namedAccounts`
+		// there, and TypeScript makes a script handle `undefined` for it.
+		faucetOwner: {
+			default: 2,
+			mainnet: null,
+		},
+	},
+	data: {},
+} as const satisfies UserConfig;
+
+// What v1 built in, rocketh adds as extensions: each script receives the union of these.
+export const extensions = {
 	...deployExtension,
+	...readExecuteExtension,
 	...proxyExtension,
+	...diamondExtension,
 };
 
-// Then in deploy script:
-await env.deployViaProxy(
-	'MyContract',
-	{
-		account: deployer,
-		artifact: artifacts.MyContract,
-		args: [initArg],
-	},
-	{
-		proxyKind: 'Transparent',
-	},
-);
+export type Extensions = typeof extensions;
+export type Accounts = typeof config.accounts;
+export type Data = typeof config.data;
 ```
 
-### Pattern 4: Reading Existing Deployments
+**Rules**: `namedAccounts` moves from `hardhat.config.ts` to `rocketh/config.ts` as `accounts`, and every value keeps its meaning: an index into the node's accounts, an address, or a map keyed by environment name or chain id, falling back to `default`. A `null` entry makes the name ABSENT on that network, as in v1: TypeScript types it as possibly `undefined`, so a script must handle it (Pattern 9's faucet does). Only an explicit `null` means absent: a name with no entry for the network and no `default` still fails with `cannot get account for <name>`.
 
-**v1**:
+### Pattern 11: A tagged fixture in a test
 
-```typescript
-const {deployer} = await getNamedAccounts();
-const existing = await deployments.get('MyContract');
-console.log('Contract address:', existing.address);
-```
+**v1** (`test/Token.v1.ts`):
 
-**v2**:
+<!-- migration-pair: test/Token.v1.ts -->
 
-```typescript
-const MyContract = env.get<Abi_MyContract>('MyContract');
-console.log('Contract address:', MyContract.address);
-```
+```ts
+// test/Token.test.ts (hardhat-deploy v1, mocha + chai)
+import {expect} from 'chai';
+import {deployments, getNamedAccounts} from 'hardhat';
+import {parseEther} from 'ethers/lib/utils';
 
-### Pattern 5: Contract Interaction in Tests
+describe('Token', function () {
+	it('mints the whole supply to the token owner', async function () {
+		// runs the scripts tagged `Token` (and their dependencies) once, then reverts to a snapshot
+		await deployments.fixture(['Token']);
+		const {tokenOwner} = await getNamedAccounts();
 
-**v1**:
-
-```typescript
-const MyContract = await ethers.getContract('MyContract');
-await MyContract.setValue(42);
-const value = await MyContract.getValue();
-expect(value).to.equal(42);
-```
-
-**v2**:
-
-```typescript
-import {Abi_MyContract} from '../generated/abis/MyContract.js';
-
-const MyContract = env.get<Abi_MyContract>('MyContract');
-await env.execute(MyContract, {
-	account: env.namedAccounts.deployer,
-	functionName: 'setValue',
-	args: [42n],
-});
-const value = await env.read(MyContract, {
-	functionName: 'getValue',
-	args: [],
-});
-expect(value).toEqual(42n);
-```
-
-### Pattern 6: Getting Deployments by Tag
-
-**v1**:
-
-```typescript
-const deploymentsList = await deployments.getAll();
-const myDeployments = Object.values(deploymentsList);
-```
-
-**v2**:
-
-```typescript
-const env = await loadAndExecuteDeploymentsFromFiles({
-	provider: provider,
-	tags: ['MyTag'],
+		const balance = await deployments.read('Token', 'balanceOf', tokenOwner);
+		expect(balance).to.equal(parseEther('1000000'));
+	});
 });
 ```
 
-### Pattern 7: Conditional Deployment
+**v2** (`test/fixtures.ts`):
 
-**v1**:
+<!-- migration-pair: test/fixtures.ts -->
 
-```typescript
-const useProxy = !hre.network.live;
-await deploy('MyContract', {
-	from: deployer,
-	proxy: useProxy && 'postUpgrade',
-	args: [initArg],
-});
-```
+```ts
+// test/fixtures.ts (rocketh, under hardhat 3)
+import type {EIP1193ProviderWithoutEvents} from 'rocketh/types';
+import {artifacts} from '../rocketh/deploy.js';
+import {loadAndExecuteDeploymentsFromFiles} from '../rocketh/environment.js';
 
-**v2**:
-
-```typescript
-const useProxy = !env.tags.live;
-await env.deployViaProxy(
-	'MyContract',
-	{
-		account: deployer,
-		artifact: artifacts.MyContract,
-		args: [initArg],
-	},
-	{
-		proxyDisabled: !useProxy,
-		execute: 'postUpgrade',
-	},
-);
-```
-
-### Pattern 8: Network-Specific Configuration
-
-**v1**:
-
-```typescript
-const networkName = hre.network.name;
-if (networkName === 'mainnet') {
-	// mainnet-specific logic
-} else {
-	// testnet logic
+export function setupFixtures(provider: EIP1193ProviderWithoutEvents) {
+	return {
+		// v1's `deployments.fixture(['Token'])`: run the scripts tagged `Token` and their dependencies
+		async deployToken() {
+			const env = await loadAndExecuteDeploymentsFromFiles({provider, tags: ['Token']});
+			return {env, Token: env.get<typeof artifacts.Token.abi>('Token')};
+		},
+	};
 }
+
+// test/Token.test.ts: hardhat 3's `loadFixture` does the snapshot-and-revert v1's `fixture` did.
+//
+//   const {provider, networkHelpers} = await network.connect();
+//   const {deployToken} = setupFixtures(provider);
+//
+//   it('mints the whole supply to the token owner', async () => {
+//     const {env, Token} = await networkHelpers.loadFixture(deployToken);
+//     const balance = await env.read(Token, {functionName: 'balanceOf', args: [env.namedAccounts.tokenOwner]});
+//     expect(balance).toEqual(parseEther('1000000'));
+//   });
 ```
 
-**v2**:
+**Rules**: v1's `deployments.fixture(['Token'])` becomes `loadAndExecuteDeploymentsFromFiles({provider, tags: ['Token']})` inside a fixture function, and hardhat 3's `networkHelpers.loadFixture(fixture)` does the snapshot-and-revert. `deployments.createFixture(fn)` is `loadFixture(fn)`. As with `--tags`, a tag selects the scripts that carry it plus their `dependencies`.
 
-```typescript
-const networkName = hre.network.name;
-if (env.tags.live) {
-	// live network logic
-} else {
-	// local/dev network logic
-}
-```
+### Network-specific logic (no pair)
+
+- `hre.network.name` is `env.name`, and `await getChainId()` is `env.network.chain.id` (a number, not a string).
+- `hre.network.live` has NO equivalent: rocketh's default tags are `testnet` for a chain its chain information marks as a testnet, and none otherwise. A script that branched on `live` needs a tag you declare yourself in the config, read as `env.tags['live']`.
 
 ---
 

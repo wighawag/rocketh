@@ -5,5 +5,7 @@
 		"rootDir": ".",
 		"types": ["node"]
 	},
-	"include": ["src/**/*.ts", "test/**/*.ts"]
+	"include": ["src/**/*.ts", "test/**/*.ts"],
+	// the hardhat-deploy v1 half of each migration pair is reference text for a v1 project, not code of this one
+	"exclude": ["test/migration-pairs/**/*.v1.ts"]
 }
