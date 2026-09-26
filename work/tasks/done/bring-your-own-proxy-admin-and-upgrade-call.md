@@ -44,3 +44,24 @@ Constraints the design must respect:
 > FIRST, check this task against current reality; if the proxy code has moved, route to needs-attention (WORK-CONTRACT.md, "Drift is a needs-attention signal").
 >
 > RECORD non-obvious decisions in `## Decisions` at the end of your FINAL REPORT, above all which proxy kinds accept a custom admin. Do not write the done record or the commit message yourself.
+
+## Decisions
+
+- **Which proxy kinds accept a custom admin: the two `SharedAdmin*` transparent kinds and `custom`; not `ERC173Proxy`, `ERC173ProxyWithReceive` or `UUPS`.** The type enforces this.
+  - Why: rocketh already routes upgrades through an admin contract only for the transparent kinds, and a `custom` proxy may be transparent-style (the old TODO asked for exactly this). An ERC173 proxy is upgraded directly by its owner, and a UUPS proxy has no admin at all (the implementation authorises upgrades, and `ERC1967Proxy`'s constructor takes no admin), so an admin contract there would be wiring rocketh cannot check.
+  - Alternative considered: allow it everywhere, as v1 did.
+  - Reversible: widening later only adds an optional field.
+  - Touches: the migration skill text, and nothing else.
+- **Where the options live: `proxyAdminArtifact` next to the existing `proxyAdminName` inside the `proxyContract` object, and a top-level `upgradeFunction`.**
+  - Alternative considered: a v1-style `viaAdminContract` option. I didn't use it because it would duplicate the existing `proxyAdminName`.
+  - `upgradeFunction` is top-level because it applies to every proxy kind.
+- **Renamed v1's `upgradeArgs` to `args`**, to match rocketh's existing `proxyContract: {type: 'custom', args}` template and `execute: {methodName, args}`. Scripts migrating from v1 must rename it; the migration skill says so.
+- **New refusals** (only reachable with the new options, so existing scripts behave exactly as before):
+  1. `proxyAdminArtifact` without `proxyAdminName` is refused before anything is deployed. Otherwise the artifact would be recorded as `DefaultProxyAdmin`, and one another proxy already deployed would silently be used instead.
+  2. An `upgradeFunction.args` entry that is not a placeholder is refused before anything is deployed. v1 passed such strings through as literals, so a typo like `{implementaton}` would have reached the chain.
+  3. A `methodName` the target does not have is refused before the upgrade is sent.
+  4. If `execute` produced upgrade calldata but the template has no `{data}`, the upgrade is refused rather than silently skipping the migration call.
+- **Without an admin, a custom upgrade call targets the proxy's record (`existingDeployment`), not the proxy artifact's own deployment.** The record's ABI combines the proxy's and the implementation's, so the method may live on either. v1 did the same. The address is the same, so the deferred `to` is unaffected.
+- **The admin's `owner()` is read through the bundled admin's `owner` definition, not the admin deployment's own ABI.** Any admin is required to answer `owner()` anyway. Nothing changes for the bundled admin.
+- **When there is no `upgradeFunction`, the default choice between `upgrade` and `upgradeAndCall` still depends on whether the proxy has `upgradeTo`**, including behind a custom admin. This is unchanged existing behaviour and is pinned in a test comment.
+- **No ADR.** Every decision above can be reversed or widened later, so none is hard to undo.
