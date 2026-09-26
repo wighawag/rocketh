@@ -1,5 +1,15 @@
 # @rocketh/proxy
 
+## 0.20.1
+
+### Patch Changes
+
+- e06dd5d: Every published package now declares a `funding` field, so `npm fund` resolves to the same destinations as `.github/FUNDING.yml` instead of returning nothing. `@rocketh/diamond` and `@rocketh/proxy` additionally ship a `THIRD-PARTY-NOTICES.md` beside their vendored Solidity, recording the upstream project, the version stamps that are recoverable from the sources, the copyright line and the MIT permission notice: an SPDX identifier alone does not satisfy MIT's requirement that the notice travel with the code. No Solidity source or built artifact changed.
+- Updated dependencies [e06dd5d]
+  - @rocketh/core@0.23.1
+  - @rocketh/deploy@0.20.1
+  - @rocketh/read-execute@0.21.1
+
 ## 0.20.0
 
 ### Minor Changes
