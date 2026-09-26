@@ -121,8 +121,6 @@ await execute(registry, {account: deployer, functionName: 'setValue', args: [42n
 
 Contradictory options are refused rather than resolved one way or the other: `gasPrice` together with `maxFeePerGas` or `maxPriorityFeePerGas`, `gasPrice` with `type: 'eip1559'`, an EIP-1559 fee with `type: 'legacy'`, and an `accessList` on a legacy transaction (it cannot carry one). Any `type` other than `'eip1559'` and `'legacy'` is refused too.
 
-Note that a legacy transaction signed by a `privateKey` account is currently signed WITHOUT a chain id (the signer comes from the `eip-1193-signer` library, which does not apply EIP-155 to legacy transactions). Such a transaction could be replayed on another chain where the same account has the same nonce, and nodes configured to accept only replay-protected transactions (geth's default over RPC) refuse it. An account held by the node signs with its chain id and is not affected.
-
 ## Named Accounts
 
 Named accounts allow you to refer to accounts by name rather than index or address. This makes your deployment scripts and tests more readable and maintainable.

@@ -109,6 +109,8 @@ describe('@rocketh/read-execute - chains without EIP-1559', () => {
 
 			const signed = sentRawTransactions(provider).at(-1)!;
 			expect(signed.type).toBe('legacy');
+			// EIP-155: signed for the connected chain (31337), so it cannot be replayed on another one
+			expect(signed.chainId).toBe(31337);
 			expect(signed.gasPrice).toBe(2_000_000_000n);
 			expect(signed.to).toBe(CONTRACT_ADDRESS);
 		});
@@ -156,6 +158,8 @@ describe('@rocketh/read-execute - chains without EIP-1559', () => {
 			await execute(local.env)(local.deployment, {account: 'deployer', functionName: 'setValue', args: [42n]});
 			const signed = sentRawTransactions(local.provider).at(-1)!;
 			expect(signed.type).toBe('legacy');
+			// EIP-155: signed for the connected chain (31337), so it cannot be replayed on another one
+			expect(signed.chainId).toBe(31337);
 			// filled from `eth_gasPrice` before signing, since a local signer has no node to ask
 			expect(signed.gasPrice).toBe(1_000_000_000n);
 		});
@@ -213,6 +217,8 @@ describe('@rocketh/read-execute - chains without EIP-1559', () => {
 
 			const signed = sentRawTransactions(provider).at(-1)!;
 			expect(signed.type).toBe('legacy');
+			// EIP-155: signed for the connected chain (31337), so it cannot be replayed on another one
+			expect(signed.chainId).toBe(31337);
 			expect(signed.gasPrice).toBe(2_000_000_000n);
 			expect(signed.value).toBe(1n);
 		});
