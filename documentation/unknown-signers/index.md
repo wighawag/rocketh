@@ -177,7 +177,7 @@ Everything above needs no extra package. `catchUnknownSigner` is the **other** w
 
 You want it in two situations:
 
-- **You are migrating a hardhat-deploy v1 script that already uses it.** This is its main reason to exist, and the migration is nearly mechanical (see the call-shape note below).
+- **You are migrating a hardhat-deploy v1 script that already uses it.** This is its main reason to exist, and the migration is nearly mechanical (see the call-shape note below). [`catchUnknownSigner` in a migrated script](../migration/#catch-unknown-signer) states the three things to know when porting one, next to everything else that changes from v1.
 - **You deliberately want the non-interactive flow**: a run that must never block, that collects the transaction to execute out-of-band, and that you will re-run afterwards.
 
 If neither applies, prefer the default interactive flow: it finishes the job in one run instead of two.

@@ -11,9 +11,11 @@ hardhat-deploy v2 is a complete rewrite that requires Hardhat 3.x and introduces
 
 > **Note**: For complete working examples, see the [template-ethereum-contracts](https://github.com/wighawag/template-ethereum-contracts) repository which demonstrates a full hardhat-deploy v2 setup.
 
+> **Before you start: check what v2 does NOT have.** This guide shows how to translate the features v2 has. Which v1 capabilities have no v2 equivalent (or a different one), and what to do instead, is listed in ONE place, the [v1-to-v2 capability map](/documentation/migration/). Read it first: some of what it lists (a v1 `skip` export, a renamed proxy name, a per-call option) fails silently or only when a deploy script runs.
+
 ## AI-Assisted Migration
 
-For users interested in using AI to help with the migration process, we provide a comprehensive [SKILL.md](https://github.com/wighawag/hardhat-deploy/blob/main/skills/hardhat-deploy-migration/SKILL.md) file designed specifically for AI assistants. This guide contains detailed instructions and patterns that AI tools can use to understand and execute the migration systematically.
+For users interested in using AI to help with the migration process, we provide a comprehensive [SKILL.md](https://github.com/wighawag/rocketh/blob/main/skills/hardhat-deploy-migration/SKILL.md) file designed specifically for AI assistants. This guide contains detailed instructions and patterns that AI tools can use to understand and execute the migration systematically.
 
 The SKILL file includes:
 
@@ -304,7 +306,7 @@ export default config;
 5. Use helper functions from `hardhat-deploy/helpers` for network configuration
 6. Add `generateTypedArtifacts` configuration
 7. Remove `mocha` timeout configuration (not needed in v2)
-8. Remove `external.deployments` configuration (handled differently)
+8. Remove `external.deployments` configuration: a project you consume is a package dependency instead, see [Consuming another project](/documentation/migration/#consuming-another-project)
 9. Delete `utils/network.ts` file (no longer needed)
 
 ### Step 2.5: Update tsconfig.json for ESM
@@ -574,6 +576,8 @@ export default deployScript(
 - Move tags to second argument object
 
 #### Proxy Deployment Example
+
+> **Three built-in proxy names changed**: `EIP173Proxy` is `ERC173Proxy`, `OpenZeppelinTransparentProxy` is `SharedAdminOpenZeppelinTransparentProxy`, and `OptimizedTransparentProxy` is `SharedAdminOptimizedTransparentProxy`. The set is closed, and a name outside it throws `unknown proxy contract <name>` when the deploy script RUNS, not when it compiles. Every other proxy option is mapped in the [capability map](/documentation/migration/#proxies).
 
 **v1 proxy deploy script example:**
 
@@ -924,6 +928,8 @@ await deploy('Contract', {
 ```
 
 ### Pattern 3: Converting Proxy Deployment
+
+If the v1 script names a `proxyContract`, translate the name too (three changed, see [Proxies](/documentation/migration/#proxies)).
 
 **v1:**
 
@@ -1379,15 +1385,18 @@ Use this checklist to verify your migration is complete and working correctly.
 - [hardhat-deploy v2 Documentation](https://rocketh.dev/hardhat-deploy/)
 - [Setup First Project Guide](../setup-first-project/)
 - [Migration from v1 Guide](.//)
+- [v1-to-v2 capability map](/documentation/migration/): what v1 has that v2 does not
 - [Hardhat 3.x Documentation](https://hardhat.org/docs/upgrades)
 - [Rocketh Documentation](https://github.com/wighawag/rocketh)
 
 ### Example Projects
 
 - [template-ethereum-contracts](https://github.com/wighawag/template-ethereum-contracts) - Complete working example using v2
-- [Basic Demo](https://github.com/wighawag/hardhat-deploy/tree/main/demoes/basic)
-- [Diamond Demo](https://github.com/wighawag/hardhat-deploy/tree/main/demoes/diamond)
-- [Proxies Demo](https://github.com/wighawag/hardhat-deploy/tree/main/demoes/proxies)
+- [Basic Demo](https://github.com/wighawag/rocketh/tree/main/demoes/hardhat-deploy/basic)
+- [Diamond Demo](https://github.com/wighawag/rocketh/tree/main/demoes/hardhat-deploy/diamond)
+- [Proxies Demo](https://github.com/wighawag/rocketh/tree/main/demoes/hardhat-deploy/proxies)
+- [Governance Demo](https://github.com/wighawag/rocketh/tree/main/demoes/hardhat-deploy/governance) (`catchUnknownSigner` against multisig- and timelock-owned upgrades)
+- [Router Demo](https://github.com/wighawag/rocketh/tree/main/demoes/hardhat-deploy/router)
 
 ### Community
 
