@@ -66,3 +66,16 @@ While in these files, fix the known link defect: the skill and the how-to link d
 > FIRST, check this task against current reality: it is a launch snapshot and may have drifted. If a dependency landed differently than assumed, route it to needs-attention rather than building on the stale premise (WORK-CONTRACT.md, "Drift is a needs-attention signal").
 >
 > RECORD non-obvious in-scope decisions in a `## Decisions` block at the end of your FINAL REPORT (above all: which file you chose as the home, and why). Do not write the done record, the commit message or the task body yourself.
+
+## Decisions
+
+- **Home is `documentation/migration/index.md`.**
+  - Why: it's the rocketh site's "Migrating from v1" page. It sits next to `documentation/unknown-signers/`, which had to point at it, and it was short enough to host the map without burying it.
+  - Why not the how-to: it's a 1,400-line step-by-step translation guide.
+  - Why not the skill: it's excluded from the site and is an AI procedure. Its code blocks are locked to the migration-pair files by `skill.test.ts`.
+  - Touches: every inbound link now targets `/documentation/migration/#…`.
+- **The skill points at the map instead of carrying it.** The skill is fetched as a single file, so it "links" by telling the AI to fetch the map (site URL plus GitHub source) and to report unsupported features to the user. Its existing per-pattern rules stay, because they are translation steps, not the map. Alternative: inline a copy, which is the three-copies problem this task exists to end.
+- **Unsupported rows are not linked to `work/` notes.** `work/**` is excluded from the site build, so those links would be dead. The map just says "not supported" / "not supported yet" with no dates. A closing section says to open an issue on the rocketh repo.
+- **Two extra link fixes beyond the demo links:** the how-to's link to the skill pointed at the upstream hardhat-deploy repo and now points at this repo. The skill's "Migration from v1 Guide" URL ended in `.md`, which doesn't match how the site emits pages, and is now `/migration-from-v1/`. Same kind of defect as the demo links; small and easy to reverse.
+- **Diamond `upgradeIndex` has no decided label.** No maintainer decision covers it, so the map states the fact ("not accepted by `diamond` today") instead of marking it "not supported", and the observation note asks the open question.
+- **The `HARDHAT_DEPLOY_*` environment variables are marked "not supported".** The finding calls them superseded by flags, but `_ACCOUNTS_NETWORK` has no flag, and none of the variables does anything in v2.

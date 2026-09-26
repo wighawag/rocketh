@@ -9,6 +9,8 @@ This guide provides comprehensive instructions for migrating projects from hardh
 
 > **Note**: For complete working examples, see the [template-ethereum-contracts](https://github.com/wighawag/template-ethereum-contracts) repository which demonstrates a full hardhat-deploy v2 setup.
 
+> **Before converting anything, check the project against the capability map.** This skill teaches how to translate what v2 HAS. What v1 has that v2 does not, or has differently (every `deployments` member, every deploy and proxy option, named-account forms, CLI flags, environment variables, deployment-file fields, `catchUnknownSigner`'s thunk form, and how one project consumes another's contracts), is listed in ONE place: the [v1-to-v2 capability map](https://rocketh.dev/documentation/migration/) (source: [`documentation/migration/index.md`](https://github.com/wighawag/rocketh/blob/main/documentation/migration/index.md)). Fetch it, look up every v1 feature the project uses, and when one is marked **not supported** or **not supported yet**, tell the user before porting that script. Do not invent a translation the map does not give.
+
 ## Table of Contents
 
 1. [Introduction](#introduction)
@@ -390,7 +392,7 @@ export default config;
 5. Use helper functions from `hardhat-deploy/helpers` for network configuration
 6. Add `generateTypedArtifacts` configuration
 7. Remove `mocha` timeout configuration (not needed in v2)
-8. Remove `external.deployments` configuration (handled differently)
+8. Remove `external.deployments` configuration: a project the user consumes becomes a package dependency, see "Consuming another project's contracts and deployments" in the [capability map](https://rocketh.dev/documentation/migration/#consuming-another-project)
 9. Delete `utils/network.ts` file (no longer needed)
 
 #### 2.5 Update tsconfig.json for ESM
@@ -1246,7 +1248,7 @@ export default deployScript(
 
 ### Pattern 4: Proxies, the five built-in kinds
 
-Three of the five built-in proxy names CHANGED, and a mistake here does not fail loudly. A name outside rocketh's set throws `unknown proxy contract <name>`, but only when the script RUNS; and a port that LOSES the option (drops it, or puts the kind under a key that does not exist) gets the default, `ERC173Proxy`: a different contract, with no ProxyAdmin, deployed without complaint. There is no `proxyKind` option (an earlier version of this skill taught one; TypeScript rejects it, and silencing that error yields the default proxy). Translate the name with this table:
+Three of the five built-in proxy names CHANGED, and a mistake here does not fail loudly (every other v1 proxy option is mapped in the [capability map](https://rocketh.dev/documentation/migration/#proxies)). A name outside rocketh's set throws `unknown proxy contract <name>`, but only when the script RUNS; and a port that LOSES the option (drops it, or puts the kind under a key that does not exist) gets the default, `ERC173Proxy`: a different contract, with no ProxyAdmin, deployed without complaint. There is no `proxyKind` option (an earlier version of this skill taught one; TypeScript rejects it, and silencing that error yields the default proxy). Translate the name with this table:
 
 | v1 `proxy.proxyContract`       | rocketh `proxyContract`                   | contract deployed                      | admin                                                | pair (v1 / v2)                                                                               |
 | ------------------------------ | ----------------------------------------- | -------------------------------------- | ---------------------------------------------------- | -------------------------------------------------------------------------------------------- |
@@ -2437,16 +2439,19 @@ pnpm hardhat deploy --network <network> --reset
 
 - [hardhat-deploy v2 Documentation](https://rocketh.dev/hardhat-deploy/)
 - [Setup First Project Guide](https://rocketh.dev/hardhat-deploy/documentation/how-to/setup-first-project.md)
-- [Migration from v1 Guide](https://rocketh.dev/hardhat-deploy/documentation/how-to/migration-from-v1.md)
+- [Migration from v1 Guide](https://rocketh.dev/hardhat-deploy/documentation/how-to/migration-from-v1/)
+- [v1-to-v2 capability map](https://rocketh.dev/documentation/migration/): what v1 has that v2 does not
 - [Hardhat 3.x Documentation](https://hardhat.org/docs/upgrades)
 - [Rocketh Documentation](https://github.com/wighawag/rocketh)
 
 ### Example Projects
 
 - [template-ethereum-contracts](https://github.com/wighawag/template-ethereum-contracts) - Complete working example using v2
-- [Basic Demo](https://github.com/wighawag/hardhat-deploy/tree/main/demoes/basic)
-- [Diamond Demo](https://github.com/wighawag/hardhat-deploy/tree/main/demoes/diamond)
-- [Proxies Demo](https://github.com/wighawag/hardhat-deploy/tree/main/demoes/proxies)
+- [Basic Demo](https://github.com/wighawag/rocketh/tree/main/demoes/hardhat-deploy/basic)
+- [Diamond Demo](https://github.com/wighawag/rocketh/tree/main/demoes/hardhat-deploy/diamond)
+- [Proxies Demo](https://github.com/wighawag/rocketh/tree/main/demoes/hardhat-deploy/proxies)
+- [Governance Demo](https://github.com/wighawag/rocketh/tree/main/demoes/hardhat-deploy/governance) (`catchUnknownSigner` against multisig- and timelock-owned upgrades)
+- [Router Demo](https://github.com/wighawag/rocketh/tree/main/demoes/hardhat-deploy/router)
 
 ### Community
 
