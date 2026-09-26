@@ -1,5 +1,13 @@
 # @rocketh/doc
 
+## 0.19.25
+
+### Patch Changes
+
+- Updated dependencies [f1301be]
+  - @rocketh/core@0.22.0
+  - @rocketh/node@0.21.1
+
 ## 0.19.24
 
 ### Patch Changes
