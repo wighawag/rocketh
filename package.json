@@ -17,7 +17,7 @@
 		"@rocketh/playground": "workspace:*",
 		"@types/node": "^26.2.0",
 		"@vitest/coverage-v8": "^4.1.11",
-		"dorfl": "0.14.2",
+		"dorfl": "0.14.3",
 		"ezx": "^0.0.18",
 		"murmur-128": "^0.2.1",
 		"nx": "^23.1.1",
