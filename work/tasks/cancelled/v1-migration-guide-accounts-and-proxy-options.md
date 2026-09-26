@@ -4,7 +4,11 @@ slug: v1-migration-guide-accounts-and-proxy-options
 spec: unknown-signer-v1-migration
 blockedBy: []
 covers: [4, 5, 6]
+reason: 'superseded by v1-to-v2-capability-map-in-the-migration-docs, which now carries spec unknown-signer-v1-migration stories 4, 5, 6 and the three statements this task required; this task targeted documentation.md, which no longer exists, and overlapped the capability map and the migration skill rewritten from executed pairs'
+cancelledOn: 2026-09-26
 ---
+
+> **CANCELLED, superseded.** Its content is folded into `work/tasks/backlog/v1-to-v2-capability-map-in-the-migration-docs.md` (see that task's FORWARD-POINTER), so the migration documents end up with ONE home instead of a third copy.
 
 ## What to build
 

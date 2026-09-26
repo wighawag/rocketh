@@ -1,11 +1,26 @@
 ---
 title: 'Migration docs: a v1-to-v2 capability map, with one home and two pointers'
 slug: v1-to-v2-capability-map-in-the-migration-docs
+spec: unknown-signer-v1-migration
 blockedBy: []
-covers: []
+covers: [4, 5, 6]
 ---
 
 ## What to build
+
+> **FORWARD-POINTER (added 2026-09-26, READ FIRST).** Several facts this task was written against have since changed; write the map against the CURRENT code, and treat every bullet below that contradicts this note as superseded.
+>
+> - **`null` accounts:** a per-network `null` now means the account is ABSENT on that network, exactly as in v1 (`packages/rocketh/src/environment/index.ts`, `getAccount`; typed possibly-`undefined` by `ResolvedNamedAccounts` in `@rocketh/core`). The bullet saying an account resolving to nothing "now THROWS where v1 left the name absent", and the `null` -> `data` idiom, are therefore WRONG for an explicit `null`. What still throws: a name with NO entry for the network and no `default`, and (new) a reference to a name that is not in `accounts` or a reference cycle, each with a readable message. The how-to (`hardhat-deploy/documentation/how-to/migration-from-v1/index.md`) and the skill's transformation rule already say this.
+> - **`network.live`:** now documented in the skill (Step 3.2, rule 5, and the checklist) and in the how-to: rocketh has no built-in `live` tag, declare it per chain in `rocketh/config.ts`, and declaring `tags` replaces the default `testnet` tag. Point at that rather than re-deriving it.
+> - **v1 `skip`:** documented in `documentation/migration/index.md` ("A v1 `skip` export is ignored"): ignored, not honoured, with the early-return and run-once replacements.
+> - **The skill's patterns were rewritten** from executed v1/v2 pairs under `packages/hardhat-deploy/test/migration-pairs/` (the proxy-name translations, `proxyKind` removed, and `skill.test.ts` guarding the inlined copies). When this task edits the skill, do NOT edit an inlined pair by hand: change the pair file, and keep `skill.test.ts` green.
+> - **Export during the deploy run** is not supported and is parked as an idea (`work/notes/ideas/export-after-deploy-and-a-rocketh-cli-package.md`); the map should say "not supported, run `rocketh-export` after the deploy" and link nothing else.
+> - **Folded in from the cancelled `v1-migration-guide-accounts-and-proxy-options`** (which is why this task now carries `spec: unknown-signer-v1-migration`, stories 4, 5, 6). The map must ALSO state, plainly and where a migrating reader meets `catchUnknownSigner`:
+>   1. the thunk divergence: `catchUnknownSigner(execute(...))` becomes `catchUnknownSigner(() => execute(...))`, why (the promise has already started, so there is no moment left to establish the policy), and that forgetting it is a LOUD error naming the fix;
+>   2. "wrapping a call means accepting that the step did not happen": a later statement that depends on the wrapped step must be gated on chain state (the wrapper unwinds only the wrapped action, so `deployViaProxy`'s own post-upgrade `execute` is safe, but the author's next statement is not);
+>   3. nothing is persisted: no unsigned-transactions file, no record change; idempotency comes from on-chain state alone, so re-running after the Safe executes is the flow.
+>
+>   Plus the named-account mapping (story 4) and the proxy-option mapping, v1 `{owner, execute: {methodName, args}, upgradeFunction, ...}` to `@rocketh/proxy`'s options (story 5), with before/after snippets that match `ProxyDeployOptions` in `packages/rocketh-proxy/src/index.ts`. `upgradeFunction` and a custom `viaAdminContract` artifact have no rocketh equivalent until `bring-your-own-proxy-admin-and-upgrade-call` lands; check whether it has before writing that line. The cancelled task named `documentation.md` as a target; that file no longer exists (the site is `documentation/`, with `documentation/unknown-signers/`), so the pointer from the unknown-signer docs goes there.
 
 A user-facing CAPABILITY MAP for the hardhat-deploy v1 to rocketh move: for each v1 capability, what replaces it, or that nothing does and why. Today the three migration documents teach how to translate a script that uses the features rocketh HAS, and none of them says what a migrating team will find MISSING, which is the question that decides whether a team can move at all.
 

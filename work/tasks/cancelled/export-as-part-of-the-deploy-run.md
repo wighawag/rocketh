@@ -3,7 +3,11 @@ title: 'Export deployments as part of the hardhat deploy run'
 slug: export-as-part-of-the-deploy-run
 blockedBy: []
 covers: []
+reason: 'parked as an idea: the open questions are design, not build (is the option worth having at all, and should it serve both the rocketh CLI and the hardhat plugin, possibly through a new @rocketh/cli package). See work/notes/ideas/export-after-deploy-and-a-rocketh-cli-package.md'
+cancelledOn: 2026-09-26
 ---
+
+> **CANCELLED, parked as an idea.** This task scoped the export option to the hardhat plugin only, because `@rocketh/export` depends on `@rocketh/node` and the `rocketh` CLI cannot import it back. Before building either half, it is not settled that the option is worth having, nor that the two entry points should diverge. The design space, including a `@rocketh/cli` package that would remove the cycle, is in `work/notes/ideas/export-after-deploy-and-a-rocketh-cli-package.md`. A future task should be minted from that idea once it is decided.
 
 <!-- open-questions -->
 
