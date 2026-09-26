@@ -124,6 +124,39 @@ A custom proxy artifact is supported too. `args` names where the proxy construct
 }
 ```
 
+### Your own admin contract
+
+The two shared-admin variants and a `custom` proxy can route upgrades through an admin contract of your own, a registry contract for instance, instead of the bundled `DefaultProxyAdmin`:
+
+```typescript
+{
+	proxyContract: {
+		type: 'SharedAdminOptimizedTransparentProxy', // or 'custom', with its `artifact`
+		proxyAdminName: 'RegistryAdmin',
+		proxyAdminArtifact: artifacts.RegistryAdmin, // optional
+	},
+}
+```
+
+- An existing deployment named `proxyAdminName` is used as-is. That is how you point at an admin you deployed yourself.
+- Otherwise `proxyAdminArtifact` (default: the bundled `DefaultProxyAdmin`) is deployed under that name with `[owner]` as constructor arguments. An artifact requires a name.
+- On a `custom` proxy, naming an admin is what turns the admin contract on; the proxy constructor receives its address as `{admin}`.
+- The admin must answer `owner()`. rocketh refuses when that owner is not the expected `owner`, and when it is the zero address, and it sends the upgrade from that owner, so an admin owned by a Safe defers through the [unknown-signer flow](#upgrades-owned-by-a-safe-or-multisig).
+
+`ERC173Proxy`, `ERC173ProxyWithReceive` and `UUPS` take no admin contract: their owner (or, for UUPS, the implementation) upgrades the proxy directly.
+
+### Your own upgrade call
+
+By default rocketh calls `upgradeTo` / `upgradeToAndCall` on the proxy, or `upgrade` / `upgradeAndCall` on the admin contract. When your admin or proxy upgrades through a differently named method, name it with `upgradeFunction`:
+
+```typescript
+{
+	upgradeFunction: {methodName: 'upgradeProxy', args: ['{proxy}', '{implementation}', '{data}']},
+}
+```
+
+The call goes to the admin contract when there is one and to the proxy otherwise, from whoever holds upgrade rights, with any proxy kind. `args` takes only the placeholders `{proxy}`, `{implementation}`, `{data}` (the `execute` calldata, or `0x`) and `{admin}`. rocketh refuses a method the target does not have, and refuses to upgrade when `execute` produced calldata but the template has no `{data}` to carry it.
+
 ## Options
 
 Everything from `@rocketh/deploy`'s `DeployOptions` (minus the re-deployment flags it replaces) plus:
@@ -132,7 +165,8 @@ Everything from `@rocketh/deploy`'s `DeployOptions` (minus the re-deployment fla
 | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | `owner`                                  | Address that may upgrade the proxy. Defaults to the deployer.                                                  |
 | `execute`                                | Initializer / upgrade call, as described above.                                                                |
-| `proxyContract`                          | Which proxy to use. See the table above.                                                                       |
+| `proxyContract`                          | Which proxy to use, and optionally your own admin contract. See above.                                         |
+| `upgradeFunction`                        | Your own upgrade method and argument template. See above.                                                      |
 | `proxyDisabled`                          | Deploy the implementation directly, with no proxy. Useful for a production build that must not be upgradeable. |
 | `upgradeIndex`                           | Lets you tell an upgrade story as a sequence of steps that each run exactly once. See below.                   |
 | `checkProxyAdmin`                        | Verify the on-chain proxy admin matches what the config expects (defaults on).                                 |

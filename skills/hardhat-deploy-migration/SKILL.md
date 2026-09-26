@@ -1315,9 +1315,10 @@ export default deployScript(
 **Rules**:
 
 - A v1 `deploy(name, {..., proxy})` becomes `deployViaProxy(name, {account, artifact, args}, options)`: the contents of `proxy` move to the third argument. `proxy: true` is `deployViaProxy` with no options. `proxy: 'methodName'` (and `proxy: {methodName}`) is `{execute: 'methodName'}`.
-- `viaAdminContract: 'DefaultProxyAdmin'` is implied by the two `SharedAdmin*` names. A different admin deployment NAME is `proxyContract: {type: 'SharedAdminOpenZeppelinTransparentProxy', proxyAdminName: 'MyAdmin'}`. A custom admin ARTIFACT is not supported.
+- `viaAdminContract: 'DefaultProxyAdmin'` is implied by the two `SharedAdmin*` names. A different admin deployment NAME is `proxyContract: {type: 'SharedAdminOpenZeppelinTransparentProxy', proxyAdminName: 'MyAdmin'}`. A custom admin ARTIFACT, v1's `viaAdminContract: {name, artifact}`, is `proxyAdminName` plus `proxyAdminArtifact` on the same object; it is accepted on the two `SharedAdmin*` kinds and on `{type: 'custom', ...}`, not on `ERC173Proxy` or `UUPS`.
 - A user's own proxy artifact, which v1 looked up by NAME in `proxyContract`, is `proxyContract: {type: 'custom', artifact, args}`; `args` takes v1's `proxyArgs` template (`'{implementation}'`, `'{admin}'`, `'{data}'`).
-- Not supported: `implementationName` (the implementation is always recorded as `<name>_Implementation`) and `upgradeFunction` (rocketh picks `upgradeTo` / `upgradeToAndCall`, or `upgrade` / `upgradeAndCall` through a ProxyAdmin).
+- v1's `upgradeFunction: {methodName, upgradeArgs}` is `upgradeFunction: {methodName, args}` (the template key is renamed, and it accepts only the placeholders `'{proxy}'`, `'{implementation}'`, `'{data}'`, `'{admin}'`).
+- Not supported: `implementationName` (the implementation is always recorded as `<name>_Implementation`).
 
 ### Pattern 5: Proxy initialization and upgrade calls, `execute: {init, onUpgrade}`
 

@@ -44,6 +44,34 @@ const EIP1967_ADMIN_SLOT = '0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6
 
 export type {Abi, AbiFunction, Artifact, DeploymentConstruction, Deployment, Environment};
 
+/**
+ * `execute` with its per-ABI typing erased, for the one call whose method name is only known
+ * at run time (`upgradeFunction`). The runtime path is the same `execute`.
+ */
+type LooseExecute = (
+	deployment: {address: `0x${string}`; abi: Abi},
+	args: {account: `0x${string}`; functionName: string; args: unknown[]},
+) => Promise<unknown>;
+
+/**
+ * Which admin contract a proxy routes its upgrades through, with the defaults applied. See
+ * {@link ProxyAdminContractOptions} for why an artifact needs a name.
+ */
+function resolveAdminContract(
+	name: string,
+	options: {proxyAdminName?: string; proxyAdminArtifact?: Artifact},
+): {proxyAdminName: string; proxyAdminArtifact: Artifact} {
+	if (options.proxyAdminArtifact && !options.proxyAdminName) {
+		throw new Error(
+			`proxyAdminArtifact for ${name} needs a proxyAdminName: without one it would be recorded as DefaultProxyAdmin, and an existing DefaultProxyAdmin would be used instead of your artifact`,
+		);
+	}
+	return {
+		proxyAdminName: options.proxyAdminName || 'DefaultProxyAdmin',
+		proxyAdminArtifact: options.proxyAdminArtifact || DefaultProxyAdmin,
+	};
+}
+
 export type PredefinedProxyContract =
 	| 'ERC173Proxy'
 	| 'ERC173ProxyWithReceive'
@@ -52,6 +80,38 @@ export type PredefinedProxyContract =
 	| 'SharedAdminOptimizedTransparentProxy';
 
 type DeployMutuallyExclusiveOptions = {alwaysOverride?: boolean} | {strictBytecodeMatch?: boolean};
+
+/**
+ * The admin CONTRACT that holds upgrade rights over a proxy, for the proxy kinds that route
+ * their upgrade through one (the two `SharedAdmin*` transparent proxies, and a `custom`
+ * proxy that asks for one).
+ *
+ * - `proxyAdminName`: the deployment name of the admin. An existing deployment under that
+ *   name is used AS-IS (whatever contract it is), which is how you point at an admin you
+ *   deployed yourself, a registry contract for instance. For the `SharedAdmin*` kinds it
+ *   defaults to `'DefaultProxyAdmin'`; for a `custom` proxy, naming it is what turns the
+ *   admin contract on.
+ * - `proxyAdminArtifact`: what to deploy under that name when nothing is deployed there
+ *   yet, with `[owner]` as constructor arguments (the bundled admin's convention).
+ *   Defaults to the bundled `DefaultProxyAdmin`. It REQUIRES `proxyAdminName`: an artifact
+ *   recorded under the default name would silently lose to a `DefaultProxyAdmin` another
+ *   proxy already deployed.
+ *
+ * Whichever it is, the admin must answer `owner()`: the upgrade is sent from that owner, and
+ * the same refusals apply as for the bundled admin (owner mismatch, owned by no-one).
+ */
+export type ProxyAdminContractOptions =
+	{proxyAdminName?: string; proxyAdminArtifact?: undefined} | {proxyAdminName: string; proxyAdminArtifact: Artifact};
+
+/** The values an `upgradeFunction` argument template can place. */
+export type UpgradeArgTemplate = '{proxy}' | '{implementation}' | '{data}' | '{admin}';
+
+const UPGRADE_ARG_PLACEHOLDERS: readonly string[] = [
+	'{proxy}',
+	'{implementation}',
+	'{data}',
+	'{admin}',
+] satisfies UpgradeArgTemplate[];
 
 export type ProxyDeployOptions = Omit<
 	DeployOptions,
@@ -84,32 +144,29 @@ export type ProxyDeployOptions = Omit<
 		checkProxyAdmin?: boolean;
 		checkABIConflict?: boolean;
 		deterministicImplementation?: boolean;
+		/**
+		 * The upgrade call, when it is not one rocketh picks itself (`upgradeTo` /
+		 * `upgradeToAndCall` on the proxy, `upgrade` / `upgradeAndCall` on an admin contract).
+		 * `methodName` is looked up on the admin contract when the proxy has one, and on the
+		 * proxy (its record, which merges the proxy and implementation ABIs) otherwise; the
+		 * call is sent from whoever holds upgrade rights, as for the built-in calls. `args` is a
+		 * template of placeholders only: `{proxy}`, `{implementation}`, `{data}` (the `execute`
+		 * calldata, or `0x`) and `{admin}`.
+		 */
+		upgradeFunction?: {
+			methodName: string;
+			args: UpgradeArgTemplate[];
+		};
 		proxyContract?:
 			| PredefinedProxyContract
-			| ({type: PredefinedProxyContract} & {
+			| ({
 					type: 'SharedAdminOpenZeppelinTransparentProxy' | 'SharedAdminOptimizedTransparentProxy';
-					proxyAdminName?: string;
-					// TODO allow custom proxyAdmin artifact?
-			  })
-			| {
+			  } & ProxyAdminContractOptions)
+			| ({
 					type: 'custom';
 					artifact: Artifact;
 					args?: ('{implementation}' | '{admin}' | '{data}')[]; // default to  ['{implementation}', '{admin}', '{data}']
-					// TODO allow viaAdminContract for custom proxy artifacts
-					// We could just use boolean | {proxyAdminName: string}
-					// viaAdminContract?:
-					// 	| string
-					// 	| {
-					// 			name: string;
-					// 			artifact?: string | ArtifactData;
-					// 	  };
-					// viaAdminContract = {
-					// 			artifactName: 'DefaultProxyAdmin',
-					// 			proxyAdminName:
-					// 				(typeof options.proxyContract === 'object' && options.proxyContract.proxyAdminName) ||
-					// 				'DefaultProxyAdmin',
-					// 		};
-			  };
+			  } & ProxyAdminContractOptions);
 	};
 
 export type ImplementationDeployer<TAbi extends Abi> = (
@@ -175,6 +232,7 @@ export function deployViaProxy(
 						proxyContract,
 						proxyDisabled,
 						upgradeIndex,
+						upgradeFunction,
 						linkedData,
 						...rest
 					} = options;
@@ -220,7 +278,18 @@ export function deployViaProxy(
 		}
 		const address = env.resolveAccount(account);
 
-		let viaAdminContract: {artifactName: 'DefaultProxyAdmin'; proxyAdminName: string} | undefined;
+		if (options?.upgradeFunction) {
+			// Refused up front, before anything is deployed: a typo such as `{implementaton}` would
+			//  otherwise reach the chain as a literal string argument.
+			const notPlaceholders = options.upgradeFunction.args.filter((arg) => !UPGRADE_ARG_PLACEHOLDERS.includes(arg));
+			if (notPlaceholders.length > 0) {
+				throw new Error(
+					`upgradeFunction.args for ${name} may only contain ${UPGRADE_ARG_PLACEHOLDERS.join(', ')}, got ${notPlaceholders.join(', ')}`,
+				);
+			}
+		}
+
+		let viaAdminContract: {proxyAdminName: string; proxyAdminArtifact: Artifact} | undefined;
 
 		let proxyArgsTemplate = ['{implementation}', '{admin}', '{data}'];
 		let proxyArtifact: Artifact = ERC173Proxy;
@@ -230,6 +299,9 @@ export function deployViaProxy(
 			if (typeof options.proxyContract !== 'string' && options.proxyContract.type === 'custom') {
 				proxyArtifact = options.proxyContract.artifact;
 				proxyArgsTemplate = options.proxyContract.args || ['{implementation}', '{admin}', '{data}'];
+				if (options.proxyContract.proxyAdminName || options.proxyContract.proxyAdminArtifact) {
+					viaAdminContract = resolveAdminContract(name, options.proxyContract);
+				}
 			} else {
 				const proxyContractDefinition =
 					typeof options.proxyContract === 'string' ? options.proxyContract : options.proxyContract.type;
@@ -253,23 +325,19 @@ export function deployViaProxy(
 						checkABIConflict = false;
 						proxyArtifact = TransparentUpgradeableProxy;
 						proxyArgsTemplate = ['{implementation}', '{admin}', '{data}'];
-						viaAdminContract = {
-							artifactName: 'DefaultProxyAdmin',
-							proxyAdminName:
-								(typeof options.proxyContract === 'object' && options.proxyContract.proxyAdminName) ||
-								'DefaultProxyAdmin',
-						};
+						viaAdminContract = resolveAdminContract(
+							name,
+							typeof options.proxyContract === 'object' ? options.proxyContract : {},
+						);
 						break;
 					case 'SharedAdminOptimizedTransparentProxy':
 						checkABIConflict = false;
 						proxyArtifact = OptimizedTransparentUpgradeableProxy;
 						proxyArgsTemplate = ['{implementation}', '{admin}', '{data}'];
-						viaAdminContract = {
-							artifactName: 'DefaultProxyAdmin',
-							proxyAdminName:
-								(typeof options.proxyContract === 'object' && options.proxyContract.proxyAdminName) ||
-								'DefaultProxyAdmin',
-						};
+						viaAdminContract = resolveAdminContract(
+							name,
+							typeof options.proxyContract === 'object' ? options.proxyContract : {},
+						);
 						break;
 					default:
 						throw new Error(`unknown proxy contract ${options.proxyContract}`);
@@ -321,21 +389,21 @@ export function deployViaProxy(
 
 		let proxyAdminContract:
 			| {
-					deployment: Deployment<typeof DefaultProxyAdmin.abi>;
+					deployment: Deployment<Abi>;
 					owner: `0x${string}`;
 			  }
 			| undefined;
-		if (viaAdminContract?.artifactName === 'DefaultProxyAdmin') {
+		if (viaAdminContract) {
 			const proxyAdminOwner = expectedOwner;
 			const proxyAdminName = viaAdminContract.proxyAdminName;
-			let proxyAdminDeployed: Deployment<typeof DefaultProxyAdmin.abi> | null = env.getOrNull(proxyAdminName);
+			let proxyAdminDeployed: Deployment<Abi> | null = env.getOrNull<Abi>(proxyAdminName);
 
 			if (!proxyAdminDeployed) {
-				const proxyAdminDeployment = await _deploy(
+				const proxyAdminDeployment = await _deploy<Abi>(
 					proxyAdminName,
 					{
 						...params,
-						artifact: DefaultProxyAdmin,
+						artifact: viaAdminContract.proxyAdminArtifact,
 						args: [proxyAdminOwner],
 					},
 					{
@@ -348,7 +416,12 @@ export function deployViaProxy(
 				proxyAdminDeployed = proxyAdminDeployment;
 			}
 
-			const currentProxyAdminOwner = await _read(proxyAdminDeployed, {functionName: 'owner'});
+			// Read through the bundled admin's `owner()` fragment rather than the deployment's own
+			//  ABI: any admin, bundled or not, is required to answer it (see ProxyAdminContractOptions).
+			const currentProxyAdminOwner = await _read(
+				{address: proxyAdminDeployed.address, abi: DefaultProxyAdmin.abi},
+				{functionName: 'owner'},
+			);
 
 			if (currentProxyAdminOwner.toLowerCase() !== expectedOwner.toLowerCase()) {
 				throw new Error(`To change owner/admin, you need to call transferOwnership on ${proxyAdminName}`);
@@ -553,16 +626,50 @@ export function deployViaProxy(
 					}
 				}
 
-				if (proxyAdminContract) {
+				if (options?.upgradeFunction) {
+					// The caller's own upgrade call. Same target and same sender as the built-in
+					//  calls below: the admin contract from its owner when there is one, the proxy
+					//  from its owner otherwise. The proxy is addressed through its RECORD
+					//  (`existingDeployment`), whose ABI merges the proxy's and the implementation's,
+					//  so the method may live on either (v1 did the same).
+					const {methodName, args: upgradeArgsTemplate} = options.upgradeFunction;
+					const target: Deployment<Abi> = proxyAdminContract
+						? proxyAdminContract.deployment
+						: (existingDeployment as unknown as Deployment<Abi>);
+					const targetName = proxyAdminContract ? viaAdminContract!.proxyAdminName : name;
+					if (!target.abi.some((v) => v.type === 'function' && v.name === methodName)) {
+						throw new Error(
+							`upgradeFunction.methodName "${methodName}" is not a function of ${targetName}, so ${name} cannot be upgraded through it`,
+						);
+					}
+					if (postUpgradeCalldata && !upgradeArgsTemplate.includes('{data}')) {
+						throw new Error(
+							`execute produced calldata to run with the upgrade of ${name}, but upgradeFunction.args has no '{data}' to carry it`,
+						);
+					}
+					await (_execute as unknown as LooseExecute)(target, {
+						account: proxyAdminContract ? proxyAdminContract.owner : (currentOwner as `0x${string}`),
+						functionName: methodName,
+						args: replaceTemplateArgs(upgradeArgsTemplate, {
+							implementationAddress: implementationDeployment.address,
+							proxyAdmin,
+							data: postUpgradeCalldata || '0x',
+							proxyAddress: proxyDeployment.address,
+						}),
+					});
+				} else if (proxyAdminContract) {
+					const proxyAdminDeployment = proxyAdminContract.deployment as unknown as Deployment<
+						typeof DefaultProxyAdmin.abi
+					>;
 					if (useUpgradeToAndCall) {
-						await _execute(proxyAdminContract.deployment, {
+						await _execute(proxyAdminDeployment, {
 							account: proxyAdminContract.owner,
 							functionName: 'upgradeAndCall',
 							args: [proxyDeployment.address, implementationDeployment.address, postUpgradeCalldata || '0x'],
 							value: 0n, // TODO
 						});
 					} else {
-						await _execute(proxyAdminContract.deployment, {
+						await _execute(proxyAdminDeployment, {
 							account: proxyAdminContract.owner,
 							functionName: 'upgrade',
 							args: [proxyDeployment.address, implementationDeployment.address],
