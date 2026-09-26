@@ -230,12 +230,13 @@ describe('the identity check is lenient on a fork, and ONLY on a fork', () => {
 	/**
 	 * The scoping half, and the one that stops this being "the check was deleted": the SAME
 	 * configuration and the SAME node, run as an ordinary named environment, is a genuine
-	 * misconfiguration and still says so.
+	 * misconfiguration. It is REFUSED rather than warned about, because the run would otherwise
+	 * sign every transaction for whatever chain the node claims to be (see the next block).
 	 */
-	it('still warns on a genuine mismatch off a fork', async () => {
-		const {warnings} = await withWarnings(() => loadEnv({environment: 'mainnet', nodeChainId: 31337}));
-
-		expect(warnings.filter((message) => IDENTITY_WARNING.test(message))).toHaveLength(1);
+	it('refuses a genuine mismatch off a fork', async () => {
+		await expect(loadEnv({environment: 'mainnet', nodeChainId: 31337})).rejects.toThrow(
+			/reports chainId 31337, but environment "mainnet" declares chain 1/,
+		);
 	});
 });
 
@@ -256,13 +257,35 @@ describe('which id the run ADOPTS', () => {
 		expect(chainId).toBe(31337);
 	});
 
-	/** Same rule off a fork, where the disagreement is also warned about. */
-	it('takes the node id over the declared one off a fork too', async () => {
-		const {result} = await withWarnings(() =>
-			getChainIdForEnvironment(config, 'mainnet', {environment: 'mainnet', provider: mockProvider(31337)}),
-		);
+	/**
+	 * Off a fork the two ids may not disagree at all. This used to warn and then adopt the node's
+	 * id, which let a node that lies about its chain (a testnet environment's RPC answering `1`)
+	 * collect transactions signed for mainnet. The disagreement is now refused before any id is
+	 * adopted, so there is no run left to sign anything.
+	 */
+	it('refuses, off a fork, a node whose id disagrees with the declared one', async () => {
+		const sepoliaConfig = resolveConfig({...baseConfig, environments: {sepolia: {chain: 11155111}}});
 
-		expect(result).toBe(31337);
+		await expect(
+			getChainIdForEnvironment(sepoliaConfig, 'sepolia', {environment: 'sepolia', provider: mockProvider(1)}),
+		).rejects.toThrow(/every transaction would be signed for chain 1/);
+	});
+
+	/** The refusal names the legitimate way to run a node that simulates another network. */
+	it('points at the fork run as the legitimate way to disagree', async () => {
+		await expect(
+			getChainIdForEnvironment(config, 'mainnet', {environment: 'mainnet', provider: mockProvider(31337)}),
+		).rejects.toThrow(/--is-fork/);
+	});
+
+	/** Agreement off a fork is untouched: the node's id, which is also the declared one. */
+	it('adopts the node id off a fork when it agrees with the declared one', async () => {
+		const chainId = await getChainIdForEnvironment(config, 'mainnet', {
+			environment: 'mainnet',
+			provider: mockProvider(1),
+		});
+
+		expect(chainId).toBe(1);
 	});
 
 	/** With no node to ask, the declared id is all there is, and it is still accepted. */
