@@ -1,4 +1,4 @@
-import {toJSONCompatibleLinkedData} from '@rocketh/core';
+import {resolveTransactionFees, toJSONCompatibleLinkedData, type TransactionFees} from '@rocketh/core';
 import {Abi} from 'abitype';
 import {EIP1193TransactionData} from 'eip-1193';
 import {logs} from 'named-logs';
@@ -124,8 +124,12 @@ function linkLibraries(
 type FactoryParams = {
 	chainId: `0x${string}`;
 	address: `0x${string}`;
-	maxFeePerGas: `0x${string}` | undefined;
-	maxPriorityFeePerGas: `0x${string}` | undefined;
+	/**
+	 * The deployment's own type and fees, reused for the helper transactions rocketh builds to
+	 * bootstrap a factory, so a chain (or a call) that needs legacy transactions gets them there
+	 * too. Otherwise a legacy chain could not bootstrap deterministic deployment at all.
+	 */
+	fees: TransactionFees;
 };
 /**
  * The create2 deterministic-deployment info for this network, however it was spelled.
@@ -236,15 +240,13 @@ async function getCreate2Factory(env: Environment, params: FactoryParams) {
 				{
 					type: 'object',
 					data: {
-						type: '0x2',
+						...params.fees,
 						chainId: params.chainId,
 						from: params.address,
 						to: factoryDeployerAddress,
 						value: balanceToSend,
 						gas: `0x${BigInt(21000).toString(16)}`,
-						maxFeePerGas: params.maxFeePerGas,
-						maxPriorityFeePerGas: params.maxPriorityFeePerGas,
-					},
+					} as EIP1193TransactionData,
 				},
 				{
 					message: `  - Broadcasting Create 2 Factory Funding tx:\n      {hash}\n      {transaction}`,
@@ -317,14 +319,12 @@ async function getCreate3Factory(env: Environment, params: FactoryParams) {
 			{
 				type: 'object',
 				data: {
-					type: '0x2',
+					...params.fees,
 					chainId: params.chainId,
 					from: params.address,
 					to: create2.factoryAddress,
 					data: create2.encodeData({salt, bytecode: factoryBytecode}),
-					maxFeePerGas: params.maxFeePerGas,
-					maxPriorityFeePerGas: params.maxPriorityFeePerGas,
-				},
+				} as EIP1193TransactionData,
 			},
 			{message: `  - Deploying Create 3 Factory:\n      {hash}\n      {transaction}`},
 		);
@@ -500,11 +500,11 @@ const CANNOT_CARRY_BLOBS = 'a blob (EIP-4844) transaction cannot create a contra
  * but which it cannot put on a deployment transaction, each with the reason and what to do instead.
  * An option the type accepts is either honoured or refused here, never silently dropped.
  *
- * Every other option of that type is used: `gas`, `value`, `maxFeePerGas`, `maxPriorityFeePerGas`
- * and `nonce` go on the transaction, `args` is encoded into it, `type: 'eip1559'` is what is sent
- * (any other `type` is refused below), and `assertChainId` is satisfied by construction: the
- * `chainId` rocketh signs for is the one the connected node reported. `gasPrice` is deliberately
- * absent from this list: it belongs to the support for chains without EIP-1559.
+ * Every other option of that type is used: `gas`, `value`, `maxFeePerGas`, `maxPriorityFeePerGas`,
+ * `gasPrice` and `nonce` go on the transaction, `args` is encoded into it, `type` is honoured for
+ * `'eip1559'` and `'legacy'` (any other is refused, and so is a fee field contradicting the type:
+ * see `resolveTransactionFees` in `@rocketh/core`), and `assertChainId` is satisfied by
+ * construction: the `chainId` rocketh signs for is the one the connected node reported.
  */
 const REFUSED_DEPLOY_OPTIONS: {[field: string]: string} = {
 	authorizationList:
@@ -525,11 +525,6 @@ function refuseUnsupportedDeployOptions(nameToDisplay: string, args: {[field: st
 			throw new Error(`deploy "${nameToDisplay}": "${field}" is not supported: ${reason}.`);
 		}
 	}
-	if (args.type !== undefined && args.type !== 'eip1559') {
-		throw new Error(
-			`deploy "${nameToDisplay}": "type: ${String(args.type)}" is not supported: a deployment is sent as an EIP-1559 (type 2) transaction. Remove \`type\`.`,
-		);
-	}
 }
 
 export function deploy(env: Environment): <TAbi extends Abi>(
@@ -542,6 +537,19 @@ export function deploy(env: Environment): <TAbi extends Abi>(
 		// Refused at the call, BEFORE any early return, so the answer does not depend on whether the
 		//  deployment already exists.
 		refuseUnsupportedDeployOptions(nameToDisplay, args as unknown as {[field: string]: unknown});
+		// Decided here for the same reason: a contradictory fee option (`gasPrice` with an EIP-1559
+		//  fee, an unsupported `type`) is refused whether or not the deployment would be reused.
+		//  `accessList` is not passed: a deployment does not put one on the wire.
+		const fees = resolveTransactionFees(
+			`deploy "${nameToDisplay}"`,
+			{
+				type: args.type,
+				gasPrice: args.gasPrice,
+				maxFeePerGas: args.maxFeePerGas,
+				maxPriorityFeePerGas: args.maxPriorityFeePerGas,
+			},
+			env.network.transactionType,
+		);
 		const skipIfAlreadyDeployed = options && 'skipIfAlreadyDeployed' in options && options.skipIfAlreadyDeployed;
 		const alwaysOverride = options && 'alwaysOverride' in options && options.alwaysOverride;
 		const strictBytecodeMatch = options && 'strictBytecodeMatch' in options && options.strictBytecodeMatch;
@@ -652,28 +660,23 @@ export function deploy(env: Environment): <TAbi extends Abi>(
 		//  `0x${string}`. The `?:` spelling does not leak a type but would silently DROP an explicit
 		//  zero, which matters most for `nonce`: nonce 0 is the first transaction of any fresh account,
 		//  not a missing value. Every numeric field of the literal below follows the same rule, as the
-		//  `execute` path in `@rocketh/read-execute` does.
-		const maxFeePerGas =
-			viemArgs.maxFeePerGas !== undefined ? (`0x${viemArgs.maxFeePerGas.toString(16)}` as `0x${string}`) : undefined;
-		const maxPriorityFeePerGas =
-			viemArgs.maxPriorityFeePerGas !== undefined
-				? (`0x${viemArgs.maxPriorityFeePerGas.toString(16)}` as `0x${string}`)
-				: undefined;
-
-		const transactionData: EIP1193TransactionData = {
-			type: '0x2',
+		//  `execute` path in `@rocketh/read-execute` does (and as `resolveTransactionFees` does for the
+		//  fee fields).
+		//
+		// The cast is for the legacy arm only: `eip-1193` models `chainId` on type 1 and type 2
+		//  transactions but not on a legacy one, while rocketh declares it on every transaction it
+		//  builds (a node-held account's node checks it, and it is what EIP-155 signs for).
+		const transactionData = {
+			...fees,
 			from: address,
 			chainId,
 			data: calldata,
 			gas: viemArgs.gas !== undefined ? (`0x${viemArgs.gas.toString(16)}` as `0x${string}`) : undefined,
-			maxFeePerGas,
-			maxPriorityFeePerGas,
-			// gasPrice: viemArgs.gasPrice && `0x${viemArgs.gasPrice.toString(16)}` as `0x${string}`,
 			...(viemArgs.value !== undefined && {
 				value: `0x${viemArgs.value.toString(16)}` as `0x${string}`,
 			}),
 			nonce: viemArgs.nonce !== undefined ? (`0x${viemArgs.nonce.toString(16)}` as `0x${string}`) : undefined,
-		};
+		} as EIP1193TransactionData;
 
 		let expectedAddress: `0x${string}` | undefined = undefined;
 		if (options?.deterministic) {
@@ -691,7 +694,7 @@ export function deploy(env: Environment): <TAbi extends Abi>(
 
 			const bytecode = transactionData.data || '0x';
 
-			const factoryParams = {chainId, address, maxFeePerGas, maxPriorityFeePerGas};
+			const factoryParams = {chainId, address, fees};
 			const create =
 				deterministicType === 'create2'
 					? await getCreate2Factory(env, factoryParams)

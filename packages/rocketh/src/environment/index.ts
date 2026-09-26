@@ -1015,6 +1015,7 @@ export async function createEnvironment<
 			fork: context.fork,
 			provider,
 			deterministicDeployment: resolvedExecutionParams.environment.deterministicDeployment,
+			transactionType: resolvedExecutionParams.environment.transactionType,
 
 			// for backward compatibility
 			tags: context.tags,

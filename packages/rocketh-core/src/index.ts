@@ -17,6 +17,9 @@ export {
 // Re-export artifact utilities
 export {mergeABIs, mergeArtifacts} from './artifacts.js';
 
+// Re-export transaction fee resolution (shared by @rocketh/deploy and @rocketh/read-execute)
+export {resolveTransactionFees, type TransactionFeeOptions, type TransactionFees} from './fees.js';
+
 // Re-export environment utilities
 export {withEnvironment, enhanceEnvIfNeeded} from './environment.js';
 

@@ -7,6 +7,7 @@ import type {
 	DecodeFunctionResultReturnType,
 	ReadContractParameters,
 	TransactionRequestEIP1559,
+	TransactionRequestLegacy,
 	WriteContractParameters,
 } from 'viem';
 // export type so viem is not needed for inference
@@ -16,8 +17,10 @@ export type {
 	DecodeFunctionResultReturnType,
 	ReadContractParameters,
 	TransactionRequestEIP1559,
+	TransactionRequestLegacy,
 	WriteContractParameters,
 };
+import {resolveTransactionFees, type TransactionFeeOptions} from '@rocketh/core';
 import {encodeFunctionData} from 'viem';
 import {logs} from 'named-logs';
 import {evaluateGuard} from './guard.js';
@@ -59,7 +62,16 @@ export type {
 
 const logger = logs('@rocketh/read-execute');
 
-type TransactionData = Omit<TransactionRequestEIP1559, 'from' | 'nonce'> & {account: string};
+/**
+ * What `tx` accepts: an EIP-1559 request, or a legacy one priced with `gasPrice` (for a chain that
+ * rejects EIP-1559). Omitted from each arm separately: `Omit` over a union keeps only the keys the
+ * arms share, which would drop every fee field.
+ */
+type TransactionData = (
+	Omit<TransactionRequestEIP1559, 'from' | 'nonce'> | Omit<TransactionRequestLegacy, 'from' | 'nonce'>
+) & {
+	account: string;
+};
 
 /**
  * The guard's generics are independent of the executed contract's (it usually reads ANOTHER
@@ -263,7 +275,7 @@ export type ExecutionArgs<
 };
 
 const NOT_SENT_AS_BLOB =
-	'rocketh sends a contract call as an EIP-1559 (type 2) transaction, which cannot carry blobs. Send the blob transaction outside rocketh';
+	'rocketh sends a contract call as an EIP-1559 (type 2) or a legacy (type 0) transaction, neither of which can carry blobs. Send the blob transaction outside rocketh';
 
 /**
  * The options whose TYPE `execute` accepts (it is viem's `WriteContractParameters`) but which it
@@ -272,14 +284,14 @@ const NOT_SENT_AS_BLOB =
  * `@rocketh/deploy` applies to its construction options).
  *
  * Every other option of that type is used: `functionName` and `args` are encoded, `dataSuffix` is
- * appended to that calldata, `value`, `gas`, `nonce`, `maxFeePerGas`, `maxPriorityFeePerGas` and
- * `accessList` go on the transaction, and `type: 'eip1559'` is what is sent (any other `type` is
- * refused below). `gasPrice` is deliberately absent from this list: it belongs to the support for
- * chains without EIP-1559.
+ * appended to that calldata, `value`, `gas`, `nonce`, `maxFeePerGas`, `maxPriorityFeePerGas`,
+ * `gasPrice` and `accessList` go on the transaction, and `type` is honoured for `'eip1559'` and
+ * `'legacy'` (any other is refused, and so is a fee field contradicting the type: see
+ * `resolveTransactionFees` in `@rocketh/core`).
  */
 const REFUSED_EXECUTE_OPTIONS: {[field: string]: string} = {
 	authorizationList:
-		'rocketh sends a contract call as an EIP-1559 (type 2) transaction, not an EIP-7702 one. Send the delegation as its own transaction',
+		'rocketh sends a contract call as an EIP-1559 (type 2) or a legacy (type 0) transaction, not an EIP-7702 one. Send the delegation as its own transaction',
 	blobs: NOT_SENT_AS_BLOB,
 	blobVersionedHashes: NOT_SENT_AS_BLOB,
 	kzg: NOT_SENT_AS_BLOB,
@@ -293,11 +305,6 @@ function refuseUnsupportedExecuteOptions(functionName: string, args: {[field: st
 		if (args[field] !== undefined) {
 			throw new Error(`execute "${functionName}": "${field}" is not supported: ${reason}.`);
 		}
-	}
-	if (args.type !== undefined && args.type !== 'eip1559') {
-		throw new Error(
-			`execute "${functionName}": "type: ${String(args.type)}" is not supported: a contract call is sent as an EIP-1559 (type 2) transaction. Remove \`type\`.`,
-		);
 	}
 }
 
@@ -317,6 +324,13 @@ export function execute(env: Environment): ExecuteFunction {
 		const {account, guard, ...viemArgs} = args;
 		// Refused at the call, BEFORE the guard, so the answer does not depend on chain state.
 		refuseUnsupportedExecuteOptions(String(viemArgs.functionName), viemArgs as unknown as {[field: string]: unknown});
+		// Decided before the guard too: an unsupported `type` or a contradictory fee option is refused
+		//  whatever the chain says.
+		const fees = resolveTransactionFees(
+			`execute "${String(viemArgs.functionName)}"`,
+			viemArgs as unknown as TransactionFeeOptions,
+			env.network.transactionType,
+		);
 
 		// The guard is evaluated BEFORE anything is built. A satisfied guard therefore costs one
 		// read and reaches neither the broadcast choke point nor the unknown-signer seam behind
@@ -358,9 +372,9 @@ export function execute(env: Environment): ExecuteFunction {
 			? (`${encoded}${viemArgs.dataSuffix.replace(/^0x/, '')}` as `0x${string}`)
 			: encoded;
 
-		const txParam: EIP1193TransactionData = {
+		const txParam = {
 			to: deployment.address,
-			type: '0x2',
+			...fees,
 			from: address,
 			chainId: `0x${env.network.chain.id.toString(16)}` as `0x${string}`,
 			data: calldata,
@@ -370,15 +384,11 @@ export function execute(env: Environment): ExecuteFunction {
 			//  type but silently DROPPED an explicit zero, which matters most for `nonce`: nonce 0 is
 			//  the first transaction of any fresh account, not a missing value.
 			gas: viemArgs.gas !== undefined ? (`0x${viemArgs.gas.toString(16)}` as `0x${string}`) : undefined,
-			maxFeePerGas:
-				viemArgs.maxFeePerGas !== undefined ? (`0x${viemArgs.maxFeePerGas.toString(16)}` as `0x${string}`) : undefined,
-			maxPriorityFeePerGas:
-				viemArgs.maxPriorityFeePerGas !== undefined
-					? (`0x${viemArgs.maxPriorityFeePerGas.toString(16)}` as `0x${string}`)
-					: undefined,
-			accessList: viemArgs.accessList as any, // TODO type
+			// Only on an EIP-1559 transaction: `resolveTransactionFees` refuses one on a legacy transaction.
+			...(fees.type === '0x2' && {accessList: viemArgs.accessList as any}), // TODO type
 			nonce: viemArgs.nonce !== undefined ? (`0x${viemArgs.nonce.toString(16)}` as `0x${string}`) : undefined,
-		};
+			// Cast for the legacy arm, which `eip-1193` models without `chainId` (see `@rocketh/deploy`).
+		} as EIP1193TransactionData;
 		// `!== undefined` for the same reason as the fields above, and to match `@rocketh/deploy`,
 		//  which already spells this one that way. An omitted `value` and `'0x0'` mean the same thing
 		//  to a node, so this changes no outcome; it keeps ONE rule for "zero is a value" rather than
@@ -430,25 +440,21 @@ export function executeByName(env: Environment): ExecuteFunctionByName {
 export function tx(env: Environment): TxFunction {
 	return async (txData: TransactionData, options?: {message?: string}) => {
 		const {account, ...viemArgs} = txData;
+		const fees = resolveTransactionFees('tx', viemArgs as TransactionFeeOptions, env.network.transactionType);
 		const address = env.resolveAccount(account);
 
-		const txParam: EIP1193TransactionData = {
-			type: '0x2',
+		const txParam = {
+			...fees,
 			to: txData.to || undefined,
 			from: address,
 			chainId: `0x${env.network.chain.id.toString(16)}` as `0x${string}`,
 			data: txData.data,
 			// `!== undefined`, not truthiness: see the note on the same fields in `execute` above.
 			gas: viemArgs.gas !== undefined ? (`0x${viemArgs.gas.toString(16)}` as `0x${string}`) : undefined,
-			maxFeePerGas:
-				viemArgs.maxFeePerGas !== undefined ? (`0x${viemArgs.maxFeePerGas.toString(16)}` as `0x${string}`) : undefined,
-			maxPriorityFeePerGas:
-				viemArgs.maxPriorityFeePerGas !== undefined
-					? (`0x${viemArgs.maxPriorityFeePerGas.toString(16)}` as `0x${string}`)
-					: undefined,
 			// nonce: viemArgs.nonce ? (`0x${viemArgs.nonce.toString(16)}` as `0x${string}`) : undefined,
-			accessList: viemArgs.accessList as any, // TODO check
-		};
+			...(fees.type === '0x2' && {accessList: ('accessList' in viemArgs ? viemArgs.accessList : undefined) as any}), // TODO check
+			// Cast for the legacy arm, which `eip-1193` models without `chainId` (see `@rocketh/deploy`).
+		} as EIP1193TransactionData;
 		// `!== undefined`: see the note on the same line in `execute` above.
 		if (viemArgs.value !== undefined) {
 			txParam.value = `0x${viemArgs.value.toString(16)}` as `0x${string}`;

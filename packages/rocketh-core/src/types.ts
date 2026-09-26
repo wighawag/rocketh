@@ -233,8 +233,27 @@ export type DeterministicDeploymentInfo =
 			create3?: Create3DeterministicDeploymentInfo;
 	  };
 
+/**
+ * The kind of transaction rocketh builds on a chain when the call itself does not say.
+ *
+ * - `'eip1559'` (the default): an EIP-1559 (type 2) transaction, fees `maxFeePerGas` /
+ *   `maxPriorityFeePerGas`.
+ * - `'legacy'`: a legacy (type 0) transaction priced with `gasPrice`, for a chain whose node
+ *   rejects type 2 transactions.
+ *
+ * The values are the ones viem uses for a transaction's `type`, and a call that passes its own
+ * `type`, `gasPrice` or EIP-1559 fee field decides for itself: this is only the default.
+ */
+export type ChainTransactionType = 'eip1559' | 'legacy';
+
 export type ChainUserConfig = {
 	readonly rpcUrl?: string;
+	/**
+	 * What rocketh sends on this chain when a call states no fee option: `'eip1559'` (the
+	 * default) or `'legacy'`, for a chain that rejects EIP-1559 transactions. See
+	 * `ChainTransactionType`.
+	 */
+	readonly transactionType?: ChainTransactionType;
 	readonly tags?: readonly string[];
 	readonly deterministicDeployment?: DeterministicDeploymentInfo;
 	readonly info?: ChainInfo;
@@ -257,6 +276,8 @@ export type ChainUserConfig = {
 
 export type ChainConfig = {
 	readonly tags: readonly string[];
+	/** Defaulted to `'eip1559'`. */
+	readonly transactionType: ChainTransactionType;
 	readonly deterministicDeployment: DeterministicDeploymentInfo;
 	readonly info: ChainInfo;
 	readonly pollingInterval: number;
@@ -749,6 +770,8 @@ export type ResolvedExecutionParams<Extra extends Record<string, unknown> = Reco
 		readonly confirmationsRequired?: number;
 		readonly autoMine: boolean;
 		readonly deleteDeploymentsIfDifferentGenesisHash: boolean;
+		/** From the chain config of the SIMULATED network, defaulted to `'eip1559'`. */
+		readonly transactionType: ChainTransactionType;
 	};
 	/** The CONNECTED chain, as surfaced on `Environment['network']['chain']`. See there. */
 	readonly chain: ChainInfo;
@@ -852,6 +875,13 @@ export interface Environment<
 		 */
 		readonly fork?: ForkDescriptor;
 		readonly deterministicDeployment: DeterministicDeploymentInfo;
+		/**
+		 * What a transaction rocketh builds is sent as when the call states no fee option (see
+		 * `ChainTransactionType`). Read by `@rocketh/deploy` and `@rocketh/read-execute`, which
+		 * treat an absent value as `'eip1559'` so an environment built by an older `rocketh` still
+		 * behaves as it always did.
+		 */
+		readonly transactionType: ChainTransactionType;
 	};
 	readonly deployments: Deployments;
 	/**
