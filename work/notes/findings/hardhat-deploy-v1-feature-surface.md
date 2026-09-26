@@ -132,7 +132,7 @@ v1's `DiamondOptions` (`types.ts:81-105`) against `DiamondDeployOptions` (`packa
 | `diamondContract` (`types.ts:82`) | Replaces the base diamond artifact | absent, deliberately: the type no longer accepts it because the deploy path ignored it (`packages/rocketh-diamond/src/types.ts:107-120`) | dropped and tracked, `work/notes/ideas/custom-diamond-base-artifact.md` |
 | `diamondContractArgs` (`types.ts:83`) | Constructor template with `{owner}` / `{facetCuts}` / `{initializations}` plus the erc165 and init placeholders | present with the same three-placeholder default and the same placeholder set (`packages/rocketh-diamond/src/index.ts:332-340`) | present |
 | `libraries` / `linkedData` (`types.ts:90-91`) | Defaults for every facet, overridable per facet | present (`packages/rocketh-diamond/src/index.ts:134-136`) | present |
-| `upgradeIndex` (`types.ts:92`) | The same guard as the proxy | present through the shared helper (`packages/rocketh-proxy/src/utils.ts:34-59`) | present, with the same `history` note as §C |
+| `upgradeIndex` (`types.ts:92`) | The same guard as the proxy | absent: `DiamondDeployOptions` (`packages/rocketh-diamond/src/types.ts`) has no such field and `@rocketh/diamond` never calls `checkUpgradeIndex` (corrected 2026-09-26; this row first said "present through the shared helper", which was wrong) | not supported, DECIDED 2026-09-26 by the maintainer |
 | the legacy diamond base (`src/helpers.ts:1828-1831, 3162-3221`) | Detects a diamond deployed by an older hardhat-deploy and cuts it through a separate code path | absent | dropped, DECIDED 2026-09-24 by the maintainer |
 
 ---
@@ -252,3 +252,8 @@ The maintainer triaged the absent and partial rows on 2026-09-24. Where each lan
 **The record schema.** The maintainer decided on 2026-09-24 that the deployment record is a PUBLISHED format: one ADR lists its fields, what each asserts, and a promise that none is removed or renamed without a major version (`work/tasks/backlog/deployment-record-schema-adr.md`). The two tasks that add fields (`record-script-tags-and-dependencies-on-deployments`, `record-the-implementation-address-on-a-proxy-deployment`) are blocked on it.
 
 One migration hazard is worth stating on its own, because it is not a missing feature and it fails late: **three of the five built-in proxy names changed** (`EIP173Proxy` to `ERC173Proxy`, `OpenZeppelinTransparentProxy` to `SharedAdminOpenZeppelinTransparentProxy`, `OptimizedTransparentProxy` to `SharedAdminOptimizedTransparentProxy`), rocketh's set is closed, and a name outside it throws at deploy-script RUN time (`packages/rocketh-proxy/src/index.ts:275`), not at build time.
+
+## Update 2026-09-26
+
+- **Diamond `upgradeIndex` was misreported.** §D said it was present through the shared helper; `@rocketh/diamond` has neither the option nor a call to `checkUpgradeIndex`. The row is corrected, and the maintainer decided it is not supported. The migration map says so.
+- **Two "being closed" rows have landed.** Chains without EIP-1559 (§B `gasPrice`): `gasPrice` on `deploy` / `execute` / `tx` and a per-chain `transactionType: 'legacy'` (#155). A custom ProxyAdmin artifact with a custom upgrade function (§C): `proxyAdminArtifact` and `upgradeFunction: {methodName, args}` on `deployViaProxy` (#156). The rows above still describe the code at b1ec7468; the migration map describes the current code.
