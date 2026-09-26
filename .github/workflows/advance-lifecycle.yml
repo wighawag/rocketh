@@ -205,12 +205,27 @@ jobs:
         # empty matrix and is silently inert. `if:` + the inner `[ -n ... ]` guard
         # keep schedule/push (and a blank dispatch field) exporting NOTHING — an
         # empty DORFL_* would make env-config coercion throw.
+        #
+        # The inputs arrive through `env:` and the shell reads only QUOTED shell
+        # variables. A `${{ }}` expression expanded straight into a `run:` block is
+        # TEXTUAL SUBSTITUTION performed before the shell starts, so the value
+        # becomes shell SOURCE, not shell DATA. These four are `type: choice` over a
+        # fixed option list, so the value can only be one of the literals declared
+        # above and there is nothing to exploit TODAY; routing them through `env:`
+        # makes that a property of THIS STEP rather than of the input declaration,
+        # so changing any of them to `type: string` later cannot silently turn a
+        # dispatch field into command execution on a `contents: write` runner.
         if: ${{ github.event_name == 'workflow_dispatch' }}
+        env:
+          IN_AUTO_BUILD: ${{ github.event.inputs.autoBuild }}
+          IN_AUTO_TASK: ${{ github.event.inputs.autoTask }}
+          IN_OBSERVATION_TRIAGE: ${{ github.event.inputs.observationTriage }}
+          IN_SURFACE_BLOCKERS: ${{ github.event.inputs.surfaceBlockers }}
         run: |
-          [ -n "${{ github.event.inputs.autoBuild }}" ] && echo "DORFL_AUTO_BUILD=${{ github.event.inputs.autoBuild }}" >> "$GITHUB_ENV"
-          [ -n "${{ github.event.inputs.autoTask }}" ] && echo "DORFL_AUTO_TASK=${{ github.event.inputs.autoTask }}" >> "$GITHUB_ENV"
-          [ -n "${{ github.event.inputs.observationTriage }}" ] && echo "DORFL_OBSERVATION_TRIAGE=${{ github.event.inputs.observationTriage }}" >> "$GITHUB_ENV"
-          [ -n "${{ github.event.inputs.surfaceBlockers }}" ] && echo "DORFL_SURFACE_BLOCKERS=${{ github.event.inputs.surfaceBlockers }}" >> "$GITHUB_ENV"
+          [ -n "${IN_AUTO_BUILD}" ] && echo "DORFL_AUTO_BUILD=${IN_AUTO_BUILD}" >> "$GITHUB_ENV"
+          [ -n "${IN_AUTO_TASK}" ] && echo "DORFL_AUTO_TASK=${IN_AUTO_TASK}" >> "$GITHUB_ENV"
+          [ -n "${IN_OBSERVATION_TRIAGE}" ] && echo "DORFL_OBSERVATION_TRIAGE=${IN_OBSERVATION_TRIAGE}" >> "$GITHUB_ENV"
+          [ -n "${IN_SURFACE_BLOCKERS}" ] && echo "DORFL_SURFACE_BLOCKERS=${IN_SURFACE_BLOCKERS}" >> "$GITHUB_ENV"
           true
       - id: scan
         # Enumerate eligible items as namespaced ids, one matrix leg per id. CI
@@ -301,12 +316,19 @@ jobs:
         # Mirror of the enumerate-job override (see there): export each gate's
         # DORFL_* ONLY on a workflow_dispatch with a non-blank input, so the
         # one-shot override also reaches the `advance` leg that builds the item.
+        # Inputs ride `env:` and the shell reads only quoted variables. See the
+        # enumerate job's copy of this step for why that matters.
         if: ${{ github.event_name == 'workflow_dispatch' }}
+        env:
+          IN_AUTO_BUILD: ${{ github.event.inputs.autoBuild }}
+          IN_AUTO_TASK: ${{ github.event.inputs.autoTask }}
+          IN_OBSERVATION_TRIAGE: ${{ github.event.inputs.observationTriage }}
+          IN_SURFACE_BLOCKERS: ${{ github.event.inputs.surfaceBlockers }}
         run: |
-          [ -n "${{ github.event.inputs.autoBuild }}" ] && echo "DORFL_AUTO_BUILD=${{ github.event.inputs.autoBuild }}" >> "$GITHUB_ENV"
-          [ -n "${{ github.event.inputs.autoTask }}" ] && echo "DORFL_AUTO_TASK=${{ github.event.inputs.autoTask }}" >> "$GITHUB_ENV"
-          [ -n "${{ github.event.inputs.observationTriage }}" ] && echo "DORFL_OBSERVATION_TRIAGE=${{ github.event.inputs.observationTriage }}" >> "$GITHUB_ENV"
-          [ -n "${{ github.event.inputs.surfaceBlockers }}" ] && echo "DORFL_SURFACE_BLOCKERS=${{ github.event.inputs.surfaceBlockers }}" >> "$GITHUB_ENV"
+          [ -n "${IN_AUTO_BUILD}" ] && echo "DORFL_AUTO_BUILD=${IN_AUTO_BUILD}" >> "$GITHUB_ENV"
+          [ -n "${IN_AUTO_TASK}" ] && echo "DORFL_AUTO_TASK=${IN_AUTO_TASK}" >> "$GITHUB_ENV"
+          [ -n "${IN_OBSERVATION_TRIAGE}" ] && echo "DORFL_OBSERVATION_TRIAGE=${IN_OBSERVATION_TRIAGE}" >> "$GITHUB_ENV"
+          [ -n "${IN_SURFACE_BLOCKERS}" ] && echo "DORFL_SURFACE_BLOCKERS=${IN_SURFACE_BLOCKERS}" >> "$GITHUB_ENV"
           true
       - name: advance one item in-place (propose ⇒ opens a PR)
         # In-place in this checkout (no --isolated/--remote): the CI container IS
@@ -369,12 +391,19 @@ jobs:
         # DORFL_* ONLY on a workflow_dispatch with a non-blank input. The
         # merge job re-scans the pool inside `advance -n`, so it needs the override
         # too for the lifecycle/task pools to reflect it.
+        # Inputs ride `env:` and the shell reads only quoted variables. See the
+        # enumerate job's copy of this step for why that matters.
         if: ${{ github.event_name == 'workflow_dispatch' }}
+        env:
+          IN_AUTO_BUILD: ${{ github.event.inputs.autoBuild }}
+          IN_AUTO_TASK: ${{ github.event.inputs.autoTask }}
+          IN_OBSERVATION_TRIAGE: ${{ github.event.inputs.observationTriage }}
+          IN_SURFACE_BLOCKERS: ${{ github.event.inputs.surfaceBlockers }}
         run: |
-          [ -n "${{ github.event.inputs.autoBuild }}" ] && echo "DORFL_AUTO_BUILD=${{ github.event.inputs.autoBuild }}" >> "$GITHUB_ENV"
-          [ -n "${{ github.event.inputs.autoTask }}" ] && echo "DORFL_AUTO_TASK=${{ github.event.inputs.autoTask }}" >> "$GITHUB_ENV"
-          [ -n "${{ github.event.inputs.observationTriage }}" ] && echo "DORFL_OBSERVATION_TRIAGE=${{ github.event.inputs.observationTriage }}" >> "$GITHUB_ENV"
-          [ -n "${{ github.event.inputs.surfaceBlockers }}" ] && echo "DORFL_SURFACE_BLOCKERS=${{ github.event.inputs.surfaceBlockers }}" >> "$GITHUB_ENV"
+          [ -n "${IN_AUTO_BUILD}" ] && echo "DORFL_AUTO_BUILD=${IN_AUTO_BUILD}" >> "$GITHUB_ENV"
+          [ -n "${IN_AUTO_TASK}" ] && echo "DORFL_AUTO_TASK=${IN_AUTO_TASK}" >> "$GITHUB_ENV"
+          [ -n "${IN_OBSERVATION_TRIAGE}" ] && echo "DORFL_OBSERVATION_TRIAGE=${IN_OBSERVATION_TRIAGE}" >> "$GITHUB_ENV"
+          [ -n "${IN_SURFACE_BLOCKERS}" ] && echo "DORFL_SURFACE_BLOCKERS=${IN_SURFACE_BLOCKERS}" >> "$GITHUB_ENV"
           true
       - name: advance one item in-place (merge ⇒ rebase + CAS land on main)
         # In-place (no --isolated/--remote). `--merge` ties the integration mode

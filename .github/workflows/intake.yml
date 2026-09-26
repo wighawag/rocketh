@@ -209,11 +209,23 @@ jobs:
         # lone-task review/edit loop and posts its findings as questions back into
         # THIS issue thread (insertion point E) through the issue-comment seam —
         # CI surfaces E by invoking intake; it adds no new review mechanism.
+        #
+        # The issue number and the derived flags arrive through `env:` and the
+        # shell reads only QUOTED variables, matching the gate-override steps in
+        # advance-lifecycle.yml. Neither value is attacker-controlled text today
+        # (GitHub types `issue.number` as an integer, and the three flags are
+        # literals the policy step above chose from a fixed if/else), so this is
+        # consistency rather than a fix: it keeps "no `${{ }}` inside a `run:`
+        # block" true everywhere, which is a property a reviewer can grep for.
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          SPEC_FLAG: ${{ steps.policy.outputs.spec_flag }}
+          TASK_FLAG: ${{ steps.policy.outputs.task_flag }}
+          ORIGIN_TRUST_FLAG: ${{ steps.policy.outputs.origin_trust_flag }}
         run: |
-          dorfl intake "${{ github.event.issue.number }}" \
-            "${{ steps.policy.outputs.spec_flag }}" \
-            "${{ steps.policy.outputs.task_flag }}" \
-            "${{ steps.policy.outputs.origin_trust_flag }}" \
+          dorfl intake "${ISSUE_NUMBER}" \
+            "${SPEC_FLAG}" \
+            "${TASK_FLAG}" \
+            "${ORIGIN_TRUST_FLAG}" \
             --arbiter origin

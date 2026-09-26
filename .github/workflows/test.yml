@@ -24,6 +24,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Nothing in this job pushes, fetches or otherwise speaks to the remote
+          # after checkout, so the token has no reason to stay in .git/config where
+          # every later step (and every dependency those steps execute) can read it.
+          persist-credentials: false
 
       - name: Setup pnpm
         # v4, matching release.yml and the dorfl-setup composite action. This job sat on
