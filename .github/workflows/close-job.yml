@@ -57,6 +57,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          # Public repository: every git read works without a token, and this
+          # job cannot push, so do not leave the token in .git/config for later
+          # steps (the setup action, including any project-setup hook, and
+          # close-merged-issues) to read.
+          persist-credentials: false
       - uses: ./.github/actions/dorfl-setup
       - name: close issues whose work has landed on main
         # In-place in this checkout (no --isolated/--remote): the CI container IS

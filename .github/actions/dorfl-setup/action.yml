@@ -29,14 +29,8 @@ runs:
         cache: pnpm
     - name: Install project deps
       shell: bash
-      # `--ignore-scripts` matches test.yml, release.yml and deploy.yml, which all
-      # install this same lockfile without lifecycle scripts and are green. No
-      # package in the workspace declares preinstall/install/postinstall/prepare
-      # (only `prepublishOnly`, which runs at PUBLISH, not install), and the gate
-      # this action feeds builds explicitly (`dorfl.json`'s verify runs `pnpm
-      # build`), so nothing here depends on an install-time script. It matters
-      # because verify.yml is reachable from a FORK's pull_request: without this a
-      # dependency's postinstall runs on the runner before any gate does.
+      # --ignore-scripts: verify runs on fork pull requests; nothing in this
+      # workspace needs an install-time script (the gate builds explicitly).
       run: pnpm install --frozen-lockfile --ignore-scripts
     - name: Ensure a local main branch for changeset --since=main
       shell: bash
@@ -64,26 +58,19 @@ runs:
         git config user.name "dorfl[bot]"
         git config user.email "dorfl[bot]@users.noreply.github.com"
 
-    # Both global installs are PINNED to an exact version. They run in jobs that
-    # carry `contents: write` and an ANTHROPIC_API_KEY, so an unpinned `npm
-    # install -g` resolves whatever `latest` is at RUN time: a compromised or
-    # merely broken release reaches those credentials with no review and no
-    # lockfile to catch it. Bump these deliberately, the way the SHA-pinned
-    # `uses:` lines above are bumped.
+    # Pinned to the dorfl version that generated this action, so CI runs the
+    # same CLI that wrote these workflows (and never an unreviewed `latest` in a
+    # job holding write access and a provider key). Re-run `dorfl install-ci`
+    # after upgrading dorfl to move the pin.
     - name: Install dorfl
       shell: bash
-      # Exactly the version the root package.json devDependency pins, so the
-      # global CLI and the `dorflCmd` (node_modules/.bin/dorfl) in dorfl.json
-      # cannot drift apart.
-      run: npm install -g dorfl@0.13.0
+      run: npm install -g dorfl@0.14.2
+    # Pinned to the exact harness version this dorfl release declares
+    # (PI_HARNESS_VERSION): the job holds write access and a provider key, so the
+    # version must not move on its own. Re-run `dorfl install-ci` to upgrade.
     - name: Install agent harness (pi)
       shell: bash
-      # 0.73.1 is what `latest` resolved to on 2026-09-26, so this pin changes
-      # nothing about what installs today; it only stops the version moving on
-      # its own. The repo pins no version for this package anywhere else, so
-      # there is no other source to keep it in step with: bump it by hand when
-      # a dorfl upgrade needs a newer harness.
-      run: npm install -g @mariozechner/pi-coding-agent@0.73.1
+      run: npm install -g @earendil-works/pi-coding-agent@0.80.6
 
     - name: Configure agent models (models.json)
       shell: bash

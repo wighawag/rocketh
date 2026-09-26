@@ -204,28 +204,26 @@ jobs:
         # surfaceBlockers), so an override that does not reach this job produces an
         # empty matrix and is silently inert. `if:` + the inner `[ -n ... ]` guard
         # keep schedule/push (and a blank dispatch field) exporting NOTHING — an
-        # empty DORFL_* would make env-config coercion throw.
-        #
-        # The inputs arrive through `env:` and the shell reads only QUOTED shell
-        # variables. A `${{ }}` expression expanded straight into a `run:` block is
-        # TEXTUAL SUBSTITUTION performed before the shell starts, so the value
-        # becomes shell SOURCE, not shell DATA. These four are `type: choice` over a
-        # fixed option list, so the value can only be one of the literals declared
-        # above and there is nothing to exploit TODAY; routing them through `env:`
-        # makes that a property of THIS STEP rather than of the input declaration,
-        # so changing any of them to `type: string` later cannot silently turn a
-        # dispatch field into command execution on a `contents: write` runner.
+        # empty DORFL_* would make env-config coercion throw. The inputs reach the
+        # shell through `env:` as DATA, never as `${{ }}` text spliced into the
+        # script (GitHub's script-injection guidance), and the `case` guard stops a
+        # value from appending its own lines to $GITHUB_ENV. Both only matter if an
+        # input ever stops being a fixed `type: choice`; for the choices below the
+        # step writes exactly what it always did.
         if: ${{ github.event_name == 'workflow_dispatch' }}
         env:
-          IN_AUTO_BUILD: ${{ github.event.inputs.autoBuild }}
-          IN_AUTO_TASK: ${{ github.event.inputs.autoTask }}
-          IN_OBSERVATION_TRIAGE: ${{ github.event.inputs.observationTriage }}
-          IN_SURFACE_BLOCKERS: ${{ github.event.inputs.surfaceBlockers }}
+          DISPATCH_AUTO_BUILD: ${{ github.event.inputs.autoBuild }}
+          DISPATCH_AUTO_TASK: ${{ github.event.inputs.autoTask }}
+          DISPATCH_OBSERVATION_TRIAGE: ${{ github.event.inputs.observationTriage }}
+          DISPATCH_SURFACE_BLOCKERS: ${{ github.event.inputs.surfaceBlockers }}
         run: |
-          [ -n "${IN_AUTO_BUILD}" ] && echo "DORFL_AUTO_BUILD=${IN_AUTO_BUILD}" >> "$GITHUB_ENV"
-          [ -n "${IN_AUTO_TASK}" ] && echo "DORFL_AUTO_TASK=${IN_AUTO_TASK}" >> "$GITHUB_ENV"
-          [ -n "${IN_OBSERVATION_TRIAGE}" ] && echo "DORFL_OBSERVATION_TRIAGE=${IN_OBSERVATION_TRIAGE}" >> "$GITHUB_ENV"
-          [ -n "${IN_SURFACE_BLOCKERS}" ] && echo "DORFL_SURFACE_BLOCKERS=${IN_SURFACE_BLOCKERS}" >> "$GITHUB_ENV"
+          case "${DISPATCH_AUTO_BUILD}${DISPATCH_AUTO_TASK}${DISPATCH_OBSERVATION_TRIAGE}${DISPATCH_SURFACE_BLOCKERS}" in
+            *$'\n'*|*$'\r'*) echo "::error::a dispatch gate override contains a line break"; exit 1 ;;
+          esac
+          [ -n "${DISPATCH_AUTO_BUILD}" ] && echo "DORFL_AUTO_BUILD=${DISPATCH_AUTO_BUILD}" >> "$GITHUB_ENV"
+          [ -n "${DISPATCH_AUTO_TASK}" ] && echo "DORFL_AUTO_TASK=${DISPATCH_AUTO_TASK}" >> "$GITHUB_ENV"
+          [ -n "${DISPATCH_OBSERVATION_TRIAGE}" ] && echo "DORFL_OBSERVATION_TRIAGE=${DISPATCH_OBSERVATION_TRIAGE}" >> "$GITHUB_ENV"
+          [ -n "${DISPATCH_SURFACE_BLOCKERS}" ] && echo "DORFL_SURFACE_BLOCKERS=${DISPATCH_SURFACE_BLOCKERS}" >> "$GITHUB_ENV"
           true
       - id: scan
         # Enumerate eligible items as namespaced ids, one matrix leg per id. CI
@@ -316,19 +314,20 @@ jobs:
         # Mirror of the enumerate-job override (see there): export each gate's
         # DORFL_* ONLY on a workflow_dispatch with a non-blank input, so the
         # one-shot override also reaches the `advance` leg that builds the item.
-        # Inputs ride `env:` and the shell reads only quoted variables. See the
-        # enumerate job's copy of this step for why that matters.
         if: ${{ github.event_name == 'workflow_dispatch' }}
         env:
-          IN_AUTO_BUILD: ${{ github.event.inputs.autoBuild }}
-          IN_AUTO_TASK: ${{ github.event.inputs.autoTask }}
-          IN_OBSERVATION_TRIAGE: ${{ github.event.inputs.observationTriage }}
-          IN_SURFACE_BLOCKERS: ${{ github.event.inputs.surfaceBlockers }}
+          DISPATCH_AUTO_BUILD: ${{ github.event.inputs.autoBuild }}
+          DISPATCH_AUTO_TASK: ${{ github.event.inputs.autoTask }}
+          DISPATCH_OBSERVATION_TRIAGE: ${{ github.event.inputs.observationTriage }}
+          DISPATCH_SURFACE_BLOCKERS: ${{ github.event.inputs.surfaceBlockers }}
         run: |
-          [ -n "${IN_AUTO_BUILD}" ] && echo "DORFL_AUTO_BUILD=${IN_AUTO_BUILD}" >> "$GITHUB_ENV"
-          [ -n "${IN_AUTO_TASK}" ] && echo "DORFL_AUTO_TASK=${IN_AUTO_TASK}" >> "$GITHUB_ENV"
-          [ -n "${IN_OBSERVATION_TRIAGE}" ] && echo "DORFL_OBSERVATION_TRIAGE=${IN_OBSERVATION_TRIAGE}" >> "$GITHUB_ENV"
-          [ -n "${IN_SURFACE_BLOCKERS}" ] && echo "DORFL_SURFACE_BLOCKERS=${IN_SURFACE_BLOCKERS}" >> "$GITHUB_ENV"
+          case "${DISPATCH_AUTO_BUILD}${DISPATCH_AUTO_TASK}${DISPATCH_OBSERVATION_TRIAGE}${DISPATCH_SURFACE_BLOCKERS}" in
+            *$'\n'*|*$'\r'*) echo "::error::a dispatch gate override contains a line break"; exit 1 ;;
+          esac
+          [ -n "${DISPATCH_AUTO_BUILD}" ] && echo "DORFL_AUTO_BUILD=${DISPATCH_AUTO_BUILD}" >> "$GITHUB_ENV"
+          [ -n "${DISPATCH_AUTO_TASK}" ] && echo "DORFL_AUTO_TASK=${DISPATCH_AUTO_TASK}" >> "$GITHUB_ENV"
+          [ -n "${DISPATCH_OBSERVATION_TRIAGE}" ] && echo "DORFL_OBSERVATION_TRIAGE=${DISPATCH_OBSERVATION_TRIAGE}" >> "$GITHUB_ENV"
+          [ -n "${DISPATCH_SURFACE_BLOCKERS}" ] && echo "DORFL_SURFACE_BLOCKERS=${DISPATCH_SURFACE_BLOCKERS}" >> "$GITHUB_ENV"
           true
       - name: advance one item in-place (propose ⇒ opens a PR)
         # In-place in this checkout (no --isolated/--remote): the CI container IS
@@ -343,13 +342,19 @@ jobs:
         # works zero-config; the job's `pull-requests: write` scopes that token.
         env:
           GH_TOKEN: ${{ secrets.DORFL_GH_TOKEN || secrets.GITHUB_TOKEN }}
+          # The item id is a slug read from work/ (frontmatter `slug:` or the
+          # file name). dorfl sanitises the slugs it mints, but a hand-written
+          # one is only checked when `advance` resolves it, so it reaches the
+          # shell as DATA through env, never as `${{ matrix.item }}` text
+          # spliced into the script.
+          WORK_ITEM: ${{ matrix.item }}
         # `--watch` streams the build agent's high-signal turns (assistant text,
         # tool calls, finish) into THIS job log live, so the run shows the agent
         # working instead of freezing after "Start work". A read-only observer (no
         # outcome/gate/git effect). It fits because each matrix leg names ONE item
         # (one pi session to tail) — the merge job is now a per-item matrix too
         # (see below) and streams the same way.
-        run: dorfl advance "${{ matrix.item }}" --propose --watch --arbiter origin
+        run: dorfl advance "${WORK_ITEM}" --propose --watch --arbiter origin
 
   # ── MERGE: a MATRIX of independent jobs (parallel build/gate/review, serialised land) ──
   # SPEC `land-time-reverify-and-parallel-merge-ceiling` (stories 4 + 6): each item
@@ -391,19 +396,20 @@ jobs:
         # DORFL_* ONLY on a workflow_dispatch with a non-blank input. The
         # merge job re-scans the pool inside `advance -n`, so it needs the override
         # too for the lifecycle/task pools to reflect it.
-        # Inputs ride `env:` and the shell reads only quoted variables. See the
-        # enumerate job's copy of this step for why that matters.
         if: ${{ github.event_name == 'workflow_dispatch' }}
         env:
-          IN_AUTO_BUILD: ${{ github.event.inputs.autoBuild }}
-          IN_AUTO_TASK: ${{ github.event.inputs.autoTask }}
-          IN_OBSERVATION_TRIAGE: ${{ github.event.inputs.observationTriage }}
-          IN_SURFACE_BLOCKERS: ${{ github.event.inputs.surfaceBlockers }}
+          DISPATCH_AUTO_BUILD: ${{ github.event.inputs.autoBuild }}
+          DISPATCH_AUTO_TASK: ${{ github.event.inputs.autoTask }}
+          DISPATCH_OBSERVATION_TRIAGE: ${{ github.event.inputs.observationTriage }}
+          DISPATCH_SURFACE_BLOCKERS: ${{ github.event.inputs.surfaceBlockers }}
         run: |
-          [ -n "${IN_AUTO_BUILD}" ] && echo "DORFL_AUTO_BUILD=${IN_AUTO_BUILD}" >> "$GITHUB_ENV"
-          [ -n "${IN_AUTO_TASK}" ] && echo "DORFL_AUTO_TASK=${IN_AUTO_TASK}" >> "$GITHUB_ENV"
-          [ -n "${IN_OBSERVATION_TRIAGE}" ] && echo "DORFL_OBSERVATION_TRIAGE=${IN_OBSERVATION_TRIAGE}" >> "$GITHUB_ENV"
-          [ -n "${IN_SURFACE_BLOCKERS}" ] && echo "DORFL_SURFACE_BLOCKERS=${IN_SURFACE_BLOCKERS}" >> "$GITHUB_ENV"
+          case "${DISPATCH_AUTO_BUILD}${DISPATCH_AUTO_TASK}${DISPATCH_OBSERVATION_TRIAGE}${DISPATCH_SURFACE_BLOCKERS}" in
+            *$'\n'*|*$'\r'*) echo "::error::a dispatch gate override contains a line break"; exit 1 ;;
+          esac
+          [ -n "${DISPATCH_AUTO_BUILD}" ] && echo "DORFL_AUTO_BUILD=${DISPATCH_AUTO_BUILD}" >> "$GITHUB_ENV"
+          [ -n "${DISPATCH_AUTO_TASK}" ] && echo "DORFL_AUTO_TASK=${DISPATCH_AUTO_TASK}" >> "$GITHUB_ENV"
+          [ -n "${DISPATCH_OBSERVATION_TRIAGE}" ] && echo "DORFL_OBSERVATION_TRIAGE=${DISPATCH_OBSERVATION_TRIAGE}" >> "$GITHUB_ENV"
+          [ -n "${DISPATCH_SURFACE_BLOCKERS}" ] && echo "DORFL_SURFACE_BLOCKERS=${DISPATCH_SURFACE_BLOCKERS}" >> "$GITHUB_ENV"
           true
       - name: advance one item in-place (merge ⇒ rebase + CAS land on main)
         # In-place (no --isolated/--remote). `--merge` ties the integration mode
@@ -414,10 +420,16 @@ jobs:
         # `GH_TOKEN` from the env.
         env:
           GH_TOKEN: ${{ secrets.DORFL_GH_TOKEN || secrets.GITHUB_TOKEN }}
+          # The item id is a slug read from work/ (frontmatter `slug:` or the
+          # file name). dorfl sanitises the slugs it mints, but a hand-written
+          # one is only checked when `advance` resolves it, so it reaches the
+          # shell as DATA through env, never as `${{ matrix.item }}` text
+          # spliced into the script.
+          WORK_ITEM: ${{ matrix.item }}
         # `--watch` streams the build agent's high-signal turns into THIS job
         # log live; each leg names ONE item, so it fits the same way it does on
         # the propose legs.
-        run: dorfl advance "${{ matrix.item }}" --merge --watch --arbiter origin
+        run: dorfl advance "${WORK_ITEM}" --merge --watch --arbiter origin
 
   # ── REAP merged remote work/* branches (capability F, the hygiene sweep) ─────
   # PRESERVED from the seed (NOT a separate gc-sweep workflow): the provider-
