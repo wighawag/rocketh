@@ -33,6 +33,26 @@ describe('@rocketh/signer - privateKey protocol', () => {
 		).rejects.toThrow(/Private key must start with 0x/);
 	});
 
+	/**
+	 * The value that failed is almost certainly a real key missing its prefix (wallets export keys
+	 * without one), and the message reaches terminals and CI logs. It must not carry the key, nor
+	 * any long run of it that would still be usable.
+	 */
+	it('never echoes the rejected key in the error message', async () => {
+		const unprefixed = ANVIL_KEY_0.slice(2);
+		const error = await privateKey(`privateKey:${unprefixed}`).catch((e: Error) => e);
+
+		expect(error).toBeInstanceOf(Error);
+		const message = (error as Error).message;
+		expect(message).not.toContain(unprefixed);
+		expect(message).not.toMatch(/[0-9a-fA-F]{16}/);
+		expect(message).toMatch(/64 characters/);
+	});
+
+	it('refuses a protocol string with nothing after the colon, without crashing', async () => {
+		await expect(privateKey('privateKey:')).rejects.toThrow(/Private key must start with 0x/);
+	});
+
 	it('accepts any protocol prefix (only the key after the colon matters)', async () => {
 		// The protocol part before ':' is never validated — only the key is checked.
 		const result = await privateKey(`anything:${ANVIL_KEY_0}`);

@@ -236,6 +236,39 @@ async function prepareForLocalSigning(
 	return prepared;
 }
 
+/**
+ * An account definition as it may be SHOWN in an error message, which ends up in a terminal and,
+ * on CI, in a log that can be public. A definition routinely holds a private key (`'0x' + 64 hex`,
+ * `'privateKey:0x...'`, a per-network map of those), and GitHub masks only the exact secret string,
+ * so a key interpolated as part of a larger value is NOT masked. Everything that could be key
+ * material is replaced; what is kept is exactly what a user needs to find the line in their config:
+ * an index, an address, a protocol NAME, the name of another account, and a map's network keys.
+ */
+function describeAccountDefinition(accountDef: unknown): string {
+	if (accountDef === null) return 'null';
+	if (accountDef === undefined) return 'undefined';
+	if (typeof accountDef === 'number') return `index ${accountDef}`;
+	if (typeof accountDef === 'string') {
+		if (/^0x[0-9a-fA-F]{40}$/.test(accountDef)) return `"${accountDef}"`;
+		const colon = accountDef.indexOf(':');
+		if (colon > 0) return `"${accountDef.slice(0, colon)}:<redacted>"`;
+		// A reference to another named account is an identifier. Anything else (a key with or without
+		// its 0x, a mnemonic, a value of unknown shape) is withheld whole, since its shape alone cannot
+		// prove it is not a secret. A 64-hex-digit string is withheld even though it could parse as a name.
+		if (/^[A-Za-z_$][\w$-]{0,63}$/.test(accountDef) && !/^[0-9a-fA-F]{64}$/.test(accountDef)) {
+			return `"${accountDef}"`;
+		}
+		return '<redacted>';
+	}
+	if (typeof accountDef === 'object') {
+		const entries = Object.entries(accountDef as Record<string, unknown>).map(
+			([key, value]) => `${key}: ${describeAccountDefinition(value)}`,
+		);
+		return `{${entries.join(', ')}}`;
+	}
+	return '<redacted>';
+}
+
 function wait(numSeconds: number): Promise<void> {
 	return new Promise((resolve) => {
 		setTimeout(resolve, numSeconds * 1000);
@@ -634,14 +667,21 @@ export async function createEnvironment<
 			if (accountDef.startsWith('0x')) {
 				if (accountDef.length === 66) {
 					const privateKeyProtocol = userConfig.signerProtocols?.['privateKey'];
-					if (privateKeyProtocol) {
-						const namedSigner = await privateKeyProtocol(`privateKey:${accountDef}`);
-						const [address] = await namedSigner.signer.request({method: 'eth_accounts'});
-						accountCache[name] = account = {
-							...namedSigner,
-							address,
-						};
+					if (!privateKeyProtocol) {
+						// Named here rather than left to the generic "cannot get account" below: that path
+						// cannot say WHY, and the only thing it could show is the key itself.
+						throw new Error(
+							`named account "${name}" is configured as a private key, but no 'privateKey' signer protocol ` +
+								`is registered in \`signerProtocols\`. Register the one from @rocketh/signer ` +
+								`(\`signerProtocols: {privateKey}\`). The key itself is not shown.`,
+						);
 					}
+					const namedSigner = await privateKeyProtocol(`privateKey:${accountDef}`);
+					const [address] = await namedSigner.signer.request({method: 'eth_accounts'});
+					accountCache[name] = account = {
+						...namedSigner,
+						address,
+					};
 				} else {
 					accountCache[name] = account = {
 						type: 'remote',
@@ -666,7 +706,7 @@ export async function createEnvironment<
 					// A reference to another named account.
 					if (!Object.prototype.hasOwnProperty.call(accounts, accountDef)) {
 						throw new Error(
-							`named account "${name}" is configured as "${accountDef}", which is not an address, a private key, ` +
+							`named account "${name}" is configured as ${describeAccountDefinition(accountDef)}, which is not an address, a private key, ` +
 								`a signer protocol ('<protocol>:...') or the name of another account in \`accounts\`.` +
 								(referenceChain.length > 1 ? ` (reference chain: ${referenceChain.join(' -> ')})` : ''),
 						);
@@ -725,12 +765,15 @@ export async function createEnvironment<
 				continue;
 			}
 			if (!account) {
+				// The definition is DESCRIBED, never printed: it can hold private keys for other networks.
+				const definition = userConfig.accounts[accountName];
+				const perNetworkHint =
+					definition && typeof definition === 'object'
+						? ` It has no entry for "${environmentName}" (or chain ${chainId}) and no \`default\`.`
+						: '';
 				throw new Error(
-					`cannot get account for ${accountName} = ${JSON.stringify(
-						userConfig.accounts[accountName],
-						null,
-						2,
-					)}\nEnsure your provider (or hardhat) has some accounts set up for ${environmentName}\n`,
+					`cannot get account for ${accountName} = ${describeAccountDefinition(definition)}.${perNetworkHint}\n` +
+						`Ensure your provider (or hardhat) has some accounts set up for ${environmentName}\n`,
 				);
 			}
 			(resolvedAccounts as any)[accountName] = account;
