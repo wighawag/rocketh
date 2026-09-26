@@ -1,5 +1,13 @@
 # @rocketh/node
 
+## 0.21.4
+
+### Patch Changes
+
+- Updated dependencies [f001ace]
+- Updated dependencies [daa5edc]
+  - rocketh@0.23.0
+
 ## 0.21.3
 
 ### Patch Changes

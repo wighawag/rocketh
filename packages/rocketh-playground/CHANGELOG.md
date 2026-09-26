@@ -1,5 +1,17 @@
 # @rocketh/playground
 
+## 0.0.15
+
+### Patch Changes
+
+- Updated dependencies [f001ace]
+- Updated dependencies [daa5edc]
+  - rocketh@0.23.0
+  - @rocketh/signer@0.19.19
+  - @rocketh/web@0.19.27
+  - @rocketh/deploy@0.20.1
+  - @rocketh/proxy@0.20.1
+
 ## 0.0.14
 
 ### Patch Changes

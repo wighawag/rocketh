@@ -1,5 +1,13 @@
 # @rocketh/test-utils
 
+## 0.3.4
+
+### Patch Changes
+
+- Updated dependencies [f001ace]
+- Updated dependencies [daa5edc]
+  - rocketh@0.23.0
+
 ## 0.3.3
 
 ### Patch Changes
