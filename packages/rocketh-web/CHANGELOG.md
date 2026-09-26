@@ -1,5 +1,13 @@
 # @rocketh/web
 
+## 0.19.27
+
+### Patch Changes
+
+- Updated dependencies [f001ace]
+- Updated dependencies [daa5edc]
+  - rocketh@0.23.0
+
 ## 0.19.26
 
 ### Patch Changes
