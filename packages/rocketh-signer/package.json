@@ -46,7 +46,7 @@
 	"dependencies": {
 		"@rocketh/core": "workspace:*",
 		"eip-1193": "^0.6.5",
-		"eip-1193-signer": "^0.1.1"
+		"eip-1193-signer": "^0.2.0"
 	},
 	"devDependencies": {
 		"@types/node": "^26.2.0",

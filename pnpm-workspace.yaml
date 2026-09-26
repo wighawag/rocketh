@@ -62,6 +62,18 @@ minimumReleaseAgeExclude:
   #
   # Safe to delete any time after 2026-09-18, when 0.6.1 passes the floor on its own.
   - 'adm-zip@0.6.1'
+  # A second QUEUE JUMP, same rules: one exact version, checked by hand. eip-1193-signer
+  # 0.2.0 (published 2026-09-26) makes the `privateKey` signer apply EIP-155 to a legacy
+  # transaction that carries a chainId; before it, a locally signed legacy transaction had
+  # no chain id, so it was replayable on another chain and refused by nodes that require
+  # replay protection. The check was a diff of the 0.1.1 and 0.2.0 tarballs: in src/ and in
+  # both dist/ builds the only code change is one line in the legacy `eth_signTransaction`
+  # branch (`...(txData.chainId ? {chainId: tonf(txData.chainId)} : {})`); the rest is
+  # package.json metadata (a real `exports` map, repository/license fields), a LICENSE and
+  # a `.d.cts`. Dependencies are unchanged (`viem ^2.23.12`) and the publisher is the same.
+  #
+  # Safe to delete any time after 2026-10-03, when 0.2.0 passes the floor on its own.
+  - 'eip-1193-signer@0.2.0'
   - 'rocketh'
   - '@rocketh/*'
   - 'hardhat-deploy'

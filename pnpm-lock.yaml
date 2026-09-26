@@ -1015,8 +1015,8 @@ importers:
         specifier: ^0.6.5
         version: 0.6.5
       eip-1193-signer:
-        specifier: ^0.1.1
-        version: 0.1.1(typescript@6.0.3)
+        specifier: ^0.2.0
+        version: 0.2.0(typescript@6.0.3)
     devDependencies:
       '@types/node':
         specifier: ^26.2.0
@@ -3524,8 +3524,8 @@ packages:
   eip-1193-jsonrpc-provider@0.4.3:
     resolution: {integrity: sha512-xcrz22ArOqvbXt4LHOeV5JooL8jTt/sv8WIH7MLQTn8z7fQwRDDzUECgIwZaX1Irpn/HIZGiu6YZwIoRVfPEow==}
 
-  eip-1193-signer@0.1.1:
-    resolution: {integrity: sha512-dEMgcibZnOccQDDQ5zA6hVvDSNCce7tfzu/E08cCd3fBhcX7Sh8P83YJKfd7f0XNUXJBQ0aJSO31eZ5Cic/Qpg==}
+  eip-1193-signer@0.2.0:
+    resolution: {integrity: sha512-lmJqJKww4eHVNBhY91cpnePX+nJPE5cuzgA5LDhzdkqqXCcTGysH4MLk7OEcKzgudvI3IpEJhtQIi/L71dOLGA==}
 
   eip-1193@0.6.5:
     resolution: {integrity: sha512-KXCSdjFLIT5/06rMD2pMqoAZhZcTg4EofiCI70ovIOy8L/6twGJFE+RtW89S/hMFKDoNEGJ/WK8jQv7CpuGDgg==}
@@ -7460,7 +7460,7 @@ snapshots:
       named-logs: 0.3.2
       promise-throttle: 1.1.2
 
-  eip-1193-signer@0.1.1(typescript@6.0.3):
+  eip-1193-signer@0.2.0(typescript@6.0.3):
     dependencies:
       viem: 2.55.13(typescript@6.0.3)(zod@4.4.3)
     transitivePeerDependencies:

@@ -223,7 +223,7 @@ const signerString = process.env.DEPLOYER_PRIVATE_KEY;
 
 - [`rocketh`](../rocketh) - Core deployment environment
 - [`@rocketh/core`](../rocketh-core) - Core types and utilities
-- [`eip-1193-signer`](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1193.md) - EIP-1193 signer implementation
+- [`eip-1193-signer`](https://github.com/wighawag/eip-1193-signer) - EIP-1193 signer implementation
 
 ## License
 
