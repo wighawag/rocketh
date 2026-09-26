@@ -109,7 +109,7 @@ export const config = {
 } as const satisfies UserConfig;
 ```
 
-Declaring `chain` does not make the fork run warn about the node disagreeing with it: the chain-identity check is skipped on a fork precisely because that disagreement is legitimate there.
+Declaring `chain` does not make the fork run object to the node disagreeing with it: the chain-identity check is skipped on a fork precisely because that disagreement is legitimate there. Off a fork the same disagreement is refused and the run stops, because the run would otherwise sign every transaction for whatever chain the node claims to be. A local node that simulates another network is therefore always run as a fork.
 
 Two things inherit regardless of any of this, because they key on the environment NAME rather than on a chain id: the deployment records, and any `accounts` or `data` entry written under a `mainnet` key. See [Which chain id?](#which-chain-id-two-questions-two-answers) for the entries that key on a number instead.
 

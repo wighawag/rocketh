@@ -248,11 +248,21 @@ export async function getChainIdForEnvironment(
 	// (`work/notes/findings/fork-node-chain-identity-behaviour.md`): anvil forking mainnet reports 1,
 	// hardhat reports 31337. Neither is a misconfiguration, so neither earns a notice.
 	//
-	// The leniency stops at forks. Off one, this warning is still the only thing that tells a user
-	// their `-e mainnet` run is pointed at a local node.
+	// The leniency stops at forks, and off one the disagreement is REFUSED, not warned about. The
+	// adoption below signs for the node's id, so a warning let a node that lies about its chain
+	// (a hostile or merely wrong RPC for a testnet environment answering `1`) collect
+	// transactions signed for that chain, valid wherever it is, on keys that are commonly shared
+	// across networks. A console warning is also easy to miss in CI. The one legitimate reason for
+	// the two to differ is a node simulating the declared network, which is what a fork run
+	// expresses (ADR 0014), so the message points there.
 	if (!fork && declaredChainId && chainIdFromNode && chainIdFromNode != declaredChainId) {
-		console.warn(
-			`provider give a different chainId (${chainIdFromNode}) than the one expected for environment named "${environmentName}" (${declaredChainId})`,
+		throw new Error(
+			`The node reports chainId ${chainIdFromNode}, but environment "${environmentName}" declares chain ` +
+				`${declaredChainId}. Refusing to continue: every transaction would be signed for chain ` +
+				`${chainIdFromNode}. If this node is a fork of "${environmentName}", run it as a fork ` +
+				`(\`--is-fork\` on the rocketh CLI, \`environment: {fork: '${environmentName}'}\` ` +
+				`programmatically, \`HARDHAT_FORK\` with hardhat-deploy). Otherwise point the environment ` +
+				`at the right node, or correct \`environments.${environmentName}.chain\`.`,
 		);
 	}
 
