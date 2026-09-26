@@ -1,5 +1,14 @@
 # @rocketh/web
 
+## 0.19.24
+
+### Patch Changes
+
+- Updated dependencies [a20cad9]
+- Updated dependencies [f1301be]
+  - rocketh@0.21.1
+  - @rocketh/core@0.22.0
+
 ## 0.19.23
 
 ### Patch Changes
