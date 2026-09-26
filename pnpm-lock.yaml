@@ -40,8 +40,8 @@ importers:
         specifier: ^4.1.11
         version: 4.1.11(@vitest/browser@4.1.11)(vitest@4.1.11)
       dorfl:
-        specifier: 0.13.0
-        version: 0.13.0
+        specifier: 0.14.2
+        version: 0.14.2
       ezx:
         specifier: ^0.0.18
         version: 0.0.18
@@ -83,7 +83,7 @@ importers:
         version: 3.1.0(hardhat@3.12.0)
       '@nomicfoundation/hardhat-viem':
         specifier: ^3.0.7
-        version: 3.0.9(hardhat@3.12.0)(viem@2.55.13(typescript@6.0.3)(zod@3.25.76))
+        version: 3.0.9(hardhat@3.12.0)(viem@2.55.13(typescript@6.0.3)(zod@4.4.3))
       '@rocketh/deploy':
         specifier: workspace:*
         version: link:../../../packages/rocketh-deploy
@@ -131,7 +131,7 @@ importers:
         version: 6.0.3
       viem:
         specifier: ^2.48.11
-        version: 2.55.13(typescript@6.0.3)(zod@3.25.76)
+        version: 2.55.13(typescript@6.0.3)(zod@4.4.3)
       wait-on:
         specifier: ^9.0.5
         version: 9.1.0
@@ -152,7 +152,7 @@ importers:
         version: 3.1.0(hardhat@3.12.0)
       '@nomicfoundation/hardhat-viem':
         specifier: ^3.0.7
-        version: 3.0.9(hardhat@3.12.0)(viem@2.55.13(typescript@6.0.3)(zod@4.4.3))
+        version: 3.0.9(hardhat@3.12.0)(viem@2.55.13(typescript@6.0.3)(zod@3.25.76))
       '@rocketh/deploy':
         specifier: workspace:*
         version: link:../../../packages/rocketh-deploy
@@ -185,7 +185,7 @@ importers:
         version: link:../../../packages/hardhat-deploy
       hardhat-external-artifacts:
         specifier: ^0.0.6
-        version: 0.0.6(hardhat@3.12.0)(typescript@6.0.3)(zod@4.4.3)
+        version: 0.0.6(hardhat@3.12.0)(typescript@6.0.3)(zod@3.25.76)
       ldenv:
         specifier: ^0.5.0
         version: 0.5.0
@@ -206,7 +206,7 @@ importers:
         version: 6.0.3
       viem:
         specifier: ^2.48.11
-        version: 2.55.13(typescript@6.0.3)(zod@4.4.3)
+        version: 2.55.13(typescript@6.0.3)(zod@3.25.76)
       wait-on:
         specifier: ^9.0.5
         version: 9.1.0
@@ -3493,8 +3493,8 @@ packages:
   devlop@1.1.0:
     resolution: {integrity: sha512-RWmIqhcFf1lRYBvNmr7qTNuyCt/7/ns2jbpp1+PalgE/rDQcBT0fioSMUpJ93irlUhC5hrg4cYqe6U+0ImW0rA==}
 
-  dorfl@0.13.0:
-    resolution: {integrity: sha512-o1oY9ydIA3BdRXTmkltPc8a1tXzk++E+XJMxS68IYyT/LAQTiNyVOU+DrEFYYSoJUFkpmI5Va7H/SW5jS4Ff1w==}
+  dorfl@0.14.2:
+    resolution: {integrity: sha512-EMhk5369tmjHUiTigVoxwD0nrFPwD7tQtoaFbcE/75C1qWaw0K+cz7tScSZNmKMqpWUSdktBG11Zf7TrgqH1MQ==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -7431,7 +7431,7 @@ snapshots:
     dependencies:
       dequal: 2.0.3
 
-  dorfl@0.13.0:
+  dorfl@0.14.2:
     dependencies:
       commander: 14.0.3
 
@@ -7710,6 +7710,18 @@ snapshots:
       wordwrap: 1.0.0
     optionalDependencies:
       uglify-js: 3.19.3
+
+  hardhat-external-artifacts@0.0.6(hardhat@3.12.0)(typescript@6.0.3)(zod@3.25.76):
+    dependencies:
+      '@nomicfoundation/hardhat-utils': 4.1.7
+      hardhat: 3.12.0
+      named-logs: 0.4.1
+      viem: 2.55.13(typescript@6.0.3)(zod@3.25.76)
+    transitivePeerDependencies:
+      - bufferutil
+      - typescript
+      - utf-8-validate
+      - zod
 
   hardhat-external-artifacts@0.0.6(hardhat@3.12.0)(typescript@6.0.3)(zod@4.4.3):
     dependencies:

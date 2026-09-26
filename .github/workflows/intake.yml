@@ -210,13 +210,11 @@ jobs:
         # THIS issue thread (insertion point E) through the issue-comment seam —
         # CI surfaces E by invoking intake; it adds no new review mechanism.
         #
-        # The issue number and the derived flags arrive through `env:` and the
-        # shell reads only QUOTED variables, matching the gate-override steps in
-        # advance-lifecycle.yml. Neither value is attacker-controlled text today
-        # (GitHub types `issue.number` as an integer, and the three flags are
-        # literals the policy step above chose from a fixed if/else), so this is
-        # consistency rather than a fix: it keeps "no `${{ }}` inside a `run:`
-        # block" true everywhere, which is a property a reviewer can grep for.
+        # Every value reaches the shell through `env:` as DATA and is read back as a
+        # quoted variable, never as `${{ }}` text spliced into the script
+        # (GitHub's script-injection guidance). The issue number is an integer and
+        # the policy outputs are fixed flags today; routing them through env anyway
+        # keeps "no `${{ }}` inside `run:`" a rule with no exceptions.
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}

@@ -52,9 +52,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-          # Do not leave GITHUB_TOKEN in .git/config for later steps to read.
-          # dorfl-setup's `git fetch origin main` then runs without a token,
-          # which works because this repository is public (proven on PR #161).
+          # Public repository: every git read works without a token, and this
+          # job cannot push, so do not leave the token in .git/config for later
+          # steps (the project-setup hook's installs, the gate) to read.
           persist-credentials: false
       - uses: ./.github/actions/dorfl-setup
       - name: run the repo verify gate
