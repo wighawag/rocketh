@@ -206,7 +206,7 @@ export default defineConfig({
 		'TESTING.md',
 		// GitHub reads this one from the repository root (it is what powers the "Report a
 		// vulnerability" button); it is not a docs page, and nothing in the sidebar links to it.
-		// The user-facing half of it lives in documentation.md under "Production hardening".
+		// The user-facing half of it lives in documentation/production-hardening/index.md.
 		'SECURITY.md',
 		// Same category as SECURITY.md: GitHub repo-meta files, read on GitHub (the Contribute
 		// and Code of conduct links on the repo page), never linked from the sidebar. They must
