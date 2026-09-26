@@ -74,6 +74,16 @@ minimumReleaseAgeExclude:
   #
   # Safe to delete any time after 2026-10-03, when 0.2.0 passes the floor on its own.
   - 'eip-1193-signer@0.2.0'
+  # A third, same rules. eip-1193-jsonrpc-provider 0.4.4 (published 2026-09-26) exists only
+  # to add the licence that 0.4.3 shipped without, which made `pnpm licenses list --prod`
+  # report it as Unknown although it is a direct runtime dependency of `rocketh`. The check
+  # was a diff of the 0.4.3 and 0.4.4 tarballs: src/ and all three dist/ files
+  # (index.cjs, index.mjs, index.d.ts) are byte-identical; the only differences are a new
+  # LICENSE (MIT) and package.json metadata (license, author, repository, homepage, bugs,
+  # keywords). Dependencies and scripts are unchanged and the publisher is the same.
+  #
+  # Safe to delete any time after 2026-10-03, when 0.4.4 passes the floor on its own.
+  - 'eip-1193-jsonrpc-provider@0.4.4'
   - 'rocketh'
   - '@rocketh/*'
   - 'hardhat-deploy'

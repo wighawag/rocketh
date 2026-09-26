@@ -539,8 +539,8 @@ importers:
         specifier: ^0.6.5
         version: 0.6.5
       eip-1193-jsonrpc-provider:
-        specifier: ^0.4.3
-        version: 0.4.3
+        specifier: ^0.4.4
+        version: 0.4.4
       ldenv:
         specifier: ^0.6.0
         version: 0.6.0
@@ -727,8 +727,8 @@ importers:
         specifier: ^0.6.5
         version: 0.6.5
       eip-1193-jsonrpc-provider:
-        specifier: ^0.4.3
-        version: 0.4.3
+        specifier: ^0.4.4
+        version: 0.4.4
       fs-extra:
         specifier: ^11.4.0
         version: 11.4.0
@@ -3521,8 +3521,8 @@ packages:
   earl@2.0.0:
     resolution: {integrity: sha512-je2x7VWHNN3kN5zqcUUeEEokHoL7HWwiOxCdlLi66LkMqUnLECVZGePdgBtrqLrUg25bHLFrM+bkBXwcI7f+EQ==}
 
-  eip-1193-jsonrpc-provider@0.4.3:
-    resolution: {integrity: sha512-xcrz22ArOqvbXt4LHOeV5JooL8jTt/sv8WIH7MLQTn8z7fQwRDDzUECgIwZaX1Irpn/HIZGiu6YZwIoRVfPEow==}
+  eip-1193-jsonrpc-provider@0.4.4:
+    resolution: {integrity: sha512-gm766zo9ir190Q/V3d7yZRnQNzfaFgdLysGj1MWJiwuJsmPevBDmVEWSjTdbAGEVrq1syoN22AacDCkfbGDyEg==}
 
   eip-1193-signer@0.2.0:
     resolution: {integrity: sha512-lmJqJKww4eHVNBhY91cpnePX+nJPE5cuzgA5LDhzdkqqXCcTGysH4MLk7OEcKzgudvI3IpEJhtQIi/L71dOLGA==}
@@ -4381,8 +4381,8 @@ packages:
   react-is@18.3.1:
     resolution: {integrity: sha512-/LLMVyas0ljjAtoYiPqYiL8VWXzUUdThrmU5+n20DZv+a+ClRoevUzw5JxU+Ieh5/c87ytoTBV9G1FiKfNJdmg==}
 
-  react-is@19.2.8:
-    resolution: {integrity: sha512-s5un28nYxKJw5gvUHyW5PCC28CvBqLu9r3cWgzHT4Vo/5fqqkFcdRYsGcKf50WMPpjjFZS5d76fn3YCo2njKwQ==}
+  react-is@19.3.0:
+    resolution: {integrity: sha512-UpMYezM4v5/18F28aC66AEsjXIgE02kyEMH6yLdgLXu/UTfa1Ntwck/nNLrbqJsEXW7gPb0coNO9FQse9WTovA==}
 
   readable-stream@3.6.2:
     resolution: {integrity: sha512-9u/sniCrY3D5WdsERHzHE4G2YCXqoG5FTHUiCC4SIbr6XcLZBY05ya9EKjYek9O5xOAwjGq+1JdGBAS7Q9ScoA==}
@@ -7455,7 +7455,7 @@ snapshots:
     dependencies:
       error-stack-parser: 2.1.4
 
-  eip-1193-jsonrpc-provider@0.4.3:
+  eip-1193-jsonrpc-provider@0.4.4:
     dependencies:
       named-logs: 0.3.2
       promise-throttle: 1.1.2
@@ -8432,7 +8432,7 @@ snapshots:
       '@jest/schemas': 30.4.1
       ansi-styles: 5.2.0
       react-is-18: react-is@18.3.1
-      react-is-19: react-is@19.2.8
+      react-is-19: react-is@19.3.0
 
   promise-throttle@1.1.2: {}
 
@@ -8449,7 +8449,7 @@ snapshots:
 
   react-is@18.3.1: {}
 
-  react-is@19.2.8: {}
+  react-is@19.3.0: {}
 
   readable-stream@3.6.2:
     dependencies:

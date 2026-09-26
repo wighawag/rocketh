@@ -68,7 +68,7 @@
 		"abitype": "^1.3.0",
 		"change-case": "^5.4.4",
 		"eip-1193": "^0.6.5",
-		"eip-1193-jsonrpc-provider": "^0.4.3",
+		"eip-1193-jsonrpc-provider": "^0.4.4",
 		"ldenv": "^0.6.0",
 		"named-logs": "^0.4.1"
 	},
