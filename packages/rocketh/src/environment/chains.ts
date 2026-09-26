@@ -21,7 +21,7 @@ const KNOWN_DEV_CHAIN_IDS = new Set([1337, 31337]);
  */
 export type ChainSemantics = Pick<
 	ChainConfig,
-	'tags' | 'deterministicDeployment' | 'onUnknownSigner' | 'autoMine' | 'confirmationsRequired'
+	'tags' | 'deterministicDeployment' | 'onUnknownSigner' | 'autoMine' | 'confirmationsRequired' | 'transactionType'
 > & {
 	/**
 	 * Deliberately UNDEFAULTED here (unlike on `ChainConfig`, which keeps a plain `boolean`), for
@@ -99,6 +99,10 @@ export function getChainSemanticsFromUserConfig(config: ResolvedUserConfig, id: 
 		onUnknownSigner: chainConfig?.onUnknownSigner,
 		autoMine: chainConfig?.autoMine || false,
 		confirmationsRequired: chainConfig?.confirmationsRequired,
+		// A property of the chain being SIMULATED, like the rest of this half: a fork of a chain that
+		//  rejects EIP-1559 is a rehearsal of that chain, and legacy transactions run on the fork node
+		//  too, so nothing is lost by following the simulated side.
+		transactionType: chainConfig?.transactionType ?? 'eip1559',
 	};
 }
 

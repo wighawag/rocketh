@@ -8,9 +8,10 @@
  * never silently dropped.
  *
  * - `dataSuffix` is honoured: appended to the calldata, as viem's `writeContract` does.
- * - `type` is honoured for `'eip1559'` (what rocketh sends) and refused otherwise.
+ * - `type` is honoured for `'eip1559'` (the default) and `'legacy'`, and refused otherwise (so
+ *   `'eip2930'` is refused). The legacy side is documented in `legacy-transactions.integration.test.ts`.
  * - The EIP-4844 blob fields and the EIP-7702 `authorizationList` are refused: the transaction
- *   rocketh sends is an EIP-1559 one and can carry neither.
+ *   rocketh sends is an EIP-1559 or a legacy one and can carry neither.
  *
  * They run against `createTestEnvironment`, a REAL rocketh environment wired to a mock EIP-1193
  * provider, so the transaction inspected below is the one the broadcast choke point dispatched.

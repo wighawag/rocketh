@@ -592,6 +592,8 @@ export function resolveExecutionParams<Extra extends Record<string, unknown> = R
 			confirmationsRequired: actualChainSemantics.confirmationsRequired,
 			autoMine,
 			deleteDeploymentsIfDifferentGenesisHash: actualChainConfig.deleteDeploymentsIfDifferentGenesisHash,
+			// `??` again because an override bag may carry the key explicitly `undefined`.
+			transactionType: actualChainSemantics.transactionType ?? 'eip1559',
 		},
 		extra: executionParameters.extra,
 		provider,

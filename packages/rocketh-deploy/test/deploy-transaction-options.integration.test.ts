@@ -7,7 +7,9 @@
  * is either put on the transaction, or refused loudly at the call. It is never silently dropped.
  *
  * - `nonce` is honoured, including `nonce: 0` (the first transaction of a fresh account).
- * - `type` is honoured for `'eip1559'` (what rocketh sends) and refused otherwise.
+ * - `type` is honoured for `'eip1559'` (the default) and `'legacy'`, and refused otherwise. The
+ *   legacy side, `gasPrice` and chains declared legacy, is documented in
+ *   `legacy-transactions.integration.test.ts`.
  * - The EIP-4844 blob fields and the EIP-7702 `authorizationList` are refused: neither
  *   transaction type can create a contract.
  * - `dataSuffix` is refused: on a deployment it would become part of the init code.
@@ -99,12 +101,37 @@ describe('@rocketh/deploy - Transaction options', () => {
 			expect(getLastDispatchedTransaction(provider)?.type).toBe('0x2');
 		});
 
+		it('should send type "legacy" as a legacy (type 0) transaction rather than refuse it', async () => {
+			/**
+			 * This used to be refused, when rocketh could only send EIP-1559. It is now honoured, for
+			 * chains that reject EIP-1559: the node fills the gas price it was not given.
+			 */
+			const {_deploy, provider} = await setup();
+
+			await _deploy('Legacy', {
+				account: 'deployer',
+				artifact: createMockArtifact('Legacy'),
+				args: [42n],
+				type: 'legacy',
+			});
+
+			expect(countDispatchedTransactions(provider)).toBe(1);
+			const sent = getLastDispatchedTransaction(provider);
+			expect(sent?.type).toBe('0x0');
+			expect(sent?.maxFeePerGas).toBeUndefined();
+		});
+
 		it('should refuse any other type instead of sending an EIP-1559 transaction anyway', async () => {
 			const {_deploy, provider} = await setup();
 
 			await expect(
-				_deploy('Legacy', {account: 'deployer', artifact: createMockArtifact('Legacy'), args: [42n], type: 'legacy'}),
-			).rejects.toThrow(/"type: legacy" is not supported.*Remove `type`/);
+				_deploy('AccessListed', {
+					account: 'deployer',
+					artifact: createMockArtifact('AccessListed'),
+					args: [42n],
+					type: 'eip2930',
+				} as never),
+			).rejects.toThrow(/"type: eip2930" is not supported.*remove `type`/);
 			expect(countDispatchedTransactions(provider)).toBe(0);
 		});
 	});

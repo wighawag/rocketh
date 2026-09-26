@@ -88,6 +88,41 @@ chain with id 424242 has no public info: falling back to placeholder metadata (n
 
 and then carries on with that placeholder, so a deploy still works. It is only worth fixing when the metadata is actually consumed: `@rocketh/export` writes it into frontend exports, and `info.testnet` gives the chain a `testnet` tag your deploy scripts can branch on. For a throwaway local chain, the placeholder is usually fine.
 
+### Chains without EIP-1559
+
+By default every transaction rocketh builds is an EIP-1559 (type 2) transaction. Some chains reject those. Declare such a chain with `transactionType: 'legacy'` and rocketh sends legacy (type 0) transactions there instead, so the same deploy scripts run unchanged:
+
+```typescript
+export const config = {
+	environments: {oldchain: {chain: 424242}},
+	chains: {
+		424242: {
+			rpcUrl: 'https://my-node.example/rpc',
+			transactionType: 'legacy',
+		},
+	},
+	data: {},
+} as const satisfies UserConfig;
+```
+
+`transactionType` accepts `'eip1559'` (the default, used when the key is absent) and `'legacy'`. Like the other chain settings it can also be set per environment in `overrides`, and on a fork it follows the network being forked.
+
+It applies to every transaction `deploy`, `execute` and `tx` build, including the ones rocketh sends by itself to bootstrap deterministic deployment (funding the create2 factory deployer, deploying the create3 factory). The canonical create2 factory's own deployment is a pre-signed legacy transaction, so it needs nothing. The gas price is left to whoever signs: the node for an account it holds, and `eth_gasPrice` for a `privateKey` account, which rocketh signs locally.
+
+It is only a default. A single call can decide for itself on any chain:
+
+- `gasPrice` (or `type: 'legacy'`) sends that call as a legacy transaction carrying it.
+- `maxFeePerGas` / `maxPriorityFeePerGas` (or `type: 'eip1559'`) send it as EIP-1559, even on a chain declared legacy.
+
+```typescript
+await deploy('Registry', {account: deployer, artifact: artifacts.Registry, args: [], gasPrice: 2_000_000_000n});
+await execute(registry, {account: deployer, functionName: 'setValue', args: [42n], gasPrice: 2_000_000_000n});
+```
+
+Contradictory options are refused rather than resolved one way or the other: `gasPrice` together with `maxFeePerGas` or `maxPriorityFeePerGas`, `gasPrice` with `type: 'eip1559'`, an EIP-1559 fee with `type: 'legacy'`, and an `accessList` on a legacy transaction (it cannot carry one). Any `type` other than `'eip1559'` and `'legacy'` is refused too.
+
+Note that a legacy transaction signed by a `privateKey` account is currently signed WITHOUT a chain id (the signer comes from the `eip-1193-signer` library, which does not apply EIP-155 to legacy transactions). Such a transaction could be replayed on another chain where the same account has the same nonce, and nodes configured to accept only replay-protected transactions (geth's default over RPC) refuse it. An account held by the node signs with its chain id and is not affected.
+
 ## Named Accounts
 
 Named accounts allow you to refer to accounts by name rather than index or address. This makes your deployment scripts and tests more readable and maintainable.
