@@ -89,12 +89,13 @@ minimumReleaseAgeExclude:
   # workflows (`npm install -g dorfl@<version>` in .github/actions/dorfl-setup), and
   # dorfl.json's `dorflCmd` runs node_modules/.bin/dorfl, so the devDependency must be
   # the same version or the two drift apart. It is a devDependency only and never reaches
-  # a published package. The check: dorfl 0.14.3 (published 2026-09-26 17:10 UTC) was published by
-  # its own release workflow over OIDC with an SLSA provenance attestation, has a single
-  # dependency (`commander ^14.0.1`), and is the version CI already runs.
+  # a published package. The check: dorfl 0.15.0 (published 2026-09-29 16:26 UTC) was published by
+  # its own release workflow over OIDC with an SLSA provenance attestation (the same trust
+  # evidence as 0.14.3), has a single dependency (`commander ^14.0.1`), and is the version
+  # the workflows are regenerated with (`install-ci`).
   #
-  # Safe to delete any time after 2026-10-03, when 0.14.3 passes the floor on its own.
-  - 'dorfl@0.14.3'
+  # Safe to delete any time after 2026-10-06, when 0.15.0 passes the floor on its own.
+  - 'dorfl@0.15.0'
   - 'rocketh'
   - '@rocketh/*'
   - 'hardhat-deploy'
