@@ -40,8 +40,8 @@ importers:
         specifier: ^4.1.11
         version: 4.1.11(@vitest/browser@4.1.11)(vitest@4.1.11)
       dorfl:
-        specifier: 0.14.3
-        version: 0.14.3
+        specifier: 0.15.0
+        version: 0.15.0
       ezx:
         specifier: ^0.0.18
         version: 0.0.18
@@ -3493,8 +3493,8 @@ packages:
   devlop@1.1.0:
     resolution: {integrity: sha512-RWmIqhcFf1lRYBvNmr7qTNuyCt/7/ns2jbpp1+PalgE/rDQcBT0fioSMUpJ93irlUhC5hrg4cYqe6U+0ImW0rA==}
 
-  dorfl@0.14.3:
-    resolution: {integrity: sha512-po1Hm/wNi7QXW04bo7b4cOT7wbd6Xz7I0P1egXdLxrRWEaDDb094vQDYlGnq7mRRUrDLFjImKCjrhuRRqpRxTA==}
+  dorfl@0.15.0:
+    resolution: {integrity: sha512-d5ROsq7XCHOeeczzpbjQuHHR5+0yw/IG7OhFzBcNQtq1zPF7E6073elgNSs6xPoF8pPvoZBglyiYKHE80WzAIA==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -7431,7 +7431,7 @@ snapshots:
     dependencies:
       dequal: 2.0.3
 
-  dorfl@0.14.3:
+  dorfl@0.15.0:
     dependencies:
       commander: 14.0.3
 
