@@ -21,7 +21,7 @@
     "forge-std": "foundry-rs/forge-std#v1.9.4",
     "hardhat": "^3.6.0",
     "hardhat-deploy": "workspace:*",
-    "rocketh": "^0.23.0",
+    "rocketh": "^0.23.1",
     "typescript": "~6.0.3",
     "viem": "^2.43.0"
   },
