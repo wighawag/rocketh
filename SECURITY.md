@@ -10,7 +10,7 @@ If you cannot use that form, email **wighawag@gmail.com** with `rocketh security
 
 A useful report says which package and version, what an attacker or an unlucky operator gets out of it, and the shortest path you know that reproduces it. A failing test against this repository is the fastest possible version of that, and `@rocketh/test-utils` builds a real environment against a mock provider, so most paths can be reproduced without a node.
 
-This project is maintained by one person. You will get an acknowledgement and an honest assessment rather than a service-level guarantee, and a fix will be published as a normal release with the advisory once it is out.
+This project is maintained by one person. You will get an acknowledgement and an honest assessment rather than a service-level guarantee, and a fix will be published as a normal release with the advisory once it is out. What happens after a report is written down in [If a vulnerability is reported in the code](#if-a-vulnerability-is-reported-in-the-code).
 
 There is no bug bounty; nothing here is funded that way. Reporters are credited in the advisory under whatever name they give, unless they ask not to be. If you intend to publish on your own schedule, say so in the first message and the fix will be worked to that date where it is possible at all: a date known in advance is far better handled than one discovered on the day.
 
@@ -80,6 +80,35 @@ The reporting section above says how something gets in. This is what comes back 
 ## Supported versions
 
 Pre-1.0. Fixes go onto the latest published version of the affected package; there are no maintained release branches.
+
+## If a vulnerability is reported in the code
+
+The common case: a report arrives through the advisory form, or by email, about a flaw in something this repository ships. Written in advance for the same reason as the section below, and because one detail is easy to get wrong the first time: a fix developed in an ordinary pull request is public from the moment it is pushed, so anyone watching the repository sees the vulnerable code and its fix before users can install the fixed version.
+
+**Triage: is it real, and is it new?**
+
+1. Acknowledge the report. If the reporter named a disclosure date, work to it, and say so in the reply if it cannot be met.
+2. Check it against [Already known, documented, and not a report](#already-known-documented-and-not-a-report) and against [THREAT-MODEL.md](./THREAT-MODEL.md). An accepted property is closed as known, with a pointer to its reasoning. A known GAP in the threat model is confirmed rather than rediscovered. Anything else is a new threat.
+3. Reproduce it, ideally as a failing test. `@rocketh/test-utils` builds a real environment against a mock provider, so most paths need no node.
+4. Decide the severity from what an attacker or an unlucky operator gets, and what has to be true for it to bite. These become the Impact and Mitigating factors of the advisory.
+
+**Fix: in private.**
+
+5. Work from the draft advisory. A report made through the advisory form already is one; for an emailed report, create it (Security, Advisories, New draft security advisory). Add the reporter as a collaborator if they want to follow or help with the fix.
+6. From the draft, **start a temporary private fork** and develop the fix there, not in a branch of this repository. Include the failing test and a changeset: without a changeset, no Version Packages PR is opened and nothing is released.
+7. **Run the full verify gate locally before merging**, the `verify` command in `dorfl.json` (format, template sync, changeset status, build, typecheck, tests and the Getting Started walkthrough). GitHub runs no CI in a temporary private fork, and merging from the advisory does not enforce the branch protection that normally requires the `verify` check, so nothing else will catch a broken fix.
+
+**Release: keep the public window short.**
+
+8. Merge the fix from the advisory (Merge pull request(s) on the draft). From this moment the fix is public on `main`.
+9. The release workflow opens a Version Packages PR within a few minutes. Merge it as soon as it is green. Merge to fully published on npm was measured at about four minutes on 2026-09-26 (18 packages), so budget ten minutes from step 8 to the fixed versions being installable, and keep that time free before starting step 8.
+10. Confirm the fixed versions on npmjs.com, with their provenance attestations.
+
+**Disclosure and learning.**
+
+11. Fill in the advisory in the shape described [above](#what-a-published-advisory-from-here-will-contain), from [`docs/advisory-template.md`](./docs/advisory-template.md), with the fixed version per package. Request a CVE and publish without waiting for it to be assigned.
+12. Update [THREAT-MODEL.md](./THREAT-MODEL.md): close the GAP the report confirmed, or add the threat it revealed, with the fix as its mitigation.
+13. If the report fell into a class that could recur, add the check that would have caught it: a test, a warning, or an entry in the production-hardening list.
 
 ## If the publishing path is compromised
 
