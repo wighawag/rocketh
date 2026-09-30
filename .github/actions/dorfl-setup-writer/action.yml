@@ -33,3 +33,12 @@ runs:
       run: |
         cd "$RUNNER_TEMP"
         npm install -g --ignore-scripts dorfl@0.15.0
+
+    # STOPGAP until dorfl fixes this upstream (the next `dorfl install-ci` replaces this file).
+    # dorfl.json's `dorflCmd` forwards to node_modules/.bin/dorfl, which writer jobs never
+    # install (by design: no project code runs next to a write token), so every writer job
+    # failed with "command not found". The global dorfl above is already pinned to the same
+    # version as the devDependency, so forwarding gains nothing here.
+    - name: Run the pinned global dorfl directly (no dorflCmd forward)
+      shell: bash
+      run: echo "DORFL_NO_FORWARD=1" >> "$GITHUB_ENV"
