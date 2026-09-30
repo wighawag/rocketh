@@ -11,6 +11,14 @@
 # findings as questions back into THIS issue thread via the issue-comment seam (insertion
 # point E) — REUSED, not a new review mechanism.
 #
+# THE SPLIT (ADR ci-agent-job-holds-no-write-token): ANY GitHub user can write
+# the issue text the decision agent reads, so the agent never shares a job with
+# a write token. The one job below calls dorfl-item.yml with
+# `item: issue:<N>`: a LOCK job (write token, no agent: takes the `processing`
+# label), an AGENT job (read-only token, no persisted credential: runs the
+# decision) and an APPLY job (write token, no agent: validates the agent's
+# handoff as hostile, then comments or integrates the document).
+#
 # TRIGGERS (capability D): an OPENED issue, a CREATED issue comment, and the
 # `dorfl:intake` label. A CREATED comment is the (re-)evaluation
 # trigger; an EDITED comment is deliberately NOT a trigger (the ID-based
@@ -20,31 +28,29 @@
 # re-evaluation (a fresh id the watermark catches). There is NO edit-detection /
 # `updated_at` / body-hash tracking.
 #
-# THE DOCUMENT MODE is `intakeIntegration`; AUTHOR-TRUST → PLACEMENT + the STAMP:
-# the intake DOCUMENT merge-vs-propose mode is the resolved `intakeIntegration ??
-# integration` (an operator/config choice, a SINGLE value applied to BOTH the task
-# and spec document), DECOUPLED from the autonomy gates (spec
-# intake-integration-knob-and-specs-land-in-proposed-rename; ADR
-# untrusted-origin-carries-via-stamp-not-forced-staging). `autoBuild`/`autoTask`
-# no longer decide the document mode (they mean only "may an agent act
-# autonomously"). Because ANYBODY can file an issue, WHO authored it still matters —
-# but author-trust drives only (1) the `--origin-trust` STAMP on the emitted
-# document and (2), via that stamp read by `intake`'s dispatch, which PLACEMENT
-# default the document lands in. So an untrusted author's task DOCUMENT MERGES to
-# `main` just like a trusted one when `intakeIntegration` is `merge`; the
-# untrusted safety is the CARRIED stamp (it forces the later BUILD to a code PR)
-# plus the placement default, not a forced document PR. "Merge everything" is
-# `intakeIntegration: merge` (or `integration: merge`), independent of the gates
-# AND of who filed the issue — so a repo can have autonomy AND merged documents.
+# THE DOCUMENT MODE is `intakeIntegration`; AUTHOR-TRUST → PLACEMENT + the STAMP.
+# Both are derived by the item's LOCK job from trusted inputs, never from the
+# agent: the document merge-vs-propose mode is the resolved
+# `intakeIntegration ?? integration` in dorfl.json at the base (an
+# operator/config choice, a SINGLE value applied to BOTH the task and spec
+# document, DECOUPLED from the autonomy gates; spec
+# intake-integration-knob-and-specs-land-in-proposed-rename), and the
+# origin-trust stamp comes from THIS run's event: an author outside
+# OWNER/MEMBER/COLLABORATOR (`comment.author_association`, else
+# `issue.author_association`) is untrusted (ADR
+# untrusted-origin-carries-via-stamp-not-forced-staging). Author-trust drives
+# only (1) the `originTrust` STAMP on the emitted document and (2), via that
+# stamp, which PLACEMENT default the document lands in; the untrusted safety is
+# the CARRIED stamp (it forces the later BUILD to a code PR) plus the placement
+# default, not a forced document PR.
 #
 # CI runs IN-PLACE (the CI container IS the isolation): NO --isolated/--remote/
 # registry (laptop-only affordances). The PER-ISSUE concurrency group below
 # serialises overlapping ticks on the SAME issue; the `processing` lock / claim
 # CAS is the real cross-run serialiser.
 #
-# SAFETY (US #9): the running job is FORBIDDEN from editing the workflows tree
-# under .github. It requests NO `workflows` permission, so it can never rewrite
-# its own triggers.
+# SAFETY (US #9): no job requests a `workflows` permission, so none can
+# rewrite its own triggers.
 
 name: intake
 
@@ -67,39 +73,14 @@ on:
 # triggers landing close together must not run intake on one issue twice at once).
 # The `processing` lock / claim CAS is the real cross-run serialiser; this just
 # avoids redundant concurrent ticks. Keyed by the issue number so DIFFERENT issues
-# still run in parallel.
+# still run in parallel. One intake run carries exactly one issue, so no
+# parallelism slot applies here.
 concurrency:
   group: intake-${{ github.event.issue.number }}
   cancel-in-progress: false
 
-# NO `workflows` permission: the running job can NEVER edit the workflows tree
-# under .github (US #9). `contents: write` + `pull-requests: write` emit/propose
-# the artifact; `issues: write` posts the clarifying/review comment back into the
-# thread (insertion point E). It never rewrites its triggers.
-permissions:
-  contents: write
-  pull-requests: write
-  issues: write
-
-# ── The intake DOCUMENT mode is resolved FROM CONFIG, not carried here ───────
-# CI is NOT a special policy surface (ADR ci-config-policy-and-gate-family §5):
-# it runs the SAME engine config, resolved through flag > env > per-repo > global
-# > default. The SAME dorfl.json the laptop uses applies here. This workflow emits
-# NO DORFL_AUTO_BUILD / DORFL_AUTO_TASK line (ADR
-# untrusted-origin-carries-via-stamp-not-forced-staging: hardcoding them here made
-# the env layer OUTRANK the committed dorfl.json — the shadowing bug). So the env
-# layer carries NO config default; the policy step below READS the resolved intake
-# DOCUMENT mode `intakeIntegration ?? integration` via `dorfl config --json` (the
-# mechanism `advance` already uses), so your committed dorfl.json wins (then the
-# global config, then the built-in default `propose`). To land intake documents on
-# main, set `intakeIntegration: merge` (or `integration: merge`) in dorfl.json
-# (applies everywhere) — NOT by re-running install-ci (ADR §6: install-ci is
-# one-time). The autonomy gates `autoBuild`/`autoTask` are DECOUPLED from the
-# document mode (spec intake-integration-knob-and-specs-land-in-proposed-rename):
-# they gate autonomy only and are NOT read here. `intake` itself is GATE-FREE (the
-# explicit invocation is its own authorization); CI READS only the resolved
-# `intakeIntegration`/`integration` to DERIVE the merge-vs-propose document flags
-# below (the merge-vs-propose POLICY).
+# Nothing at workflow level: the calling job grants what dorfl-item.yml needs.
+permissions: {}
 
 jobs:
   intake:
@@ -107,123 +88,18 @@ jobs:
     # comment on a PR also fires `issue_comment`; skip those — there is no issue to
     # intake). `pull_request` is absent on a real issue comment.
     if: ${{ github.event.issue.number && !github.event.issue.pull_request }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-      - uses: ./.github/actions/dorfl-setup
-        with:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-
-      - name: derive the intake DOCUMENT mode (intakeIntegration) + the origin-trust stamp (author-trust)
-        id: policy
-        # The intake POLICY, executed at runtime — the SAME rule
-        # `deriveIntakeFlags` unit-tests (they cannot desync; the test asserts this
-        # shell matches the function). The DOCUMENT mode is the resolved
-        # `intakeIntegration ?? integration` (operator/config), DECOUPLED from the
-        # autonomy gates; author-trust drives ONLY the stamp + placement (ADR
-        # untrusted-origin-carries-via-stamp-not-forced-staging; spec
-        # intake-integration-knob-and-specs-land-in-proposed-rename):
-        #   * DOCUMENT mode (spec = task) — config-derived: --merge-* iff the
-        #            resolved intakeIntegration is merge, else --propose-*. A SINGLE
-        #            value applied to BOTH the spec and task document. autoBuild/
-        #            autoTask are NOT read (they gate autonomy only).
-        #   * ORIGIN-TRUST stamp — the ONLY thing author-trust drives: --origin-trust
-        #            untrusted iff the author is not OWNER/MEMBER/COLLABORATOR, which
-        #            `intake`'s dispatch reads to select the untrusted PLACEMENT
-        #            default and to force the later BUILD to a code PR.
-        # author_association comes from the COMMENT on an `issue_comment` event,
-        # else the ISSUE on an `issues` event — read straight off the payload, no
-        # extra API call.
-        env:
-          AUTHOR_ASSOCIATION: ${{ github.event.comment.author_association || github.event.issue.author_association }}
-        run: |
-          set -euo pipefail
-
-          # Read the RESOLVED intake DOCUMENT mode from the committed config via
-          # `dorfl config --json` (the mechanism `advance` already uses), NOT a
-          # hardcoded DORFL_* env (ADR
-          # untrusted-origin-carries-via-stamp-not-forced-staging: an env default
-          # would OUTRANK dorfl.json — the shadowing bug). In-place, so the
-          # resolution chain reads THIS repo's dorfl.json exactly like the laptop.
-          # `intakeIntegration` is OPTIONAL (unset ⇒ falls back to `integration`),
-          # so read `.intakeIntegration // .integration` in ONE jq expression — the
-          # shell twin of the `intakeIntegration ?? integration` the CLI applies.
-          # The autonomy gates (autoBuild/autoTask) are DECOUPLED from the document
-          # mode (spec intake-integration-knob-and-specs-land-in-proposed-rename):
-          # they gate autonomy only and are NOT read here.
-          config_json="$(dorfl config --json)"
-          intake_integration="$(echo "${config_json}" | jq -r '.intakeIntegration // .integration')"
-
-          # DOCUMENT mode: config-derived from the single `intakeIntegration ??
-          # integration` value, applied to BOTH the spec and task document (US #1
-          # chose one intake knob, not a per-type split). merge ⇒ --merge-*,
-          # else --propose-*. Author-trust does NOT bite the mode (ADR
-          # untrusted-origin-carries-via-stamp-not-forced-staging): an untrusted
-          # author's DOCUMENT merges just like a trusted one; the untrusted safety
-          # is the stamp + placement below, not a document PR.
-          if [ "${intake_integration}" = "merge" ]; then
-            spec_flag="--merge-spec"
-            task_flag="--merge-task"
-          else
-            spec_flag="--propose-spec"
-            task_flag="--propose-task"
-          fi
-
-          # Author-trust: TRUSTED iff OWNER/MEMBER/COLLABORATOR (admin / write-
-          # collaborator — the whole signal). Anything else (incl. empty) is
-          # UNTRUSTED. It drives ONLY the origin-trust stamp below (NOT the modes).
-          trusted="false"
-          case "${AUTHOR_ASSOCIATION:-}" in
-            OWNER|MEMBER|COLLABORATOR) trusted="true" ;;
-          esac
-
-          # ORIGIN-TRUST stamp — the SOLE thing author-trust drives on the wire
-          # (task untrusted-origin-forces-build-propose). `intake` STAMPS this
-          # onto the emitted spec/task frontmatter (origin: issue + originTrust:
-          # <value>); its dispatch reads the stamp to (1) select the untrusted-side
-          # PLACEMENT default (`untrusted*LandIn`) and (2) force the later BUILD of
-          # an untrusted task to a code PR. It does NOT re-resolve trust (that is
-          # CI's policy, passed IN). The stamp SURVIVES the merge boundary so a
-          # later auto-task/auto-build of an untrusted-origin artifact still forces
-          # a human becomes-code checkpoint (the laundering gap is closed).
-          if [ "${trusted}" = "true" ]; then
-            origin_trust_flag="--origin-trust=trusted"
-          else
-            origin_trust_flag="--origin-trust=untrusted"
-          fi
-
-          echo "spec_flag=${spec_flag}" >> "$GITHUB_OUTPUT"
-          echo "task_flag=${task_flag}" >> "$GITHUB_OUTPUT"
-          echo "origin_trust_flag=${origin_trust_flag}" >> "$GITHUB_OUTPUT"
-          echo "intake policy: intakeIntegration='${intake_integration}' author_association='${AUTHOR_ASSOCIATION:-}' trusted=${trusted} → ${spec_flag} ${task_flag} ${origin_trust_flag}"
-
-      - name: intake the issue (four-outcome dispatch; surfaces the review verdict into the thread)
-        # In-place in this checkout (no --isolated/--remote): the CI container IS
-        # the isolation. EXPLICIT `intake <N>`, never a bare slug. The per-outcome
-        # flags carry the (intakeIntegration-derived) document modes + the
-        # origin-trust stamp derived above (author-trust drives only the stamp +
-        # placement, not the document merge-vs-propose; the autonomy gates drive
-        # neither). `intake` runs the
-        # lone-task review/edit loop and posts its findings as questions back into
-        # THIS issue thread (insertion point E) through the issue-comment seam —
-        # CI surfaces E by invoking intake; it adds no new review mechanism.
-        #
-        # Every value reaches the shell through `env:` as DATA and is read back as a
-        # quoted variable, never as `${{ }}` text spliced into the script
-        # (GitHub's script-injection guidance). The issue number is an integer and
-        # the policy outputs are fixed flags today; routing them through env anyway
-        # keeps "no `${{ }}` inside `run:`" a rule with no exceptions.
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
-          SPEC_FLAG: ${{ steps.policy.outputs.spec_flag }}
-          TASK_FLAG: ${{ steps.policy.outputs.task_flag }}
-          ORIGIN_TRUST_FLAG: ${{ steps.policy.outputs.origin_trust_flag }}
-        run: |
-          dorfl intake "${ISSUE_NUMBER}" \
-            "${SPEC_FLAG}" \
-            "${TASK_FLAG}" \
-            "${ORIGIN_TRUST_FLAG}" \
-            --arbiter origin
+    # The union of what dorfl-item.yml's jobs request (a called workflow can
+    # only narrow this): the lock and apply jobs write (the `processing` label,
+    # the comment back into the thread = insertion point E, the document PR or
+    # merge); apply reads the agent job's check runs (a timeout vs a cancel).
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      actions: read
+      checks: read
+    uses: ./.github/workflows/dorfl-item.yml
+    with:
+      item: issue:${{ github.event.issue.number }}
+    secrets:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

@@ -1,0 +1,44 @@
+name: Setup dorfl (writer role)
+description: Install Node.js and dorfl only, for the CI jobs that run no agent (lock, apply, reap, close, enumerate)
+
+# THE WRITER ROLE (ADR ci-agent-job-holds-no-write-token): the jobs that use
+# this action hold a write token (or run next to one) and run NO agent and NO
+# repository code. So it installs Node.js and dorfl ONLY: no agent harness, no
+# provider API key, no models.json, no project-setup hook, no install of the
+# project's dependencies, and no Actions cache (an agent can write
+# default-branch cache entries, so a restore here would run its bytes with
+# write access). The agent role is ./.github/actions/dorfl-setup.
+runs:
+  using: composite
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      with:
+        node-version: '22'
+        # No cache in the writer role (see above).
+        package-manager-cache: false
+
+    - name: Configure git identity
+      shell: bash
+      run: |
+        git config user.name "dorfl[bot]"
+        git config user.email "dorfl[bot]@users.noreply.github.com"
+
+    # Pinned to the dorfl version that generated this action. Installed from
+    # $RUNNER_TEMP (outside the checkout, so a repository .npmrc cannot redirect
+    # the registry) with --ignore-scripts (no install script runs next to the
+    # write token).
+    - name: Install dorfl (outside the checkout, no install scripts)
+      shell: bash
+      run: |
+        cd "$RUNNER_TEMP"
+        npm install -g --ignore-scripts dorfl@0.15.0
+
+    # STOPGAP until dorfl fixes this upstream (the next `dorfl install-ci` replaces this file).
+    # dorfl.json's `dorflCmd` forwards to node_modules/.bin/dorfl, which writer jobs never
+    # install (by design: no project code runs next to a write token), so every writer job
+    # failed with "command not found". The global dorfl above is already pinned to the same
+    # version as the devDependency, so forwarding gains nothing here.
+    - name: Run the pinned global dorfl directly (no dorflCmd forward)
+      shell: bash
+      run: echo "DORFL_NO_FORWARD=1" >> "$GITHUB_ENV"
