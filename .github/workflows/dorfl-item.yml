@@ -1,0 +1,322 @@
+# dorfl — ONE CI ITEM as three jobs (spec ci-agent-job-without-write-token,
+# ADR ci-agent-job-holds-no-write-token). EMITTED by `dorfl install-ci`; the
+# human commits it. DO NOT hand-edit a copy: re-run install-ci to upgrade.
+#
+#   lock   write token, NO agent, NO repository code: classify the item at the
+#          arbiter's current main (its tip is the base), take the locks, and
+#          publish trusted facts as job outputs.
+#   agent  read-only token, persist-credentials: false: run the agents, the
+#          gate and the review, stop at the first write, upload the handoff.
+#   apply  write token, NO agent, NO repository code, if: always(): treat the
+#          handoff as HOSTILE, validate it against the lock outputs, do every
+#          write (or release / surface the item when the agent job failed).
+#
+# Reached only through `workflow_call`: from dorfl-item-dispatch.yml (one run
+# per advance item, holding the parallelism slot) and from intake.yml
+# (`item: issue:<N>`, under its per-issue group). ONE item per run: the
+# artifact namespace is this run's, so the apply job's download (no run-id)
+# can only read this item's agent job. NO workflow-level concurrency here: the
+# callers own it.
+#
+# The base is the arbiter tip, never the run's commit: a queued run may start
+# hours after its dispatch. The lock job's checkout (github.sha) only loads the
+# local composite action; dorfl fetches <arbiter>/main itself and publishes its
+# tip as `baseSha`, which the agent and apply jobs check out.
+#
+# Secrets: the provider key(s) reach the AGENT job only; DORFL_GH_TOKEN and the
+# write-scoped GITHUB_TOKEN reach lock and apply only. The agent job's
+# GITHUB_TOKEN is read-only (its job permissions).
+#
+# All jobs run on GitHub-hosted runners: each job needs a FRESH machine. A
+# self-hosted runner must be ephemeral (one job per machine), or files and
+# processes an agent planted survive into a later lock or apply job.
+
+name: dorfl-item
+
+on:
+  workflow_call:
+    inputs:
+      item:
+        description: 'The namespaced item id: task:<slug>, spec:<slug>, obs:<slug>, observation:<slug> (advance) or issue:<N> (intake).'
+        required: true
+        type: string
+      integrationMode:
+        description: 'propose or merge (advance items; the lock phase refuses anything else). Intake reads its document mode from dorfl.json.'
+        required: false
+        default: 'propose'
+        type: string
+      autoBuild:
+        description: 'One-shot autoBuild override (blank: none).'
+        required: false
+        default: ''
+        type: string
+      autoTask:
+        description: 'One-shot autoTask override (blank: none).'
+        required: false
+        default: ''
+        type: string
+      observationTriage:
+        description: 'One-shot observationTriage override (blank: none).'
+        required: false
+        default: ''
+        type: string
+      surfaceBlockers:
+        description: 'One-shot surfaceBlockers override (blank: none).'
+        required: false
+        default: ''
+        type: string
+    secrets:
+      ANTHROPIC_API_KEY:
+        required: false
+      DORFL_GH_TOKEN:
+        required: false
+
+# Nothing at workflow level: each job grants its own scopes (and a caller's
+# grant caps them).
+permissions: {}
+
+jobs:
+  # ── LOCK: write token, no agent, no repository code ─────────────────────────
+  lock:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    # Exactly the lock phase's facts (ci-lock-outputs.ts), written by dorfl to
+    # $GITHUB_OUTPUT. The agent and apply jobs read them back as ONE JSON value,
+    # DORFL_LOCK_OUTPUTS = toJSON(needs.lock.outputs), which dorfl re-validates.
+    outputs:
+      acquired: ${{ steps.lock.outputs.acquired }}
+      needsAgent: ${{ steps.lock.outputs.needsAgent }}
+      rung: ${{ steps.lock.outputs.rung }}
+      baseSha: ${{ steps.lock.outputs.baseSha }}
+      lockSha: ${{ steps.lock.outputs.lockSha }}
+      continueTip: ${{ steps.lock.outputs.continueTip }}
+      handoffName: ${{ steps.lock.outputs.handoffName }}
+      agentTimeoutMinutes: ${{ steps.lock.outputs.agentTimeoutMinutes }}
+      originTrust: ${{ steps.lock.outputs.originTrust }}
+      documentMode: ${{ steps.lock.outputs.documentMode }}
+      seenCommentIds: ${{ steps.lock.outputs.seenCommentIds }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/dorfl-setup-writer
+      - name: apply dispatch gate overrides (one-shot, this run only)
+        # The four one-shot gate overrides of the tick (blank: none, the
+        # committed dorfl.json wins). Exported in the lock, agent AND apply jobs,
+        # because each resolves the gate family (the lock job's classification
+        # picks the rung from it). Each reaches the shell through `env:` as DATA,
+        # a line break or a value outside its enum is refused (the
+        # `workflow_call` inputs are free strings), and only a non-blank value is
+        # written to $GITHUB_ENV (an empty DORFL_* makes the env coercion throw).
+        env:
+          DISPATCH_AUTO_BUILD: ${{ inputs.autoBuild }}
+          DISPATCH_AUTO_TASK: ${{ inputs.autoTask }}
+          DISPATCH_OBSERVATION_TRIAGE: ${{ inputs.observationTriage }}
+          DISPATCH_SURFACE_BLOCKERS: ${{ inputs.surfaceBlockers }}
+        run: |
+          case "${DISPATCH_AUTO_BUILD}${DISPATCH_AUTO_TASK}${DISPATCH_OBSERVATION_TRIAGE}${DISPATCH_SURFACE_BLOCKERS}" in
+            *$'\n'*|*$'\r'*) echo "::error::a dispatch gate override contains a line break"; exit 1 ;;
+          esac
+          case "${DISPATCH_AUTO_BUILD}" in ''|true|false) ;; *) echo "::error::the autoBuild override must be blank, true, false"; exit 1 ;; esac
+          case "${DISPATCH_AUTO_TASK}" in ''|true|false) ;; *) echo "::error::the autoTask override must be blank, true, false"; exit 1 ;; esac
+          case "${DISPATCH_OBSERVATION_TRIAGE}" in ''|off|ask|auto) ;; *) echo "::error::the observationTriage override must be blank, off, ask, auto"; exit 1 ;; esac
+          case "${DISPATCH_SURFACE_BLOCKERS}" in ''|true|false) ;; *) echo "::error::the surfaceBlockers override must be blank, true, false"; exit 1 ;; esac
+          [ -n "${DISPATCH_AUTO_BUILD}" ] && echo "DORFL_AUTO_BUILD=${DISPATCH_AUTO_BUILD}" >> "$GITHUB_ENV"
+          [ -n "${DISPATCH_AUTO_TASK}" ] && echo "DORFL_AUTO_TASK=${DISPATCH_AUTO_TASK}" >> "$GITHUB_ENV"
+          [ -n "${DISPATCH_OBSERVATION_TRIAGE}" ] && echo "DORFL_OBSERVATION_TRIAGE=${DISPATCH_OBSERVATION_TRIAGE}" >> "$GITHUB_ENV"
+          [ -n "${DISPATCH_SURFACE_BLOCKERS}" ] && echo "DORFL_SURFACE_BLOCKERS=${DISPATCH_SURFACE_BLOCKERS}" >> "$GITHUB_ENV"
+          true
+      - name: lock the item (no agent, no repository code)
+        id: lock
+        # dorfl fetches <arbiter>/main, classifies the item at its tip (the
+        # base), takes the locks and writes its facts to $GITHUB_OUTPUT (among
+        # them agentTimeoutMinutes, read from dorfl.json at the base). Intake
+        # derives the origin trust from this run's event and the document mode
+        # from dorfl.json at the base.
+        env:
+          GH_TOKEN: ${{ secrets.DORFL_GH_TOKEN || secrets.GITHUB_TOKEN }}
+          WORK_ITEM: ${{ inputs.item }}
+          INTEGRATION_MODE: ${{ inputs.integrationMode }}
+        run: |
+          set -euo pipefail
+          case "${WORK_ITEM}" in
+            ''|-*) echo "::error::the item must be a namespaced id (task:<slug>, spec:<slug>, obs:<slug>, issue:<N>)"; exit 1 ;;
+          esac
+          case "${INTEGRATION_MODE}" in
+            propose|merge) ;;
+            *) echo "::error::integrationMode must be propose or merge"; exit 1 ;;
+          esac
+          case "${WORK_ITEM}" in
+            issue:*) dorfl intake "${WORK_ITEM#issue:}" --phase lock --arbiter origin ;;
+            *) dorfl advance "${WORK_ITEM}" "--${INTEGRATION_MODE}" --phase lock --arbiter origin ;;
+          esac
+
+  # ── AGENT: read-only token, no persisted credential ────────────────────────
+  agent:
+    needs: lock
+    if: ${{ needs.lock.outputs.acquired == 'true' && needs.lock.outputs.needsAgent == 'true' }}
+    runs-on: ubuntu-latest
+    # agentDeadlineMinutes + checkpointHeadroomMinutes from dorfl.json at the
+    # base, computed by the lock job (a job output is a string: fromJSON).
+    timeout-minutes: ${{ fromJSON(needs.lock.outputs.agentTimeoutMinutes) }}
+    permissions:
+      contents: read
+      issues: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.lock.outputs.baseSha }}
+          fetch-depth: 0
+          # Nothing in this job may hold a credential the agent could use: the
+          # read token reaches dorfl's own git per command, never .git/config.
+          persist-credentials: false
+          lfs: true
+      - uses: ./.github/actions/dorfl-setup
+        with:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      - name: enable git LFS in this checkout
+        run: git lfs install --local
+      - name: apply dispatch gate overrides (one-shot, this run only)
+        # The four one-shot gate overrides of the tick (blank: none, the
+        # committed dorfl.json wins). Exported in the lock, agent AND apply jobs,
+        # because each resolves the gate family (the lock job's classification
+        # picks the rung from it). Each reaches the shell through `env:` as DATA,
+        # a line break or a value outside its enum is refused (the
+        # `workflow_call` inputs are free strings), and only a non-blank value is
+        # written to $GITHUB_ENV (an empty DORFL_* makes the env coercion throw).
+        env:
+          DISPATCH_AUTO_BUILD: ${{ inputs.autoBuild }}
+          DISPATCH_AUTO_TASK: ${{ inputs.autoTask }}
+          DISPATCH_OBSERVATION_TRIAGE: ${{ inputs.observationTriage }}
+          DISPATCH_SURFACE_BLOCKERS: ${{ inputs.surfaceBlockers }}
+        run: |
+          case "${DISPATCH_AUTO_BUILD}${DISPATCH_AUTO_TASK}${DISPATCH_OBSERVATION_TRIAGE}${DISPATCH_SURFACE_BLOCKERS}" in
+            *$'\n'*|*$'\r'*) echo "::error::a dispatch gate override contains a line break"; exit 1 ;;
+          esac
+          case "${DISPATCH_AUTO_BUILD}" in ''|true|false) ;; *) echo "::error::the autoBuild override must be blank, true, false"; exit 1 ;; esac
+          case "${DISPATCH_AUTO_TASK}" in ''|true|false) ;; *) echo "::error::the autoTask override must be blank, true, false"; exit 1 ;; esac
+          case "${DISPATCH_OBSERVATION_TRIAGE}" in ''|off|ask|auto) ;; *) echo "::error::the observationTriage override must be blank, off, ask, auto"; exit 1 ;; esac
+          case "${DISPATCH_SURFACE_BLOCKERS}" in ''|true|false) ;; *) echo "::error::the surfaceBlockers override must be blank, true, false"; exit 1 ;; esac
+          [ -n "${DISPATCH_AUTO_BUILD}" ] && echo "DORFL_AUTO_BUILD=${DISPATCH_AUTO_BUILD}" >> "$GITHUB_ENV"
+          [ -n "${DISPATCH_AUTO_TASK}" ] && echo "DORFL_AUTO_TASK=${DISPATCH_AUTO_TASK}" >> "$GITHUB_ENV"
+          [ -n "${DISPATCH_OBSERVATION_TRIAGE}" ] && echo "DORFL_OBSERVATION_TRIAGE=${DISPATCH_OBSERVATION_TRIAGE}" >> "$GITHUB_ENV"
+          [ -n "${DISPATCH_SURFACE_BLOCKERS}" ] && echo "DORFL_SURFACE_BLOCKERS=${DISPATCH_SURFACE_BLOCKERS}" >> "$GITHUB_ENV"
+          true
+      - name: run the agents (stops at the first write, writes the handoff)
+        env:
+          # Read-only (this job's permissions): dorfl's fetches pass it per
+          # command and scrub it from the agent's environment.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DORFL_LOCK_OUTPUTS: ${{ toJSON(needs.lock.outputs) }}
+          WORK_ITEM: ${{ inputs.item }}
+          INTEGRATION_MODE: ${{ inputs.integrationMode }}
+        # `--watch` streams the build agent's turns into this job log.
+        run: |
+          set -euo pipefail
+          case "${WORK_ITEM}" in
+            ''|-*) echo "::error::the item must be a namespaced id (task:<slug>, spec:<slug>, obs:<slug>, issue:<N>)"; exit 1 ;;
+          esac
+          case "${INTEGRATION_MODE}" in
+            propose|merge) ;;
+            *) echo "::error::integrationMode must be propose or merge"; exit 1 ;;
+          esac
+          case "${WORK_ITEM}" in
+            issue:*) dorfl intake "${WORK_ITEM#issue:}" --phase agent --handoff-out "${RUNNER_TEMP}/dorfl-handoff" --arbiter origin ;;
+            *) dorfl advance "${WORK_ITEM}" "--${INTEGRATION_MODE}" --phase agent --watch --handoff-out "${RUNNER_TEMP}/dorfl-handoff" --arbiter origin ;;
+          esac
+      - name: upload the handoff
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ needs.lock.outputs.handoffName }}
+          path: ${{ runner.temp }}/dorfl-handoff
+          retention-days: 1
+          if-no-files-found: ignore
+
+  # ── APPLY: write token, no agent, no repository code ────────────────────────
+  apply:
+    needs: [lock, agent]
+    if: ${{ always() && needs.lock.outputs.acquired == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # actions: read + checks: read tell a timed-out agent job from a cancelled
+    # one (GitHub reports both as cancelled; decision 5).
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      actions: read
+      checks: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.lock.outputs.baseSha }}
+          fetch-depth: 0
+      - uses: ./.github/actions/dorfl-setup-writer
+      - name: apply dispatch gate overrides (one-shot, this run only)
+        # The four one-shot gate overrides of the tick (blank: none, the
+        # committed dorfl.json wins). Exported in the lock, agent AND apply jobs,
+        # because each resolves the gate family (the lock job's classification
+        # picks the rung from it). Each reaches the shell through `env:` as DATA,
+        # a line break or a value outside its enum is refused (the
+        # `workflow_call` inputs are free strings), and only a non-blank value is
+        # written to $GITHUB_ENV (an empty DORFL_* makes the env coercion throw).
+        env:
+          DISPATCH_AUTO_BUILD: ${{ inputs.autoBuild }}
+          DISPATCH_AUTO_TASK: ${{ inputs.autoTask }}
+          DISPATCH_OBSERVATION_TRIAGE: ${{ inputs.observationTriage }}
+          DISPATCH_SURFACE_BLOCKERS: ${{ inputs.surfaceBlockers }}
+        run: |
+          case "${DISPATCH_AUTO_BUILD}${DISPATCH_AUTO_TASK}${DISPATCH_OBSERVATION_TRIAGE}${DISPATCH_SURFACE_BLOCKERS}" in
+            *$'\n'*|*$'\r'*) echo "::error::a dispatch gate override contains a line break"; exit 1 ;;
+          esac
+          case "${DISPATCH_AUTO_BUILD}" in ''|true|false) ;; *) echo "::error::the autoBuild override must be blank, true, false"; exit 1 ;; esac
+          case "${DISPATCH_AUTO_TASK}" in ''|true|false) ;; *) echo "::error::the autoTask override must be blank, true, false"; exit 1 ;; esac
+          case "${DISPATCH_OBSERVATION_TRIAGE}" in ''|off|ask|auto) ;; *) echo "::error::the observationTriage override must be blank, off, ask, auto"; exit 1 ;; esac
+          case "${DISPATCH_SURFACE_BLOCKERS}" in ''|true|false) ;; *) echo "::error::the surfaceBlockers override must be blank, true, false"; exit 1 ;; esac
+          [ -n "${DISPATCH_AUTO_BUILD}" ] && echo "DORFL_AUTO_BUILD=${DISPATCH_AUTO_BUILD}" >> "$GITHUB_ENV"
+          [ -n "${DISPATCH_AUTO_TASK}" ] && echo "DORFL_AUTO_TASK=${DISPATCH_AUTO_TASK}" >> "$GITHUB_ENV"
+          [ -n "${DISPATCH_OBSERVATION_TRIAGE}" ] && echo "DORFL_OBSERVATION_TRIAGE=${DISPATCH_OBSERVATION_TRIAGE}" >> "$GITHUB_ENV"
+          [ -n "${DISPATCH_SURFACE_BLOCKERS}" ] && echo "DORFL_SURFACE_BLOCKERS=${DISPATCH_SURFACE_BLOCKERS}" >> "$GITHUB_ENV"
+          true
+      - name: download the handoff (this run's own artifact)
+        # No run-id: only this run's artifacts, i.e. this item's agent job. A
+        # missing artifact is the apply phase's to judge, not a job failure.
+        if: ${{ needs.agent.result == 'success' }}
+        continue-on-error: true
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ${{ needs.lock.outputs.handoffName }}
+          path: ${{ runner.temp }}/dorfl-handoff
+      - name: apply the item (validates the handoff as hostile, does every write)
+        env:
+          GH_TOKEN: ${{ secrets.DORFL_GH_TOKEN || secrets.GITHUB_TOKEN }}
+          # The agent job's timeout check reads the Actions API with THIS token
+          # only (never DORFL_GH_TOKEN).
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DORFL_LOCK_OUTPUTS: ${{ toJSON(needs.lock.outputs) }}
+          AGENT_RESULT: ${{ needs.agent.result }}
+          AGENT_TIMEOUT_MINUTES: ${{ needs.lock.outputs.agentTimeoutMinutes }}
+          WORK_ITEM: ${{ inputs.item }}
+          INTEGRATION_MODE: ${{ inputs.integrationMode }}
+        run: |
+          set -euo pipefail
+          case "${WORK_ITEM}" in
+            ''|-*) echo "::error::the item must be a namespaced id (task:<slug>, spec:<slug>, obs:<slug>, issue:<N>)"; exit 1 ;;
+          esac
+          case "${INTEGRATION_MODE}" in
+            propose|merge) ;;
+            *) echo "::error::integrationMode must be propose or merge"; exit 1 ;;
+          esac
+          timeout_args=()
+          if [ -n "${AGENT_TIMEOUT_MINUTES}" ]; then
+            timeout_args=(--agent-timeout-minutes "${AGENT_TIMEOUT_MINUTES}")
+          fi
+          case "${WORK_ITEM}" in
+            issue:*) dorfl intake "${WORK_ITEM#issue:}" --phase apply --agent-result "${AGENT_RESULT}" "${timeout_args[@]}" --handoff-in "${RUNNER_TEMP}/dorfl-handoff" --arbiter origin ;;
+            *) dorfl advance "${WORK_ITEM}" "--${INTEGRATION_MODE}" --phase apply --agent-result "${AGENT_RESULT}" "${timeout_args[@]}" --handoff-in "${RUNNER_TEMP}/dorfl-handoff" --arbiter origin ;;
+          esac
