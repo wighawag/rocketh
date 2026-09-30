@@ -65,7 +65,7 @@ runs:
     # after upgrading dorfl to move the pin.
     - name: Install dorfl
       shell: bash
-      run: npm install -g dorfl@0.15.0
+      run: npm install -g dorfl@0.15.1
     # Pinned to the exact harness version this dorfl release declares
     # (PI_HARNESS_VERSION), with every pi package it loads pinned too (npm
     # `overrides`; a caret range on a 0.x version floats within the minor): the

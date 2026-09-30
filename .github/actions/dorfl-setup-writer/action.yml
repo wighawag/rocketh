@@ -32,13 +32,49 @@ runs:
       shell: bash
       run: |
         cd "$RUNNER_TEMP"
-        npm install -g --ignore-scripts dorfl@0.15.0
+        npm install -g --ignore-scripts dorfl@0.15.1
 
-    # STOPGAP until dorfl fixes this upstream (the next `dorfl install-ci` replaces this file).
-    # dorfl.json's `dorflCmd` forwards to node_modules/.bin/dorfl, which writer jobs never
-    # install (by design: no project code runs next to a write token), so every writer job
-    # failed with "command not found". The global dorfl above is already pinned to the same
-    # version as the devDependency, so forwarding gains nothing here.
-    - name: Run the pinned global dorfl directly (no dorflCmd forward)
+    # The writer role runs the dorfl installed above and never forwards to the
+    # repository's dorflCmd: that command usually points into the project's
+    # dependencies (node_modules/.bin/dorfl), which this role never installs.
+    # Exported to $GITHUB_ENV so it holds for every later step of the job.
+    - name: Run the dorfl installed above, not the repository's dorflCmd
       shell: bash
       run: echo "DORFL_NO_FORWARD=1" >> "$GITHUB_ENV"
+
+    # Warn (never fail) when the repository pins a dorfl version other than the
+    # one installed above: the agent job forwards to dorflCmd, these writer jobs
+    # do not, so the two roles would run different versions. Reads dorfl.json
+    # and package.json as JSON only; runs no project code.
+    - name: Warn if the repository pins another dorfl version
+      shell: bash
+      run: |
+        node -e '
+          const fs = require("fs");
+          const pinned = process.argv[1];
+          const readJson = (p) => {
+            try { return JSON.parse(fs.readFileSync(p, "utf8")); } catch (e) { return undefined; }
+          };
+          const semver = "\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?";
+          const config = readJson("dorfl.json") || readJson(".dorfl.json") || {};
+          const cmd = config.dorflCmd;
+          if (typeof cmd !== "string") process.exit(0);
+          let found;
+          let where;
+          const inCmd = new RegExp("(?:^|\\s)dorfl@(" + semver + ")(?=\\s|$)").exec(cmd);
+          if (inCmd) {
+            found = inCmd[1];
+            where = "dorfl.json dorflCmd";
+          } else if (/(?:^|[\s/])node_modules\/\.bin\/dorfl(?=\s|$)/.test(cmd)) {
+            const pkg = readJson("package.json") || {};
+            const spec = (pkg.devDependencies || {}).dorfl || (pkg.dependencies || {}).dorfl;
+            if (typeof spec === "string" && new RegExp("^" + semver + "$").test(spec)) {
+              found = spec;
+              where = "package.json (the dorflCmd " + cmd + ")";
+            }
+          }
+          if (found !== undefined && found !== pinned) {
+            const esc = (s) => s.replace(/%/g, "%25").replace(/\r/g, "%0D").replace(/\n/g, "%0A");
+            console.log("::warning title=dorfl-setup-writer::" + esc(where + " pins dorfl@" + found + " but the writer-role jobs run dorfl@" + pinned + ", the version install-ci generated these workflows with (writer jobs do not forward to dorflCmd). Re-run dorfl install-ci with dorfl " + found + " so every job runs the same version."));
+          }
+        ' "0.15.1"
