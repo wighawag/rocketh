@@ -201,6 +201,13 @@ async function askForkNodeForItsChainId(endpoint: string, environmentName: strin
 }
 
 /**
+ * Chain ids that only local development nodes use: hardhat and anvil (31337) and the older
+ * ganache / geth dev default (1337). Declaring one of these says the node is on the operator's own
+ * machine, which is what lets a chain id mismatch there be a warning instead of a refusal.
+ */
+const LOCAL_DEVELOPMENT_CHAIN_IDS: ReadonlySet<number> = new Set([31337, 1337]);
+
+/**
  * The chain id the run adopts: the CONNECTED one, the chain the node itself reports.
  *
  * Two things happen here and they are separate. The identity CHECK compares what the environment
@@ -252,18 +259,38 @@ export async function getChainIdForEnvironment(
 	// adoption below signs for the node's id, so a warning let a node that lies about its chain
 	// (a hostile or merely wrong RPC for a testnet environment answering `1`) collect
 	// transactions signed for that chain, valid wherever it is, on keys that are commonly shared
-	// across networks. A console warning is also easy to miss in CI. The one legitimate reason for
-	// the two to differ is a node simulating the declared network, which is what a fork run
-	// expresses (ADR 0014), so the message points there.
+	// across networks. A console warning is also easy to miss in CI.
+	//
+	// One exception, and it is about WHERE the node is, not about the ids: an environment that
+	// declares a local development chain (`LOCAL_DEVELOPMENT_CHAIN_IDS`) is talking to a node on
+	// the operator's own machine, and a hostile node there is out of scope (SECURITY.md: anything
+	// that presupposes control of the operator's machine). The common case is `anvil --fork-url`
+	// used as `localhost`: anvil keeps the FORKED chain's id (the finding above), while the
+	// environment, like the project template's, declares 31337. Refusing that protected nothing and
+	// broke a routine workflow, so it keeps the old behaviour: say so, then adopt the node's id.
 	if (!fork && declaredChainId && chainIdFromNode && chainIdFromNode != declaredChainId) {
-		throw new Error(
-			`The node reports chainId ${chainIdFromNode}, but environment "${environmentName}" declares chain ` +
-				`${declaredChainId}. Refusing to continue: every transaction would be signed for chain ` +
-				`${chainIdFromNode}. If this node is a fork of "${environmentName}", run it as a fork ` +
-				`(\`--is-fork\` on the rocketh CLI, \`environment: {fork: '${environmentName}'}\` ` +
-				`programmatically, \`HARDHAT_FORK\` with hardhat-deploy). Otherwise point the environment ` +
-				`at the right node, or correct \`environments.${environmentName}.chain\`.`,
-		);
+		if (LOCAL_DEVELOPMENT_CHAIN_IDS.has(declaredChainId)) {
+			// No "declare the other id to silence this" advice, deliberately: declaring `chain: 1` on a
+			// local environment would key it to `chains[1]`, public rpcUrl included, which is how a
+			// `localhost` run ends up talking to mainnet.
+			console.warn(
+				`The node reports chainId ${chainIdFromNode}, but environment "${environmentName}" declares the local ` +
+					`development chain ${declaredChainId}. Continuing with chain ${chainIdFromNode}: a local node that forks ` +
+					`another network (\`anvil --fork-url\`) reports that network's id. If you did not expect this, check ` +
+					`which node "${environmentName}" is connected to.`,
+			);
+		} else {
+			throw new Error(
+				`The node reports chainId ${chainIdFromNode}, but environment "${environmentName}" declares chain ` +
+					`${declaredChainId}. Refusing to continue: every transaction would be signed for chain ` +
+					`${chainIdFromNode}.\n` +
+					`- If this node is a fork of "${environmentName}", run it as a fork (\`--is-fork\` on the rocketh ` +
+					`CLI, \`environment: {fork: '${environmentName}'}\` programmatically, \`HARDHAT_FORK\` with hardhat-deploy).\n` +
+					`- Otherwise the endpoint or the declaration is wrong: point "${environmentName}" at a node for chain ` +
+					`${declaredChainId}, or, if ${declaredChainId} is not this network's id, correct ` +
+					`\`environments.${environmentName}.chain\`.`,
+			);
+		}
 	}
 
 	// The adoption, stated rather than left to whichever value happened to be truthy: the node's id
