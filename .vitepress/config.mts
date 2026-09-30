@@ -215,6 +215,9 @@ export default defineConfig({
 		// fail the build, while on GitHub they resolve to the files they name.
 		'CONTRIBUTING.md',
 		'CODE_OF_CONDUCT.md',
+		// The companion to SECURITY.md, read on GitHub next to it. Same reason: it links to
+		// ./SECURITY.md, which is excluded above, so as a published page it is a dead link.
+		'THREAT-MODEL.md',
 	],
 
 	// Every page is emitted as `<name>/index.html`, never `<name>.html`, so that a URL
