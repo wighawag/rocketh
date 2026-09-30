@@ -9,6 +9,13 @@
 #     actually CLOSE issues — a `pull_request` event from a FORK gets a read-only
 #     token and could not close (a real limitation we deliberately avoid).
 #
+# PLUS an HOURLY schedule (and workflow_dispatch for a manual catch-up). GitHub
+# starts NO workflow for a push made with a job's GITHUB_TOKEN, so a land the CI
+# pushes itself (merge mode, an answered `merge` question, a tree-less publish)
+# never fires the push trigger above. The schedule closes those issues within the
+# hour. It is safe to repeat: `close-merged-issues` keeps no state (every run
+# re-derives from main what is complete) and skips an issue already closed.
+#
 # WHAT IT DOES — `dorfl close-merged-issues` resolves which source issue(s)
 # the landed work closes and closes them. CI owns ONLY this job + the trigger; the
 # command CONSUMES the engine's UNCHANGED pieces and re-implements none of them:
@@ -37,6 +44,12 @@ on:
   push:
     branches:
       - main
+  # Hourly (the same cadence as advance-lifecycle): a land the CI pushes with its
+  # GITHUB_TOKEN starts no workflow, so this catches the issues those lands close.
+  schedule:
+    - cron: '0 * * * *'
+  # Manual catch-up.
+  workflow_dispatch:
 
 # Serialise overlapping close ticks on main; the close-job mutates only the ISSUE
 # (not the main-CAS), so this just avoids redundant concurrent passes.
@@ -44,25 +57,29 @@ concurrency:
   group: close-job-${{ github.ref }}
   cancel-in-progress: false
 
-# NO `workflows` permission: the running job can NEVER edit the workflows tree
-# under .github (US #9). It needs only to READ the work/ tree and CLOSE issues.
-permissions:
-  contents: read
-  issues: write
+# Nothing at workflow level: the job grants its own scopes. NO `workflows`
+# permission: the running job can NEVER edit the workflows tree under .github
+# (US #9).
+permissions: {}
 
 jobs:
   close-merged-issues:
     runs-on: ubuntu-latest
+    # It needs only to READ the work/ tree and CLOSE issues.
+    permissions:
+      contents: read
+      issues: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           # Public repository: every git read works without a token, and this
           # job cannot push, so do not leave the token in .git/config for later
-          # steps (the setup action, including any project-setup hook, and
-          # close-merged-issues) to read.
+          # steps (the setup action and close-merged-issues) to read.
           persist-credentials: false
-      - uses: ./.github/actions/dorfl-setup
+      # The writer role (Node and dorfl only): this job runs no agent, so it
+      # installs no harness, no provider key and no project-setup hook.
+      - uses: ./.github/actions/dorfl-setup-writer
       - name: close issues whose work has landed on main
         # In-place in this checkout (no --isolated/--remote): the CI container IS
         # the isolation. Resolves the closing issue(s) from the work/ tree, runs

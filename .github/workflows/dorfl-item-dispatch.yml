@@ -1,0 +1,111 @@
+# dorfl — ONE ADVANCE ITEM per workflow run (spec
+# ci-agent-job-without-write-token, decision 1 of ADR
+# ci-agent-job-holds-no-write-token). EMITTED by `dorfl install-ci`; the human
+# commits it. DO NOT hand-edit a copy: re-run install-ci to upgrade.
+#
+# The advance-lifecycle tick's `dispatch` job starts one run of THIS workflow
+# per eligible item (`gh workflow run`); its single job calls dorfl-item.yml
+# (lock, agent, apply). A run of its own per item gives the item its own
+# artifact namespace, so no other item's agent can plant its handoff.
+#
+# PARALLELISM: each run joins the concurrency group dorfl-slot-<slot> (slot =
+# item index mod maxParallel) with `queue: max`, so at most maxParallel item
+# runs execute at once and the rest wait first-in-first-out, costing no runner
+# minutes. A slot holds at most 100 pending runs; beyond that GitHub cancels,
+# and the next tick re-dispatches (the item is still eligible).
+#
+# The run name `dorfl-item <item>` is what the tick de-duplicates on: an item
+# whose run is not completed yet is not dispatched again.
+
+name: dorfl-item-dispatch
+
+run-name: dorfl-item ${{ inputs.item }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      item:
+        description: 'The namespaced item id (task:<slug>, spec:<slug>, obs:<slug>, observation:<slug>).'
+        required: true
+        type: string
+      integrationMode:
+        description: 'propose: open a PR for the item; merge: land it on main (rebase + CAS push).'
+        required: true
+        default: 'propose'
+        type: choice
+        options:
+          - propose
+          - merge
+      slot:
+        description: 'The parallelism slot (the concurrency group dorfl-slot-<slot>).'
+        required: true
+        default: '0'
+        type: string
+      autoBuild:
+        description: 'One-shot override of the autoBuild gate (DORFL_AUTO_BUILD) for this item run only. Blank: no override (config wins).'
+        required: false
+        default: ''
+        type: choice
+        options:
+          - ''
+          - 'true'
+          - 'false'
+      autoTask:
+        description: 'One-shot override of the autoTask gate (DORFL_AUTO_TASK) for this item run only. Blank: no override (config wins).'
+        required: false
+        default: ''
+        type: choice
+        options:
+          - ''
+          - 'true'
+          - 'false'
+      observationTriage:
+        description: 'One-shot override of the observationTriage gate (DORFL_OBSERVATION_TRIAGE) for this item run only. Blank: no override (config wins).'
+        required: false
+        default: ''
+        type: choice
+        options:
+          - ''
+          - 'off'
+          - 'ask'
+          - 'auto'
+      surfaceBlockers:
+        description: 'One-shot override of the surfaceBlockers gate (DORFL_SURFACE_BLOCKERS) for this item run only. Blank: no override (config wins).'
+        required: false
+        default: ''
+        type: choice
+        options:
+          - ''
+          - 'true'
+          - 'false'
+
+# Nothing at workflow level: the calling job grants what dorfl-item.yml needs.
+permissions: {}
+
+concurrency:
+  group: dorfl-slot-${{ inputs.slot }}
+  cancel-in-progress: false
+  queue: max
+
+jobs:
+  item:
+    # The union of what dorfl-item.yml's jobs request (a called workflow can
+    # only narrow this): lock and apply write, apply reads the agent job's
+    # check runs.
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      actions: read
+      checks: read
+    uses: ./.github/workflows/dorfl-item.yml
+    with:
+      item: ${{ inputs.item }}
+      integrationMode: ${{ inputs.integrationMode }}
+      autoBuild: ${{ inputs.autoBuild }}
+      autoTask: ${{ inputs.autoTask }}
+      observationTriage: ${{ inputs.observationTriage }}
+      surfaceBlockers: ${{ inputs.surfaceBlockers }}
+    secrets:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      DORFL_GH_TOKEN: ${{ secrets.DORFL_GH_TOKEN }}
