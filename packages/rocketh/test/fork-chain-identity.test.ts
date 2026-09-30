@@ -278,6 +278,46 @@ describe('which id the run ADOPTS', () => {
 		).rejects.toThrow(/--is-fork/);
 	});
 
+	/**
+	 * The exception, and the case it exists for: the project template declares
+	 * `localhost: {chain: 31337}`, and `anvil --fork-url <mainnet>` used as `localhost` reports 1.
+	 * The node is on the operator's machine, so refusing protects nothing: it warns and signs for
+	 * the id the node accepts, as before 0.23.0.
+	 */
+	it('only warns, and adopts the node id, when the declared chain is a local development chain', async () => {
+		const localhostConfig = resolveConfig({...baseConfig, environments: {localhost: {chain: 31337}}});
+
+		const {result, warnings} = await withWarnings(() =>
+			getChainIdForEnvironment(localhostConfig, 'localhost', {environment: 'localhost', provider: mockProvider(1)}),
+		);
+
+		expect(result).toBe(1);
+		expect(warnings.filter((message) => /declares the local development chain 31337/.test(message))).toHaveLength(1);
+	});
+
+	it('treats 1337 as a local development chain too', async () => {
+		const devConfig = resolveConfig({...baseConfig, environments: {dev: {chain: 1337}}});
+
+		const {result} = await withWarnings(() =>
+			getChainIdForEnvironment(devConfig, 'dev', {environment: 'dev', provider: mockProvider(1)}),
+		);
+
+		expect(result).toBe(1);
+	});
+
+	/**
+	 * The exception is keyed on the DECLARED id only. A real network's environment whose node claims
+	 * to be a local chain is still refused: that is the direction a hostile endpoint would not use,
+	 * but nothing about it is local, so nothing about it is exempt.
+	 */
+	it('still refuses a real network whose node reports a local development id', async () => {
+		const sepoliaConfig = resolveConfig({...baseConfig, environments: {sepolia: {chain: 11155111}}});
+
+		await expect(
+			getChainIdForEnvironment(sepoliaConfig, 'sepolia', {environment: 'sepolia', provider: mockProvider(31337)}),
+		).rejects.toThrow(/Refusing to continue/);
+	});
+
 	/** Agreement off a fork is untouched: the node's id, which is also the declared one. */
 	it('adopts the node id off a fork when it agrees with the declared one', async () => {
 		const chainId = await getChainIdForEnvironment(config, 'mainnet', {
