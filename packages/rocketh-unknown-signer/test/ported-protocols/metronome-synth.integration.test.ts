@@ -314,7 +314,8 @@ async function deployUpgradable(
 	if (multiSigDeployTx) saveForMultiSigBatchExecution(batch, multiSigDeployTx);
 
 	// v1's `usesManyProxies` re-check is not needed: see the header
-	return get(alias);
+	const {address, implementation: implementationAddress} = get(alias);
+	return {address, implementationAddress};
 }
 
 type LooseRead = (d: Deployment<Abi>, args: {functionName: string; args?: readonly unknown[]}) => Promise<unknown>;
@@ -581,6 +582,9 @@ describe('ported: Metronome Synth debt tokens (Safe-owned Upgrader, shared imple
 
 		const shared = env.get('MsUSDDebt_Pool1_Implementation').address;
 		expect(env.get('MsETHDebt_Pool1_Implementation').address).toBe(shared);
+		// and both proxy records say so, as v1's `get(alias).implementation` did
+		expect(env.get('MsUSDDebt_Pool1').implementation).toBe(shared);
+		expect(env.get('MsETHDebt_Pool1').implementation).toBe(shared);
 		const implementationDeploys = sent(provider).filter((tx) => tx.to === '0x4e59b44847b379578588920ca78fbf26c0b4956c');
 		expect(implementationDeploys).toHaveLength(1);
 	});
@@ -640,6 +644,11 @@ describe('ported: Metronome Synth debt tokens (Safe-owned Upgrader, shared imple
 			expect(sent(third.provider).filter((tx) => tx.to === '0x4e59b44847b379578588920ca78fbf26c0b4956c')).toHaveLength(
 				1,
 			);
+			// the upgrades were deferred, so each proxy record still describes the LIVE (old)
+			//  implementation: a record asserts only what rocketh observed (ADR 0012)
+			const v1Implementation = first.env.get('MsUSDDebt_Pool1_Implementation').address;
+			expect(third.env.get('MsUSDDebt_Pool1').implementation).toBe(v1Implementation);
+			expect(third.env.get('MsETHDebt_Pool1').implementation).toBe(v1Implementation);
 		} finally {
 			artifacts.DebtToken = withCode('DebtToken', DEBT_TOKEN_ABI, 'd1');
 		}
