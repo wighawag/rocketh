@@ -1,8 +1,9 @@
 import {resolveTransactionFees, toJSONCompatibleLinkedData, type TransactionFees} from '@rocketh/core';
 import {Abi} from 'abitype';
-import {EIP1193TransactionData} from 'eip-1193';
+import type {EIP1193Account, EIP1193TransactionData} from 'eip-1193';
 import {logs} from 'named-logs';
 import type {
+	Artifact,
 	Create2DeterministicDeploymentInfo,
 	DeploymentConstruction,
 	Deployment,
@@ -14,6 +15,7 @@ import type {
 import {
 	Address,
 	Chain,
+	type ContractConstructorArgs,
 	encodeDeployData,
 	encodeFunctionData,
 	encodePacked,
@@ -36,15 +38,22 @@ export type DeployFunction = <TAbi extends Abi, TChain extends Chain = Chain>(
 	options?: DeployOptions,
 ) => Promise<DeployResult<TAbi>>;
 
+/**
+ * How a deployment is made deterministic: `true` (create2, zero salt), a salt (create2, the salt
+ * LEFT-padded to 32 bytes), or an explicit `{type, salt}` where an absent salt is the zero salt.
+ * `deploy` also accepts `false`, meaning "not deterministic".
+ */
+export type DeterministicOption =
+	| true
+	| `0x${string}`
+	| {
+			type: 'create2' | 'create3';
+			salt?: `0x${string}`;
+	  };
+
 export type DeployOptions = {
 	linkedData?: LinkedDataProvided;
-	deterministic?:
-		| boolean
-		| `0x${string}`
-		| {
-				type: 'create2' | 'create3';
-				salt?: `0x${string}`;
-		  };
+	deterministic?: false | DeterministicOption;
 	libraries?: {[name: string]: Address};
 } & (
 	| {
@@ -186,6 +195,28 @@ function runtimeCodeReturnedByCreationCode(creationCode: string): `0x${string}` 
  * so the parameter went with it rather than being kept alive by a lookup that exists only to
  * feed it. Both helpers are module-private, so this is not a public signature change.
  */
+/**
+ * The create2 ADDRESS DERIVATION for this network, from chain config alone: no provider request.
+ *
+ * This is the one place a create2 address is computed. {@link getCreate2Factory} (which may
+ * deploy the factory) and {@link computeDeterministicAddress} (which must not) both return it,
+ * so the preview and the real deploy cannot disagree on the formula.
+ */
+function create2Derivation(env: Environment) {
+	const factoryAddress = resolveCreate2Info(env).factory;
+	return {
+		getExpectedAddress: ({salt, bytecode}: {salt: `0x${string}`; bytecode: `0x${string}`}): `0x${string}` =>
+			getCreate2Address({
+				bytecode,
+				from: factoryAddress,
+				salt,
+			}),
+		encodeData: ({salt, bytecode}: {salt: `0x${string}`; bytecode: `0x${string}`}): `0x${string}` =>
+			(salt + (bytecode.slice(2) || '')) as `0x${string}`,
+		factoryAddress,
+	};
+}
+
 async function getCreate2Factory(env: Environment, params: FactoryParams) {
 	const deploymentInfo = resolveCreate2Info(env);
 
@@ -260,20 +291,18 @@ async function getCreate2Factory(env: Environment, params: FactoryParams) {
 		);
 	}
 
-	return {
-		getExpectedAddress: ({salt, bytecode}: {salt: `0x${string}`; bytecode: `0x${string}`}): `0x${string}` =>
-			getCreate2Address({
-				bytecode,
-				from: factoryAddress,
-				salt,
-			}),
-		encodeData: ({salt, bytecode}: {salt: `0x${string}`; bytecode: `0x${string}`}): `0x${string}` =>
-			(salt + (bytecode.slice(2) || '')) as `0x${string}`,
-		factoryAddress,
-	};
+	return create2Derivation(env);
 }
 
-async function getCreate3Factory(env: Environment, params: FactoryParams) {
+/**
+ * The create3 ADDRESS DERIVATION for this network and this DEPLOYER, from chain config alone: no
+ * provider request. The deployer is an input because the create3 factory namespaces the salt by
+ * the account that calls it.
+ *
+ * It also asserts the create3 config agrees with itself (see below), which is likewise pure, so
+ * a preview refuses a contradictory configuration exactly as a deploy does.
+ */
+function create3Derivation(env: Environment, deployer: `0x${string}`) {
 	const deploymentInfo =
 		'create3' in env.network.deterministicDeployment ? env.network.deterministicDeployment.create3 : undefined;
 	if (!deploymentInfo) throw new Error('create3 deterministic deployment info not found');
@@ -281,11 +310,7 @@ async function getCreate3Factory(env: Environment, params: FactoryParams) {
 	const factoryAddress = deploymentInfo.factory;
 	const factoryBytecode = deploymentInfo.bytecode;
 	const proxyBytecode = deploymentInfo.proxyBytecode;
-	const code = await env.network.provider.request({
-		method: 'eth_getCode',
-		params: [factoryAddress, 'latest'],
-	});
-	const salt = deploymentInfo.salt || zeroHash;
+	const factorySalt = deploymentInfo.salt || zeroHash;
 
 	// CHECKED WHETHER OR NOT THE FACTORY IS ALREADY THERE. The create3 factory is itself
 	//  deployed through the create2 factory, so its address is fully determined by the create2
@@ -303,7 +328,7 @@ async function getCreate3Factory(env: Environment, params: FactoryParams) {
 	//  configuration must not deploy anything.
 	const expectedFactoryAddress = getCreate2Address({
 		from: resolveCreate2Info(env).factory,
-		salt,
+		salt: factorySalt,
 		bytecode: factoryBytecode,
 	});
 	if (expectedFactoryAddress.toLowerCase() !== factoryAddress.toLowerCase())
@@ -312,27 +337,9 @@ async function getCreate3Factory(env: Environment, params: FactoryParams) {
 				`this chain's \`deterministicDeployment.create3\` configuration names an address its own bytecode and salt do not produce.`,
 		);
 
-	if (code === '0x') {
-		const create2 = await getCreate2Factory(env, params);
-
-		await env.broadcastExecution(
-			{
-				type: 'object',
-				data: {
-					...params.fees,
-					chainId: params.chainId,
-					from: params.address,
-					to: create2.factoryAddress,
-					data: create2.encodeData({salt, bytecode: factoryBytecode}),
-				} as EIP1193TransactionData,
-			},
-			{message: `  - Deploying Create 3 Factory:\n      {hash}\n      {transaction}`},
-		);
-	}
-
 	return {
 		getExpectedAddress: ({salt}: {salt: `0x${string}`}): `0x${string}` => {
-			const namespacedSalt = keccak256(encodePacked(['address', 'bytes32'], [params.address, salt]));
+			const namespacedSalt = keccak256(encodePacked(['address', 'bytes32'], [deployer, salt]));
 
 			const proxyAddress = getCreate2Address({
 				from: factoryAddress,
@@ -357,7 +364,80 @@ async function getCreate3Factory(env: Environment, params: FactoryParams) {
 				args: [bytecode, salt],
 			}),
 		factoryAddress,
+		factorySalt,
+		factoryBytecode,
 	};
+}
+
+async function getCreate3Factory(env: Environment, params: FactoryParams) {
+	// Derived (and the config checked) BEFORE anything reaches the network.
+	const derivation = create3Derivation(env, params.address);
+	const code = await env.network.provider.request({
+		method: 'eth_getCode',
+		params: [derivation.factoryAddress, 'latest'],
+	});
+
+	if (code === '0x') {
+		const create2 = await getCreate2Factory(env, params);
+
+		await env.broadcastExecution(
+			{
+				type: 'object',
+				data: {
+					...params.fees,
+					chainId: params.chainId,
+					from: params.address,
+					to: create2.factoryAddress,
+					data: create2.encodeData({salt: derivation.factorySalt, bytecode: derivation.factoryBytecode}),
+				} as EIP1193TransactionData,
+			},
+			{message: `  - Deploying Create 3 Factory:\n      {hash}\n      {transaction}`},
+		);
+	}
+
+	return derivation;
+}
+
+/**
+ * `deploy`'s deterministic options as a factory type and a 32-byte salt. Shared with
+ * {@link computeDeterministicAddress} so one spelling always means one salt: `true` and an
+ * absent salt are the zero salt, and a hex salt is LEFT-padded to 32 bytes.
+ */
+function resolveDeterministic(deterministic: DeterministicOption): {
+	type: 'create2' | 'create3';
+	salt: `0x${string}`;
+} {
+	const normalizeSalt = (salt: `0x${string}` | boolean | undefined): `0x${string}` =>
+		typeof salt === 'string' ? `0x${salt.slice(2).padStart(64, '0')}` : zeroHash;
+	if (typeof deterministic !== 'object') return {type: 'create2', salt: normalizeSalt(deterministic)};
+	if (deterministic.type === 'create2') return {type: 'create2', salt: normalizeSalt(deterministic.salt)};
+	if (deterministic.type === 'create3') return {type: 'create3', salt: normalizeSalt(deterministic.salt)};
+	throw new Error(`unknown deterministic type: ${(deterministic as {type: string}).type}`);
+}
+
+/**
+ * The CREATION CODE a deployment sends: the artifact's bytecode with its libraries linked, then
+ * the ABI-encoded constructor arguments. Also returns the linked bytecode alone, which `deploy`
+ * needs to separate out the arguments.
+ *
+ * Shared with {@link computeDeterministicAddress} because a create2 address is a hash of exactly
+ * this, so the preview must build it the way `deploy` does, byte for byte.
+ */
+function encodeCreationCode(
+	nameToDisplay: string,
+	artifact: {abi: Abi; bytecode: string; linkReferences?: Artifact['linkReferences']},
+	args: readonly unknown[] | undefined,
+	libraries: {[name: string]: Address} | undefined,
+): {bytecode: `0x${string}`; calldata: `0x${string}`} {
+	const bytecode = linkLibraries(artifact, libraries) as `0x${string}`;
+
+	if (bytecode.indexOf('$') != -1) {
+		// TODO identify which library are missing using linkReferences (if provided)
+		throw new Error(`${nameToDisplay} requires library linking`);
+	}
+
+	const calldata = encodeDeployData({abi: artifact.abi, bytecode, args} as any); // TODO any
+	return {bytecode, calldata};
 }
 
 /** Two bytes, big-endian, at the very end of the runtime bytecode. */
@@ -572,23 +652,12 @@ export function deploy(env: Environment): <TAbi extends Abi>(
 		// TODO throw specific error if artifact not found
 		const artifactToUse = artifact;
 
-		const bytecode = linkLibraries(artifactToUse, options?.libraries);
-
-		if (bytecode.indexOf('$') != -1) {
-			// TODO identify which library are missing using linkReferences (if provided)
-			throw new Error(`${nameToDisplay} requires library linking`);
-		}
-
-		const abi = artifactToUse.abi;
-
-		const argsToUse = {
-			...viemArgs,
-			account,
-			abi,
-			bytecode,
-		};
-
-		const calldata = encodeDeployData(argsToUse as any); // TODO any
+		const {bytecode, calldata} = encodeCreationCode(
+			nameToDisplay,
+			artifactToUse,
+			(viemArgs as {args?: readonly unknown[]}).args,
+			options?.libraries,
+		);
 		const argsData = `0x${calldata.replace(bytecode, '')}` as `0x${string}`;
 
 		// if (existingDeployment) {
@@ -680,17 +749,7 @@ export function deploy(env: Environment): <TAbi extends Abi>(
 
 		let expectedAddress: `0x${string}` | undefined = undefined;
 		if (options?.deterministic) {
-			const [deterministicType, salt] = (() => {
-				const normalizeSalt = (salt: `0x${string}` | boolean | undefined): `0x${string}` =>
-					typeof salt === 'string' ? `0x${salt.slice(2).padStart(64, '0')}` : zeroHash;
-				if (typeof options.deterministic !== 'object')
-					return ['create2', normalizeSalt(options.deterministic)] as const;
-				if (options.deterministic.type === 'create2')
-					return ['create2', normalizeSalt(options.deterministic.salt)] as const;
-				if (options.deterministic.type === 'create3')
-					return ['create3', normalizeSalt(options.deterministic.salt)] as const;
-				throw new Error(`unknown deterministic type: ${options.deterministic.type}`);
-			})();
+			const {type: deterministicType, salt} = resolveDeterministic(options.deterministic);
 
 			const bytecode = transactionData.data || '0x';
 
@@ -755,4 +814,105 @@ export function deploy(env: Environment): <TAbi extends Abi>(
 
 		return {...(deployment as Deployment<TAbi>), newlyDeployed: true};
 	};
+}
+
+export type ComputeDeterministicAddressOptions<TDeterministic extends DeterministicOption = DeterministicOption> = {
+	/**
+	 * The account that WILL deploy, as named in `deploy`. A create3 address depends on it (the
+	 * create3 factory namespaces the salt by the caller); a create2 address does not, but it is
+	 * required for both so the call reads like the `deploy` it previews.
+	 */
+	account: string | EIP1193Account;
+	/** The same `deterministic` value the `deploy` call will be given. */
+	deterministic: TDeterministic;
+	/** The same `libraries` the `deploy` call will be given: they are part of the create2 creation code. */
+	libraries?: {[name: string]: Address};
+};
+
+export type Create2DeterministicAddress = {type: 'create2'; address: `0x${string}`};
+
+export type Create3DeterministicAddress = {
+	type: 'create3';
+	address: `0x${string}`;
+	/**
+	 * Whether the address ALREADY HOLDS CODE. It says nothing about whose: a create3 address
+	 * ignores the bytecode, so that code may be this contract (from an earlier run) or a
+	 * different one deployed from the same account with the same salt. `deploy` tells the two
+	 * apart, recording the first as already deployed and refusing the second.
+	 */
+	occupied: boolean;
+};
+
+export type DeterministicAddress = Create2DeterministicAddress | Create3DeterministicAddress;
+
+/** The result for a given `deterministic` option: only an explicit create3 reports `occupied`. */
+export type DeterministicAddressFor<TDeterministic extends DeterministicOption> = TDeterministic extends {
+	type: 'create3';
+}
+	? Create3DeterministicAddress
+	: TDeterministic extends {type: 'create2'} | true | `0x${string}`
+		? Create2DeterministicAddress
+		: DeterministicAddress;
+
+/**
+ * The address a deterministic `deploy` WILL land on, computed WITHOUT deploying anything. The
+ * rocketh replacement for hardhat-deploy v1's `deployments.deterministic(name, options)`.
+ *
+ * Pass the artifact, the constructor arguments and the options the later `deploy` call will use:
+ *
+ * ```ts
+ * const {address} = await env.computeDeterministicAddress(artifacts.A, [], {
+ *   account: 'deployer',
+ *   deterministic: {type: 'create3', salt: '0xa1'},
+ * });
+ * ```
+ *
+ * IT NEVER SENDS A TRANSACTION. `deploy` funds and deploys the create2 / create3 factories when a
+ * chain lacks them; this does not, because a preview that deploys a factory is not a preview. The
+ * address is computed by the same derivation and salt normalisation `deploy` uses, from chain
+ * config, so it is right whether or not the factories exist yet.
+ *
+ * - **create2** makes no provider request at all. The address is a hash of the factory address,
+ *   the salt and the creation code, so the constructor arguments and libraries matter. It
+ *   assumes the configured factory is the one on chain; `deploy` verifies that before using it.
+ * - **create3** makes exactly one read, `eth_getCode` at the computed address, to report
+ *   `occupied`. The bytecode and constructor arguments do not enter a create3 address, which is
+ *   what lets two contracts each take the other's address in their constructors.
+ *
+ * What it does NOT promise: that the address is still free when `deploy` runs, or, for an
+ * occupied create3 address, that the code there is this contract (see `occupied`).
+ */
+export function computeDeterministicAddress(
+	env: Environment,
+): <TAbi extends Abi, const TDeterministic extends DeterministicOption>(
+	artifact: Artifact<TAbi>,
+	args: ContractConstructorArgs<TAbi>,
+	options: ComputeDeterministicAddressOptions<TDeterministic>,
+) => Promise<DeterministicAddressFor<TDeterministic>> {
+	return async <TAbi extends Abi, const TDeterministic extends DeterministicOption>(
+		artifact: Artifact<TAbi>,
+		args: ContractConstructorArgs<TAbi>,
+		options: ComputeDeterministicAddressOptions<TDeterministic>,
+	): Promise<DeterministicAddressFor<TDeterministic>> => {
+		const result = await computeAddress(env, artifact, args as readonly unknown[], options);
+		return result as DeterministicAddressFor<TDeterministic>;
+	};
+}
+
+async function computeAddress(
+	env: Environment,
+	artifact: Artifact,
+	args: readonly unknown[],
+	options: ComputeDeterministicAddressOptions,
+): Promise<DeterministicAddress> {
+	const {type, salt} = resolveDeterministic(options.deterministic);
+	if (type === 'create2') {
+		const nameToDisplay = artifact.contractName || '<artifact>';
+		const {calldata} = encodeCreationCode(nameToDisplay, artifact, args, options.libraries);
+		return {type, address: create2Derivation(env).getExpectedAddress({salt, bytecode: calldata})};
+	}
+	const address = create3Derivation(env, env.resolveAccount(options.account)).getExpectedAddress({salt});
+	// One read, never a send: whether the address already holds code (see `occupied`).
+	const code = await env.network.provider.request({method: 'eth_getCode', params: [address, 'latest']});
+	return {type, address, occupied: !!code && code !== '0x'};
 }
