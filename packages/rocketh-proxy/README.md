@@ -62,6 +62,8 @@ export default deployScript(
 
 `env.get('Counter')` now returns the **proxy address** with the implementation's ABI, which is what callers and frontends want. The two underlying contracts are saved alongside it as `Counter_Proxy` and `Counter_Implementation`.
 
+`env.get('Counter').implementation` is the address of the implementation that record describes, as established by the run that wrote it (deployed with, upgraded to, or read from the proxy's EIP-1967 slot). It is not a live reading of the chain: an upgrade deferred to an owner rocketh cannot sign for leaves it on the old implementation until a later run sees the proxy upgraded, even though `Counter_Implementation` already holds the new one. Read the slot when you need the live value.
+
 ## The initializer runs through `execute`, not the constructor
 
 This is the single most common mistake. State written by an implementation's **constructor** lands in the implementation's own storage, not the proxy's, so a proxied contract initializes through a call made _through the proxy_. That is what `execute` is for:

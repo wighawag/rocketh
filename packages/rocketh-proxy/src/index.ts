@@ -4,7 +4,12 @@ import type {EIP1193Account} from 'eip-1193';
 import {encodeFunctionData, zeroAddress} from 'viem';
 import {logs} from 'named-logs';
 import {deploy, DeployOptions} from '@rocketh/deploy';
-import {checkUpgradeIndex, replaceTemplateArgs, recordDescribesImplementation} from './utils.js';
+import {
+	checkUpgradeIndex,
+	replaceTemplateArgs,
+	recordDescribesImplementation,
+	recordOnlyLacksImplementationAddress,
+} from './utils.js';
 import ERC1967Proxy from './hardhat-deploy-v1-artifacts/ERC1967Proxy.js';
 import ERC173Proxy from './hardhat-deploy-v1-artifacts/EIP173Proxy.js';
 import ERC173ProxyWithReceive from './hardhat-deploy-v1-artifacts/EIP173ProxyWithReceive.js';
@@ -539,10 +544,13 @@ export function deployViaProxy(
 
 			// logger.info(`proxy deployed at ${proxy.address}`);
 
+			// `implementation`: the one this run just deployed the proxy with (see the field's
+			//  doc on `Deployment` in `@rocketh/core` for what it does and does not promise).
 			existingDeployment = await env.save<TAbi>(name, {
 				...proxy,
 				...artifactToUse,
 				abi: mergedABI as unknown as TAbi,
+				implementation: implementationAddress,
 				linkedData: toJSONCompatibleLinkedData(options?.linkedData),
 			});
 
@@ -713,13 +721,35 @@ export function deployViaProxy(
 			//  folded into the guard: an upgrade this run performed always saves, because two
 			//  implementations can differ while their ABIs are identical and skipping the save
 			//  there would freeze `numDeployments`, which `upgradeIndex` reads.
-			if (upgradeNeeded || !recordDescribesImplementation(existingDeployment, mergedABI, artifactToUse)) {
-				existingDeployment = await env.save<TAbi>(name, {
-					...proxyDeployment,
-					...artifactToUse,
-					abi: mergedABI as unknown as TAbi,
-					linkedData: toJSONCompatibleLinkedData(options?.linkedData),
-				});
+			//
+			//  `implementation` is the implementation this run ESTABLISHED: the one it just
+			//  upgraded to, or, with no upgrade needed, the one it read from the slot above
+			//  (which is `implementationAddress`, or `upgradeNeeded` would be true). It is
+			//  only reached once the upgrade call RETURNED: an upgrade deferred to an
+			//  unsignable owner throws out of `_execute` before this line, so the record keeps
+			//  describing the implementation that is still live (ADR 0012).
+			//
+			//  A record from before the field existed has no `implementation`, which the guard
+			//  counts as NOT described so that it is rewritten now rather than never. When that
+			//  missing address is the ONLY difference, the rewrite keeps `numDeployments`: no
+			//  step ran, and `upgradeIndex` must not be told one did.
+			if (
+				upgradeNeeded ||
+				!recordDescribesImplementation(existingDeployment, mergedABI, artifactToUse, implementationAddress)
+			) {
+				const backfillOnly =
+					!upgradeNeeded && recordOnlyLacksImplementationAddress(existingDeployment, mergedABI, artifactToUse);
+				existingDeployment = await env.save<TAbi>(
+					name,
+					{
+						...proxyDeployment,
+						...artifactToUse,
+						abi: mergedABI as unknown as TAbi,
+						implementation: implementationAddress,
+						linkedData: toJSONCompatibleLinkedData(options?.linkedData),
+					},
+					backfillOnly ? {keepNumDeployments: true} : undefined,
+				);
 				// logger.info(`saving as ${name}`);
 			}
 		}

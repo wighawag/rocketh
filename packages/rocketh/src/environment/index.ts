@@ -1142,8 +1142,13 @@ export async function createEnvironment<
 	async function save<TAbi extends Abi>(
 		name: string,
 		deployment: Deployment<TAbi>,
-		options?: {considerItAsFreshDeployment?: boolean},
+		options?: {considerItAsFreshDeployment?: boolean; keepNumDeployments?: boolean},
 	): Promise<Deployment<TAbi>> {
+		if (options?.considerItAsFreshDeployment && options.keepNumDeployments) {
+			throw new Error(
+				`save("${name}"): considerItAsFreshDeployment asserts a count of 1 and keepNumDeployments keeps the stored count, so they cannot be combined`,
+			);
+		}
 		// `numDeployments` counts changes to the RECORD, so a save always moves it, whether
 		//  this run performed the change or merely observed one made elsewhere.
 		//
@@ -1152,7 +1157,15 @@ export async function createEnvironment<
 		//  promised the weaker thing and silently did this stronger one. Harmless for its two
 		//  callers, which both record something deployed exactly once, and a trap for anyone
 		//  reaching for it to refresh a record with history worth keeping.
-		if (!options?.considerItAsFreshDeployment) {
+		//
+		//  `keepNumDeployments` is the other opt-out, for a rewrite that records no change at
+		//  all: the record gains a field it was missing while the chain stayed as it was. It
+		//  carries the stored count over, because `upgradeIndex` reads the count as upgrade
+		//  steps run and a backfill is not a step.
+		if (options?.keepNumDeployments) {
+			const numDeployments = deployments[name]?.numDeployments || 1;
+			deployments[name] = {...deployment, numDeployments};
+		} else if (!options?.considerItAsFreshDeployment) {
 			let numDeployments = 1;
 			const oldDeployment = deployments[name];
 			if (oldDeployment) {

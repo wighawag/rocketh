@@ -1,6 +1,11 @@
 import {describe, it, expect} from 'vitest';
 
-import {checkUpgradeIndex, replaceTemplateArgs} from '../src/utils.js';
+import {
+	checkUpgradeIndex,
+	replaceTemplateArgs,
+	recordDescribesImplementation,
+	recordOnlyLacksImplementationAddress,
+} from '../src/utils.js';
 import type {Deployment, Abi} from '@rocketh/core/types';
 
 /**
@@ -125,5 +130,48 @@ describe('replaceTemplateArgs', () => {
 
 	it('returns an empty array for an empty template', () => {
 		expect(replaceTemplateArgs([], ctx)).toEqual([]);
+	});
+});
+
+/**
+ * The guard on the reconciliation save. A record "describes" the implementation only when
+ * it carries its code, its merged ABI AND its address. A record written before
+ * `implementation` existed has no address, so it does NOT describe it, which is what makes
+ * the next run rewrite it; `recordOnlyLacksImplementationAddress` picks out exactly that
+ * case so the rewrite can keep `numDeployments`.
+ */
+describe('recordDescribesImplementation / recordOnlyLacksImplementationAddress', () => {
+	const IMPL = '0x' + 'aB'.repeat(20);
+	const OTHER = '0x' + 'cd'.repeat(20);
+	const abi = [{type: 'function', name: 'getValue', inputs: [], outputs: [], stateMutability: 'view'}];
+	const artifact = {deployedBytecode: '0x6080'};
+	const described = {abi, deployedBytecode: '0x6080', implementation: IMPL};
+
+	it('is described when code, ABI and address all match (address compared case-insensitively)', () => {
+		expect(recordDescribesImplementation(described, abi, artifact, IMPL.toLowerCase())).toBe(true);
+		expect(recordOnlyLacksImplementationAddress(described, abi, artifact)).toBe(false);
+	});
+
+	it('is NOT described when the record has no implementation address, so an old record is rewritten', () => {
+		const {implementation: _, ...old} = described;
+		expect(recordDescribesImplementation(old, abi, artifact, IMPL)).toBe(false);
+		expect(recordOnlyLacksImplementationAddress(old, abi, artifact)).toBe(true);
+	});
+
+	it('is NOT described when the address differs, and that is a real change, not a backfill', () => {
+		const redeployed = {...described, implementation: OTHER};
+		expect(recordDescribesImplementation(redeployed, abi, artifact, IMPL)).toBe(false);
+		expect(recordOnlyLacksImplementationAddress(redeployed, abi, artifact)).toBe(false);
+	});
+
+	it('is NOT a backfill when the code differs as well as the address being missing', () => {
+		const {implementation: _, ...old} = described;
+		expect(recordOnlyLacksImplementationAddress({...old, deployedBytecode: '0x6081'}, abi, artifact)).toBe(false);
+		expect(recordOnlyLacksImplementationAddress(old, [], artifact)).toBe(false);
+	});
+
+	it('treats a missing record as not described and not a backfill', () => {
+		expect(recordDescribesImplementation(null, abi, artifact, IMPL)).toBe(false);
+		expect(recordOnlyLacksImplementationAddress(undefined, abi, artifact)).toBe(false);
 	});
 });

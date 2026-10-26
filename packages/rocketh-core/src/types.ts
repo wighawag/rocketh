@@ -589,6 +589,31 @@ export type Deployment<TAbi extends Abi> = MinimalDeployment<TAbi> & {
 		transactionIndex: EIP1193QUANTITY;
 	};
 	readonly numDeployments?: number;
+	/**
+	 * On a proxied deployment's `<name>` record (written by `@rocketh/proxy`): the address
+	 * of the implementation THIS RECORD DESCRIBES, meaning the one whose `abi` (merged),
+	 * `bytecode`, `deployedBytecode` and `metadata` the record carries.
+	 *
+	 * It is what the run that WROTE the record established (ADR 0012): the implementation
+	 * it deployed the proxy with, the one it upgraded the proxy to, or the one it read from
+	 * the proxy's EIP-1967 implementation slot when it brought the record in line with the
+	 * chain. It is NOT a promise about the chain at the time you read it: a proxy can be
+	 * upgraded out of band (by a Safe executing a deferred upgrade, say), and the record
+	 * only learns that on the next run that reaches the proxy. Read the slot when you need
+	 * the live answer.
+	 *
+	 * It is also not the same thing as the `<name>_Implementation` record's address, which
+	 * is the implementation most recently DEPLOYED. The two differ while an upgrade is
+	 * pending, for instance after one was deferred to an unsignable owner: the new
+	 * implementation is deployed and recorded, the proxy (and so this field) still points
+	 * at the old one.
+	 *
+	 * Absent on every record that is not a proxy's `<name>` record, and on a proxy record
+	 * written by a version of `@rocketh/proxy` that predates the field, until a later
+	 * `deployViaProxy` call for that name reads the proxy's slot and rewrites the record
+	 * (a call that `upgradeIndex` short-circuits hands the stored record back untouched).
+	 */
+	readonly implementation?: EIP1193Account;
 	readonly libraries?: Libraries;
 	readonly linkedData?: LinkedData;
 	readonly deployedBytecode?: EIP1193DATA;
@@ -968,11 +993,19 @@ export interface Environment<
 	 * which this is the first record. Use it when recording something that already
 	 * existed on chain (a CREATE3 address that already holds the right code), and NOT
 	 * to refresh a record whose history you want to keep, because it will erase it.
+	 *
+	 * `keepNumDeployments` is that refresh: it rewrites the record and carries the stored
+	 * count over unchanged (1 when there is no stored record). Use it ONLY when nothing
+	 * changed on chain and the record merely gains a field it was missing, such as a
+	 * proxy record written before `implementation` was recorded. Counting such a rewrite
+	 * would tell `upgradeIndex` (which reads the count as the number of upgrade steps
+	 * run) that a step ran when none did. Combining it with `considerItAsFreshDeployment`
+	 * is refused, because the two assert different counts.
 	 */
 	save<TAbi extends Abi = Abi>(
 		name: string,
 		deployment: Deployment<TAbi>,
-		options?: {considerItAsFreshDeployment?: boolean},
+		options?: {considerItAsFreshDeployment?: boolean; keepNumDeployments?: boolean},
 	): Promise<Deployment<TAbi>>;
 	/**
 	 * Broadcast a transaction that is not a contract deployment (`execute`, `executeByName`
