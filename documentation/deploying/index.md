@@ -93,7 +93,7 @@ export default deployScript(
 
 ## Deploying Diamonds
 
-The `diamond` function from `@rocketh/diamond` allows you to deploy contracts using the Diamond pattern:
+The `diamond` function from `@rocketh/diamond` allows you to deploy contracts using the Diamond pattern. The second argument says who deploys; `facets`, the set of facets the diamond should end up with, goes in the third, with the other options. The standard cut, loupe and ownership facets are added for you, so do not list them (`defaultCutFacet: false` or `defaultOwnershipFacet: false` leaves out the cut or the ownership facet; the loupe facet is always added):
 
 ```typescript
 import {deployScript, artifacts} from '../rocketh/deploy.js';
@@ -104,24 +104,9 @@ export default deployScript(
 
 		await diamond(
 			'MyDiamond',
+			{account: deployer},
 			{
-				account: deployer,
-				facets: [
-					{
-						name: 'DiamondCutFacet',
-						artifact: artifacts.DiamondCutFacet,
-					},
-					{
-						name: 'DiamondLoupeFacet',
-						artifact: artifacts.DiamondLoupeFacet,
-					},
-					{
-						name: 'OwnershipFacet',
-						artifact: artifacts.OwnershipFacet,
-					},
-				],
-			},
-			{
+				facets: [{artifact: artifacts.CounterFacet}, {artifact: artifacts.AdminFacet}],
 				owner: admin,
 			},
 		);
@@ -146,6 +131,33 @@ So the cut is printed before it is sent, with removals in their own block and se
 ```
 
 Nothing is refused: the removal block is there so an unintended one is visible while it is still cheap to stop. For a high-value diamond, rehearse the upgrade on a fork and read that block before running it for real.
+
+### Initialization calls: `execute`
+
+`execute` attaches a call to the cut: EIP-2535's `_init` / `_calldata` pair, a `delegatecall` in the diamond's storage context (on the first deploy, an entry of the diamond constructor's initializations). A call targets either a function on one of the facets being cut in (`{type: 'facet', functionName, args}`) or a separate contract rocketh deploys deterministically (`{type: 'artifact', artifact, functionName, args}`).
+
+**A call rides a cut, it is not something you schedule.** A re-run that changes no facet performs no cut, so no call is made. Deploy scripts are re-run, and this is what keeps them idempotent. Within that rule, `execute` has two forms, as in `@rocketh/proxy`:
+
+- **Flat**, a single call: made on the first deploy AND again on every later cut that changes something, with the same arguments. Use it only for a call that is safe to repeat.
+- **Explicit**, `{init, onUpgrade}` (both optional): `init` is made only when the diamond is first created, `onUpgrade` only on a later cut that changes facets. Each names its own target, so they may call different functions, even on different contracts.
+
+Anything that must run exactly once, like an initializer, belongs in `init`: in the flat form it would run again on every later cut.
+
+```typescript
+await diamond(
+	'MyDiamond',
+	{account: deployer},
+	{
+		facets: [{artifact: artifacts.MyFacet}],
+		execute: {
+			init: {type: 'facet', functionName: 'initialize', args: [admin]},
+			onUpgrade: {type: 'artifact', artifact: artifacts.MigrationV2, functionName: 'migrate', args: []},
+		},
+	},
+);
+```
+
+A value mixing the two forms (a `type` next to `init` / `onUpgrade`) is refused. There is no form that makes a call on a run that cuts nothing.
 
 ## Linking Libraries
 

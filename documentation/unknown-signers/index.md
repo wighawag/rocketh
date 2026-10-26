@@ -8,7 +8,7 @@ You do not need to install anything or restructure your script to handle this. I
 
 With the default policy (`onUnknownSigner: 'auto'`) and a terminal attached, rocketh does not fail on an unsignable `from`. It **pauses**: it prints the exact transaction that has to happen, and waits.
 
-You go and execute that transaction wherever its authority lives (your Safe, a hardware wallet, an air-gapped machine, a governance proposal), then paste the resulting transaction hash back. rocketh waits for it to be mined, checks it, saves the deployment state, and **carries on with the same run**.
+You go and execute that transaction wherever its authority lives (your Safe, a hardware wallet, an air-gapped machine, a governance proposal; for the last one see [When the owner is governance, not a multisig](#when-the-owner-is-governance-not-a-multisig)), then paste the resulting transaction hash back. rocketh waits for it to be mined, checks it, saves the deployment state, and **carries on with the same run**.
 
 That is the whole workflow. There is no re-run dance, nothing to install, and an upgrade with several privileged steps pauses at each one and finishes them all in a single run.
 
@@ -234,7 +234,7 @@ const deferred = await catchUnknownSigner(env)(() =>
 
 Both forms are the same function: an extension package's root exports only curried `(env) => …` functions, which is precisely what lets the spread above turn them into methods on the environment.
 
-It returns `null` when the action succeeded, and otherwise hardhat-deploy v1's exact shape: every key present even when `undefined`, `value` as a string. Pass `{log: false}` to suppress the printed block. Nothing is persisted: idempotency comes from on-chain state, so you execute the transaction on your Safe and re-run the idempotent script. One wrapper captures one transaction (the first unsignable one inside it), so deferring several steps means one `catchUnknownSigner` per step.
+It returns `null` when the action succeeded, and otherwise hardhat-deploy v1's exact shape: every key present even when `undefined`, `value` as a string. Pass `{log: false}` to suppress the printed block. Nothing is persisted: idempotency comes from on-chain state, so you execute the transaction on your Safe and re-run the idempotent script. One wrapper captures one transaction (the first unsignable one inside it), so deferring several steps means one `catchUnknownSigner` per step. When the `from` it hands back is a governance contract rather than a multisig, read [When the owner is governance, not a multisig](#when-the-owner-is-governance-not-a-multisig) before acting on it.
 
 ::: danger A caught deferral must never reach an unconditional `return true`
 Catching is what lets the script SURVIVE the deferral and run on to its end. If that end is a `return true` and the script declares an `id`, rocketh records it as complete and skips the WHOLE script on every later run, including the privileged step nobody has executed yet. Return the outcome instead of asserting one: `return deferred === null` records the script only on the run where nothing was left outstanding. [Running once, and running last](../script-lifecycle/#never-return-true-on-a-path-where-a-step-was-deferred) has the mechanism, and why rocketh documents this rather than refusing it.
@@ -270,6 +270,16 @@ const deferred = await catchUnknownSigner(() =>
 The same applies to the `throw` path above, which is what a CI run takes: the guard is what a re-run needs, whichever way the transaction was deferred.
 
 A wrapped action never pops a prompt at you, whatever the ambient policy is, because you already said you would handle the transaction yourself. The one thing that overrides that is an EXPLICIT override written inside the wrapper, because policy frames nest and the innermost one wins, so `catchUnknownSigner(env)(() => withUnknownSignerPolicy(env)('ask', ...))` does prompt. That is deliberate: the guarantee is about the policy you did not state, not about silencing one you wrote yourself a line later.
+
+### When the owner is governance, not a multisig
+
+The transaction rocketh surfaces always names, as `from`, whoever holds the right on chain: the owner of the proxy, of the admin contract, or of the registry the upgrade goes through. When that is a Safe, you execute the transaction on the Safe as written. When it is a CONTRACT that cannot originate a transaction (a governance executor, a timelock), nobody can send it as written, and the printed block, which reads exactly like the Safe case, is not an instruction to follow literally.
+
+What you can rely on is the `{to, data}` pair: it is the call that contract must end up making. Submit it through your governance process. For a governance executor, that pair is the action a proposal (or payload) carries: `to` is the target, `data` is the calldata, and once governance has approved the proposal and any delay has elapsed, the executor makes that exact call. Until then every re-run surfaces the same transaction again; once the call has landed, a re-run of a step rocketh checks on chain (such as `deployViaProxy` reading the proxy's implementation slot) surfaces nothing. The [registry-owned-by-a-governance-executor matrix entry](https://github.com/wighawag/rocketh/blob/main/packages/rocketh-unknown-signer/test/scenarios.integration.test.ts) shows the whole loop: a registry contract as the proxy admin, owned by an executor that acts after a delay, upgraded through the registry's own setter with `upgradeFunction`.
+
+An OpenZeppelin `TimelockController` you control is different, because the call you send is not the surfaced one: an account holding the timelock's proposer role sends `schedule(...)` to the timelock, then `execute(...)` is sent after the delay, each carrying the surfaced `{to, data}`. rocketh does not translate the surfaced transaction into that pair today. The [Timelock-owned admin matrix entry](https://github.com/wighawag/rocketh/blob/main/packages/rocketh-unknown-signer/test/scenarios.integration.test.ts) pins what you get instead, and the governance demo's [`004_timelock_owned_admin.ts`](https://github.com/wighawag/rocketh/blob/main/demoes/hardhat-deploy/governance/deploy/004_timelock_owned_admin.ts) shows the workaround: suppress the printed block (`{log: false}`) and build the `schedule` / `execute` calls yourself from the deferred `{to, data}`, with a deterministic salt so a re-run finds the same operation again.
+
+rocketh does not build governance proposals. It tells you which call has to happen; turning that into a proposal, a payload or a timelock operation is the governance process's job.
 
 ### `catchUnknownSigner` is not a "never send" switch
 

@@ -63,6 +63,28 @@ export type ExecuteOptions<
 	artifact: Artifact<TAbi>;
 };
 
+/**
+ * ONE call attached to a diamond event: the `_init` / `_calldata` pair of EIP-2535's
+ * `diamondCut` (or an entry of the constructor's initializations on the first deploy),
+ * delegatecalled in the diamond's storage context.
+ *
+ * - `{type: 'facet'}` finds `functionName` among the facets being cut in, and calls it there.
+ * - `{type: 'artifact'}` deploys `artifact` deterministically (no constructor args) and calls
+ *   `functionName` on it.
+ */
+export type DiamondCall<
+	TAbi extends Abi = Abi,
+	TFunctionName extends ContractFunctionName<TAbi, 'nonpayable' | 'payable'> = ContractFunctionName<
+		TAbi,
+		'nonpayable' | 'payable'
+	>,
+	TArgs extends ContractFunctionArgs<TAbi, 'nonpayable' | 'payable', TFunctionName> = ContractFunctionArgs<
+		TAbi,
+		'nonpayable' | 'payable',
+		TFunctionName
+	>,
+> = ExecuteOptions<TAbi, TFunctionName, TArgs> | {type: 'facet'; functionName: string; args: unknown[]};
+
 export type DiamondDeployOptions<
 	TAbi extends Abi = Abi,
 	TFunctionName extends ContractFunctionName<TAbi, 'nonpayable' | 'payable'> = ContractFunctionName<
@@ -79,21 +101,28 @@ export type DiamondDeployOptions<
 		facets: DiamondFacets;
 		owner?: EIP1193Account;
 		/**
-		 * The initialization call attached to a cut: the `_init` / `_calldata` pair of
-		 * EIP-2535's `diamondCut`, delegatecalled in the diamond's storage context.
+		 * The initialization call(s) attached to a cut (see {@link DiamondCall}).
 		 *
 		 * IT RIDES A CHANGE, IT IS NOT A CALL YOU SCHEDULE. A run that produces no facet
-		 * cut performs no `diamondCut`, so this is not executed. Deploy scripts are
+		 * cut performs no `diamondCut`, so nothing here is executed. Deploy scripts are
 		 * re-run, and an initializer that fired on every re-run would not be idempotent.
 		 * `@rocketh/proxy` gates its own `execute` the same way (nothing happens when the
-		 * implementation is unchanged), and this is the flat form of that option: the call
-		 * is made on the fresh deploy AND on every later cut, with the same args.
+		 * implementation is unchanged), and the two forms below mirror its two forms:
 		 *
-		 * A migration that must run exactly once, or only on upgrades, is therefore NOT
-		 * expressible yet: that is the `{init, onUpgrade}` split `@rocketh/proxy` already
-		 * has. See `work/notes/ideas/diamond-execute-init-on-upgrade.md`.
+		 * - FLAT, a single {@link DiamondCall}: made on the first deploy AND again on every
+		 *   later cut that changes something, with the same method and args.
+		 * - EXPLICIT, `{init?, onUpgrade?}`: `init` is made only when the diamond is first
+		 *   created (in the constructor's initializations), `onUpgrade` only on a later cut that
+		 *   actually changes facets. Each names its own target, so they may call different
+		 *   functions, even on different contracts. Anything that must run exactly once (an
+		 *   initializer) belongs in `init`: in the flat form it would re-fire on every later cut.
+		 *
+		 * A value that mixes the two (a `type` / `functionName` next to `init` / `onUpgrade`)
+		 * is refused. There is no form that runs a call on a run that cuts nothing.
 		 */
-		execute?: ExecuteOptions<TAbi, TFunctionName, TArgs> | {type: 'facet'; functionName: string; args: any[]};
+		execute?:
+			| DiamondCall<TAbi, TFunctionName, TArgs>
+			| {init?: DiamondCall<TAbi, TFunctionName, TArgs>; onUpgrade?: DiamondCall<TAbi, TFunctionName, TArgs>};
 		defaultCutFacet?: boolean;
 		defaultOwnershipFacet?: boolean;
 		diamondContractArgs?: any[];

@@ -12,7 +12,14 @@ import {formatDiamondCutPlan, selectorSignatures} from './report.js';
 import {deploy, DeployResult} from '@rocketh/deploy';
 
 import {read, execute} from '@rocketh/read-execute';
-import {DiamondDeploymentConstruction, DiamondDeployOptions, Facet, FacetCut, FacetCutAction} from './types.js';
+import {
+	DiamondCall,
+	DiamondDeploymentConstruction,
+	DiamondDeployOptions,
+	Facet,
+	FacetCut,
+	FacetCutAction,
+} from './types.js';
 import {toJSONCompatibleLinkedData} from '@rocketh/core/json';
 
 const logger = logs('@rocketh/diamond');
@@ -37,6 +44,44 @@ const artifactDiamond = {
 	...artifactPureDiamond,
 	abi: diamondAbi,
 };
+
+/**
+ * The ONE call this run would attach to its cut, chosen from `execute` by the event the run
+ * is: the diamond's first deploy, or a later cut of an existing one.
+ *
+ * Choosing here does not decide whether the call is MADE: that is still `changesDetected`,
+ * so no form ever makes a call on a run that cuts nothing. The flat form is returned as
+ * given (it belongs to both events), which keeps its behaviour exactly as it was.
+ *
+ * The selection runs BEFORE the facet loop because a `{type: 'facet'}` target is looked up
+ * among the facets being cut in by `functionName`, and `init` and `onUpgrade` may name
+ * different functions: looking up both would demand both exist, and would refuse an
+ * `onUpgrade` whose function the first deploy's facets do not have yet.
+ */
+function selectExecution(
+	execute: DiamondDeployOptions['execute'],
+	firstDeploy: boolean,
+): {call: DiamondCall | undefined; label: string} {
+	if (!execute) {
+		return {call: undefined, label: 'execute'};
+	}
+	const explicit = 'init' in execute || 'onUpgrade' in execute;
+	const flat = 'type' in execute || 'functionName' in execute || 'args' in execute || 'artifact' in execute;
+	if (explicit && flat) {
+		// The proxy's `execute` reads its flat form first and silently ignores `init` /
+		//  `onUpgrade` next to it; here that would drop a call the author wrote without a word.
+		throw new Error(
+			`\`execute\` mixes the flat form ({type, functionName, args}) with the explicit {init, onUpgrade} form. Use one: either a single call, made on the first deploy AND on every later cut that changes something, or {init, onUpgrade}, where \`init\` runs only on the first deploy and \`onUpgrade\` only on a later cut that changes something.`,
+		);
+	}
+	if (!explicit) {
+		return {call: execute as DiamondCall, label: 'execute'};
+	}
+	const explicitForm = execute as {init?: DiamondCall; onUpgrade?: DiamondCall};
+	return firstDeploy
+		? {call: explicitForm.init, label: 'execute.init'}
+		: {call: explicitForm.onUpgrade, label: 'execute.onUpgrade'};
+}
 
 export function diamond(
 	env: Environment,
@@ -64,6 +109,10 @@ export function diamond(
 		// if (proxy && proxy.deployedBytecode === oldDiamonBase.deployedBytecode) {
 		// return _old_deployViaDiamondProxy(name, options);
 		// }
+
+		// `proxy` is what decides the first-deploy branch below (`if (!proxy)` builds the
+		//  constructor), so it is what decides `init` versus `onUpgrade` too.
+		const {call: execution, label: executionLabel} = selectExecution(options.execute, !proxy);
 
 		const {account, ...viemArgs} = params;
 		const deployerAddress = env.resolveAccount(account);
@@ -211,14 +260,14 @@ export function diamond(
 				newSelectors.push(...newFacet.functionSelectors);
 			}
 
-			if (options.execute && options.execute.type == 'facet') {
-				const methods = artifact.abi.filter((v) => (v as any).name === options.execute?.functionName);
+			if (execution && execution.type == 'facet') {
+				const methods = artifact.abi.filter((v) => (v as any).name === execution.functionName);
 				if (methods.length > 0) {
 					if (methods.length > 1) {
-						throw new Error(`multiple method named "${options.execute.functionName}" found in facet`);
+						throw new Error(`multiple method named "${execution.functionName}" found in facet`);
 					} else {
 						if (executionFacetFound) {
-							throw new Error(`multiple facet with method named "${options.execute.functionName}"`);
+							throw new Error(`multiple facet with method named "${execution.functionName}"`);
 						} else {
 							executionFacetFound = {address: facetAddress, artifact: facet.artifact};
 						}
@@ -291,13 +340,13 @@ export function diamond(
 		let executeData: `0x${string}` = '0x';
 		let executeAddress: `0x${string}` = '0x0000000000000000000000000000000000000000';
 
-		if (options.execute) {
-			if (options.execute.type === 'artifact') {
+		if (execution) {
+			if (execution.type === 'artifact') {
 				const executionDeployment = await _deploy(
 					'', // we do not save it as it is deterministic anyway
 					{
 						...params,
-						artifact: options.execute.artifact,
+						artifact: execution.artifact,
 						args: [], // we expect artifact use for execute to have no contructor args
 						// TODO support these with constructor arguments ?
 					},
@@ -310,17 +359,17 @@ export function diamond(
 
 				executeData = encodeFunctionData({
 					abi: executionDeployment.abi,
-					functionName: options.execute.functionName,
-					args: options.execute.args,
+					functionName: execution.functionName,
+					args: execution.args,
 				});
-			} else if (options.execute.type === 'facet') {
+			} else if (execution.type === 'facet') {
 				if (!executionFacetFound) {
-					throw new Error('Facet not found for execute');
+					throw new Error(`Facet not found for ${executionLabel}`);
 				} else {
 					executeData = encodeFunctionData({
 						abi: executionFacetFound.artifact.abi,
-						functionName: options.execute.functionName,
-						args: options.execute.args,
+						functionName: execution.functionName,
+						args: execution.args,
 					});
 					executeAddress = executionFacetFound.address;
 				}
@@ -467,7 +516,6 @@ export function diamond(
 						abi,
 						linkedData: toJSONCompatibleLinkedData(options.linkedData),
 						facets: facetSnapshot,
-						execute: options.execute,
 					},
 					{
 						considerItAsFreshDeployment: proxy.newlyDeployed ? false : true,
@@ -522,7 +570,6 @@ export function diamond(
 					address: proxy.address,
 					abi,
 					facets: facetSnapshot,
-					execute: options.execute, // TODO add receipt + tx hash
 				};
 
 				await env.save(name, diamondDeployment);
@@ -560,7 +607,6 @@ export function diamond(
 					address: proxy.address,
 					abi,
 					facets: facetSnapshot,
-					execute: options.execute,
 				});
 			}
 

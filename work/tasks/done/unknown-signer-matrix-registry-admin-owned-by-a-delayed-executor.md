@@ -43,3 +43,10 @@ Then the docs: a short section in `documentation/unknown-signers/index.md` for "
 > Never run an unbounded regex over `packages/rocketh-proxy/src/hardhat-deploy-v1-artifacts/` or `packages/rocketh-diamond/src/hardhat-deploy-v1-artifacts/` (multi-megabyte single-line files); bound every command with `timeout`.
 >
 > FIRST, check this task against current reality; if the matrix or the proxy options have moved, route to needs-attention (WORK-CONTRACT.md, "Drift is a needs-attention signal"). RECORD non-obvious decisions in `## Decisions` at the end of your FINAL REPORT. Do not write the done record or the commit message yourself.
+
+## Decisions
+
+- **The registry is a real deployment and also the proxy's admin.** I deployed it as a mock artifact with the deployer and pointed `proxyAdminName` at it, so `@rocketh/proxy` uses it as-is, and I set its `owner()` answer to the executor. A registry like this in production usually creates its proxies itself; here rocketh deploys the proxy with the registry as admin. That is enough because the upgrade path only reads the registry's `owner()` and the proxy's EIP-1967 slots. The alternative was a plain `execute` against a registry saved with `env.save`, which the finding calls the natural shape. I didn't take it because the task names custom admin plus `upgradeFunction` as the expected fit, and a plain `execute` would not show the `deployViaProxy` re-run converging on its own. This only affects the test.
+- **I modelled the controller as a deployment and asserted it never appears in the output.** This documents that rocketh looks exactly one hop up the ownership chain. The alternative was to mention the controller only in the JSDoc. This only affects the test.
+- **This block is not labelled a PIN.** Unlike the Timelock case, the surfaced `{to, data}` is the right content here, and only `from` needs human interpretation, so nothing in this entry is waiting for `unsignable-routes` to change it.
+- **The docs link to the matrix and the demo through GitHub URLs**, the same `https://github.com/wighawag/rocketh/blob/main/...` form other pages in `documentation/` already use.

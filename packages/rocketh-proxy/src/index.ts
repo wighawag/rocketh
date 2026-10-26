@@ -278,6 +278,18 @@ export function deployViaProxy(
 		}
 		const address = env.resolveAccount(account);
 
+		if (options?.execute && typeof options.execute === 'object') {
+			// Refused up front, before anything is deployed. `{methodName}` is read first below, so
+			//  an `init` / `onUpgrade` next to it would otherwise be dropped without a word.
+			const explicit = 'init' in options.execute || 'onUpgrade' in options.execute;
+			const flat = 'methodName' in options.execute || 'args' in options.execute;
+			if (explicit && flat) {
+				throw new Error(
+					`\`execute\` for ${name} mixes the flat form ({methodName, args}) with the explicit {init, onUpgrade} form. Use one: either a single call, made on the first deploy AND on every later upgrade, or {init, onUpgrade}, where \`init\` runs only on the first deploy and \`onUpgrade\` only on an upgrade.`,
+				);
+			}
+		}
+
 		if (options?.upgradeFunction) {
 			// Refused up front, before anything is deployed: a typo such as `{implementaton}` would
 			//  otherwise reach the chain as a literal string argument.
