@@ -1,5 +1,5 @@
 import {createNode, type SlimNode} from 'webevm';
-import type {EIP1193ProviderWithoutEvents} from 'eip-1193';
+import type {EIP1193CoreProvider} from 'eip-1193';
 
 /**
  * A private EVM for one playground run, and the EIP-1193 provider rocketh talks to.
@@ -16,7 +16,7 @@ import type {EIP1193ProviderWithoutEvents} from 'eip-1193';
  */
 export type PlaygroundChain = {
 	/** Hand this to rocketh as `provider`. */
-	readonly provider: EIP1193ProviderWithoutEvents;
+	readonly provider: EIP1193CoreProvider;
 	/** Runtime code at `address`, `'0x'` when nothing is deployed there. */
 	getCode(address: `0x${string}`): Promise<`0x${string}`>;
 	/** Release timers and state. */
@@ -44,7 +44,7 @@ export async function createPlaygroundChain(options: CreateChainOptions): Promis
 	// cast is confined to this one adapter rather than leaking into the run.
 	const provider = {
 		request: (args: {method: string; params?: unknown}) => node.request(args as never),
-	} as unknown as EIP1193ProviderWithoutEvents;
+	} as unknown as EIP1193CoreProvider;
 
 	return {
 		provider,

@@ -1,4 +1,4 @@
-import {EIP1193BlockTag, EIP1193FeeHistory, EIP1193ProviderWithoutEvents, EIP1193QUANTITY} from 'eip-1193';
+import type {EIP1193BlockTag, EIP1193FeeHistory, EIP1193CoreProvider, EIP1193QUANTITY} from 'eip-1193';
 import {logger} from '../internal/logging.js';
 
 function avg(arr: bigint[]) {
@@ -23,7 +23,7 @@ export type EstimateGasPriceResult = GasPrice[];
 export type RoughEstimateGasPriceResult = {slow: GasPrice; average: GasPrice; fast: GasPrice};
 
 export async function getGasPriceEstimate(
-	provider: EIP1193ProviderWithoutEvents,
+	provider: EIP1193CoreProvider,
 	options?: Partial<EstimateGasPriceOptions>,
 ): Promise<EstimateGasPriceResult> {
 	const defaultOptions: EstimateGasPriceOptions = {
@@ -63,8 +63,21 @@ export async function getGasPriceEstimate(
 		}
 	}
 
+	// A node returns `reward` only when rewardPercentiles is non-empty (geth omits the field for
+	// an empty list), and the result has one entry per percentile, so no percentiles means no
+	// estimates rather than a crash on the missing field.
+	const reward = rawFeeHistory.reward;
+	if (!reward) {
+		if (optionsResolved.rewardPercentiles.length === 0) {
+			return [];
+		}
+		throw new Error(
+			`eth_feeHistory returned no reward although rewardPercentiles ${JSON.stringify(optionsResolved.rewardPercentiles)} was requested`,
+		);
+	}
+
 	let blockNum = Number(rawFeeHistory.oldestBlock);
-	const lastBlock = blockNum + rawFeeHistory.reward.length;
+	const lastBlock = blockNum + reward.length;
 	let index = 0;
 	const blocksHistory: {number: number; baseFeePerGas: bigint; gasUsedRatio: number; priorityFeePerGas: bigint[]}[] =
 		[];
@@ -72,8 +85,8 @@ export async function getGasPriceEstimate(
 		blocksHistory.push({
 			number: blockNum,
 			baseFeePerGas: BigInt(rawFeeHistory.baseFeePerGas[index]),
-			gasUsedRatio: Number(rawFeeHistory.gasUsedRatio[index]),
-			priorityFeePerGas: rawFeeHistory.reward[index].map((x) => BigInt(x)),
+			gasUsedRatio: rawFeeHistory.gasUsedRatio[index],
+			priorityFeePerGas: reward[index].map((x) => BigInt(x)),
 		});
 		blockNum += 1;
 		index += 1;
@@ -97,7 +110,7 @@ export async function getGasPriceEstimate(
 }
 
 export async function getRoughGasPriceEstimate(
-	provider: EIP1193ProviderWithoutEvents,
+	provider: EIP1193CoreProvider,
 	options?: Partial<RoughEstimateGasPriceOptions>,
 ): Promise<RoughEstimateGasPriceResult> {
 	const defaultOptions: EstimateGasPriceOptions = {

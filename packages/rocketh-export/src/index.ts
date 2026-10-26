@@ -7,7 +7,7 @@ import type {ChainInfo, Deployment, LinkedData, ResolvedUserConfig} from '@rocke
 import {loadDeploymentsFromFiles} from '@rocketh/node';
 import {bigIntToStringReplacer} from '@rocketh/core/json';
 import {getChainConfigFromUserConfig} from 'rocketh';
-import {EIP1193ProviderWithoutEvents} from 'eip-1193';
+import type {EIP1193CoreProvider} from 'eip-1193';
 
 export const logger = logs('@rocketh/export');
 
@@ -280,7 +280,7 @@ export class OnChainVerificationError extends ExportError {
  * a tolerance model; a false alarm there would teach people to pass `--verify` never.
  */
 async function verifyOnChain(params: {
-	provider: EIP1193ProviderWithoutEvents;
+	provider: EIP1193CoreProvider;
 	environmentName: string;
 	expectedChainId: string;
 	contracts: {name: string; address: string}[];
@@ -343,8 +343,8 @@ async function resolveVerificationProvider(
 	config: ResolvedUserConfig,
 	chainId: number,
 	environmentName: string,
-	supplied: EIP1193ProviderWithoutEvents | undefined,
-): Promise<EIP1193ProviderWithoutEvents> {
+	supplied: EIP1193CoreProvider | undefined,
+): Promise<EIP1193CoreProvider> {
 	// A programmatic caller (a test, `@rocketh/web`, a script that already has a connection)
 	//  passes its own. Chain CONFIG has no provider field, only an `rpcUrl`, so for the CLI there
 	//  is exactly one place an endpoint can come from.
@@ -363,8 +363,8 @@ async function resolveVerificationProvider(
 	}
 
 	if (rpcUrl) {
-		const {JSONRPCHTTPProvider} = await import('eip-1193-jsonrpc-provider');
-		return new JSONRPCHTTPProvider(rpcUrl) as EIP1193ProviderWithoutEvents;
+		const {JSONRPCHTTPProvider} = await import('@eip-1193/jsonrpc-provider');
+		return new JSONRPCHTTPProvider(rpcUrl) as EIP1193CoreProvider;
 	}
 
 	throw new OnChainVerificationError({
@@ -499,7 +499,7 @@ export async function run(
 		 * Present because a programmatic caller often HAS a connection already, and because the
 		 * alternative for anyone testing this path is intercepting HTTP.
 		 */
-		provider?: EIP1193ProviderWithoutEvents;
+		provider?: EIP1193CoreProvider;
 	},
 ) {
 	// Checked before the environment is even looked up: this is about the caller's own arguments,
@@ -529,7 +529,7 @@ export async function run(
 	}
 
 	const idToFetch = parseInt(chainId);
-	const chainConfig = getChainConfigFromUserConfig(config, idToFetch, {} as EIP1193ProviderWithoutEvents);
+	const chainConfig = getChainConfigFromUserConfig(config, idToFetch, {} as EIP1193CoreProvider);
 	const chainInfo = {...chainConfig.info, genesisHash, properties: chainConfig.properties};
 
 	// The dummy provider above is passed only so `getChainConfigFromUserConfig` returns the

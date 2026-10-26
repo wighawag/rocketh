@@ -64,7 +64,7 @@
 		"@rocketh/read-execute": "workspace:*",
 		"@rocketh/signer": "workspace:*",
 		"@rocketh/web": "workspace:*",
-		"eip-1193": "^0.6.5",
+		"eip-1193": "^0.7.1",
 		"viem": "^2.55.13",
 		"webevm": "^0.5.0"
 	},

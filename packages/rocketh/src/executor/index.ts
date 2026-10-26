@@ -1,4 +1,4 @@
-import {EIP1193ProviderWithoutEvents} from 'eip-1193';
+import type {EIP1193CoreProvider} from 'eip-1193';
 
 import type {
 	Environment,
@@ -22,7 +22,7 @@ import type {
 } from '@rocketh/core/types';
 import {withEnvironment} from '@rocketh/core/environment';
 
-import {JSONRPCHTTPProvider} from 'eip-1193-jsonrpc-provider';
+import {JSONRPCHTTPProvider} from '@eip-1193/jsonrpc-provider';
 import {createEnvironment} from '../environment/index.js';
 import {formatEther, getRoughGasPriceEstimate} from '../utils/eth.js';
 import {logger, spin} from '../internal/logging.js';
@@ -529,7 +529,7 @@ export function resolveExecutionParams<Extra extends Record<string, unknown> = R
 	const provider =
 		'provider' in actualChainConfig
 			? actualChainConfig.provider
-			: (new JSONRPCHTTPProvider(actualChainConfig.rpcUrl) as EIP1193ProviderWithoutEvents);
+			: (new JSONRPCHTTPProvider(actualChainConfig.rpcUrl) as EIP1193CoreProvider);
 
 	// Where a run's records go, and the ONE place the fork rule lives.
 	//

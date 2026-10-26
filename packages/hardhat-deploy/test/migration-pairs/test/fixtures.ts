@@ -1,9 +1,9 @@
 // test/fixtures.ts (rocketh, under hardhat 3)
-import type {EIP1193ProviderWithoutEvents} from 'rocketh/types';
+import type {EIP1193CoreProvider} from 'rocketh/types';
 import {artifacts} from '../rocketh/deploy.js';
 import {loadAndExecuteDeploymentsFromFiles} from '../rocketh/environment.js';
 
-export function setupFixtures(provider: EIP1193ProviderWithoutEvents) {
+export function setupFixtures(provider: EIP1193CoreProvider) {
 	return {
 		// v1's `deployments.fixture(['Token'])`: run the scripts tagged `Token` and their dependencies
 		async deployToken() {

@@ -12,7 +12,7 @@
  */
 
 import {createExecutor, enhanceEnvIfNeeded} from 'rocketh';
-import type {DeploymentStore, EIP1193ProviderWithoutEvents, ModuleObject} from 'rocketh/types';
+import type {DeploymentStore, EIP1193CoreProvider, ModuleObject} from 'rocketh/types';
 import {createMapDeploymentStore, createMockPromptExecutor} from '@rocketh/test-utils';
 
 import {type Accounts, type Data, type Extensions, config, extensions} from './config.js';
@@ -56,7 +56,7 @@ export const scripts = {
 };
 
 export async function loadAndExecuteDeploymentsFromFiles(params: {
-	provider: EIP1193ProviderWithoutEvents;
+	provider: EIP1193CoreProvider;
 	tags?: string[];
 	environment?: string;
 	/** Test hook: the same store twice is the same deployment folder on a second run. */

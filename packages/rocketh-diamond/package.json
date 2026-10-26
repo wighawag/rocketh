@@ -68,7 +68,7 @@
 		"@rocketh/deploy": "workspace:*",
 		"@rocketh/read-execute": "workspace:*",
 		"abitype": "^1.3.0",
-		"eip-1193": "^0.6.5",
+		"eip-1193": "^0.7.1",
 		"named-logs": "^0.4.1",
 		"viem": "^2.55.13"
 	},
