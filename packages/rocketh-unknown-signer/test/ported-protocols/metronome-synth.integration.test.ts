@@ -6,7 +6,7 @@
  * WHY THIS SCRIPT. Every upgradeable Metronome contract goes through one helper,
  * `deployUpgradable` (`deploy/helpers/index.ts:104-189`), and every parameter change through
  * `updateParamIfNeeded` (`:196-273`). A Gnosis Safe (`GOVERNOR`, which `helpers/address.ts`
- * sets equal to `GNOSIS_SAFE_ADDRESS` on every chain) owns every proxy's admin contract and is
+ * sets equal to `GNOSIS_SAFE_ADDRESS` on every chain where it sets them) owns every proxy's admin contract and is
  * the `governor()` of every pool. So one debt-token script exercises the whole governance
  * pattern: a proxy behind a custom ProxyAdmin ("Upgrader") the Safe owns, ONE implementation
  * shared by many proxies (`implementationName`), Safe-only calls caught with
@@ -16,7 +16,8 @@
  * calls of `buildDebtTokenDeployFunction` (`deploy/helpers/index.ts:312-368`); this file ports
  * that builder and both scripts.
  *
- * THE v1 ORIGINAL, excerpted verbatim (Metronome Synth is MIT licensed; notice below). From
+ * THE v1 ORIGINAL, excerpted (elisions marked `...`, two long lines re-wrapped onto one; Metronome
+ * Synth is MIT licensed, notice below). From
  * `deploy/helpers/index.ts`, `deployUpgradable`:
  *
  * ```ts

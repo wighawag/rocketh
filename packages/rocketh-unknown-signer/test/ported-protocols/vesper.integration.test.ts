@@ -237,7 +237,10 @@ const recompiled = {
 	PoolAccountant: withCode('PoolAccountant', POOL_ACCOUNTANT_ABI, 'b2'),
 };
 
-/** `vesper-commons/config/mainnet/poolConfig.js:21-26`, the part the upgrade reads. */
+/**
+ * `vesper-commons/config/mainnet/poolConfig.js:21-26`, the part the upgrade reads, with the
+ * pool token (`Address.WETH` there) replaced by the zero address: the mock chain has no WETH.
+ */
 const POOL_CONFIG = {VETH: {contractName: 'VETH' as const, poolParams: ['vETH Pool', 'vETH', zeroAddress] as const}};
 
 /** v1's `hre.poolConfig` / `hre.multisigNonce`, set by the wrapper task: here, `env.extra`. */

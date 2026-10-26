@@ -18,7 +18,8 @@
  *
  * THE v1 SHAPE (described, not copied):
  * - `deploy/optimism/strategies/01_aave_v3_borrow_strategy.ts` calls
- *   `deployAndConfigureStrategy({contractName, constructorArgs, feePolicy: {currentAlias}})`.
+ *   Odyssey's strategy helper with the strategy's name, its constructor arguments and the alias of
+ *   the fee policy currently set on chain.
  * - `deployAndConfigureStrategy` (`helpers/deploy-helpers.ts:59-119`) reads the registry's
  *   `owner()` ON CHAIN (`:76`) to use as `from`; deploys the strategy through `deploy`
  *   (`:10-31`), which salts `Deployer3` with `finance.odyssey.<alias>V<nonce>` from a
@@ -173,7 +174,9 @@ const artifacts = {
 
 // ============================================================================
 // The ported helpers (written fresh, with this repo's own names and messages, from the
-// structure of `helpers/deploy-helpers.ts` and `helpers/deploy3.ts`)
+// structure of `helpers/deploy-helpers.ts` and `helpers/deploy3.ts`). The one thing reproduced
+// is DATA: the salt format `finance.odyssey.<name>V<nonce>`, because the test asserts the
+// salt the real factory call carries.
 // ============================================================================
 
 const SALT_PREFIX = 'finance.odyssey';
@@ -191,8 +194,8 @@ async function deployThroughFactory(
 ) {
 	const {get, getOrNull, read, execute, save, namedAccounts, network} = env;
 	const {deployer} = namedAccounts as {deployer: `0x${string}`};
-	const initCode = encodeDeployData({abi: artifact.abi, bytecode: artifact.bytecode, args});
-	const argsData = `0x${initCode.slice(artifact.bytecode.length)}` as `0x${string}`;
+	const creationCode = encodeDeployData({abi: artifact.abi, bytecode: artifact.bytecode, args});
+	const argsData = `0x${creationCode.slice(artifact.bytecode.length)}` as `0x${string}`;
 
 	const existing = getOrNull(alias);
 	if (existing && existing.bytecode === artifact.bytecode && existing.argsData === argsData) {
@@ -208,7 +211,7 @@ async function deployThroughFactory(
 		);
 	}
 
-	await execute(deployer3, {account: deployer, functionName: 'deploy', args: [salt, initCode]});
+	await execute(deployer3, {account: deployer, functionName: 'deploy', args: [salt, creationCode]});
 	const deployment = await save(alias, {...artifact, address, argsData});
 	return {...deployment, newlyDeployed: true};
 }
@@ -218,17 +221,17 @@ async function registerStrategy(
 	env: ScriptEnvironment,
 	batch: CaughtUnknownSignerTransaction[],
 	{
-		contractName,
+		strategyName,
 		artifact,
-		constructorArgs,
+		ctorArgs,
 		nonce,
 		feePolicy,
 	}: {
-		contractName: string;
+		strategyName: string;
 		artifact: Artifact<typeof STRATEGY_ABI>;
-		constructorArgs: [`0x${string}`];
+		ctorArgs: [`0x${string}`];
 		nonce: number;
-		feePolicy: {currentAlias: string};
+		feePolicy: {policyName: string};
 	},
 ) {
 	const {get, getOrNull, read, execute} = env;
@@ -236,14 +239,14 @@ async function registerStrategy(
 	// `from` is whoever owns the registry ON CHAIN, not a named account
 	const from = (await read(registry, {functionName: 'owner'})) as `0x${string}`;
 
-	const recordedStrategy = getOrNull(contractName)?.address;
-	const feePolicyAddress = get(feePolicy.currentAlias).address;
+	const recordedStrategy = getOrNull(strategyName)?.address;
+	const feePolicyAddress = get(feePolicy.policyName).address;
 
 	const {address: deployedStrategy} = await deployThroughFactory(env, {
-		alias: contractName,
+		alias: strategyName,
 		artifact,
-		args: constructorArgs,
-		salt: `${SALT_PREFIX}.${contractName}V${nonce}`,
+		args: ctorArgs,
+		salt: `${SALT_PREFIX}.${strategyName}V${nonce}`,
 	});
 
 	if (recordedStrategy == null) {
@@ -253,17 +256,17 @@ async function registerStrategy(
 		return;
 	}
 
-	const strategyId = await read(registry, {
+	const id = await read(registry, {
 		functionName: 'getStrategyId',
 		args: [recordedStrategy, feePolicyAddress],
 	});
-	if (strategyId == 0n) {
-		throw Error(`no strategy registered for ${contractName} with fee policy ${feePolicy.currentAlias}`);
+	if (id == 0n) {
+		throw Error(`no strategy registered for ${strategyName} with fee policy ${feePolicy.policyName}`);
 	}
 
 	if (deployedStrategy !== recordedStrategy) {
 		await deferToSafeIfUnsignable(env, batch, () =>
-			execute(registry, {account: from, functionName: 'updateImplementation', args: [strategyId, deployedStrategy]}),
+			execute(registry, {account: from, functionName: 'updateImplementation', args: [id, deployedStrategy]}),
 		);
 	}
 }
@@ -281,13 +284,13 @@ async function deferToSafeIfUnsignable(
 /** `deploy/optimism/strategies/01_aave_v3_borrow_strategy.ts`, ported. */
 function aaveV3BorrowStrategy(batch: CaughtUnknownSignerTransaction[], nonce = 10) {
 	return deployScript(async (env) => {
-		const {address: aaveV3Address} = env.get('AaveV3');
+		const {address: aaveAddress} = env.get('AaveV3');
 		await registerStrategy(env, batch, {
-			contractName: 'AaveV3BorrowStrategy',
+			strategyName: 'AaveV3BorrowStrategy',
 			artifact: artifacts.AaveV3BorrowStrategy,
-			constructorArgs: [aaveV3Address],
+			ctorArgs: [aaveAddress],
 			nonce, // `Nonces[AAVE_V3_BORROW_STRATEGY]` (`helpers/deploy-config.ts:96`)
-			feePolicy: {currentAlias: 'PerformanceFeePolicy_1000_0_0'},
+			feePolicy: {policyName: 'PerformanceFeePolicy_1000_0_0'},
 		});
 	});
 }
@@ -390,6 +393,10 @@ describe('ported: Odyssey strategy deployment (Safe-gated create3 factory, regis
 		const {env, provider, batch, proposals} = await deployRun(world);
 
 		const implementation = env.get('AaveV3BorrowStrategy').address;
+		// recorded at the address the factory computes for the salt (what `computeAddress` answered)
+		expect(implementation).toBe(
+			getAddress(`0x${keccak256(toHex('finance.odyssey.AaveV3BorrowStrategyV10')).slice(-40)}`),
+		);
 		expect(sent(provider)).toEqual([
 			{
 				from: DEPLOYER,
