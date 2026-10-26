@@ -91,6 +91,8 @@ export default deployScript(
 );
 ```
 
+The `GreetingsRegistry` record holds the proxy's address with the merged ABI, and its `implementation` field holds the address of the implementation the record describes, as established by the run that wrote it. That is what rocketh last OBSERVED, not a live reading: an upgrade a Safe has yet to execute leaves it on the old implementation, while `GreetingsRegistry_Implementation` already records the new one. Read the proxy's EIP-1967 slot when you need the live value.
+
 ## Deploying Diamonds
 
 The `diamond` function from `@rocketh/diamond` allows you to deploy contracts using the Diamond pattern. The second argument says who deploys; `facets`, the set of facets the diamond should end up with, goes in the third, with the other options. The standard cut, loupe and ownership facets are added for you, so do not list them (`defaultCutFacet: false` or `defaultOwnershipFacet: false` leaves out the cut or the ownership facet; the loupe facet is always added):

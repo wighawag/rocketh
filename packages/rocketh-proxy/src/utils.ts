@@ -108,15 +108,60 @@ export function replaceTemplateArgs(
  * because an out-of-band upgrade to a new implementation with an unchanged interface is
  * invisible to an ABI-only check. Missing or unserialisable counts as NOT described;
  * see `Environment.save` in `@rocketh/core` for why erring that way is the safe side.
+ *
+ * And compares the record's `implementation` ADDRESS, for two reasons. A record written
+ * before the field existed has none, and counting that as NOT described is what makes
+ * such a record gain the field on the next run instead of never (see
+ * {@link recordOnlyLacksImplementationAddress} for how that rewrite avoids being counted
+ * as an upgrade). And two implementations with the same code at different addresses
+ * (a redeploy) are different implementations, which the code comparison cannot see.
  */
 export function recordDescribesImplementation(
-	stored: {abi?: unknown; deployedBytecode?: unknown} | null | undefined,
+	stored: {abi?: unknown; deployedBytecode?: unknown; implementation?: unknown} | null | undefined,
 	abi: unknown,
 	implementationArtifact: {deployedBytecode?: unknown},
+	implementationAddress: string,
 ): boolean {
 	if (!stored || !stored.abi) {
 		return false;
 	}
+	if (
+		typeof stored.implementation !== 'string' ||
+		stored.implementation.toLowerCase() !== implementationAddress.toLowerCase()
+	) {
+		return false;
+	}
+	return recordDescribesImplementationCode(stored, abi, implementationArtifact);
+}
+
+/**
+ * Whether the ONLY thing the stored record is missing is the `implementation` address:
+ * it describes the implementation's code and merged ABI already, and has no
+ * `implementation` field at all, which is what a record written before the field
+ * existed looks like.
+ *
+ * Rewriting such a record changes nothing on chain, so it must not be counted as a
+ * change (`Environment.save`'s `keepNumDeployments`): `upgradeIndex` reads
+ * `numDeployments` as the number of upgrade steps that ran, and a backfill is not one.
+ * A record that carries a DIFFERENT address is not this case; that is a real change
+ * (an implementation redeployed with the same code) and is counted.
+ */
+export function recordOnlyLacksImplementationAddress(
+	stored: {abi?: unknown; deployedBytecode?: unknown; implementation?: unknown} | null | undefined,
+	abi: unknown,
+	implementationArtifact: {deployedBytecode?: unknown},
+): boolean {
+	if (!stored || !stored.abi || stored.implementation !== undefined) {
+		return false;
+	}
+	return recordDescribesImplementationCode(stored, abi, implementationArtifact);
+}
+
+function recordDescribesImplementationCode(
+	stored: {abi?: unknown; deployedBytecode?: unknown},
+	abi: unknown,
+	implementationArtifact: {deployedBytecode?: unknown},
+): boolean {
 	try {
 		return (
 			stored.deployedBytecode === implementationArtifact.deployedBytecode &&

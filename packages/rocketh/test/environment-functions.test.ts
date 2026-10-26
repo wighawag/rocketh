@@ -372,6 +372,36 @@ describe('save and numDeployments', () => {
 	});
 
 	/**
+	 * `keepNumDeployments` is the refresh that is NOT a change: the record gains a field it
+	 * was missing (`@rocketh/proxy` backfilling `implementation` on a record written before
+	 * the field existed) while nothing happened on chain. Counting it would tell
+	 * `upgradeIndex`, which reads the count as upgrade steps run, that a step ran.
+	 */
+	it('keepNumDeployments carries the stored count over unchanged', async () => {
+		const {env} = await buildEnv({accounts: {deployer: NAMED_ADDR}, nodeAccounts: [NAMED_ADDR]});
+		const address = ('0x' + 'f'.repeat(40)) as `0x${string}`;
+
+		// no stored record: a first record is one, as with any save
+		await env.save('Token', record(address), {keepNumDeployments: true});
+		expect(env.get('Token').numDeployments).toBe(1);
+
+		await env.save('Token', record(address));
+		expect(env.get('Token').numDeployments).toBe(2);
+
+		await env.save('Token', {...record(address), implementation: address}, {keepNumDeployments: true});
+		expect(env.get('Token').numDeployments).toBe(2);
+		expect(env.get('Token').implementation).toBe(address);
+	});
+
+	it('refuses keepNumDeployments combined with considerItAsFreshDeployment', async () => {
+		const {env} = await buildEnv({accounts: {deployer: NAMED_ADDR}, nodeAccounts: [NAMED_ADDR]});
+		const address = ('0x' + 'f'.repeat(40)) as `0x${string}`;
+		await expect(
+			env.save('Token', record(address), {keepNumDeployments: true, considerItAsFreshDeployment: true}),
+		).rejects.toThrow('cannot be combined');
+	});
+
+	/**
 	 * ...and the counter has to SURVIVE to the file, or it is a per-run number
 	 * pretending to be history.
 	 *
