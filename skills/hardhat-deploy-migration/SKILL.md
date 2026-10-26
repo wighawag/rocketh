@@ -1320,7 +1320,8 @@ export default deployScript(
 - `viaAdminContract: 'DefaultProxyAdmin'` is implied by the two `SharedAdmin*` names. A different admin deployment NAME is `proxyContract: {type: 'SharedAdminOpenZeppelinTransparentProxy', proxyAdminName: 'MyAdmin'}`. A custom admin ARTIFACT, v1's `viaAdminContract: {name, artifact}`, is `proxyAdminName` plus `proxyAdminArtifact` on the same object; it is accepted on the two `SharedAdmin*` kinds and on `{type: 'custom', ...}`, not on `ERC173Proxy` or `UUPS`.
 - A user's own proxy artifact, which v1 looked up by NAME in `proxyContract`, is `proxyContract: {type: 'custom', artifact, args}`; `args` takes v1's `proxyArgs` template (`'{implementation}'`, `'{admin}'`, `'{data}'`).
 - v1's `upgradeFunction: {methodName, upgradeArgs}` is `upgradeFunction: {methodName, args}` (the template key is renamed, and it accepts only the placeholders `'{proxy}'`, `'{implementation}'`, `'{data}'`, `'{admin}'`).
-- Not supported: `implementationName` (the implementation is always recorded as `<name>_Implementation`).
+- Not supported: `implementationName` (the implementation is always recorded as `<name>_Implementation`). When it was used to share ONE implementation across several proxies, port it as `deterministicImplementation: true`: identical creation code lands on one create2 address, deployed once (see the capability map, "One implementation behind many proxies").
+- `skipIfAlreadyDeployed` on a proxy deploy does not compile on `deployViaProxy`. Port it as `upgradeIndex: 0`, which, like v1's flag, never upgrades a proxy once it is deployed.
 
 ### Pattern 5: Proxy initialization and upgrade calls, `execute: {init, onUpgrade}`
 
@@ -1657,6 +1658,7 @@ export default deployScript(
 
 **Rules**:
 
+- A `func.id` that the v1 script ASSIGNS INSIDE its function (`deployFunction.id = ...` before `return true`) never skipped anything in v1, which reads the id before running the script; drop it rather than porting it.
 - `func.id` moves into the options (`{id: '...'}`), and `return true` still records it: later runs against the same environment skip the whole script. Never reach `return true` on a path where a step was deferred (see the rocketh documentation, "Script lifecycle").
 - rocketh has no `skip` hook, and it IGNORES one rather than refusing it: a ported `func.skip` silently stops working. Return early from the script body instead.
 
