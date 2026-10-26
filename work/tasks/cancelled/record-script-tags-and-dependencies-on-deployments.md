@@ -4,7 +4,20 @@ slug: record-script-tags-and-dependencies-on-deployments
 spec: tag-tracking-selective-reset
 blockedBy: [deployment-record-schema-adr]
 covers: [1, 2, 3, 9]
+reason: 'out-of-scope: the maintainer decided on 2026-10-26 that selective reset is not worth its cost, and recording tags on deployment records has no remaining consumer once it is gone'
+cancelledOn: 2026-10-26
 ---
+
+> **CANCELLED (2026-10-26), by maintainer decision, together with its sibling.** Recording tags only served `dependency-aware-selective-reset-via-reset-and-tags`, and that feature was judged not worth what it costs:
+>
+> - It CHANGES an existing command: `--reset --tags X` today deletes every deployment and then runs `X`, and would silently start meaning something else.
+> - It cannot keep its own promise. Its scope comes from the DECLARED `dependencies`, so a script that reads `env.get('Core')` without declaring the dependency is left pointing at a stale `Core`, which is the orphan it exists to prevent, and nothing can detect that.
+> - It never matches a record written before it shipped, so in an existing project it does nothing until everything is redeployed.
+> - It deletes files, not chain state. On a dev chain a full `--reset` is cheap; on a live chain dropping a record means the next run deploys a fresh instance and leaves the old one live, an act better done deliberately by hand (and `deployments.delete` was already dropped by decision).
+> - The cost is high: two fields on a record that is about to become a published format, executor plumbing, forward and reverse graph resolution, bookkeeping cleanup, a prompt.
+>
+> v1 never had it, so no migration needs it. The idea is parked at `work/notes/ideas/tag-recording-and-selective-reset.md` in case a user asks for it.
+
 
 ## What to build
 
