@@ -467,7 +467,6 @@ export function diamond(
 						abi,
 						linkedData: toJSONCompatibleLinkedData(options.linkedData),
 						facets: facetSnapshot,
-						execute: options.execute,
 					},
 					{
 						considerItAsFreshDeployment: proxy.newlyDeployed ? false : true,
@@ -522,7 +521,6 @@ export function diamond(
 					address: proxy.address,
 					abi,
 					facets: facetSnapshot,
-					execute: options.execute, // TODO add receipt + tx hash
 				};
 
 				await env.save(name, diamondDeployment);
@@ -560,7 +558,6 @@ export function diamond(
 					address: proxy.address,
 					abi,
 					facets: facetSnapshot,
-					execute: options.execute,
 				});
 			}
 
