@@ -45,7 +45,7 @@ import {JSONToString, stringToJSON} from '@rocketh/core/json';
 import {
 	EIP1193Account,
 	EIP1193DATA,
-	EIP1193ProviderWithoutEvents,
+	EIP1193CoreProvider,
 	EIP1193Transaction,
 	EIP1193TransactionData,
 	EIP1193TransactionReceipt,
@@ -159,7 +159,7 @@ export class UnsuccessfulTransactionError extends Error {
  * depends only on `eip-1193` (ADR-0002): viem lives in the optional `@rocketh/viem` extension.
  */
 async function prepareForLocalSigning(
-	provider: EIP1193ProviderWithoutEvents,
+	provider: EIP1193CoreProvider,
 	transactionData: EIP1193TransactionData,
 ): Promise<EIP1193TransactionData> {
 	const prepared = {...transactionData} as EIP1193TransactionData & {
@@ -372,7 +372,7 @@ function displayTransaction(transaction: EIP1193Transaction) {
  * @param autoImpersonate - Whether auto-impersonation is enabled
  */
 async function impersonateAccounts(
-	provider: EIP1193ProviderWithoutEvents,
+	provider: EIP1193CoreProvider,
 	unknownAccounts: string[],
 	autoImpersonate?: boolean,
 ): Promise<string[]> {
@@ -854,7 +854,7 @@ export async function createEnvironment<
 	//  lowercased key (`resolveAccount` lowercases both of its branches, `broadcastTransaction`
 	//  lowercases `transactionData.from`). The addresses we key it with here are NOT normalised at
 	//  the source: a `privateKey`/protocol account resolves to whatever the signer's `eth_accounts`
-	//  returns (checksummed, for `eip-1193-signer`), a bare-address account to whatever the user
+	//  returns (checksummed, for `@eip-1193/signer`), a bare-address account to whatever the user
 	//  wrote in the config, and a numbered account to whatever the node returns. So the KEYS are
 	//  normalised here. The address VALUES kept in `namedAccounts`/`unnamedAccounts` are
 	//  user-visible and deliberately left as resolved.
@@ -1068,7 +1068,7 @@ export async function createEnvironment<
 
 	// const signer = {
 	// 	async sendTransaction(
-	// 		provider: EIP1193ProviderWithoutEvents,
+	// 		provider: EIP1193CoreProvider,
 	// 		account: {
 	// 			addresss: EIP1193Account;
 	// 			config: unknown;

@@ -47,6 +47,29 @@ minimumReleaseAge: 10080
 # waiting out the week) and it is accepted because the alternative is a
 # permanently stale getting-started test.
 minimumReleaseAgeExclude:
+  # A QUEUE JUMP: one exact version each, checked by hand, so the floor keeps protecting
+  # every later release of these packages. All three were published 2026-10-26 and are what
+  # moves rocketh onto eip-1193 0.7, so the floor would hold that move for a week.
+  #
+  # - @eip-1193/jsonrpc-provider 0.5.0 and @eip-1193/signer 0.4.0: the EIP-1193 helpers,
+  #   renamed onto the @eip-1193 scope (from eip-1193-jsonrpc-provider and eip-1193-signer).
+  #   Both were published by their own release workflow over OIDC trusted publishing with an
+  #   SLSA provenance attestation, by the same author as the unscoped names. Against the last
+  #   unscoped versions (jsonrpc-provider 0.4.4, signer 0.2.0) the differences are the name,
+  #   `eip-1193` moving from devDependencies to dependencies at ^0.7.0 (so the .d.ts imports
+  #   it instead of inlining a stale 0.6.2 copy), the declared provider types, release
+  #   tooling, and two runtime changes in the signer only: `eth_signTypedData` (v1) is now
+  #   refused instead of being signed as v4, and wrapProviderWithMultipleSigners reads the
+  #   signing address per method (personal_sign was routed by its message). rocketh signs
+  #   neither, so neither change reaches it. jsonrpc-provider's runtime code is unchanged.
+  # - eip-1193 0.7.1: types only (a single index.d.ts, no code, no dependencies), published
+  #   by hand by the same author as every earlier release, as 0.7.0 was. It only ADDS
+  #   CoreMethods and EIP1193CoreProvider to 0.7.0.
+  #
+  # Safe to delete any time after 2026-11-02, when all three pass the floor on their own.
+  - '@eip-1193/jsonrpc-provider@0.5.0'
+  - '@eip-1193/signer@0.4.0'
+  - 'eip-1193@0.7.1'
   - 'rocketh'
   - '@rocketh/*'
   - 'hardhat-deploy'

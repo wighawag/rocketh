@@ -20,4 +20,4 @@ A `mnemonic:` protocol string resolved through `signerProtocols`, returning `sig
 ## Open
 
 - The string shape: the mnemonic inline (which puts a secret in config) or an environment-variable reference, and how the derivation index and path are spelled.
-- Whether `eip-1193-signer`, the dependency `privateKey` already uses, derives from a mnemonic, or whether this adds a dependency (which AGENTS.md says needs approval).
+- Whether `@eip-1193/signer`, the dependency `privateKey` already uses, derives from a mnemonic, or whether this adds a dependency (which AGENTS.md says needs approval).

@@ -1,13 +1,13 @@
-import type {EIP1193GenericRequest, EIP1193ProviderWithoutEvents} from 'eip-1193';
+import type {EIP1193GenericRequest, EIP1193CoreProvider} from 'eip-1193';
 import {BaseProvider} from './BaseProvider.js';
 import {logs} from 'named-logs';
 
 const console = logs('rocketh-provider');
 
-export class TransactionHashTrackerProvider extends BaseProvider implements EIP1193ProviderWithoutEvents {
+export class TransactionHashTrackerProvider extends BaseProvider implements EIP1193CoreProvider {
 	public transactionHashes: `0x${string}`[] = [];
 
-	constructor(provider: EIP1193ProviderWithoutEvents) {
+	constructor(provider: EIP1193CoreProvider) {
 		super(provider);
 	}
 
@@ -21,6 +21,6 @@ export class TransactionHashTrackerProvider extends BaseProvider implements EIP1
 	}
 }
 
-export type TransactionHashTracker = EIP1193ProviderWithoutEvents & {
+export type TransactionHashTracker = EIP1193CoreProvider & {
 	transactionHashes: `0x${string}`[];
 };

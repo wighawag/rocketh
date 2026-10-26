@@ -30,7 +30,7 @@ export interface Environment<
 	readonly data: ResolvedNetworkSpecificData<Data>;
 	readonly namedSigners: ResolvedNamedSigners<ResolvedNamedAccounts<NamedAccounts>>;
 	readonly unnamedAccounts: EIP1193Account[];
-	// unnamedSigners: {type: 'remote'; signer: EIP1193ProviderWithoutEvents}[];
+	// unnamedSigners: {type: 'remote'; signer: EIP1193CoreProvider}[];
 	/**
 	 * Signers indexed by address. The keys are always LOWERCASE, so index it with a lowercased
 	 * address (`resolveAccount` already returns one). The address VALUES exposed by

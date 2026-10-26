@@ -3,7 +3,7 @@ import {
 	ChainInfo,
 	Create2DeterministicDeploymentInfo,
 	Create3DeterministicDeploymentInfo,
-	EIP1193ProviderWithoutEvents,
+	EIP1193CoreProvider,
 	ResolvedUserConfig,
 } from '../types.js';
 
@@ -109,7 +109,7 @@ export function getChainSemanticsFromUserConfig(config: ResolvedUserConfig, id: 
 export function getChainConfigFromUserConfig(
 	config: ResolvedUserConfig,
 	id: number,
-	provider?: EIP1193ProviderWithoutEvents,
+	provider?: EIP1193CoreProvider,
 	/**
 	 * The endpoint to dial INSTEAD of the one `chains[id]` names, and the reason this parameter
 	 * exists at all: a FORK run is connected to a local node whose bucket (`chains[31337]`) is where

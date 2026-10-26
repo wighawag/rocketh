@@ -61,7 +61,7 @@
 		"@types/prompts": "^2.4.9",
 		"change-case": "^5.4.4",
 		"commander": "^15.0.0",
-		"eip-1193": "^0.6.5",
+		"eip-1193": "^0.7.1",
 		"ldenv": "^0.6.0",
 		"named-logs": "^0.4.1",
 		"named-logs-console": "^0.5.1",

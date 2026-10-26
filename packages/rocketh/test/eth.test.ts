@@ -133,6 +133,27 @@ describe('getGasPriceEstimate', () => {
 		expect(result[0].maxFeePerGas).toBe(1n);
 	});
 
+	it('returns no estimates when no percentile is requested and the node omits reward', async () => {
+		// geth leaves `reward` out of the response entirely for an empty rewardPercentiles list,
+		// which is why eip-1193 0.7.0 types it as optional.
+		const provider = mockProvider({
+			eth_feeHistory: () => ({oldestBlock: '0x0', baseFeePerGas: ['0x1', '0x1'], gasUsedRatio: [0.1]}),
+		});
+
+		const result = await getGasPriceEstimate(provider, {rewardPercentiles: []});
+		expect(result).toEqual([]);
+	});
+
+	it('names the missing reward when percentiles were requested but the node omitted it', async () => {
+		const provider = mockProvider({
+			eth_feeHistory: () => ({oldestBlock: '0x0', baseFeePerGas: ['0x1', '0x1'], gasUsedRatio: [0.1]}),
+		});
+
+		await expect(getGasPriceEstimate(provider, {rewardPercentiles: [10]})).rejects.toThrow(
+			'eth_feeHistory returned no reward although rewardPercentiles [10] was requested',
+		);
+	});
+
 	it('rethrows any other error unchanged (no silent fallback)', async () => {
 		const provider = mockProvider({
 			eth_feeHistory: () => {

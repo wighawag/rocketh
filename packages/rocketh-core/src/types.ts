@@ -2,7 +2,7 @@ import type {Abi, AbiConstructor, AbiError, AbiEvent, AbiFallback, AbiFunction, 
 import {
 	EIP1193Account,
 	EIP1193DATA,
-	EIP1193ProviderWithoutEvents,
+	EIP1193CoreProvider,
 	EIP1193QUANTITY,
 	EIP1193SignerProvider,
 	EIP1193TransactionData,
@@ -298,7 +298,7 @@ export type ChainConfig = {
 			readonly rpcUrl: string;
 	  }
 	| {
-			readonly provider: EIP1193ProviderWithoutEvents;
+			readonly provider: EIP1193CoreProvider;
 	  }
 );
 
@@ -440,7 +440,7 @@ export type ExecutionParams<Extra extends Record<string, unknown> = Record<strin
 	reportGasUse?: boolean;
 	defaultPollingInterval?: number;
 	extra?: Extra;
-	provider?: EIP1193ProviderWithoutEvents;
+	provider?: EIP1193CoreProvider;
 	config?: ConfigOverrides;
 	autoImpersonate?: boolean;
 	/** Run-level policy for an `unsignable` `from`; wins over the chain config. */
@@ -686,7 +686,7 @@ export type ResolvedNetworkSpecificData<T extends UnresolvedNetworkSpecificData>
 
 export type Signer =
 	| {type: 'signerOnly'; signer: EIP1193SignerProvider}
-	| {type: 'remote'; signer: EIP1193ProviderWithoutEvents}
+	| {type: 'remote'; signer: EIP1193CoreProvider}
 	| {type: 'wallet'; signer: EIP1193WalletProvider};
 
 /**
@@ -782,7 +782,7 @@ export type ResolvedExecutionParams<Extra extends Record<string, unknown> = Reco
 	readonly reportGasUse: boolean;
 	readonly pollingInterval: number;
 	readonly extra?: Extra;
-	readonly provider: EIP1193ProviderWithoutEvents;
+	readonly provider: EIP1193CoreProvider;
 	readonly scripts: readonly string[];
 	/** Passed through verbatim from `ExecutionParams.promptExecutor` (see there). */
 	readonly promptExecutor?: PromptExecutor;
@@ -912,7 +912,7 @@ export interface Environment<
 	readonly data: ResolvedNetworkSpecificData<Data>;
 	readonly namedSigners: ResolvedNamedSigners<ResolvedNamedAccounts<NamedAccounts>>;
 	readonly unnamedAccounts: EIP1193Account[];
-	// unnamedSigners: {type: 'remote'; signer: EIP1193ProviderWithoutEvents}[];
+	// unnamedSigners: {type: 'remote'; signer: EIP1193CoreProvider}[];
 	/**
 	 * Signers indexed by address. The keys are always LOWERCASE, so index it with a lowercased
 	 * address (`resolveAccount` already returns one). The address VALUES exposed by
