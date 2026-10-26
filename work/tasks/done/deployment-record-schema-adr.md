@@ -60,3 +60,9 @@ If the ADR concludes a declared type change is needed (declaring `facets` / `exe
 - **Artifact fields are promised by name; their presence depends on the artifact.** These are `contractName`, `sourceName`, `devdoc`, `userdoc`, `storageLayout`, `linkReferences`, `deployedLinkReferences` and `evm.gasEstimates`. Inside `evm`, only `gasEstimates` is promised. Any other key that rides through from the artifact (`solcInput`, `solcInputHash`, `_`-prefixed keys) is promised nothing.
 - **`solcInputHash` stays on the "not carried" list even though it is written today.** It only arrives as a side effect of copying the vendored v1 artifacts, and the ADR says so plainly rather than promising it.
 - **`implementation` is listed as planned with its owner package and meaning:** the address the record describes, as established by the run that wrote it, not the chain's state at read time. The intended write sites are proxy `:530-535` and `:705-710`. The backlog task says the ADR wins on meaning, and this matches what that task proposes.
+
+## Maintainer changes before merge (2026-10-26)
+
+- **The promise is a 0.x freeze**, not "without a major version": no listed field is removed, renamed or changes meaning in any 0.x release, and a change of policy comes through a superseding ADR.
+- **The package each promise binds** is the one that writes the field; the fields `@rocketh/deploy` assembles are attributed to it.
+- **`execute` is not promised, and is no longer written** (#189): the builder's decision above to promise it as an input echo is superseded.
