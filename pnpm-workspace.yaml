@@ -47,55 +47,6 @@ minimumReleaseAge: 10080
 # waiting out the week) and it is accepted because the alternative is a
 # permanently stale getting-started test.
 minimumReleaseAgeExclude:
-  # A QUEUE JUMP, and the only entry here that is not one of our own packages. adm-zip
-  # 0.6.1 fixes GHSA-vwc7-r8mq-g2x9 and was published 2026-09-11, so it sat ~2 days short
-  # of the floor above when the override was raised to ^0.6.1; without this line
-  # `pnpm install` fails outright with ERR_PNPM_NO_MATURE_MATCHING_VERSION.
-  #
-  # It is pinned to the EXACT version rather than the package name, which is what makes it
-  # acceptable: the floor keeps protecting every future adm-zip release, and this waives it
-  # only for one release that was checked by hand. That check was a diff of the 0.6.0 and
-  # 0.6.1 tarballs: 0.6.1 adds `Utils.assertPathSafe` (walks each path component below the
-  # extraction root and rejects a symlink) and calls it from extractEntryTo, extractAllTo
-  # and extractAllToAsync, which are exactly the three entry points the advisory names. It
-  # also hardens findFiles against symlinks escaping the archive root.
-  #
-  # Safe to delete any time after 2026-09-18, when 0.6.1 passes the floor on its own.
-  - 'adm-zip@0.6.1'
-  # A second QUEUE JUMP, same rules: one exact version, checked by hand. eip-1193-signer
-  # 0.2.0 (published 2026-09-26) makes the `privateKey` signer apply EIP-155 to a legacy
-  # transaction that carries a chainId; before it, a locally signed legacy transaction had
-  # no chain id, so it was replayable on another chain and refused by nodes that require
-  # replay protection. The check was a diff of the 0.1.1 and 0.2.0 tarballs: in src/ and in
-  # both dist/ builds the only code change is one line in the legacy `eth_signTransaction`
-  # branch (`...(txData.chainId ? {chainId: tonf(txData.chainId)} : {})`); the rest is
-  # package.json metadata (a real `exports` map, repository/license fields), a LICENSE and
-  # a `.d.cts`. Dependencies are unchanged (`viem ^2.23.12`) and the publisher is the same.
-  #
-  # Safe to delete any time after 2026-10-03, when 0.2.0 passes the floor on its own.
-  - 'eip-1193-signer@0.2.0'
-  # A third, same rules. eip-1193-jsonrpc-provider 0.4.4 (published 2026-09-26) exists only
-  # to add the licence that 0.4.3 shipped without, which made `pnpm licenses list --prod`
-  # report it as Unknown although it is a direct runtime dependency of `rocketh`. The check
-  # was a diff of the 0.4.3 and 0.4.4 tarballs: src/ and all three dist/ files
-  # (index.cjs, index.mjs, index.d.ts) are byte-identical; the only differences are a new
-  # LICENSE (MIT) and package.json metadata (license, author, repository, homepage, bugs,
-  # keywords). Dependencies and scripts are unchanged and the publisher is the same.
-  #
-  # Safe to delete any time after 2026-10-03, when 0.4.4 passes the floor on its own.
-  - 'eip-1193-jsonrpc-provider@0.4.4'
-  # A fourth, for a different reason: CONSISTENCY, not a fix inside the package. `dorfl
-  # install-ci` pins the CLI that CI installs to the dorfl version that generated the
-  # workflows (`npm install -g dorfl@<version>` in .github/actions/dorfl-setup), and
-  # dorfl.json's `dorflCmd` runs node_modules/.bin/dorfl, so the devDependency must be
-  # the same version or the two drift apart. It is a devDependency only and never reaches
-  # a published package. The check: dorfl 0.15.1 (published 2026-09-30 09:16 UTC) was published by
-  # its own release workflow over OIDC with an SLSA provenance attestation (the same trust
-  # evidence as 0.14.3), has a single dependency (`commander ^14.0.1`), and is the version
-  # the workflows are regenerated with (`install-ci`).
-  #
-  # Safe to delete any time after 2026-10-07, when 0.15.1 passes the floor on its own.
-  - 'dorfl@0.15.1'
   - 'rocketh'
   - '@rocketh/*'
   - 'hardhat-deploy'
@@ -160,32 +111,53 @@ allowBuilds:
 # minimatch). `markdown-it` arrives through typedoc (API docs generation).
 # The rest come from hardhat/lws (ws, adm-zip, @koa/cors, @tootallnate/once, undici via
 # hardhat-zod-utils and hardhat-keystore), vite/vitepress peers (axios, esbuild, postcss
-# via vite 8), nx (smol-toml), ipfs-gateway-emulator (hono) and wait-on (joi). Revisit
-# when those ship patched dep trees.
+# via vite 8), nx (smol-toml, undici 7, follow-redirects), ipfs-gateway-emulator (hono) and
+# wait-on (joi). The 2026-10-26 round added changesets (shell-quote, launch-editor), vitest
+# (source-map-js, @vitest/mocker, vite 8), vitepress (@vue/server-renderer) and abitype in
+# the demoes (zod 4). Revisit when those ship patched dep trees.
 overrides:
-  'axios@>=1.0.0 <1.18.0': ^1.18.0
+  'axios@>=1.0.0 <1.20.0': ^1.20.0
   'esbuild@<0.25.0': ^0.25.0
   'esbuild@>=0.27.3 <0.28.1': ^0.28.1
   'ws@>=8.0.0 <8.21.0': ^8.21.0
   'adm-zip@<0.6.1': ^0.6.1
   '@tootallnate/once@<2.0.1': ^2.0.1
   '@koa/cors@<5.0.0': ^5.0.0
-  'undici@<6.28.1': ^6.28.1
+  'undici@<6.29.1': ^6.29.1
+  'undici@>=7.0.0 <7.30.1': ^7.30.1
   'postcss@<8.5.23': ^8.5.23
   'tmp@<0.2.6': ^0.2.6
   'brace-expansion@<1.1.21': ^1.1.21
   'brace-expansion@>=4.0.0 <5.0.12': ^5.0.12
-  'markdown-it@<14.3.1': ^14.3.1
-  'smol-toml@<1.7.1': ^1.7.1
-  'hono@<4.13.5': ^4.13.5
-  'joi@>=18.0.0 <18.2.5': ^18.2.5
+  'markdown-it@<14.3.3': ^14.3.3
+  'smol-toml@<1.9.0': ^1.9.0
+  'hono@<4.13.11': ^4.13.11
+  'joi@>=18.0.0 <18.2.9': ^18.2.9
+  'shell-quote@>=1.8.4 <1.11.0': ^1.11.0
+  'source-map-js@>=1.0.0 <1.2.2': ^1.2.2
+  'follow-redirects@>=1.16.0 <1.16.1': ^1.16.1
+  'launch-editor@<2.14.2': ^2.14.2
+  '@vue/server-renderer@<3.5.42': ^3.5.42
+  'vite@>=8.0.0 <8.1.6': ^8.1.6
+  '@vitest/mocker@<4.1.12': ^4.1.12
+  'zod@>=4.0.0 <4.6.6': ^4.6.6
 
-# No advisory is currently ignored, and adding one should stay a last resort: an ignore
-# entry is how a hard gate quietly becomes decoration. The previous entry here was
-# adm-zip GHSA-vwc7-r8mq-g2x9, kept only because the advisory named no fixed release
-# (`Patched versions: <0.0.0`). adm-zip 0.6.1 shipped the fix on 2026-09-11 and the
-# override above now floors us there, so the entry met its stated exit condition and is
-# gone. Note the advisory metadata still reports no patched version; what actually
-# resolves it is the vulnerable range, `>= 0.5.9, <= 0.6.0`, which 0.6.1 leaves.
+# ONE advisory is ignored, and adding another should stay a last resort: an ignore entry
+# is how a hard gate quietly becomes decoration. Each entry states why it cannot be fixed
+# by a floor, why it does not reach users, and its exit condition.
+#
+# GHSA-mrhx-c7xc-m3w5 (zod, high, "through 4.6.5": a huge array against an unbounded array
+# schema accumulates one issue per element until the process runs out of memory). The only
+# remaining path is `hardhat-deploy > zod@3`, and the fix exists only on zod 4 (4.6.6).
+# hardhat-deploy cannot move to zod 4: it hands its schema to Hardhat's
+# `validateUserConfigZodType` (`@nomicfoundation/hardhat-zod-utils`), whose peer range is
+# `zod ^3.23.8`, and `hardhat` itself depends on `zod ^3.23.8` (checked 2026-10-26 against
+# hardhat 3.21.0 and hardhat-zod-utils 3.0.8, the latest). The schema hardhat-deploy
+# validates is the developer's own `hardhat.config.ts` (`packages/hardhat-deploy/src/config/
+# validation.ts`), never untrusted input, so the attacker the advisory needs is not there.
+# The zod 4 copies elsewhere in the tree are floored to ^4.6.6 in `overrides` above.
+# Exit condition: delete this entry when Hardhat accepts zod 4 and hardhat-deploy moves to
+# zod >=4.6.6.
 auditConfig:
-  ignoreGhsas: []
+  ignoreGhsas:
+    - GHSA-mrhx-c7xc-m3w5
