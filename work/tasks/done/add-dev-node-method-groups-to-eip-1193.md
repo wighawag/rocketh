@@ -2,18 +2,13 @@
 title: 'Ship typed dev-node method groups in eip-1193, and give legacy transaction data a chainId'
 slug: add-dev-node-method-groups-to-eip-1193
 humanOnly: true # the deliverable is a release of ANOTHER repository (jolly-roger-eth/eip-1193)
-needsAnswers: true
 blockedBy: []
 covers: []
 ---
 
-<!-- open-questions -->
+## Answers (maintainer, 2026-10-26)
 
-## Open questions
-
-1. **Which methods go into the group(s), and under what names?** rocketh itself only calls `evm_mine` and `hardhat_impersonateAccount`, but a group shipped by eip-1193 is used by every consumer, and deploy scripts and tests commonly also reach for `evm_increaseTime`, `evm_setNextBlockTimestamp`, `evm_snapshot` / `evm_revert`, `hardhat_stopImpersonatingAccount`, `hardhat_setBalance`, `hardhat_setCode`, and their `anvil_*` twins. One group per client (`HardhatMethods`, `AnvilMethods`), or one `DevNodeMethods` for the `evm_*` methods the clients share plus per-client groups for the prefixed ones?
-
-<!-- /open-questions -->
+1. **Three composable groups, not one group per client.** `DevNodeMethods` holds what Hardhat and Anvil both serve under the same name: the shared `evm_*` methods and the `hardhat_*` methods Anvil accepts as aliases. `HardhatMethods` holds what only Hardhat serves, and `AnvilMethods` what only Anvil serves (its `anvil_*` names and its extra aliases). Provider types: `EIP1193DevNodeProvider` (core methods plus `DevNodeMethods`, for code that runs on either client), `EIP1193HardhatProvider` and `EIP1193AnvilProvider` (node methods plus `DevNodeMethods` plus the client's group).
 
 ## What to build
 
@@ -45,3 +40,17 @@ Release both as a patch, and record the released version on the follow-up task i
 > FIRST, check this task against current reality (it is a launch snapshot and may have DRIFTED): has eip-1193 gained such groups since? If so, record the version on the follow-up task and stop. If something else this task assumes has changed, do NOT build on the stale premise: route the task to needs-attention with the discrepancy as the reason (WORK-CONTRACT.md "Drift is a needs-attention signal").
 >
 > RECORD non-obvious in-scope decisions you make while building, in a `## Decisions` block at the end of your FINAL REPORT. That block is the ONE sanctioned channel for build-time rationale, and the runner transcribes it verbatim into the done record in the same commit as the done-move. So do NOT try to write the done record, the commit message, or the PR body yourself, and do NOT open a `work/notes/observations/decisions-<slug>.md` note. If the choice meets the ADR gate (hard to reverse + surprising without context + a real trade-off, see `ADR-FORMAT.md`), ALSO write the durable WHY as an ADR in `docs/adr/` and name it in the block.
+
+## Decisions
+
+- **Released as eip-1193 0.7.3** (tag `v0.7.3`, commit `d3f717e` in jolly-roger-eth/eip-1193, published over OIDC with provenance). 0.7.2 was used first for an unrelated fix (removing the `engines` field that shipped to consumers), so this task's patch is 0.7.3. The version and names are recorded on `type-the-dev-node-methods`.
+- **Sources:** every entry was checked against Hardhat's EDR (`NomicFoundation/edr` @ `b9bd49fc`, `crates/edr_provider/src/requests/methods.rs` and `serde.rs`) and Anvil (`foundry-rs/foundry` @ `85d83334`, `crates/anvil/core/src/eth/mod.rs` for names, aliases and params, `crates/anvil/src/eth/api.rs` for results). The pinned commits are cited once in the group header of `index.d.ts`, not on every entry. Anvil 1.7.1 was also queried live; Hardhat was not available locally.
+- **`DevNodeMethods` includes the shared `hardhat_*` names**, not only `evm_*`, so `hardhat_impersonateAccount` (which rocketh calls) is typed on `EIP1193DevNodeProvider`. Shared entries take the params BOTH clients accept and return a union of what either answers: Hardhat mostly answers `true` where Anvil answers `null`, so many results are `boolean | null`, and `evm_increaseTime` is `string | number` (Hardhat sends a decimal string, Anvil a JSON number).
+- **`evm_setIntervalMining` is in BOTH client groups**, because Hardhat takes milliseconds (or a `[min, max]` range) and Anvil takes seconds. So `HardhatMethods` and `AnvilMethods` must not be intersected; `DevNodeMethods` is disjoint from each. Pinned by type tests.
+- **`evm_mine`, `hardhat_mine` and `anvil_mine` require `params`** (`[]` for the defaults). Anvil answers `invalid type: null` to an omitted `params` on `anvil_mine` / `hardhat_mine` (checked live), and Hardhat's handling of an omitted `params` on `evm_mine` could not be verified. rocketh already sends `params: []`.
+- **Param types:** timestamps, durations and block counts are `EIP1193QUANTITY | number` (both clients accept either). Other quantities are hex only: Hardhat rejects a JSON number for balances, nonces and storage slots.
+- **`hardhat_reset` is typed for Anvil only.** EDR, the engine of Hardhat 3, removed it.
+- **`AnvilMethods` is a selection** (37 entries). `anvil_dealERC20`, `anvil_nodeInfo`, `evm_mine_detailed` and others are not typed yet; the untyped escape hatch still reaches them.
+- **`AllMethods` does not gain the dev-node groups.** Its doc now says so, because the two clients disagree on some entries.
+- **Legacy `chainId`:** optional `chainId` on `EIP1193LegacyTransactionData`, citing execution-apis `GenericTransaction` / `TransactionLegacyUnsigned` and go-ethereum `internal/ethapi/transaction_args.go` (`setDefaults` checks and fills `chainId` for every transaction type).
+- **Review:** two subagent review rounds, both approve with notes; all notes fixed before tagging.

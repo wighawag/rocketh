@@ -20,6 +20,10 @@ rocketh calls two methods that only a development node serves, `evm_mine` (after
 
 This is a library gap, so it is fixed upstream first, in `add-dev-node-method-groups-to-eip-1193`, which ships typed dev-node method groups in eip-1193 and records the released version on this task. Then, here: require that eip-1193 version, replace every `(provider as any).request(...)` for a dev-node method with a call typed against the new group, in the shape the open question settles, and add the new eip-1193 version to `minimumReleaseAgeExclude` (by exact version, with the hand check recorded, as for the other entries) if it is still inside the install floor.
 
+## Upstream release (recorded by `add-dev-node-method-groups-to-eip-1193`)
+
+eip-1193 **0.7.3** ships the groups (published 2026-10-26 from tag `v0.7.3`, commit `d3f717e`, with provenance). Names: `DevNodeMethods` (served by both Hardhat and Anvil under the same name, including `evm_mine` and `hardhat_impersonateAccount`), `HardhatMethods`, `AnvilMethods`; provider types `EIP1193DevNodeProvider` (= `EIP1193CoreProvider & RequestRPC<DevNodeMethods>`, for code that runs on either client), `EIP1193HardhatProvider`, `EIP1193AnvilProvider`. `evm_mine` and `hardhat_mine` require `params` (`[]` for the defaults), which matches rocketh's existing `evm_mine` calls. The same release adds the optional `chainId` to `EIP1193LegacyTransactionData`.
+
 ## Acceptance criteria
 
 - [ ] rocketh requires the eip-1193 version recorded by `add-dev-node-method-groups-to-eip-1193`.
