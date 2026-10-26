@@ -1,5 +1,5 @@
 ---
-title: 'Ship typed dev-node method groups in eip-1193'
+title: 'Ship typed dev-node method groups in eip-1193, and give legacy transaction data a chainId'
 slug: add-dev-node-method-groups-to-eip-1193
 humanOnly: true # the deliverable is a release of ANOTHER repository (jolly-roger-eth/eip-1193)
 needsAnswers: true
@@ -19,12 +19,17 @@ covers: []
 
 eip-1193 0.7.0 removed the `request()` catch-all overload, so a typed call to a method that no table lists is a compile error. Development nodes (Hardhat, Anvil) serve methods that no eip-1193 table lists, so every consumer that calls them, rocketh included, casts the provider to `any`, which also switches off the check on the method name and params. This is a gap in the library, to be closed there once rather than worked around in each consumer.
 
-Add the dev-node method group(s) settled by the open question to eip-1193, with a provider type for them, release it as a patch, and record the released version on the follow-up task in this repo (`type-the-dev-node-methods`). Each entry's params and result must be checked against the client's own source (Hardhat's and Anvil's RPC handlers), the way the 0.7.0 audit checked every other entry, not written from memory: for example `evm_mine` accepts an optional timestamp on some clients and not others.
+Add the dev-node method group(s) settled by the open question to eip-1193, with a provider type for them.
+
+In the same release, fix a second gap found while moving rocketh to eip-1193 0.7: `EIP1193LegacyTransactionData` has no `chainId`, while the type 1 and type 2 variants do. That is wrong for the input of `eth_sendTransaction` / `eth_signTransaction`: execution-apis types it as `GenericTransaction` (`src/schemas/transaction.yaml`), one flat shape whose optional `chainId` applies to every type, legacy included, and a legacy transaction signed with EIP-155 replay protection is bound to a chain id. `@eip-1193/signer` already reads `chainId` from a legacy request to apply EIP-155, and rocketh casts its legacy transaction data to get `chainId` through (`@rocketh/deploy`, and twice in `@rocketh/read-execute`, each with a comment pointing at this gap). Add an optional `chainId` to `EIP1193LegacyTransactionData`, after checking go-ethereum's handling of a legacy `TransactionArgs` with a chain id.
+
+Release both as a patch, and record the released version on the follow-up task in this repo (`type-the-dev-node-methods`). Each entry's params and result must be checked against the client's own source (Hardhat's and Anvil's RPC handlers), the way the 0.7.0 audit checked every other entry, not written from memory: for example `evm_mine` accepts an optional timestamp on some clients and not others.
 
 ## Acceptance criteria
 
 - [ ] eip-1193 exports the group(s) and a provider type, each entry citing the client source it was checked against.
 - [ ] Type tests in the same style as the existing groups pin that each method is callable on the new type and is absent from the core, wallet and node sets.
+- [ ] `EIP1193LegacyTransactionData` accepts an optional `chainId`, pinned by a type test, with the execution-apis and go-ethereum sources cited.
 - [ ] The release is published (eip-1193 releases by pushing a `v<version>` tag; its release workflow publishes over OIDC with provenance) and the version is recorded on `type-the-dev-node-methods`.
 
 ## Blocked by
@@ -35,7 +40,7 @@ Add the dev-node method group(s) settled by the open question to eip-1193, with 
 
 > This task is humanOnly: it changes and releases a different repository, jolly-roger-eth/eip-1193, not rocketh. Do it only if a human has explicitly delegated it to you.
 >
-> Goal: add typed method groups for the development-node RPC methods (Hardhat's and Anvil's `evm_*`, `hardhat_*`, `anvil_*`) to eip-1193, so consumers stop casting providers to `any` to call them. Answer the open question in this file first. In the eip-1193 repo, follow the conventions of the method-set section of `index.d.ts` (one group per capability, composed into provider types through `RequestRPC`) and of `test-d/index.test-d.ts`. Check every params and result shape against the client's source. Release as a patch by bumping `package.json` and pushing the matching `v` tag.
+> Goal: add typed method groups for the development-node RPC methods (Hardhat's and Anvil's `evm_*`, `hardhat_*`, `anvil_*`) to eip-1193, so consumers stop casting providers to `any` to call them, and in the same release add the optional `chainId` that `EIP1193LegacyTransactionData` is missing (see What to build). Answer the open question in this file first. In the eip-1193 repo, follow the conventions of the method-set section of `index.d.ts` (one group per capability, composed into provider types through `RequestRPC`) and of `test-d/index.test-d.ts`. Check every params and result shape against the client's source. Release as a patch by bumping `package.json` and pushing the matching `v` tag.
 >
 > FIRST, check this task against current reality (it is a launch snapshot and may have DRIFTED): has eip-1193 gained such groups since? If so, record the version on the follow-up task and stop. If something else this task assumes has changed, do NOT build on the stale premise: route the task to needs-attention with the discrepancy as the reason (WORK-CONTRACT.md "Drift is a needs-attention signal").
 >
