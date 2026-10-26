@@ -1,19 +1,14 @@
 ---
 title: 'Know a deterministic address before deploying it'
 slug: deterministic-address-before-deploying
-needsAnswers: true
 blockedBy: []
 covers: []
 ---
 
-<!-- open-questions -->
+## Answers (maintainer, 2026-10-26)
 
-## Open questions
-
-1. What is the API? Three candidate shapes: a standalone `computeDeterministicAddress(env)(artifact, args, options)` in `@rocketh/deploy`; v1's shape, where one call returns `{address, deploy()}` and the caller decides (v1 `types.ts:217-226`); or a `dryRun` flag on `deploy` that returns the address and broadcasts nothing. The first is the smallest, the second is the one a migrating script already expects, the third quietly doubles the meaning of `deploy`.
-2. Does it cover create3 as well as create2? create2 is a pure function of the factory address, the salt and the creation bytecode, so it needs no network at all. create3 derives from the deployer and the salt (`packages/rocketh-deploy/src/index.ts:334-352`), and the factory address itself comes from chain config, so a preview is computable but a HONEST one must also say whether that address is already occupied, which needs an RPC call.
-
-<!-- /open-questions -->
+1. **API: a standalone function**, `computeDeterministicAddress(env)(artifact, args, options)` in `@rocketh/deploy`, exported next to `deploy` as a curried `(env) => …` extension entry. Not v1's `{address, deploy()}` shape and not a `dryRun` flag on `deploy`: it is the smallest surface, and it leaves the meaning of `deploy` unchanged. The migration map (`documentation/migration/index.md`, the `deterministic(name, options)` row) documents it as the replacement for v1's `deterministic`.
+2. **create2 AND create3.** create2 needs no network. For create3, the preview also reports whether the address is already occupied, which costs one read (`eth_getCode`) and never a send. What the result promises about an occupied address is documented with the function.
 
 ## What to build
 
@@ -28,19 +23,20 @@ The machinery already exists and must be REUSED rather than reimplemented, becau
 - [ ] A deploy script can obtain the deterministic address of a contract without any transaction being broadcast (assert on the mock provider: no `eth_sendTransaction`, no `eth_sendRawTransaction`).
 - [ ] The address returned is byte-identical to the address the subsequent real deploy lands on, asserted by doing both in one test.
 - [ ] The salt normalisation matches `deploy`'s exactly (`true` means the zero salt, a hex string is left-padded to 32 bytes).
-- [ ] Whatever is decided for question 2 is implemented and documented, including what a preview does and does not promise about an occupied address.
+- [ ] Both create2 and create3 are covered (answer 2), and the create3 preview reports whether the address is occupied; what a preview does and does not promise about an occupied address is documented.
 - [ ] Tests mirror the existing `@rocketh/deploy` integration-test style and read as documentation of the two-contracts-that-know-each-other pattern.
+- [ ] The migration map row for v1 `deterministic(name, options)` says what replaces it.
 - [ ] `pnpm typecheck`, `pnpm test`, `pnpm format:check` pass, plus a minor changeset.
 
 ## Blocked by
 
-- None mechanically; the two open questions above must be answered before an agent builds it.
+- None. The two questions this task opened with are answered above.
 
 ## Prompt
 
 > Give deploy scripts a way to compute a deterministic address without broadcasting, the rocketh analogue of hardhat-deploy v1's `deployments.deterministic`. The gap is recorded in `work/notes/findings/hardhat-deploy-v1-feature-surface.md`, section A.
 >
-> Do not start until the two open questions at the top of this task are answered; they decide the API surface and are not yours to pick.
+> The API surface is decided in `## Answers` at the top of this task; build that, not an alternative.
 >
 > Reuse the existing derivations in `packages/rocketh-deploy/src/index.ts` rather than writing new ones, and respect the reason they are shaped as they are: `getCreate2Factory` can BROADCAST (it funds and deploys the canonical factory when the chain does not have it) and `resolveCreate2Info` exists so a pure lookup does not reach the network. A preview that deploys a factory is not a preview.
 >
