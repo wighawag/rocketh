@@ -294,6 +294,24 @@ describe('@rocketh/proxy - fresh-deploy options', () => {
 				),
 			).rejects.toThrow(/Method nonExistent not found/);
 		});
+
+		it('refuses an execute that mixes the flat form with init / onUpgrade, before sending anything', async () => {
+			/**
+			 * `{methodName}` next to `init` or `onUpgrade` is ambiguous: which call should a fresh
+			 * deploy make? It is refused rather than resolved, so no call the author wrote is
+			 * silently dropped.
+			 */
+			const {env, provider} = await setup();
+
+			await expect(
+				deployViaProxy(env)(
+					'Vault',
+					{account: 'deployer', artifact: createMockArtifact('Vault', CONTRACT_ABI), args: [42n]},
+					{execute: {methodName: 'initialize', args: [1n], onUpgrade: 'initialize'} as never},
+				),
+			).rejects.toThrow(/mixes the flat form .* with the explicit \{init, onUpgrade\} form/);
+			expect(provider.getRequests().some((r) => r.method === 'eth_sendTransaction')).toBe(false);
+		});
 	});
 
 	describe('deterministicImplementation', () => {
