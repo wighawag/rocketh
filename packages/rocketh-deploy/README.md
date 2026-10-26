@@ -132,6 +132,33 @@ With `create2` the address is derived from the init code, so changing constructo
 
 Both paths deploy through a factory that must be described by the chain's `deterministicDeployment` configuration. If it is missing, the deployment fails with `create2 deterministic deployment info not found` (or the `create3` equivalent). rocketh also checks that the code at the configured factory address really is that factory, rather than trusting an occupied address.
 
+### Knowing a deterministic address before deploying
+
+`computeDeterministicAddress` returns the address a deterministic `deploy` WILL land on, without sending anything. Pass the artifact, the constructor arguments and the same `account`, `deterministic` (and `libraries`) the later `deploy` call will use. It is the replacement for hardhat-deploy v1's `deployments.deterministic`, and it is what lets two contracts each know the other's address:
+
+```typescript
+export default deployScript(async ({deploy, computeDeterministicAddress, namedAccounts}) => {
+	const {deployer} = namedAccounts;
+	const deterministic = {type: 'create3', salt: '0xa1'} as const;
+
+	// A's address, before A exists. A create3 address ignores A's constructor arguments.
+	const {address: a} = await computeDeterministicAddress(artifacts.A, [zeroAddress], {
+		account: deployer,
+		deterministic,
+	});
+
+	const b = await deploy('B', {account: deployer, artifact: artifacts.B, args: [a]});
+	await deploy('A', {account: deployer, artifact: artifacts.A, args: [b.address]}, {deterministic});
+});
+```
+
+It never broadcasts, even on a chain where `deploy` would first have to deploy the create2 or create3 factory: the address is computed from chain config with the same derivation and salt normalisation `deploy` uses.
+
+- **create2** makes no provider request at all. The constructor arguments and libraries are part of the address, so they must be the ones `deploy` will get.
+- **create3** makes one read (`eth_getCode` at the computed address) and also returns `occupied`: whether that address already holds code. It does not say whose code: a create3 address ignores the bytecode, so it may be this contract from an earlier run (which `deploy` records as already deployed) or another contract deployed from the same account with the same salt (which `deploy` refuses).
+
+The result is a promise about the address only. It does not reserve it: something deployed there between the preview and the `deploy` is found by `deploy`, not by the preview.
+
 ### Libraries
 
 Pass the addresses of already-deployed libraries; rocketh links them into the bytecode:
