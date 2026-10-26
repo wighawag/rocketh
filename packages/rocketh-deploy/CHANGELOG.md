@@ -1,5 +1,11 @@
 # @rocketh/deploy
 
+## 0.21.0
+
+### Minor Changes
+
+- c4c6bc0: Add `computeDeterministicAddress(env)(artifact, args, {account, deterministic, libraries})`: the address a deterministic `deploy` will land on, for create2 and create3, computed without broadcasting anything (the replacement for hardhat-deploy v1's `deployments.deterministic`). A create3 preview also reports whether the address is already `occupied`.
+
 ## 0.20.1
 
 ### Patch Changes
