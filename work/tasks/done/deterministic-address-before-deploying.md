@@ -43,3 +43,12 @@ The machinery already exists and must be REUSED rather than reimplemented, becau
 > Tests use `createTestEnvironment` from `@rocketh/test-utils` (a REAL environment over a mock provider, see `CONTEXT.md`); assert the absence of send calls, not just the presence of the right address.
 >
 > RECORD non-obvious in-scope decisions in a `## Decisions` block at the end of your FINAL REPORT. Do not write the done record or the commit message yourself.
+
+## Decisions
+
+- **`options` is `{account, deterministic, libraries?}`, and `account` is required for create2 too.** Why: a create3 address depends on the deploying account, and requiring it for both kinds keeps one call shape that mirrors `deploy`. That avoids a new "create3 needs an account" error. Alternative: make `account` optional and throw only for create3, which would add a refusal. This touches only the new function.
+- **`args` is the constructor-argument array (viem's `ContractConstructorArgs<TAbi>`), and create3 accepts it but ignores it.** Why: the agreed signature is `(artifact, args, options)`, and the arguments change a create2 address. Alternative: the `deploy`-style `{account, artifact, args}` object, which would not match the agreed signature.
+- **The result is `{type: 'create2', address}` or `{type: 'create3', address, occupied}`, and the type follows the `deterministic` option.** New exported types: `DeterministicOption`, `ComputeDeterministicAddressOptions`, `Create2DeterministicAddress`, `Create3DeterministicAddress`, `DeterministicAddress`, `DeterministicAddressFor`. Why: answer 2 asks only create3 to report occupancy, and create2 stays network-free. Alternative: a `occupied` flag on create2 too, which would cost a read.
+- **`occupied` is a plain boolean meaning "the address holds code".** It does not compare that code against the artifact the way `deploy` does. Why: answer 2 asks whether the address is occupied, and `deploy` already decides whether existing code is reused or refused. Alternative: a three-way `'free' | 'this-contract' | 'other-contract'`, which could be added later.
+- **The create2 preview does not check the factory that is on chain.** It assumes the configured factory; `deploy` still checks it before use. Why: create2 needs no network (answer 2), and the check would cost a read.
+- **`DeployOptions.deterministic` is now written `false | DeterministicOption`.** This is the same set of values as before, re-spelled so the preview and `deploy` share one named type.
