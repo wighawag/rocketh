@@ -7,7 +7,7 @@ import type {ChainInfo, Deployment, LinkedData, ResolvedUserConfig} from '@rocke
 import {loadDeploymentsFromFiles} from '@rocketh/node';
 import {bigIntToStringReplacer} from '@rocketh/core/json';
 import {getChainConfigFromUserConfig} from 'rocketh';
-import {EIP1193CoreProvider} from 'eip-1193';
+import type {EIP1193CoreProvider} from 'eip-1193';
 
 export const logger = logs('@rocketh/export');
 

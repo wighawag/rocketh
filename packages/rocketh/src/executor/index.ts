@@ -1,4 +1,4 @@
-import {EIP1193CoreProvider} from 'eip-1193';
+import type {EIP1193CoreProvider} from 'eip-1193';
 
 import type {
 	Environment,

@@ -1,4 +1,4 @@
-import {EIP1193BlockTag, EIP1193FeeHistory, EIP1193CoreProvider, EIP1193QUANTITY} from 'eip-1193';
+import type {EIP1193BlockTag, EIP1193FeeHistory, EIP1193CoreProvider, EIP1193QUANTITY} from 'eip-1193';
 import {logger} from '../internal/logging.js';
 
 function avg(arr: bigint[]) {

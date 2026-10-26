@@ -42,7 +42,7 @@ import {classifyPastedTransaction, describeEvidence} from './pastedTransactionIn
 import {Abi, Address} from 'abitype';
 import {InternalEnvironment} from '../internal/types.js';
 import {JSONToString, stringToJSON} from '@rocketh/core/json';
-import {
+import type {
 	EIP1193Account,
 	EIP1193DATA,
 	EIP1193CoreProvider,

@@ -53,7 +53,18 @@ describe('provider slots accept every kind of provider', () => {
 	});
 
 	it('exposes the environment provider as the core surface, the most it can promise', () => {
-		const exposed: EIP1193CoreProvider = undefined as unknown as Environment['network']['provider'];
-		expect(exposed).toBeUndefined();
+		const exposed = undefined as unknown as Environment['network']['provider'];
+		// it offers the core...
+		const core: EIP1193CoreProvider = exposed;
+		// ...and nothing beyond it: rocketh may be running against a node or over plain HTTP. These
+		// closures are never called; the checks are the @ts-expect-error lines.
+		const notPromised = [
+			// @ts-expect-error eth_subscribe is not served over plain HTTP, so it is not promised
+			() => exposed.request({method: 'eth_subscribe', params: ['newHeads']}),
+			// @ts-expect-error wallet_* is not served by a node, so it is not promised
+			() => exposed.request({method: 'wallet_switchEthereumChain', params: [{chainId: '0x1'}]}),
+		];
+		expect(core).toBeUndefined();
+		expect(notPromised).toHaveLength(2);
 	});
 });

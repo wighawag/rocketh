@@ -47,6 +47,9 @@ minimumReleaseAge: 10080
 # waiting out the week) and it is accepted because the alternative is a
 # permanently stale getting-started test.
 minimumReleaseAgeExclude:
+  - 'rocketh'
+  - '@rocketh/*'
+  - 'hardhat-deploy'
   # A QUEUE JUMP: one exact version each, checked by hand, so the floor keeps protecting
   # every later release of these packages. All three were published 2026-10-26 and are what
   # moves rocketh onto eip-1193 0.7, so the floor would hold that move for a week.
@@ -70,9 +73,6 @@ minimumReleaseAgeExclude:
   - '@eip-1193/jsonrpc-provider@0.5.0'
   - '@eip-1193/signer@0.4.0'
   - 'eip-1193@0.7.1'
-  - 'rocketh'
-  - '@rocketh/*'
-  - 'hardhat-deploy'
 
 # Refuse a version whose TRUST EVIDENCE is weaker than that of earlier releases of
 # the same package. npm records how a version was published (trusted publishing via

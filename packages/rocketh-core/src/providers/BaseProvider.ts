@@ -1,4 +1,4 @@
-import {EIP1193GenericRequest, EIP1193GenericRequestProvider, EIP1193CoreProvider} from 'eip-1193';
+import type {EIP1193GenericRequest, EIP1193GenericRequestProvider, EIP1193CoreProvider} from 'eip-1193';
 
 export abstract class BaseProvider implements EIP1193CoreProvider {
 	constructor(protected provider: EIP1193CoreProvider) {}

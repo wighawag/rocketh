@@ -1,5 +1,5 @@
 import type {Abi, AbiConstructor, AbiError, AbiEvent, AbiFallback, AbiFunction, AbiReceive, Narrow} from 'abitype';
-import {
+import type {
 	EIP1193Account,
 	EIP1193DATA,
 	EIP1193CoreProvider,
