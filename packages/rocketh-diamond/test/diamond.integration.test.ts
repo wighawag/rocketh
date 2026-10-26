@@ -245,6 +245,9 @@ describe('@rocketh/diamond - Integration Tests', () => {
 			);
 
 			expect(deployment).toBeDefined();
+			// The `execute` option is NOT echoed onto the record: it would claim nothing true (it was
+			//  rewritten even on runs where no init ran) and nothing reads it back.
+			expect('execute' in env.get('InitDiamond')).toBe(false);
 		});
 	});
 

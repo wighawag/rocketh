@@ -1666,3 +1666,231 @@ describe('@rocketh/unknown-signer - Matrix PIN: a ProxyAdmin owned by a Timelock
 		expect(broadcastFrom(reRunProvider)).toEqual([]);
 	});
 });
+
+// ============================================================================
+// Matrix: a registry contract as proxy admin, owned by a governance executor
+// ============================================================================
+
+/**
+ * THE TOPOLOGY. Governance is controller -> executor -> registry -> proxy, with no Safe
+ * anywhere in the chain:
+ *
+ * - The proxy's admin is a REGISTRY contract, not a `ProxyAdmin`: an `Ownable`
+ *   addresses-provider that administers the proxies it holds and upgrades one through its
+ *   own `onlyOwner` setter, `setVaultImpl(newImplementation)`. The registry already knows
+ *   which proxy that setter repoints, so the call names only the implementation. (The same
+ *   registry shape the execute-guard tests model in `@rocketh/read-execute`.)
+ * - The registry is owned by a governance EXECUTOR contract.
+ * - The executor is owned by a CONTROLLER contract that only has the executor act once a
+ *   payload, queued through governance, has waited out a delay.
+ *
+ * WHAT THE DEPLOY SCRIPT LOOKS LIKE. The registry is a deployment of its own, so the script
+ * names it as the proxy's admin (`proxyAdminName`, used as-is because it already exists)
+ * and routes the upgrade through the registry's setter with `upgradeFunction`. `owner` is
+ * the executor, because that is what the registry's `owner()` answers. (In production such
+ * a registry often CREATES its proxies too; here rocketh deploys the proxy with the
+ * registry as its admin, which is what the upgrade path reads either way.)
+ *
+ * WHAT THE SEAM SURFACES. `@rocketh/proxy` reads the registry's `owner()`, finds the
+ * executor, and sends `setVaultImpl(v2)` from it. The executor is a contract the run cannot
+ * sign for, so the call is deferred as `{from: <executor>, to: <registry>, data}`. Nobody can
+ * send that as written: `from` is a contract. But its `{to, data}` is EXACTLY the call the
+ * executor has to make, which is the action a governance proposal (or payload) carries. So,
+ * unlike the Timelock PIN above, there is no other transaction to construct: the content is
+ * right, and the operator's job is to submit `{to, data}` through the governance process.
+ * rocketh does not build that proposal, and it looks exactly one hop up: the controller
+ * never appears in what it surfaces.
+ *
+ * As in the Timelock PIN, the executor and controller are mock deployments: what matters is
+ * that the registry's on-chain owner is a contract address the run cannot sign for.
+ */
+const REGISTERED_PROXY = 'RegisteredVault';
+const ADDRESSES_REGISTRY = 'AddressesRegistry';
+
+/**
+ * The registry, an `Ownable` addresses-provider: the owner repoints the proxy it
+ * administers with `setVaultImpl`, and `getVault()` returns the PROXY's address, which does
+ * not change across an upgrade (so it is no use for telling whether one happened).
+ */
+const ADDRESSES_REGISTRY_ABI = [
+	{type: 'function', name: 'owner', inputs: [], outputs: [{type: 'address'}], stateMutability: 'view'},
+	{
+		type: 'function',
+		name: 'setVaultImpl',
+		inputs: [{type: 'address', name: 'newVaultImpl'}],
+		outputs: [],
+		stateMutability: 'nonpayable',
+	},
+	{type: 'function', name: 'getVault', inputs: [], outputs: [{type: 'address'}], stateMutability: 'view'},
+] as const satisfies Abi;
+
+/** The deploy-script step: converge the proxy, upgrading it through the registry's own setter. */
+function deployRegisteredVault(env: Environment, executor: `0x${string}`, version: 1 | 2) {
+	return deployViaProxy(env)(
+		REGISTERED_PROXY,
+		{account: 'deployer', artifact: vaultArtifact(version), args: [42n]},
+		{
+			owner: executor,
+			proxyContract: {type: 'SharedAdminOptimizedTransparentProxy', proxyAdminName: ADDRESSES_REGISTRY},
+			upgradeFunction: {methodName: 'setVaultImpl', args: ['{implementation}']},
+		},
+	);
+}
+
+/**
+ * The world the upgrade run starts from: the controller and executor deployed, the registry
+ * deployed and already owned by the executor (the handoff happened in an earlier run; see
+ * the handoff PIN above), and the proxy at v1 with the registry as its admin.
+ */
+async function deployVaultBehindGovernedRegistry() {
+	const storage = createStorage();
+	const owners = createOwners();
+	const deploymentStore = createMapDeploymentStore();
+	const {env, provider} = await runEnvironment({deploymentStore, storage, owners});
+
+	// deploying governance is signable: the deployer sends it; nobody can send FROM it
+	const controller = (
+		await deploy(env)('GovernanceController', {
+			account: 'deployer',
+			artifact: createMockArtifact('GovernanceController'),
+		})
+	).address;
+	const executor = (
+		await deploy(env)('GovernanceExecutor', {account: 'deployer', artifact: createMockArtifact('GovernanceExecutor')})
+	).address;
+	await deploy(env)(ADDRESSES_REGISTRY, {
+		account: 'deployer',
+		artifact: createMockArtifact(ADDRESSES_REGISTRY, ADDRESSES_REGISTRY_ABI),
+	});
+	// what the registry's `owner()` answers once governance holds it
+	owners.setOwner(ADDRESSES_REGISTRY, executor);
+
+	const vault = await deployRegisteredVault(env, executor, 1);
+	const registry = env.get(ADDRESSES_REGISTRY).address;
+	// the mock executes nothing, so mirror what the proxy constructor wrote
+	storage.setAddress(vault.address, IMPLEMENTATION_SLOT, env.get(`${REGISTERED_PROXY}_Implementation`).address);
+	storage.setAddress(vault.address, OWNER_SLOT, registry);
+
+	return {env, provider, storage, owners, deploymentStore, controller, executor, registry, proxy: vault.address};
+}
+
+describe('@rocketh/unknown-signer - Matrix: a registry contract as proxy admin, owned by a governance executor that acts after a delay', () => {
+	it('surfaces {from: <the executor>, to: <the registry>, data}, a transaction whose from is a contract', async () => {
+		/**
+		 * Example: v2 ships and the proxy is upgraded through the registry. The deployer
+		 * deploys the new implementation; the repointing is handed back FROM the executor,
+		 * because that is who owns the registry. The executor is a contract, so this cannot
+		 * be sent as written.
+		 */
+		const {env, provider, controller, executor, registry, proxy} = await deployVaultBehindGovernedRegistry();
+		provider.clearRequests();
+		// the executor is not an account of this run: it reaches the seam as unsignable
+		expect(env.addressSignability[executor.toLowerCase() as `0x${string}`]).toBe('unsignable');
+
+		const deferred = await catchUnknownSigner(env)(() => deployRegisteredVault(env, executor, 2));
+
+		const v2 = env.get(`${REGISTERED_PROXY}_Implementation`).address;
+		expect(deferred).toStrictEqual({
+			from: executor,
+			to: registry,
+			value: undefined,
+			data: encodeFunctionData({abi: ADDRESSES_REGISTRY_ABI, functionName: 'setVaultImpl', args: [v2]}),
+		});
+		// `from` is a CONTRACT this run deployed, not an account anyone holds a key for
+		expect(env.get('GovernanceExecutor').address).toBe(deferred?.from);
+		// the call goes to the registry, never to the proxy, and rocketh looks one hop up only:
+		//  the controller that drives the executor appears nowhere
+		expect(deferred?.to).not.toBe(proxy);
+		expect(JSON.stringify(deferred).toLowerCase()).not.toContain(controller.slice(2).toLowerCase());
+		// the only broadcast was the deployer's v2 implementation
+		expect(broadcastFrom(provider)).toEqual([DEPLOYER]);
+	});
+
+	it('its {to, data} is exactly the call the executor must make: what the governance proposal carries', async () => {
+		/**
+		 * Read the deferred transaction the way you would when writing the proposal: drop
+		 * `from`, and decode `data` against the registry's ABI. What is left is one call, to
+		 * the registry, of `setVaultImpl` with the new implementation. That pair is the
+		 * action the executor has to perform, so it is what the governance proposal (or
+		 * payload) has to carry, byte for byte.
+		 */
+		const {env, executor, registry} = await deployVaultBehindGovernedRegistry();
+
+		const deferred = await catchUnknownSigner(env)(() => deployRegisteredVault(env, executor, 2));
+
+		expect(deferred?.to).toBe(registry);
+		const action = decodeFunctionData({abi: ADDRESSES_REGISTRY_ABI, data: deferred!.data as `0x${string}`});
+		expect(action.functionName).toBe('setVaultImpl');
+		if (action.functionName !== 'setVaultImpl') return;
+		// one argument, the new implementation: the registry already knows which proxy it repoints
+		//  (decoding checksums the address, so compare case-insensitively)
+		expect(action.args).toHaveLength(1);
+		const [newImplementation] = action.args;
+		expect(newImplementation.toLowerCase()).toBe(env.get(`${REGISTERED_PROXY}_Implementation`).address.toLowerCase());
+		expect(newImplementation).not.toBe(zeroAddress);
+	});
+
+	it('surfaces the identical transaction when re-run before governance acts, and nothing once it has', async () => {
+		/**
+		 * The delay is the point of this shape: the proposal is queued, then waits, then the
+		 * executor acts. Every re-run in between hands back the identical transaction, since
+		 * the proxy still runs v1 and nothing rocketh wrote down could say otherwise. Once the
+		 * executor has run the payload (modelled by moving the proxy's implementation slot,
+		 * which is all `setVaultImpl` does to it), the same script converges and surfaces
+		 * nothing.
+		 */
+		const {env, storage, owners, deploymentStore, executor, proxy} = await deployVaultBehindGovernedRegistry();
+
+		const firstRun = await catchUnknownSigner(env)(() => deployRegisteredVault(env, executor, 2));
+		expect(firstRun?.from).toBe(executor);
+
+		// ---- re-run while the proposal waits out its delay ---------------------
+		const {env: waitingEnv, provider: waitingProvider} = await runEnvironment({deploymentStore, storage, owners});
+		const whileWaiting = await catchUnknownSigner(waitingEnv)(() => deployRegisteredVault(waitingEnv, executor, 2));
+		expect(whileWaiting).toStrictEqual(firstRun);
+		expect(broadcastFrom(waitingProvider)).toEqual([]);
+
+		// ---- the executor runs the payload, out of band, after the delay ---------
+		storage.setAddress(proxy, IMPLEMENTATION_SLOT, env.get(`${REGISTERED_PROXY}_Implementation`).address);
+
+		// ---- re-run after governance acted --------------------------------------
+		const {env: doneEnv, provider: doneProvider} = await runEnvironment({deploymentStore, storage, owners});
+		const afterwards = await catchUnknownSigner(doneEnv)(() => deployRegisteredVault(doneEnv, executor, 2));
+		expect(afterwards).toBeNull();
+		expect(broadcastFrom(doneProvider)).toEqual([]);
+		expect(doneEnv.get(REGISTERED_PROXY).address).toBe(proxy);
+	});
+
+	it('persists no unsigned transaction between the runs', async () => {
+		/**
+		 * The same invariant as story 7, for the governance shape: nothing records that a
+		 * proposal is owed. The files after the upgrade run are the deployment records that
+		 * exist anyway, and the re-run after governance acted adds none. What tells the re-run
+		 * the work is done is the proxy's implementation slot, on chain.
+		 */
+		const {env, storage, owners, deploymentStore, executor, proxy} = await deployVaultBehindGovernedRegistry();
+
+		const filesBefore = await storedFiles(deploymentStore, env);
+
+		await catchUnknownSigner(env)(() => deployRegisteredVault(env, executor, 2));
+
+		const filesAfterRun1 = await storedFiles(deploymentStore, env);
+		expect(filesBefore).toEqual([
+			'.chain',
+			`${ADDRESSES_REGISTRY}.json`,
+			'GovernanceController.json',
+			'GovernanceExecutor.json',
+			`${REGISTERED_PROXY}.json`,
+			`${REGISTERED_PROXY}_Implementation.json`,
+			`${REGISTERED_PROXY}_Proxy.json`,
+		]);
+		expect(filesAfterRun1).toEqual(filesBefore);
+		expect(filesAfterRun1.some((name) => /unsigned|to-?execute|deferred|pending|proposal/i.test(name))).toBe(false);
+
+		storage.setAddress(proxy, IMPLEMENTATION_SLOT, env.get(`${REGISTERED_PROXY}_Implementation`).address);
+		const {env: reRunEnv} = await runEnvironment({deploymentStore, storage, owners});
+		await catchUnknownSigner(reRunEnv)(() => deployRegisteredVault(reRunEnv, executor, 2));
+
+		expect(await storedFiles(deploymentStore, reRunEnv)).toEqual(filesAfterRun1);
+	});
+});

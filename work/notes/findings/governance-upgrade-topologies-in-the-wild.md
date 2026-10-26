@@ -1,7 +1,7 @@
 ---
 title: 'Governance upgrade topologies in the wild (Aave V3 and V4), and what they mean for the unknown-signer seam'
 slug: governance-upgrade-topologies-in-the-wild
-source: 'read directly from aave-dao/aave-v3-origin@main, aave/aave-v3-deploy@main and aave/aave-v4@main via raw.githubusercontent.com / the GitHub contents API, plus OpenZeppelin/openzeppelin-contracts@master `governance/TimelockController.sol` (header says last updated v5.6.0), 2026-08-18. Every claim below cites the file it came from.'
+source: 'read directly from aave-dao/aave-v3-origin@main, aave/aave-v3-deploy@main and aave/aave-v4@main via raw.githubusercontent.com / the GitHub contents API, plus OpenZeppelin/openzeppelin-contracts@master `governance/TimelockController.sol` (header says last updated v5.6.0), 2026-08-18. Every claim below cites the file it came from. The 2026-10-26 update is measured instead: eth_call against Ethereum mainnet (publicnode) with the cast commands it lists.'
 ---
 
 # Who actually holds the upgrade right, in real protocols
@@ -87,3 +87,22 @@ The five open questions on the original spec, in order:
 3. Batching: out of scope in the spec that asked it, so the answer could not have changed anything there.
 4. Init/migration ordering: answered by `_updateImpl` for Aave V3 (bundled into `upgradeToAndCall`). Generally, when a follow-up call has the same unsignable `from`, it defers too, so the operator receives an ORDERED list. That is a property of the design, derivable without asking.
 5. Reference scripts: obtained, read, and cited above.
+
+## Update 2026-10-26: who holds the Aave V3 upgrade right on Ethereum mainnet
+
+Measured, not read from source: `eth_call` against `https://ethereum-rpc.publicnode.com` on 2026-10-26, with foundry's `cast` (commands below, re-runnable). It settles, for Aave V3 on Ethereum, the "NOT established" question above about who owns the admin in production.
+
+- The V3 `PoolAddressesProvider` (`0x2f39d218133AFaB8F2B819B1066c7E434Ad94E9e`, the admin of the market's proxies, see the Aave V3 section) has `owner()` = `0x5300A1a15135EA4dc7aD5a167152C01EFc9b192A`, a contract (1808 bytes of code) that is not a Safe (`getThreshold()` reverts).
+- That contract's `owner()` is `0xdAbad81aF85554E9ae636395611C58F7eC1aAEc5`, also a contract and not a Safe. It answers the Aave Governance v3 `PayloadsController` interface: `getPayloadsCount()` = 478, `MIN_EXECUTION_DELAY()` = 86400 (one day), `GRACE_PERIOD()` = 604800, `EXPIRATION_DELAY()` = 3024000, and `getExecutorSettingsByAccessControl(1)` returns `(0x5300A1…192A, 86400)`, which identifies the first contract as its level-1 executor with a one-day delay.
+
+So the upgrade right sits with a governance EXECUTOR that acts only when a payload, queued through governance, has waited out its delay. In the table above, the Aave V3 row therefore resolves to "a contract", not "an EOA/Safe": rocketh surfaces `{from: <executor>, to: <PoolAddressesProvider>, data}`, which no one can send as written. Its `{to, data}` IS, however, exactly the call the executor has to make, and that is what a governance payload carries, so the surfaced transaction is the right CONTENT for the governance process, delivered with a `from` that reads like an instruction. This is not the OZ `TimelockController` row (no `schedule` / `execute` pair to construct), so a timelock route would not cover it either.
+
+```sh
+R=https://ethereum-rpc.publicnode.com
+cast call --rpc-url $R 0x2f39d218133AFaB8F2B819B1066c7E434Ad94E9e 'owner()(address)'
+cast call --rpc-url $R 0x5300A1a15135EA4dc7aD5a167152C01EFc9b192A 'owner()(address)'
+cast call --rpc-url $R 0xdAbad81aF85554E9ae636395611C58F7eC1aAEc5 'getExecutorSettingsByAccessControl(uint8)(address,uint40)' 1
+cast call --rpc-url $R 0xdAbad81aF85554E9ae636395611C58F7eC1aAEc5 'MIN_EXECUTION_DELAY()(uint40)'
+```
+
+Still not established: the same chain on the other networks Aave V3 is deployed to, and Aave V4's production owners.
