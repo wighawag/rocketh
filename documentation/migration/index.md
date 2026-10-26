@@ -278,7 +278,7 @@ Every member of v1's `hre.deployments` (plus the other HRE additions), and where
 
 ## Diamonds {#diamonds}
 
-`diamond.deploy` is `diamond` from `@rocketh/diamond`. `facets` are artifact objects rather than names; `facetsArgs`, `excludeSelectors`, `defaultCutFacet`, `defaultOwnershipFacet`, `owner`, `execute`, `deterministicSalt`, `diamondContractArgs`, `libraries` and `linkedData` carry over. `execute` still rides every cut, as in v1, and there is no `{init, onUpgrade}` split for diamonds. Not supported: `diamondContract` (replacing the base diamond artifact), cutting a diamond deployed by an older hardhat-deploy through its legacy base, and `upgradeIndex` (unlike `deployViaProxy`, `diamond` has no ordered-upgrade guard; gate a later cut on chain state in your script instead).
+`diamond.deploy` is `diamond` from `@rocketh/diamond`. `facets` are artifact objects rather than names; `facetsArgs`, `excludeSelectors`, `defaultCutFacet`, `defaultOwnershipFacet`, `owner`, `execute`, `deterministicSalt`, `diamondContractArgs`, `libraries` and `linkedData` carry over. `execute` still rides every cut, as in v1: a single call runs on the first deploy and on every later cut that changes something, and `execute: {init, onUpgrade}` splits it, as for proxies (`init` on the first deploy only, `onUpgrade` on a later changing cut only). Each call is `{type: 'facet' | 'artifact', ...}` rather than a method name. Not supported: `diamondContract` (replacing the base diamond artifact), cutting a diamond deployed by an older hardhat-deploy through its legacy base, and `upgradeIndex` (unlike `deployViaProxy`, `diamond` has no ordered-upgrade guard; gate a later cut on chain state in your script instead).
 
 ## Tags, dependencies, run-once scripts
 
