@@ -1,5 +1,25 @@
 # @rocketh/router
 
+## 0.20.0
+
+### Minor Changes
+
+- 77d4f02: Require `eip-1193@^0.7.1`, a breaking release of the EIP-1193 types, and move to the renamed helpers `@eip-1193/jsonrpc-provider@^0.5.0` (was `eip-1193-jsonrpc-provider`) and `@eip-1193/signer@^0.4.0` (was `eip-1193-signer`).
+
+  Provider types: every slot that takes a provider (`ExecutionParams.provider`, a chain config's `provider`, a `remote` signer, `BaseProvider`) and `env.network.provider` are now `EIP1193CoreProvider` instead of `EIP1193ProviderWithoutEvents`. Since eip-1193 0.7.0 the latter means the browser-wallet surface, so it rejected a provider typed as `EIP1193NodeProvider` or `EIP1193HttpNodeProvider` although rocketh never calls a wallet-only method. `EIP1193CoreProvider` is the set every provider serves, so a wallet, a node and an HTTP node provider are all accepted. In exchange, `env.network.provider` no longer advertises `wallet_*` methods or `eth_subscribe`: rocketh may be running against a node or over plain HTTP, where neither exists.
+
+  What can break in your own code: the provider types rocketh exposes (such as `env.network.provider`) come from `eip-1193`, and 0.7.0 removed the `request()` catch-all overload. A call to a method that is not in the provider's method table, such as `evm_mine` or `hardhat_impersonateAccount`, used to compile silently and is now a type error; type the call against an extended table (`RequestRPC<CoreMethods & {evm_mine: {params: []; result: string}}>`), or for a genuinely dynamic call cast with `provider as unknown as EIP1193GenericRequestProvider`. `EIP1193FeeHistory.reward` is now optional and `gasUsedRatio` is `number[]`.
+
+  Fixed: the gas-price estimate no longer crashes when `eth_feeHistory` omits `reward`, which a node does for an empty `rewardPercentiles` list. It now returns no estimates for no percentiles, and names the missing field otherwise.
+
+### Patch Changes
+
+- Updated dependencies [77d4f02]
+- Updated dependencies [73cb641]
+- Updated dependencies [5cc0bbd]
+  - @rocketh/core@0.24.0
+  - @rocketh/deploy@0.22.0
+
 ## 0.19.28
 
 ### Patch Changes

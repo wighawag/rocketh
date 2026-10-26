@@ -1,5 +1,19 @@
 # hardhat-deploy
 
+## 2.1.0
+
+### Minor Changes
+
+- 5cc0bbd: Run-wide fee defaults: `--gas-price`, `--max-fee-per-gas` and `--max-priority-fee-per-gas` (in wei) on the `rocketh` CLI (which also accepts hardhat-deploy v1's `--gasprice`, `--maxfee`, `--priorityfee`) and on `hardhat deploy`, or `gasPrice` / `maxFeePerGas` / `maxPriorityFeePerGas` on `ExecutionParams`. They apply to every transaction whose call states no fee option of its own (deploy, execute, tx, and the deterministic-factory bootstrap); a run-level `gasPrice` sends legacy transactions on any chain, the EIP-1559 values send EIP-1559 even on a chain declared legacy. A run-level `gasPrice` together with an EIP-1559 value, or a value that is not a non-negative integer, is refused at startup. A run that sets none sends exactly what it sent before.
+
+### Patch Changes
+
+- Updated dependencies [77d4f02]
+- Updated dependencies [73cb641]
+- Updated dependencies [5cc0bbd]
+  - rocketh@0.24.0
+  - @rocketh/node@0.22.0
+
 ## 2.0.30
 
 ### Patch Changes
