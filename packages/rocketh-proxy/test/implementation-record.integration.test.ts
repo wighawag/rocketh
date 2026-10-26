@@ -266,6 +266,7 @@ describe('@rocketh/proxy - a record written before the field existed', () => {
 		const upgraded = await deployVault(env, 2, {upgradeIndex: 1});
 
 		const v2 = env.get('Vault_Implementation').address;
+		expect(v2).not.toBe(v1);
 		expect(upgraded.implementation).toBe(v2);
 		expect(provider.getRequests().filter((r) => r.method === 'eth_sendTransaction').length).toBeGreaterThan(0);
 	});
