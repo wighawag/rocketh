@@ -83,12 +83,13 @@
  *   unsignable and `catchUnknownSigner` hands it back. The branch is the signability check.
  * - v1 found the Upgrader by reading the proxy's EIP-1967 admin slot. rocketh takes it by
  *   NAME and refuses to upgrade when the slot disagrees
- *   (`packages/rocketh-proxy/src/index.ts:604-611`), which is the same check made loudly.
+ *   (`packages/rocketh-proxy/src/index.ts:613-619`), which is the same check made loudly.
  * - `hre.poolConfig` / `hre.multisigNonce` become `env.extra`, the run parameter a wrapper
  *   passes to `loadAndExecuteDeploymentsFromFiles({..., extra})`
  *   (`ExecutionParams.extra`, `packages/rocketh-core/src/types.ts`).
  * - `deployFunction.id = 'upgrade-pool'; return true` is NOT ported. v1 checks `func.id`
- *   BEFORE running a script (hardhat-deploy v1 `src/DeploymentsManager.ts:1186`), and this id
+ *   BEFORE running a script (hardhat-deploy `src/DeploymentsManager.ts:1186` at v1.0.4, `:1193`
+ *   at v0.11.21, which Vesper pins), and this id
  *   is only assigned DURING the run, so in a fresh process v1 never skipped the script on it;
  *   it only wrote `.migrations.json`. A rocketh `id` is static, and `return true` after a
  *   deferred upgrade would record the script as done with the upgrade still owed
@@ -413,6 +414,10 @@ describe('ported: Vesper pool upgrade (Upgrader owner read on chain, one MultiSe
 
 			await upgradePool((safe, txs, nonce) => proposals.push({safe, txs, nonce}))(env);
 
+			// Faithful to v1: `deploy-vpool.js` constructs the pool implementation with 'Vesper pool'
+			//  and `upgrade-pool.js` with 'Vesper Pool', so the pool's implementation changes on the first
+			//  upgrade even without a source change. The accountant (no constructor arguments) is the
+			//  step that only the recompile drives.
 			const accountant = before.get('PoolAccountant').address;
 			const pool = before.get('VETH').address;
 			expect(proposals).toStrictEqual([
@@ -504,9 +509,9 @@ describe('ported: Vesper pool upgrade (Upgrader owner read on chain, one MultiSe
 
 	it('v1 `skipIfAlreadyDeployed` on a PROXY deploy does not compile in rocketh, so the port cannot carry it by accident', () => {
 		/**
-		 * `ProxyDeployOptions` omits it (`packages/rocketh-proxy/src/index.ts:116-119`). In v1
-		 * the flag was handed to the IMPLEMENTATION deploy (hardhat-deploy v1 `src/helpers.ts:1211`,
-		 * honoured at `:868-870`), so a recorded implementation was never redeployed and no
+		 * `ProxyDeployOptions` omits it (`packages/rocketh-proxy/src/index.ts:121-124`). In v1
+		 * the flag was handed to the IMPLEMENTATION deploy (hardhat-deploy v1.0.4 `src/helpers.ts:1211`,
+		 * honoured at `:868-870`; the same in v0.11.21, which Vesper pins, at `:1283` and `:921-923`), so a recorded implementation was never redeployed and no
 		 * upgrade could follow. "Never upgrade once deployed" is what `upgradeIndex: 0` says.
 		 */
 		const v1Options: ProxyDeployOptions = {

@@ -7,8 +7,9 @@
  * `license`, so no code is copied here. The port below is written FRESH from the structure
  * of the files it cites; the v1 behaviour is described in prose, with file and line.
  *
- * WHY THIS SCRIPT. Odyssey uses hardhat-deploy v1.0.4 only for its records and its
- * `catchUnknownSigner`: every contract is deployed by its own helpers, through a
+ * WHY THIS SCRIPT. Odyssey uses hardhat-deploy v1.0.4 for its records, `read`, `execute`,
+ * `save`, `catchUnknownSigner`, and a plain `deploy` of the implementation behind each proxy.
+ * Every other contract, the proxies included, is deployed by its own helpers through a
  * PERMISSIONED CREATE3 factory (`Deployer3`, `src/utils/Deployer3.sol`, a contract owned by
  * the Safe that only whitelisted callers may use, itself deployed through CreateX with a
  * Safe-permissioned salt). Strategies are the clearest governance case: a strategy is an
@@ -32,7 +33,7 @@
  *   `@safe-global/api-kit`, or on `hardhat`/`localhost` executes it from the impersonated
  *   Safe (`helpers/safe.ts:52-65, 76-125`).
  * - The one-contract deploy (`_deploy3One`, `helpers/deploy3.ts:151-208`) reuses a record whose
- *   creation code is unchanged, refuses a salt already used ("You need to Update the nonce"),
+ *   creation code is unchanged, refuses a salt that already holds a contract (asking for the nonce to be bumped),
  *   and otherwise calls `Deployer3.deploy(salt, initCode)` from the deployer and saves the
  *   record itself.
  *
@@ -171,14 +172,15 @@ const artifacts = {
 };
 
 // ============================================================================
-// The ported helpers (written fresh, from `helpers/deploy-helpers.ts`, `helpers/deploy3.ts`)
+// The ported helpers (written fresh, with this repo's own names and messages, from the
+// structure of `helpers/deploy-helpers.ts` and `helpers/deploy3.ts`)
 // ============================================================================
 
-const CREATE3_SALT_PREFIX = 'finance.odyssey';
-const POSITION_REGISTRY = 'PositionRegistry';
+const SALT_PREFIX = 'finance.odyssey';
+const REGISTRY = 'PositionRegistry';
 
 /** Deploy one contract through the Safe-gated `Deployer3`, recording it like any deployment. */
-async function deploy3One(
+async function deployThroughFactory(
 	env: ScriptEnvironment,
 	{
 		alias,
@@ -202,7 +204,7 @@ async function deploy3One(
 	const code = await network.provider.request({method: 'eth_getCode', params: [address, 'latest']});
 	if ((existing && existing.address.toLowerCase() === address.toLowerCase()) || code !== '0x') {
 		throw Error(
-			`${alias} deployment: The salt '${salt}' was already used (${address}). You need to Update the nonce for this contract in order to upgrade it.`,
+			`${alias}: salt ${salt} already holds a contract at ${address}; bump this contract's nonce to deploy a new version`,
 		);
 	}
 
@@ -211,8 +213,8 @@ async function deploy3One(
 	return {...deployment, newlyDeployed: true};
 }
 
-/** `deployAndConfigureStrategy` (`helpers/deploy-helpers.ts:59-119`), ported. */
-async function deployAndConfigureStrategy(
+/** Odyssey's `deployAndConfigureStrategy` (`helpers/deploy-helpers.ts:59-119`), ported. */
+async function registerStrategy(
 	env: ScriptEnvironment,
 	batch: CaughtUnknownSignerTransaction[],
 	{
@@ -230,59 +232,57 @@ async function deployAndConfigureStrategy(
 	},
 ) {
 	const {get, getOrNull, read, execute} = env;
-	const registry = get<typeof POSITION_REGISTRY_ABI>(POSITION_REGISTRY);
+	const registry = get<typeof POSITION_REGISTRY_ABI>(REGISTRY);
 	// `from` is whoever owns the registry ON CHAIN, not a named account
 	const from = (await read(registry, {functionName: 'owner'})) as `0x${string}`;
 
-	const currentImplAddress = getOrNull(contractName)?.address;
-	const currentFeePolicyAddress = get(feePolicy.currentAlias).address;
+	const recordedStrategy = getOrNull(contractName)?.address;
+	const feePolicyAddress = get(feePolicy.currentAlias).address;
 
-	const {address: implAddress} = await deploy3One(env, {
+	const {address: deployedStrategy} = await deployThroughFactory(env, {
 		alias: contractName,
 		artifact,
 		args: constructorArgs,
-		salt: `${CREATE3_SALT_PREFIX}.${contractName}V${nonce}`,
+		salt: `${SALT_PREFIX}.${contractName}V${nonce}`,
 	});
 
-	if (currentImplAddress == null) {
-		await executeOrStoreTxIfMultisig(env, batch, () =>
-			execute(registry, {account: from, functionName: 'addStrategy', args: [implAddress, currentFeePolicyAddress]}),
+	if (recordedStrategy == null) {
+		await deferToSafeIfUnsignable(env, batch, () =>
+			execute(registry, {account: from, functionName: 'addStrategy', args: [deployedStrategy, feePolicyAddress]}),
 		);
 		return;
 	}
 
 	const strategyId = await read(registry, {
 		functionName: 'getStrategyId',
-		args: [currentImplAddress, currentFeePolicyAddress],
+		args: [recordedStrategy, feePolicyAddress],
 	});
 	if (strategyId == 0n) {
-		throw Error(
-			`Couldn't find the strategyId, please check if the 'feePolicy.currentAlias' parameter matches with what's setup on-chain`,
-		);
+		throw Error(`no strategy registered for ${contractName} with fee policy ${feePolicy.currentAlias}`);
 	}
 
-	if (implAddress !== currentImplAddress) {
-		await executeOrStoreTxIfMultisig(env, batch, () =>
-			execute(registry, {account: from, functionName: 'updateImplementation', args: [strategyId, implAddress]}),
+	if (deployedStrategy !== recordedStrategy) {
+		await deferToSafeIfUnsignable(env, batch, () =>
+			execute(registry, {account: from, functionName: 'updateImplementation', args: [strategyId, deployedStrategy]}),
 		);
 	}
 }
 
-/** `executeOrStoreTxIfMultisig` (`helpers/deploy-helpers.ts:121-136`), ported. */
-async function executeOrStoreTxIfMultisig(
+/** Odyssey's `executeOrStoreTxIfMultisig` (`helpers/deploy-helpers.ts:121-136`), ported. */
+async function deferToSafeIfUnsignable(
 	env: ScriptEnvironment,
 	batch: CaughtUnknownSignerTransaction[],
-	executeFunction: () => Promise<unknown>,
+	action: () => Promise<unknown>,
 ) {
-	const multisigTx = await env.catchUnknownSigner(executeFunction, {log: true});
-	if (multisigTx) batch.push(multisigTx);
+	const deferred = await env.catchUnknownSigner(action, {log: true});
+	if (deferred) batch.push(deferred);
 }
 
 /** `deploy/optimism/strategies/01_aave_v3_borrow_strategy.ts`, ported. */
 function aaveV3BorrowStrategy(batch: CaughtUnknownSignerTransaction[], nonce = 10) {
 	return deployScript(async (env) => {
 		const {address: aaveV3Address} = env.get('AaveV3');
-		await deployAndConfigureStrategy(env, batch, {
+		await registerStrategy(env, batch, {
 			contractName: 'AaveV3BorrowStrategy',
 			artifact: artifacts.AaveV3BorrowStrategy,
 			constructorArgs: [aaveV3Address],
@@ -358,7 +358,7 @@ async function afterCoreAndComponents(): Promise<World> {
 	const record = (name: string, artifact: Artifact, address: string) =>
 		env.save(name, {...artifact, address: address as `0x${string}`, argsData: '0x'});
 	await record('Deployer3', artifacts.Deployer3, ADDRESSES.Deployer3);
-	await record(POSITION_REGISTRY, artifacts.PositionRegistry, ADDRESSES.PositionRegistry);
+	await record(REGISTRY, artifacts.PositionRegistry, ADDRESSES.PositionRegistry);
 	await record('AaveV3', artifacts.AaveV3, ADDRESSES.AaveV3);
 	await record(
 		'PerformanceFeePolicy_1000_0_0',
@@ -463,7 +463,7 @@ describe('ported: Odyssey strategy deployment (Safe-gated create3 factory, regis
 		artifacts.AaveV3BorrowStrategy = withCode('AaveV3BorrowStrategy', STRATEGY_ABI, 'd5');
 		try {
 			const {env, provider} = await run(world, OPTIMISM);
-			await expect(aaveV3BorrowStrategy([], 10)(env)).rejects.toThrow('You need to Update the nonce');
+			await expect(aaveV3BorrowStrategy([], 10)(env)).rejects.toThrow("bump this contract's nonce");
 			expect(sent(provider)).toEqual([]);
 		} finally {
 			artifacts.AaveV3BorrowStrategy = original;
@@ -538,7 +538,7 @@ function registryViaV5Proxy(
 		const {owner, deployer} = namedAccounts as {owner: `0x${string}`; deployer: `0x${string}`};
 		out.deferred = await catchUnknownSigner(() =>
 			deployViaProxy(
-				POSITION_REGISTRY,
+				REGISTRY,
 				{account: deployer, artifact, args: []},
 				{
 					owner,
@@ -558,8 +558,8 @@ function registryViaV5Proxy(
 async function deployV5Proxy(world: World) {
 	const {env} = await run(world, OPTIMISM);
 	await registryViaV5Proxy(v5.PositionRegistry, {})(env);
-	const proxy = env.get(`${POSITION_REGISTRY}_Proxy`).address;
-	world.chain.setAddress(proxy, IMPLEMENTATION_SLOT, env.get(`${POSITION_REGISTRY}_Implementation`).address);
+	const proxy = env.get(`${REGISTRY}_Proxy`).address;
+	world.chain.setAddress(proxy, IMPLEMENTATION_SLOT, env.get(`${REGISTRY}_Implementation`).address);
 	// the v5 constructor: `_admin = address(new ProxyAdmin(initialOwner))`
 	world.chain.setAddress(proxy, ADMIN_SLOT, CREATED_PROXY_ADMIN);
 	return {env, proxy};
@@ -569,7 +569,7 @@ describe('PIN: an OpenZeppelin 5 transparent proxy (Odyssey `helpers/deploy3.ts:
 	it('PIN: deploys, but REFUSES the upgrade, because the admin slot holds the proxy-created ProxyAdmin, not the owner', async () => {
 		/**
 		 * `deployViaProxy` with `{type: 'custom'}` and no admin contract compares the EIP-1967
-		 * admin slot with the OWNER (`packages/rocketh-proxy/src/index.ts:604-611`). An
+		 * admin slot with the OWNER (`packages/rocketh-proxy/src/index.ts:613-619`). An
 		 * OpenZeppelin 5 proxy put a fresh ProxyAdmin there, so the upgrade throws. This is the
 		 * gap staged as `work/tasks/backlog/openzeppelin-5-transparent-proxy-kind.md`.
 		 */
@@ -592,7 +592,7 @@ describe('PIN: an OpenZeppelin 5 transparent proxy (Odyssey `helpers/deploy3.ts:
 		 */
 		const world = createWorld(v5Chain());
 		const first = await deployV5Proxy(world);
-		await first.env.save(`${POSITION_REGISTRY}_ProxyAdmin`, {
+		await first.env.save(`${REGISTRY}_ProxyAdmin`, {
 			...v5.ProxyAdmin,
 			address: CREATED_PROXY_ADMIN,
 			argsData: '0x',
@@ -600,7 +600,7 @@ describe('PIN: an OpenZeppelin 5 transparent proxy (Odyssey `helpers/deploy3.ts:
 
 		const {env} = await run(world, OPTIMISM);
 		const out: {deferred?: CaughtUnknownSignerTransaction | null} = {};
-		await registryViaV5Proxy(v5.PositionRegistryV2, out, `${POSITION_REGISTRY}_ProxyAdmin`)(env);
+		await registryViaV5Proxy(v5.PositionRegistryV2, out, `${REGISTRY}_ProxyAdmin`)(env);
 
 		expect(out.deferred).toStrictEqual({
 			from: SAFE,
@@ -610,7 +610,7 @@ describe('PIN: an OpenZeppelin 5 transparent proxy (Odyssey `helpers/deploy3.ts:
 			data: encodeFunctionData({
 				abi: PROXY_ADMIN_V5_ABI,
 				functionName: 'upgradeAndCall',
-				args: [first.proxy, env.get(`${POSITION_REGISTRY}_Implementation`).address, '0x'],
+				args: [first.proxy, env.get(`${REGISTRY}_Implementation`).address, '0x'],
 			}),
 		});
 	});

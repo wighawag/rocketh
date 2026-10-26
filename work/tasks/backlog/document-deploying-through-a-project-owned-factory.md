@@ -9,9 +9,9 @@ covers: []
 
 rocketh's `deterministic` option drives only factories of rocketh's own designs. The `deterministicDeployment` chain config can point it at another INSTANCE (factory address, bytecode, salt, deployment transaction), but the calldata and the address formula are code: `salt ++ creationCode` for create2, and `deployDeterministic(bytes,bytes32)` with a deployer-namespaced salt, from a factory that itself sits at its create2 address, for create3. A project whose contracts live at addresses derived by ANOTHER factory (CreateX, or a Safe-gated create3 such as the `Deployer3` one protocol uses) cannot express that through `deterministic`, and needs to keep doing what it did under hardhat-deploy v1: call its factory and record the deployment itself.
 
-That works today and is pinned by `packages/rocketh-unknown-signer/test/ported-protocols/odyssey.integration.test.ts` (`deploy3One`): compute the address with a `read` on the factory, refuse a salt already used, `execute` the factory's deploy call, `save` the record with the artifact, the address and the encoded constructor arguments, and reuse the record when the creation code is unchanged. Write that recipe down, and say plainly what `deterministic` does and does not cover, so a migrating team neither assumes config can describe their factory nor gives up on rocketh because it cannot.
+That works today and is pinned by `packages/rocketh-unknown-signer/test/ported-protocols/odyssey.integration.test.ts` (`deployThroughFactory`): compute the address with a `read` on the factory, refuse a salt already used, `execute` the factory's deploy call, `save` the record with the artifact, the address and the encoded constructor arguments, and reuse the record when the creation code is unchanged. Write that recipe down, and say plainly what `deterministic` does and does not cover, so a migrating team neither assumes config can describe their factory nor gives up on rocketh because it cannot.
 
-Decided not to build: a pluggable factory adapter behind `deterministic` (finding's open question 2). The docs say this is a recipe by design for now.
+This builds the suggested default of the finding's open question 2 (a documented recipe, no factory adapter behind `deterministic`); if the answer to that question becomes a factory adapter, cancel this task.
 
 ## Acceptance criteria
 
@@ -30,7 +30,7 @@ Decided not to build: a pluggable factory adapter behind `deterministic` (findin
 >
 > FIRST, check this task against current reality: open `packages/rocketh-deploy/src/index.ts` (the create2 and create3 derivations and `getCreate3Factory`) and `packages/rocketh-core/src/types.ts` (`Create2DeterministicDeploymentInfo`, `Create3DeterministicDeploymentInfo`) and confirm the claims about what config can and cannot change. If `deterministic` has grown a way to describe another factory, route to needs-attention.
 >
-> The tested recipe is `deploy3One` in `packages/rocketh-unknown-signer/test/ported-protocols/odyssey.integration.test.ts`; the real-world shape is in `work/notes/findings/v1-protocol-deploy-and-governance-patterns.md` (Odyssey). That project's repository has no licence, so do not copy from it; the test's code is this repo's own. Read ADR 0015 for what a deployment record must carry.
+> The tested recipe is `deployThroughFactory` in `packages/rocketh-unknown-signer/test/ported-protocols/odyssey.integration.test.ts`; the real-world shape is in `work/notes/findings/v1-protocol-deploy-and-governance-patterns.md` (Odyssey). That project's repository has no licence, so do not copy from it; the test's code is this repo's own. Read ADR 0015 for what a deployment record must carry.
 >
 > Style: single-line paragraphs, no em dashes. Do not name who reported the pattern.
 >

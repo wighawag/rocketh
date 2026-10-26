@@ -105,7 +105,7 @@
  *   second deploy finds code there and records it without broadcasting
  *   (`packages/rocketh-deploy/src/index.ts:771-791`). Pinned below.
  * - The `usesManyProxies` re-check is DROPPED. rocketh decides an upgrade per proxy, from that
- *   proxy's own EIP-1967 implementation slot (`packages/rocketh-proxy/src/index.ts:556-563`),
+ *   proxy's own EIP-1967 implementation slot (`packages/rocketh-proxy/src/index.ts:564-572`),
  *   so every proxy sharing the implementation is upgraded through its admin. Pinned below.
  * - `hre.network.name == 'hardhat' ? deployer : GOVERNOR` becomes a per-network named
  *   account, `governor: {default: 'deployer', mainnet: <the Safe>}`.
@@ -121,7 +121,8 @@
  *   calls execute in place and nothing is deferred; the last test pins that.
  *
  * ---------------------------------------------------------------------------------------
- * The v1 excerpts above are from Metronome Synth, used under its licence:
+ * The v1 excerpts above, and the error messages the ported helpers below reuse, are from
+ * Metronome Synth, used under its licence:
  *
  * MIT License
  *
@@ -569,6 +570,13 @@ describe('ported: Metronome Synth debt tokens (Safe-owned Upgrader, shared imple
 		]);
 		expect(proposals).toStrictEqual([batch]);
 		expect(sent(provider).every((tx) => tx.from === DEPLOYER)).toBe(true);
+		// the sender of `addDebtToken` came from Pool1's `governor()`, read on chain, as in v1
+		const governorReads = provider
+			.getRequests()
+			.filter((r) => r.method === 'eth_call')
+			.map((r) => r.params?.[0] as {to?: string; data?: string})
+			.filter((c) => c.to?.toLowerCase() === ADDRESSES.Pool1 && c.data === toFunctionSelector('governor()'));
+		expect(governorReads.length).toBeGreaterThan(0);
 	});
 
 	it("run 1: v1's `implementationName` sharing is kept: both debt tokens run ONE implementation", async () => {
@@ -654,7 +662,7 @@ describe('ported: Metronome Synth debt tokens (Safe-owned Upgrader, shared imple
 		}
 	});
 
-	it('the fork rehearsal: with the Safe named and impersonated, the governor calls EXECUTE and nothing is batched', async () => {
+	it('impersonation, as a fork rehearsal gets it: with the Safe named and impersonated, the governor calls EXECUTE and nothing is batched', async () => {
 		/**
 		 * v1 on `localhost` executed the batch at the end from the impersonated Safe
 		 * (`deploy/helpers/safe.ts:28-36`). A rocketh fork run impersonates the named Safe at

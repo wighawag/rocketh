@@ -15,9 +15,9 @@ Make ONE `deployViaProxy` call, with the same options on every run, deploy such 
 
 - On the first deploy, pass the owner to the constructor (as today), then read the admin slot and record the created ProxyAdmin as a deployment (the natural name is `<name>_ProxyAdmin`, matching what projects already record by hand), so later runs and other tools can address it.
 - On an upgrade, treat that recorded ProxyAdmin as the admin contract: check its `owner()` against `owner` exactly as for a shared admin (same refusals), check the slot still points at it, and send `upgradeAndCall(proxy, implementation, data)` from its owner (`data` is the `execute` / `onUpgrade` calldata or `0x`). An unsignable owner must reach the unknown-signer seam like every other upgrade, so `catchUnknownSigner` defers it.
-- The user supplies the proxy artifact (no vendoring: see the question below). How the option is spelled (a flag on `{type: 'custom'}`, or a new `type`) is the builder's call; record it in `## Decisions`.
+- The user supplies the proxy artifact (no vendoring, see Out of scope). How the option is spelled (a flag on `{type: 'custom'}`, or a new `type`) is the builder's call; record it in `## Decisions`.
 
-Out of scope: making OpenZeppelin 5's proxy a BUILT-IN kind with a vendored artifact. Whether to vendor is a product question raised in the finding ("Open questions", 1), with the suggested default "not until asked".
+Out of scope: making OpenZeppelin 5's proxy a BUILT-IN kind with a vendored artifact. That is the finding's open question 1, whose suggested default is to build this custom-artifact support first; native support (new sources in `packages/rocketh-proxy/scripts/generate-artifacts.ts`, a built-in name, an ADR 0003 amendment) is a later step.
 
 ## Acceptance criteria
 
