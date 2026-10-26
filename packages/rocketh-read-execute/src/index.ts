@@ -330,6 +330,8 @@ export function execute(env: Environment): ExecuteFunction {
 			`execute "${String(viemArgs.functionName)}"`,
 			viemArgs as unknown as TransactionFeeOptions,
 			env.network.transactionType,
+			// the run-level fee defaults (`--gas-price` and co.), used only when this call states none
+			env.network,
 		);
 
 		// The guard is evaluated BEFORE anything is built. A satisfied guard therefore costs one
@@ -440,7 +442,12 @@ export function executeByName(env: Environment): ExecuteFunctionByName {
 export function tx(env: Environment): TxFunction {
 	return async (txData: TransactionData, options?: {message?: string}) => {
 		const {account, ...viemArgs} = txData;
-		const fees = resolveTransactionFees('tx', viemArgs as TransactionFeeOptions, env.network.transactionType);
+		const fees = resolveTransactionFees(
+			'tx',
+			viemArgs as TransactionFeeOptions,
+			env.network.transactionType,
+			env.network,
+		);
 		const address = env.resolveAccount(account);
 
 		const txParam = {

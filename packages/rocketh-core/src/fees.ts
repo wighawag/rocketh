@@ -35,12 +35,26 @@ function toQuantity(value: bigint): `0x${string}` {
 }
 
 /**
- * Decide the type and fee fields of a transaction rocketh builds, from the call's options and the
- * chain's `transactionType`, or throw naming the conflict.
+ * Decide the type and fee fields of a transaction rocketh builds, from the call's options, the
+ * run-level fee defaults and the chain's `transactionType`, or throw naming the conflict.
  *
- * The call decides when it says anything: `gasPrice` or `type: 'legacy'` makes a legacy (type 0)
- * transaction, an EIP-1559 fee field or `type: 'eip1559'` an EIP-1559 (type 2) one. Only a call
- * that says nothing takes the chain's default, and an absent default is `'eip1559'`.
+ * Precedence, highest first:
+ *
+ * 1. The call decides when it says anything: `gasPrice` or `type: 'legacy'` makes a legacy
+ *    (type 0) transaction, an EIP-1559 fee field or `type: 'eip1559'` an EIP-1559 (type 2) one.
+ *    A call stating ANY of `type`, `gasPrice`, `maxFeePerGas` or `maxPriorityFeePerGas` decides
+ *    its WHOLE fee set: none of the run-level values is merged into it.
+ * 2. Otherwise the run-level values (`runFees`, from `ExecutionParams` / `--gas-price`,
+ *    `--max-fee-per-gas`, `--max-priority-fee-per-gas`) apply exactly as if the call had passed
+ *    them: a run-level `gasPrice` makes a legacy transaction on any chain, a run-level EIP-1559
+ *    value an EIP-1559 one even on a chain declared legacy.
+ * 3. Only a call that says nothing, in a run that set nothing, takes the chain's default, and an
+ *    absent default is `'eip1559'`.
+ *
+ * The run-level values are validated once, at startup, by `resolveExecutionParams` in `rocketh`
+ * (a run-level `gasPrice` with an EIP-1559 value is refused there), so they never meet a
+ * contradiction here other than an `accessList` on a call that the run-level `gasPrice` makes
+ * legacy, which is refused like the same `accessList` next to a per-call `gasPrice`.
  *
  * Contradictions are REFUSED, never resolved one way or the other: `gasPrice` with an EIP-1559 fee
  * field or with `type: 'eip1559'`, an EIP-1559 fee field with `type: 'legacy'`, and an
@@ -54,9 +68,24 @@ function toQuantity(value: bigint): `0x${string}` {
  */
 export function resolveTransactionFees(
 	label: string,
-	options: TransactionFeeOptions,
+	callOptions: TransactionFeeOptions,
 	chainTransactionType: ChainTransactionType | undefined,
+	runFees?: Pick<TransactionFeeOptions, 'gasPrice' | 'maxFeePerGas' | 'maxPriorityFeePerGas'>,
 ): TransactionFees {
+	const callStatesFees =
+		callOptions.type !== undefined ||
+		callOptions.gasPrice !== undefined ||
+		callOptions.maxFeePerGas !== undefined ||
+		callOptions.maxPriorityFeePerGas !== undefined;
+	const runGasPrice = callStatesFees ? undefined : runFees?.gasPrice;
+	const options: TransactionFeeOptions = callStatesFees
+		? callOptions
+		: {
+				accessList: callOptions.accessList,
+				gasPrice: runFees?.gasPrice,
+				maxFeePerGas: runFees?.maxFeePerGas,
+				maxPriorityFeePerGas: runFees?.maxPriorityFeePerGas,
+			};
 	const {type, gasPrice, maxFeePerGas, maxPriorityFeePerGas, accessList} = options;
 
 	if (type !== undefined && type !== 'eip1559' && type !== 'legacy') {
@@ -94,7 +123,9 @@ export function resolveTransactionFees(
 	if (legacy) {
 		if (accessList !== undefined) {
 			throw new Error(
-				`${label}: "accessList" is not supported on a legacy (type 0) transaction, which cannot carry one. Remove it, or send an EIP-1559 transaction.`,
+				runGasPrice !== undefined
+					? `${label}: "accessList" is not supported on a legacy (type 0) transaction, which cannot carry one, and the run-level "gasPrice" makes this call legacy. Remove it, or give this call \`type: 'eip1559'\` (or its own EIP-1559 fees) so the run-level values do not apply to it.`
+					: `${label}: "accessList" is not supported on a legacy (type 0) transaction, which cannot carry one. Remove it, or send an EIP-1559 transaction.`,
 			);
 		}
 		return gasPrice !== undefined ? {type: '0x0', gasPrice: toQuantity(gasPrice)} : {type: '0x0'};

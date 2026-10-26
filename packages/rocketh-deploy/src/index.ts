@@ -629,6 +629,8 @@ export function deploy(env: Environment): <TAbi extends Abi>(
 				maxPriorityFeePerGas: args.maxPriorityFeePerGas,
 			},
 			env.network.transactionType,
+			// the run-level fee defaults (`--gas-price` and co.), used only when this call states none
+			env.network,
 		);
 		const skipIfAlreadyDeployed = options && 'skipIfAlreadyDeployed' in options && options.skipIfAlreadyDeployed;
 		const alwaysOverride = options && 'alwaysOverride' in options && options.alwaysOverride;

@@ -363,6 +363,9 @@ describe('the boundary cannot lie again', () => {
 			environment: true,
 			isFork: true,
 			writeTransactions: true,
+			gasPrice: true,
+			maxFeePerGas: true,
+			maxPriorityFeePerGas: true,
 		};
 
 		const declared = buildCLIProgram('0.0.0-test')

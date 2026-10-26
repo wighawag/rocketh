@@ -60,6 +60,34 @@ const hardhatPlugin: HardhatPlugin = {
 				name: 'reset',
 				description: 'if set, delete deployments first',
 			})
+			// RUN-LEVEL fee defaults, in wei, for every transaction whose call states no fee option.
+			//  Hardhat turns these names into `--gas-price`, `--max-fee-per-gas` and
+			//  `--max-priority-fee-per-gas`, the same spellings as the `rocketh` CLI. hardhat-deploy v1's
+			//  `--gasprice` / `--maxfee` / `--priorityfee` are NOT accepted: a hardhat task option has one
+			//  name (plus an optional one-letter `shortName`), and no alias. Read as strings and parsed
+			//  by `parseFeeOption` (`@rocketh/node`), because hardhat's BIGINT type has no
+			//  "absent" value and accepts more spellings than the rocketh CLI does.
+			.addOption({
+				name: 'gasPrice',
+				description:
+					'legacy gas price in wei for every transaction whose call sets no fee option: they are sent as legacy (type 0) transactions',
+				defaultValue: undefined,
+				type: ArgumentType.STRING_WITHOUT_DEFAULT,
+			})
+			.addOption({
+				name: 'maxFeePerGas',
+				description:
+					'EIP-1559 max fee per gas in wei for every transaction whose call sets no fee option (cannot be combined with --gas-price)',
+				defaultValue: undefined,
+				type: ArgumentType.STRING_WITHOUT_DEFAULT,
+			})
+			.addOption({
+				name: 'maxPriorityFeePerGas',
+				description:
+					'EIP-1559 max priority fee per gas in wei for every transaction whose call sets no fee option (cannot be combined with --gas-price)',
+				defaultValue: undefined,
+				type: ArgumentType.STRING_WITHOUT_DEFAULT,
+			})
 			.setAction(() => import('./tasks/deploy.js'))
 			.build(),
 	],
