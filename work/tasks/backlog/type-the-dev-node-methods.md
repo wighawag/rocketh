@@ -26,6 +26,7 @@ This is a library gap, so it is fixed upstream first, in `add-dev-node-method-gr
 - [ ] No `as any` remains around a dev-node `request()` call in `packages/*/src`.
 - [ ] A typo in a dev-node method name, or a wrong params shape, at one of those call sites is a compile error (demonstrate with a type test using `@ts-expect-error`).
 - [ ] `env.network.provider`'s public type is exactly what the open question decided, and a type test pins it.
+- [ ] The legacy-arm `chainId` casts in `@rocketh/deploy` and `@rocketh/read-execute` (and their comments) are gone, since the same eip-1193 release gives `EIP1193LegacyTransactionData` a `chainId`.
 - [ ] `pnpm build`, `pnpm typecheck`, `pnpm test` and `pnpm format:check` pass.
 - [ ] A changeset describes any change to rocketh's public types.
 
