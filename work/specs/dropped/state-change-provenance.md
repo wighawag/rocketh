@@ -3,7 +3,12 @@ title: 'State-change provenance: an explicit record of what a run changed beyond
 slug: state-change-provenance
 humanOnly: true
 taskedAfter: [execute-state-guard]
+reason: 'out-of-scope: the maintainer decided on 2026-10-26 not to build it'
+droppedOn: 2026-10-26
 ---
+
+> **DROPPED (2026-10-26), by maintainer decision. It was never tasked.** It would add a public config key and a second persisted file format to keep stable, alongside the deployment record that `deployment-record-schema-adr` is making a published format, for an artifact that by design nothing reads. The guard half of the same ask (`execute-state-guard`) has shipped and stays.
+
 
 > Launch snapshot — records intent at creation, NOT maintained. Current truth: `docs/adr/` (decisions) + the code; remaining work: `work/tasks/ready/` tasks. (The technical-detail sections below are trimmed by `to-task` once the work is tasked — this spec settles to its durable framing: Problem / Solution / User Stories / Out of Scope.)
 
