@@ -93,7 +93,7 @@ export default deployScript(
 
 ## Deploying Diamonds
 
-The `diamond` function from `@rocketh/diamond` allows you to deploy contracts using the Diamond pattern:
+The `diamond` function from `@rocketh/diamond` allows you to deploy contracts using the Diamond pattern. The second argument says who deploys; `facets`, the set of facets the diamond should end up with, goes in the third, with the other options. The standard cut, loupe and ownership facets are added for you, so do not list them (`defaultCutFacet: false` or `defaultOwnershipFacet: false` leaves out the cut or the ownership facet; the loupe facet is always added):
 
 ```typescript
 import {deployScript, artifacts} from '../rocketh/deploy.js';
@@ -104,24 +104,9 @@ export default deployScript(
 
 		await diamond(
 			'MyDiamond',
+			{account: deployer},
 			{
-				account: deployer,
-				facets: [
-					{
-						name: 'DiamondCutFacet',
-						artifact: artifacts.DiamondCutFacet,
-					},
-					{
-						name: 'DiamondLoupeFacet',
-						artifact: artifacts.DiamondLoupeFacet,
-					},
-					{
-						name: 'OwnershipFacet',
-						artifact: artifacts.OwnershipFacet,
-					},
-				],
-			},
-			{
+				facets: [{artifact: artifacts.CounterFacet}, {artifact: artifacts.AdminFacet}],
 				owner: admin,
 			},
 		);
