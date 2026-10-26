@@ -285,7 +285,7 @@ Every member of v1's `hre.deployments` (plus the other HRE additions), and where
 A v1 project that deploys the same scripts with different inputs often wraps `hardhat deploy` in its own task: the task reads its own flags (`--pool`, `--market`), sets fields on `hre`, and calls `run('deploy')`, and the scripts read those fields. rocketh has no `hre` to decorate. Two things replace it:
 
 - **Per-environment `data`**, when the parameter belongs to the target: `data` in `rocketh/config.ts` is resolved by environment name first, then chain id, then `default`, and reaches every script as `env.data`. This is the better home whenever a re-run must use the same values again (as it must after a Safe executes a deferred step), because committed config cannot drift between runs.
-- **`extra`**, when it belongs to the invocation: your own wrapper calls `loadAndExecuteDeploymentsFromFiles({provider, environment, extra: {pool: 'A'}})` from `rocketh/environment.ts`, and every script reads `env.extra`. Neither CLI has a flag that fills it, and the hardhat plugin uses `extra` for its own connection, so keep your keys distinct.
+- **`extra`**, when it belongs to the invocation: your own wrapper calls `loadAndExecuteDeploymentsFromFiles({provider, environment, extra: {pool: 'A'}})` from `rocketh/environment.ts`, and every script reads `env.extra`. Neither CLI has a flag that fills it. The hardhat plugin passes `extra: {connection}` itself and its connection helper reads it back, so a wrapper that runs under hardhat and passes its own `extra` replaces that object: include `connection` in it if your scripts use the plugin's connection.
 
 ## Deploy and transaction options
 
