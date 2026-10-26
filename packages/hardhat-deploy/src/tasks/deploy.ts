@@ -1,9 +1,10 @@
 import {NewTaskActionFunction} from 'hardhat/types/tasks';
-import {loadAndExecuteDeploymentsFromFiles, packagesWithLogsEnabled} from '@rocketh/node';
+import {loadAndExecuteDeploymentsFromFiles, packagesWithLogsEnabled, parseFeeOption} from '@rocketh/node';
 import type {UnknownSignerPolicy} from 'rocketh/types';
 import {generateForkConfig} from '../helpers.js';
 import {setupLogger} from 'named-logs-console';
 import {HardhatPluginError} from 'hardhat/plugins';
+import {resolveRunFeeDefaults} from 'rocketh';
 
 interface RunActionArguments {
 	skipPrompts: boolean;
@@ -15,8 +16,35 @@ interface RunActionArguments {
 	defaultBuildProfile?: string;
 	reset?: boolean;
 	onUnknownSigner?: string;
+	gasPrice?: string;
+	maxFeePerGas?: string;
+	maxPriorityFeePerGas?: string;
 	// TODO? export?: string;
 	// TODO? watch?: boolean;
+}
+
+/**
+ * The run-level fee defaults the task's `--gas-price`, `--max-fee-per-gas` and
+ * `--max-priority-fee-per-gas` options ask for, as core's `ExecutionParams` takes them. Each value
+ * is read by `parseFeeOption` from `@rocketh/node`, exactly as the `rocketh` CLI reads its own, and
+ * only the options given become keys, so a run that sets none sends what it always did.
+ *
+ * A `--gas-price` together with an EIP-1559 one is refused by core's `resolveRunFeeDefaults`,
+ * called here so the refusal comes before compiling; `resolveExecutionParams` runs it again for
+ * every caller, the `rocketh` CLI and programmatic ones included.
+ */
+export function resolveRunFeeOptions(
+	args: Pick<RunActionArguments, 'gasPrice' | 'maxFeePerGas' | 'maxPriorityFeePerGas'>,
+): {gasPrice?: bigint; maxFeePerGas?: bigint; maxPriorityFeePerGas?: bigint} {
+	try {
+		return resolveRunFeeDefaults({
+			gasPrice: parseFeeOption('--gas-price', args.gasPrice),
+			maxFeePerGas: parseFeeOption('--max-fee-per-gas', args.maxFeePerGas),
+			maxPriorityFeePerGas: parseFeeOption('--max-priority-fee-per-gas', args.maxPriorityFeePerGas),
+		});
+	} catch (err) {
+		throw new HardhatPluginError('hardhat-deploy', err instanceof Error ? err.message : String(err));
+	}
 }
 
 const runScriptWithHardhat: NewTaskActionFunction<RunActionArguments> = async (args, hre) => {
@@ -73,6 +101,9 @@ const runScriptWithHardhat: NewTaskActionFunction<RunActionArguments> = async (a
 	}
 	// left `undefined` when the flag is omitted, so config (chain, then top-level) still decides
 
+	// Parsed BEFORE compiling, so a mistyped fee fails in an instant rather than after a build.
+	const runFees = resolveRunFeeOptions(args);
+
 	if (!args.noCompile) {
 		await hre.tasks.getTask('build').run({
 			quiet: true,
@@ -99,6 +130,7 @@ const runScriptWithHardhat: NewTaskActionFunction<RunActionArguments> = async (a
 		extra: {connection},
 		reset: args.reset,
 		onUnknownSigner,
+		...runFees,
 	});
 };
 export default runScriptWithHardhat;

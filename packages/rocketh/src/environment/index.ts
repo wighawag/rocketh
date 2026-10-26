@@ -1059,6 +1059,15 @@ export async function createEnvironment<
 			provider,
 			deterministicDeployment: resolvedExecutionParams.environment.deterministicDeployment,
 			transactionType: resolvedExecutionParams.environment.transactionType,
+			// The run-level fee defaults, only when set, so an environment from a run that set none
+			//  carries exactly the keys it always did.
+			...(resolvedExecutionParams.gasPrice !== undefined && {gasPrice: resolvedExecutionParams.gasPrice}),
+			...(resolvedExecutionParams.maxFeePerGas !== undefined && {
+				maxFeePerGas: resolvedExecutionParams.maxFeePerGas,
+			}),
+			...(resolvedExecutionParams.maxPriorityFeePerGas !== undefined && {
+				maxPriorityFeePerGas: resolvedExecutionParams.maxPriorityFeePerGas,
+			}),
 
 			// for backward compatibility
 			tags: context.tags,

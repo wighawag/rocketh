@@ -52,6 +52,12 @@ The unknown-signer flags described in [Handling unknown signers](../unknown-sign
 npx hardhat deploy --network sepolia --on-unknown-signer throw
 ```
 
+To set the fees of every transaction the run builds without editing a script, pass `--gas-price` (legacy) or `--max-fee-per-gas` and `--max-priority-fee-per-gas` (EIP-1559), in wei. They apply only to calls that set no fee option of their own; see [Fees for a whole run](../core-concepts/#fees-for-a-whole-run). hardhat-deploy v1's `--gasprice`, `--maxfee` and `--priorityfee` are spelled this way now, since a hardhat task option cannot have an alias.
+
+```bash
+npx hardhat deploy --network sepolia --gas-price 2000000000
+```
+
 ## Using Deployments in Tests
 
 The point of running deploy scripts in tests is that you test the contracts **as deployed**, wired together exactly as they will be on chain, rather than a fresh set of contracts assembled by the test.

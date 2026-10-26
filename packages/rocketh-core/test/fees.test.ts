@@ -79,4 +79,48 @@ describe('resolveTransactionFees', () => {
 			);
 		});
 	});
+
+	describe('run-level fee defaults (the 4th argument)', () => {
+		it('applies them to a call that states no fee option, as if the call had passed them', () => {
+			expect(resolveTransactionFees(LABEL, {}, 'eip1559', {gasPrice: 5n})).toEqual({type: '0x0', gasPrice: '0x5'});
+			expect(resolveTransactionFees(LABEL, {}, 'legacy', {maxFeePerGas: 3n})).toEqual({
+				type: '0x2',
+				maxFeePerGas: '0x3',
+				maxPriorityFeePerGas: undefined,
+			});
+		});
+
+		it('merges nothing into a call that states any fee option or type', () => {
+			const run = {maxFeePerGas: 30n, maxPriorityFeePerGas: 7n};
+			expect(resolveTransactionFees(LABEL, {maxPriorityFeePerGas: 2n}, 'eip1559', run)).toEqual({
+				type: '0x2',
+				maxFeePerGas: undefined,
+				maxPriorityFeePerGas: '0x2',
+			});
+			expect(resolveTransactionFees(LABEL, {type: 'legacy'}, 'eip1559', run)).toEqual({type: '0x0'});
+			expect(resolveTransactionFees(LABEL, {type: 'eip1559'}, 'eip1559', {gasPrice: 9n})).toEqual({
+				type: '0x2',
+				maxFeePerGas: undefined,
+				maxPriorityFeePerGas: undefined,
+			});
+		});
+
+		it('treats explicitly undefined call keys as not stated', () => {
+			expect(resolveTransactionFees(LABEL, {gasPrice: undefined, type: undefined}, 'eip1559', {gasPrice: 1n})).toEqual({
+				type: '0x0',
+				gasPrice: '0x1',
+			});
+		});
+
+		it('refuses an accessList on a call the run-level gasPrice makes legacy, saying so', () => {
+			expect(() => resolveTransactionFees(LABEL, {accessList: []}, 'eip1559', {gasPrice: 1n})).toThrow(
+				/the run-level "gasPrice" makes this call legacy/,
+			);
+		});
+
+		it('changes nothing when no run-level value is set', () => {
+			expect(resolveTransactionFees(LABEL, {}, 'eip1559', {})).toEqual(resolveTransactionFees(LABEL, {}, 'eip1559'));
+			expect(resolveTransactionFees(LABEL, {}, 'legacy', {})).toEqual({type: '0x0'});
+		});
+	});
 });

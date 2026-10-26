@@ -4,6 +4,7 @@ export {
 	loadEnvironmentFromStore,
 	resolveConfig,
 	resolveExecutionParams,
+	resolveRunFeeDefaults,
 	getChainIdForEnvironment,
 	getEnvironmentName,
 	resolveForkDescriptor,

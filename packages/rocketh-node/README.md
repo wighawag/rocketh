@@ -39,20 +39,31 @@ rocketh -e mainnet --is-fork
 
 ### Options
 
-| Option                        | Description                                                                                             |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `-e, --environment <value>`   | **(Required)** Environment to use.                                                                      |
-| `-s, --scripts <value>`       | Folder containing the deploy scripts to execute.                                                        |
-| `-t, --tags <value>`          | Comma-separated list of tags to execute.                                                                |
-| `-d, --deployments <value>`   | Folder where deployments are saved.                                                                     |
-| `--save-deployments`          | Save deployments.                                                                                       |
-| `--reset`                     | Delete all deployments first.                                                                           |
-| `--skip-gas-report`           | Skip the gas report.                                                                                    |
-| `--log-level <value>`         | Set the log level.                                                                                      |
-| `--skip-prompts`              | Skip any prompts. Also forces `--on-unknown-signer throw`.                                              |
-| `--on-unknown-signer <value>` | What to do when a transaction's `from` cannot be signed for: `throw`, `ask` or `auto` (default `auto`). |
-| `--is-fork`                   | The node being attached to is a fork of the environment named by `-e`. Takes no argument.               |
-| `--write-transactions <file>` | Write the transactions this run broadcast, in order, as JSON to `<file>`. Only when the run succeeds.   |
+| Option                             | Description                                                                                                                           |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `-e, --environment <value>`        | **(Required)** Environment to use.                                                                                                    |
+| `-s, --scripts <value>`            | Folder containing the deploy scripts to execute.                                                                                      |
+| `-t, --tags <value>`               | Comma-separated list of tags to execute.                                                                                              |
+| `-d, --deployments <value>`        | Folder where deployments are saved.                                                                                                   |
+| `--save-deployments`               | Save deployments.                                                                                                                     |
+| `--reset`                          | Delete all deployments first.                                                                                                         |
+| `--skip-gas-report`                | Skip the gas report.                                                                                                                  |
+| `--log-level <value>`              | Set the log level.                                                                                                                    |
+| `--skip-prompts`                   | Skip any prompts. Also forces `--on-unknown-signer throw`.                                                                            |
+| `--on-unknown-signer <value>`      | What to do when a transaction's `from` cannot be signed for: `throw`, `ask` or `auto` (default `auto`).                               |
+| `--is-fork`                        | The node being attached to is a fork of the environment named by `-e`. Takes no argument.                                             |
+| `--write-transactions <file>`      | Write the transactions this run broadcast, in order, as JSON to `<file>`. Only when the run succeeds.                                 |
+| `--gas-price <wei>`                | Legacy gas price, in wei, for every transaction whose call sets no fee option; they are sent as legacy (type 0). Alias: `--gasprice`. |
+| `--max-fee-per-gas <wei>`          | EIP-1559 max fee per gas, in wei, for every transaction whose call sets no fee option. Alias: `--maxfee`.                             |
+| `--max-priority-fee-per-gas <wei>` | EIP-1559 max priority fee per gas, in wei, for every transaction whose call sets no fee option. Alias: `--priorityfee`.               |
+
+### Fees for the whole run
+
+`--gas-price`, `--max-fee-per-gas` and `--max-priority-fee-per-gas` set the fees of every transaction the run builds whose call sets no fee option of its own, without editing a script. Values are integers in wei, in decimal digits (`2000000000` is 2 gwei). `--gas-price` sends legacy (type 0) transactions on any chain; the two EIP-1559 values send EIP-1559 (type 2) ones, even on a chain declared `transactionType: 'legacy'`, and either may be given alone. `--gas-price` together with an EIP-1559 value is refused before the run starts. A call that sets any fee option (or `type`) keeps its own fees, and none of these apply to it. See [Fees for a whole run](https://rocketh.dev/documentation/core-concepts/#fees-for-a-whole-run).
+
+```bash
+rocketh -e mainnet --max-fee-per-gas 30000000000 --max-priority-fee-per-gas 1000000000
+```
 
 ### Rehearsing on a fork
 
@@ -90,16 +101,17 @@ const {deployments, namedAccounts} = await loadAndExecuteDeploymentsFromFiles({p
 
 ### Other exports
 
-| Export                               | Purpose                                                                                    |
-| ------------------------------------ | ------------------------------------------------------------------------------------------ |
-| `setupEnvironmentFromFiles`          | Bind extensions/types and get the file-backed loaders below.                               |
-| `loadEnvironmentFromFiles`           | Build an environment from config and existing deployment records, without running scripts. |
-| `loadAndExecuteDeploymentsFromFiles` | Build the environment **and** run the deploy scripts.                                      |
-| `loadDeploymentsFromFiles`           | Read deployment records only.                                                              |
-| `readAndResolveConfig`               | Read `rocketh/config.ts` and resolve it, applying overrides.                               |
-| `mergeChainConfig`                   | Merge chain configuration.                                                                 |
-| `setupDeployScripts`                 | Re-exported from `rocketh` for convenience.                                                |
-| `chainByCanonicalName`               | Look up a chain by its canonical name.                                                     |
+| Export                               | Purpose                                                                                          |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| `setupEnvironmentFromFiles`          | Bind extensions/types and get the file-backed loaders below.                                     |
+| `loadEnvironmentFromFiles`           | Build an environment from config and existing deployment records, without running scripts.       |
+| `loadAndExecuteDeploymentsFromFiles` | Build the environment **and** run the deploy scripts.                                            |
+| `loadDeploymentsFromFiles`           | Read deployment records only.                                                                    |
+| `readAndResolveConfig`               | Read `rocketh/config.ts` and resolve it, applying overrides.                                     |
+| `mergeChainConfig`                   | Merge chain configuration.                                                                       |
+| `setupDeployScripts`                 | Re-exported from `rocketh` for convenience.                                                      |
+| `chainByCanonicalName`               | Look up a chain by its canonical name.                                                           |
+| `parseFeeOption`                     | Read a fee value typed on a command line (decimal wei) as a `bigint`, as the `rocketh` CLI does. |
 
 Types from `@rocketh/core` are re-exported, so `import type {Environment} from '@rocketh/node'` works.
 

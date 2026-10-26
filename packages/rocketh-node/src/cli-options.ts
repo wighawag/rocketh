@@ -1,6 +1,10 @@
 import {Command} from 'commander';
+import {resolveRunFeeDefaults} from 'rocketh';
 import type {ForkInput, UnknownSignerPolicy} from '@rocketh/core/types';
 import type {NodeExecutionParams} from './execution-params.js';
+import {parseFeeOption} from './fee-option.js';
+
+export {parseFeeOption};
 
 /**
  * The `rocketh` command's OPTION SURFACE, defined here rather than in `cli.ts` so that it can be
@@ -48,6 +52,23 @@ export function buildCLIProgram(version: string): Command {
 			//  write is atomic via write-then-rename, which REPLACES the path rather than writing into
 			//  it.
 			'write the transactions this run broadcast, in order, as JSON to <file> (only when the run succeeds)',
+		)
+		.option(
+			// RUN-LEVEL fee defaults, in wei, for every transaction whose call states no fee option.
+			//  The kebab-case spelling is this CLI's own (`--on-unknown-signer`) and mirrors the field
+			//  names; the FIRST long flag of each is hardhat-deploy v1's spelling, accepted as an
+			//  alias (commander allows two long flags and keys the option by the LAST one, so the
+			//  parsed key stays `gasPrice` and so on).
+			'--gasprice, --gas-price <wei>',
+			'legacy gas price in wei for every transaction whose call sets no fee option: they are sent as legacy (type 0) transactions',
+		)
+		.option(
+			'--maxfee, --max-fee-per-gas <wei>',
+			'EIP-1559 max fee per gas in wei for every transaction whose call sets no fee option (cannot be combined with --gas-price)',
+		)
+		.option(
+			'--priorityfee, --max-priority-fee-per-gas <wei>',
+			'EIP-1559 max priority fee per gas in wei for every transaction whose call sets no fee option (cannot be combined with --gas-price)',
 		);
 }
 
@@ -81,6 +102,9 @@ export type RockethCLIOptions = {
 	environment: string;
 	isFork?: boolean;
 	writeTransactions?: string;
+	gasPrice?: string;
+	maxFeePerGas?: string;
+	maxPriorityFeePerGas?: string;
 };
 
 /**
@@ -215,8 +239,10 @@ export function resolveWriteTransactionsPath(
  * error at the one place that has to think about the difference. The order-sensitivity that came
  * with the spread (a transform written before it was silently overwritten) is gone with it.
  *
- * Throws when an option's VALUE is not one core accepts; see `resolveUnknownSignerPolicy` and
- * `resolveWriteTransactionsPath`.
+ * Throws when an option's VALUE is not one core accepts; see `resolveUnknownSignerPolicy`,
+ * `resolveWriteTransactionsPath` and `parseFeeOption`, and when the fee options contradict each other
+ * (`--gas-price` with `--max-fee-per-gas` or `--max-priority-fee-per-gas`), by core's own
+ * `resolveRunFeeDefaults`, which `resolveExecutionParams` runs again for a programmatic caller.
  */
 export function toExecutionParams(options: RockethCLIOptions): NodeExecutionParams {
 	return {
@@ -241,5 +267,13 @@ export function toExecutionParams(options: RockethCLIOptions): NodeExecutionPara
 		//  runtime, and the whole of what it does happens after the executor returns (see
 		//  `NodeExecutionParams`).
 		writeTransactions: resolveWriteTransactionsPath(options),
+		// Run-level fee defaults. Only the ones given become keys, so a run that sets none sends
+		//  exactly what it always did. Checked HERE as well as in core so a contradiction is a message
+		//  on stderr before anything is read, not a rejection from inside the run.
+		...resolveRunFeeDefaults({
+			gasPrice: parseFeeOption('--gas-price', options.gasPrice),
+			maxFeePerGas: parseFeeOption('--max-fee-per-gas', options.maxFeePerGas),
+			maxPriorityFeePerGas: parseFeeOption('--max-priority-fee-per-gas', options.maxPriorityFeePerGas),
+		}),
 	};
 }

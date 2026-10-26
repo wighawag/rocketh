@@ -109,7 +109,7 @@ export const config = {
 
 It applies to every transaction `deploy`, `execute` and `tx` build, including the ones rocketh sends by itself to bootstrap deterministic deployment (funding the create2 factory deployer, deploying the create3 factory). The canonical create2 factory's own deployment is a pre-signed legacy transaction, so it needs nothing. The gas price is left to whoever signs: the node for an account it holds, and `eth_gasPrice` for a `privateKey` account, which rocketh signs locally.
 
-It is only a default. A single call can decide for itself on any chain:
+It is only a default. A run can override it for every call that sets no fee option (see [Fees for a whole run](#fees-for-a-whole-run)), and a single call can decide for itself on any chain:
 
 - `gasPrice` (or `type: 'legacy'`) sends that call as a legacy transaction carrying it.
 - `maxFeePerGas` / `maxPriorityFeePerGas` (or `type: 'eip1559'`) send it as EIP-1559, even on a chain declared legacy.
@@ -120,6 +120,39 @@ await execute(registry, {account: deployer, functionName: 'setValue', args: [42n
 ```
 
 Contradictory options are refused rather than resolved one way or the other: `gasPrice` together with `maxFeePerGas` or `maxPriorityFeePerGas`, `gasPrice` with `type: 'eip1559'`, an EIP-1559 fee with `type: 'legacy'`, and an `accessList` on a legacy transaction (it cannot carry one). Any `type` other than `'eip1559'` and `'legacy'` is refused too.
+
+### Fees for a whole run
+
+A deploy command can set the fees of every transaction its run builds, without editing a script. There are three run-level values, all optional, all integers in wei:
+
+| Value                  | `rocketh` CLI                                          | `hardhat deploy`             | Sends             |
+| ---------------------- | ------------------------------------------------------ | ---------------------------- | ----------------- |
+| `gasPrice`             | `--gas-price` (or v1's `--gasprice`)                   | `--gas-price`                | legacy (type 0)   |
+| `maxFeePerGas`         | `--max-fee-per-gas` (or v1's `--maxfee`)               | `--max-fee-per-gas`          | EIP-1559 (type 2) |
+| `maxPriorityFeePerGas` | `--max-priority-fee-per-gas` (or v1's `--priorityfee`) | `--max-priority-fee-per-gas` | EIP-1559 (type 2) |
+
+```bash
+rocketh -e mainnet --gas-price 2000000000
+npx hardhat deploy --network mainnet --max-fee-per-gas 30000000000 --max-priority-fee-per-gas 1000000000
+```
+
+Programmatically, they are the `gasPrice`, `maxFeePerGas` and `maxPriorityFeePerGas` keys of the execution parameters, as `bigint`s:
+
+```typescript
+await loadAndExecuteDeploymentsFromFiles({environment: 'mainnet', gasPrice: 2_000_000_000n});
+```
+
+The precedence, highest first:
+
+1. **The call's own fee options.** A call that states ANY of `type`, `gasPrice`, `maxFeePerGas` or `maxPriorityFeePerGas` decides its whole fee set, and none of the run-level values apply to it. There is no per-field merge: a call passing only `maxPriorityFeePerGas` does not pick up a run-level `maxFeePerGas`.
+2. **The run-level values**, applied exactly as if the call had passed them. A run-level `gasPrice` sends a legacy transaction on any chain. A run-level `maxFeePerGas` or `maxPriorityFeePerGas` sends EIP-1559 even on a chain declared `transactionType: 'legacy'`, like the per-call fields. Either EIP-1559 value may be given alone; whoever signs fills the other.
+3. **The chain's `transactionType`** (above).
+
+They reach every transaction `deploy`, `execute` and `tx` build, so proxies, diamonds and routers inherit them, as do the transactions rocketh sends by itself to bootstrap deterministic deployment. Once set, the run's values are readable as `env.network.gasPrice`, `env.network.maxFeePerGas` and `env.network.maxPriorityFeePerGas` (absent when not set; they are the run's settings, not the chain's current price).
+
+Refused before the run starts, with a message naming both values: a run-level `gasPrice` together with `maxFeePerGas` or `maxPriorityFeePerGas` (hardhat-deploy v1 silently preferred the gas price). A value that is not a non-negative integer is refused too: on the command line only decimal digits are accepted, so `2gwei`, `1e9` or `0x10` are errors rather than guesses. With none of the three set, a run sends exactly what it sent before.
+
+Note that a call carrying an `accessList` but no fee option takes the run-level values, so under a run-level `gasPrice` it is refused (a legacy transaction cannot carry an access list); give that call `type: 'eip1559'` to keep it out of the run-level values.
 
 ## Named Accounts
 

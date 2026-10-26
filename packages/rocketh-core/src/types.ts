@@ -448,6 +448,29 @@ export type ExecutionParams<Extra extends Record<string, unknown> = Record<strin
 	autoMine?: boolean;
 	reset?: boolean;
 	/**
+	 * RUN-LEVEL legacy gas price, in wei, for every transaction this run builds whose call states
+	 * no fee option (no `type`, `gasPrice`, `maxFeePerGas` or `maxPriorityFeePerGas`). Such a
+	 * call behaves exactly as if it had passed this `gasPrice`: it is sent as a legacy (type 0)
+	 * transaction, on any chain.
+	 *
+	 * Precedence, highest first: the call's own fee options (a call stating ANY of them decides
+	 * its whole fee set, and none of the run-level values apply to it), then these run-level
+	 * values, then the chain's `transactionType` default.
+	 *
+	 * Refused at startup together with `maxFeePerGas` or `maxPriorityFeePerGas`, and when it is
+	 * not a non-negative integer (a `bigint`).
+	 */
+	gasPrice?: bigint;
+	/**
+	 * RUN-LEVEL EIP-1559 max fee per gas, in wei. Applies like `gasPrice` above (only to a call
+	 * that states no fee option), and like the per-call field it sends an EIP-1559 (type 2)
+	 * transaction even on a chain declared `transactionType: 'legacy'`. May be given without
+	 * `maxPriorityFeePerGas`, in which case whoever signs fills the other one.
+	 */
+	maxFeePerGas?: bigint;
+	/** RUN-LEVEL EIP-1559 max priority fee per gas, in wei. See `maxFeePerGas`. */
+	maxPriorityFeePerGas?: bigint;
+	/**
 	 * How this run may ask a human something. Carried HERE, on the run parameters,
 	 * rather than only on the executor, so it reaches the environment on every
 	 * construction path — including `loadEnvironmentFromStore`, which is how
@@ -811,6 +834,12 @@ export type ResolvedExecutionParams<Extra extends Record<string, unknown> = Reco
 	readonly scripts: readonly string[];
 	/** Passed through verbatim from `ExecutionParams.promptExecutor` (see there). */
 	readonly promptExecutor?: PromptExecutor;
+	/** Run-level fee default, validated; see `ExecutionParams.gasPrice`. */
+	readonly gasPrice?: bigint;
+	/** Run-level fee default, validated; see `ExecutionParams.maxFeePerGas`. */
+	readonly maxFeePerGas?: bigint;
+	/** Run-level fee default, validated; see `ExecutionParams.maxPriorityFeePerGas`. */
+	readonly maxPriorityFeePerGas?: bigint;
 };
 
 export type TransactionToBroadcast =
@@ -907,6 +936,21 @@ export interface Environment<
 		 * behaves as it always did.
 		 */
 		readonly transactionType: ChainTransactionType;
+		/**
+		 * The RUN-LEVEL legacy gas price (`ExecutionParams.gasPrice`, e.g. `--gas-price`), NOT the
+		 * chain's current gas price: absent unless the run set it. A call that states no fee option
+		 * is sent as if it had passed it. Precedence, highest first: the call's own fee options (a
+		 * call stating any of them decides its whole fee set), then the run-level values, then
+		 * `transactionType`.
+		 */
+		readonly gasPrice?: bigint;
+		/** The RUN-LEVEL EIP-1559 max fee per gas (`ExecutionParams.maxFeePerGas`); see `gasPrice`. */
+		readonly maxFeePerGas?: bigint;
+		/**
+		 * The RUN-LEVEL EIP-1559 max priority fee per gas (`ExecutionParams.maxPriorityFeePerGas`);
+		 * see `gasPrice`.
+		 */
+		readonly maxPriorityFeePerGas?: bigint;
 	};
 	readonly deployments: Deployments;
 	/**

@@ -386,11 +386,71 @@ export function resolveForkDescriptor(
 	return declaredChainId === undefined ? fork : {...fork, chainId: declaredChainId};
 }
 
+const RUN_FEE_FIELDS = ['gasPrice', 'maxFeePerGas', 'maxPriorityFeePerGas'] as const;
+
+/**
+ * The run-level fee defaults (`ExecutionParams.gasPrice` / `maxFeePerGas` / `maxPriorityFeePerGas`),
+ * validated, or a throw naming what is wrong. Called by `resolveExecutionParams`, so a bad value
+ * stops the run at STARTUP, before any script runs or any transaction is sent, rather than at the
+ * first call that would have used it.
+ *
+ * Refused: a value that is not a non-negative integer (`bigint`; a JavaScript caller can pass
+ * anything), and a `gasPrice` together with an EIP-1559 value. The latter is the per-call rule
+ * of `resolveTransactionFees` applied to the run: hardhat-deploy v1 silently preferred
+ * `--gasprice` over `--maxfee` / `--priorityfee`, rocketh refuses rather than picking one.
+ *
+ * Exported so a CLI can refuse at its own boundary, before reading config or compiling, with the
+ * very same message (the `rocketh` CLI and hardhat-deploy's `deploy` task both do). Only the keys
+ * that were set are returned.
+ */
+export function resolveRunFeeDefaults(executionParameters: Pick<ExecutionParams, (typeof RUN_FEE_FIELDS)[number]>): {
+	gasPrice?: bigint;
+	maxFeePerGas?: bigint;
+	maxPriorityFeePerGas?: bigint;
+} {
+	for (const field of RUN_FEE_FIELDS) {
+		const value: unknown = executionParameters[field];
+		if (value !== undefined && (typeof value !== 'bigint' || value < 0n)) {
+			throw new Error(
+				`run-level fee "${field}" must be a non-negative integer amount in wei (a bigint), got ${typeof value === 'string' ? JSON.stringify(value) : String(value)}.`,
+			);
+		}
+	}
+	const {gasPrice, maxFeePerGas, maxPriorityFeePerGas} = executionParameters;
+	const eip1559Fields = [
+		...(maxFeePerGas !== undefined ? ['"maxFeePerGas"'] : []),
+		...(maxPriorityFeePerGas !== undefined ? ['"maxPriorityFeePerGas"'] : []),
+	];
+	if (gasPrice !== undefined && eip1559Fields.length > 0) {
+		throw new Error(
+			`run-level fees: "gasPrice" cannot be combined with ${eip1559Fields.join(' and ')}: "gasPrice" prices legacy (type 0) transactions and ${eip1559Fields.join(' and ')} EIP-1559 (type 2) ones. Set one or the other.`,
+		);
+	}
+	return {
+		...(gasPrice !== undefined && {gasPrice}),
+		...(maxFeePerGas !== undefined && {maxFeePerGas}),
+		...(maxPriorityFeePerGas !== undefined && {maxPriorityFeePerGas}),
+	};
+}
+
+/**
+ * The run-level fee defaults as a line for the "do you want to proceed" prompt, or `''` when the run
+ * set none, so that prompt reads exactly as it did before for such a run.
+ */
+function describeRunFees(params: Pick<ResolvedExecutionParams, 'gasPrice' | 'maxFeePerGas' | 'maxPriorityFeePerGas'>) {
+	const set = RUN_FEE_FIELDS.filter((field) => params[field] !== undefined).map(
+		(field) => `${field}: ${formatEther(params[field] as bigint, 'gwei')} gwei`,
+	);
+	return set.length > 0 ? `run-level fees for every transaction whose call sets none: ${set.join(', ')}\n\n` : '';
+}
+
 export function resolveExecutionParams<Extra extends Record<string, unknown> = Record<string, unknown>>(
 	config: ResolvedUserConfig,
 	executionParameters: ExecutionParams<Extra>,
 	chainId: number,
 ): ResolvedExecutionParams<Extra> {
+	// FIRST, so a bad run-level fee stops the run before anything else is decided or sent.
+	const runFees = resolveRunFeeDefaults(executionParameters);
 	const {name: environmentName} = getEnvironmentName(executionParameters);
 	const fork = resolveForkDescriptor(config, executionParameters);
 	const environmentConfig = config?.environments?.[environmentName];
@@ -642,6 +702,8 @@ export function resolveExecutionParams<Extra extends Record<string, unknown> = R
 		// prompt, and whether that prompt can ask for free text, is decided by the adapter
 		// (`@rocketh/node` does, `@rocketh/web` deliberately does not).
 		promptExecutor: executionParameters.promptExecutor,
+		// Only the keys that were set, so a run that set none resolves to exactly what it did before.
+		...runFees,
 	};
 }
 
@@ -800,7 +862,7 @@ fast: ${formatEther(gasPriceEstimate.fast.maxFeePerGas)} (priority: ${formatEthe
 					gasPriceEstimate.fast.maxPriorityFeePerGas,
 				)})
 
-Do you want to proceed (note that gas price can change for each tx)`,
+${describeRunFees(resolvedExecutionParams)}Do you want to proceed (note that gas price can change for each tx)`,
 			});
 
 			if (!prompt.proceed) {
