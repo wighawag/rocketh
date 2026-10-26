@@ -98,7 +98,7 @@ Use `excludeSelectors` when a facet exposes a function the diamond should not ro
 | Option                                   | Description                                                                                                                                                                          |
 | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `owner`                                  | Address that may cut the diamond. Defaults to the deployer.                                                                                                                          |
-| `execute`                                | Initialization call attached to a cut. See the caveat below.                                                                                                                         |
+| `execute`                                | Initialization call(s) attached to a cut: one call, or `{init, onUpgrade}`. See below.                                                                                               |
 | `defaultCutFacet`                        | Include the built-in `DiamondCutFacet` (on by default). Turning it off makes the diamond permanently un-cuttable.                                                                    |
 | `defaultOwnershipFacet`                  | Include the built-in `OwnershipFacet` (on by default).                                                                                                                               |
 | `diamondContractArgs`                    | Constructor arguments for the diamond base contract.                                                                                                                                 |
@@ -113,7 +113,21 @@ Use `excludeSelectors` when a facet exposes a function the diamond should not ro
 
 **A run that produces no facet change performs no cut, so `execute` does not run.** This is deliberate, and it matches how `@rocketh/proxy` gates its own `execute`: deploy scripts are re-run, and an initializer that fired on every re-run would not be idempotent.
 
-The consequence to plan around: `execute` is the flat form of that option, so it runs on the fresh deploy **and on every later cut**, with the same arguments. A migration that must run exactly once, or only on upgrades, is not expressible yet; that is the `{init, onUpgrade}` split `@rocketh/proxy` has.
+Within that rule, `execute` takes two forms, mirroring `@rocketh/proxy`:
+
+- **Flat**, a single call (`{type: 'facet', functionName, args}` or `{type: 'artifact', artifact, functionName, args}`): made on the fresh deploy **and on every later cut** that changes something, with the same arguments. Use it only for a call that is safe to repeat.
+- **Explicit**, `{init, onUpgrade}` (both optional): `init` is made only when the diamond is first created, `onUpgrade` only on a later cut that changes facets. Each carries its own target, so they may name different functions, even on different contracts.
+
+**Anything that must run exactly once belongs in `init`.** In the flat form an initializer runs again on every later cut.
+
+```typescript
+execute: {
+	init: {type: 'facet', functionName: 'initialize', args: [owner]},
+	onUpgrade: {type: 'artifact', artifact: MigrationV2, functionName: 'migrate', args: []},
+},
+```
+
+A value mixing the two forms (a `type` / `functionName` next to `init` / `onUpgrade`) is refused. A call that must run although no facet changes (a storage migration needing no cut) is not expressible: run it with `execute` from `@rocketh/read-execute`, gated on chain state.
 
 ## Reading the cut before it happens
 
