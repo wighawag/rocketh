@@ -412,7 +412,7 @@ export function resolveRunFeeDefaults(executionParameters: Pick<ExecutionParams,
 		const value: unknown = executionParameters[field];
 		if (value !== undefined && (typeof value !== 'bigint' || value < 0n)) {
 			throw new Error(
-				`run-level fee "${field}" must be a non-negative integer amount in wei (a bigint), got ${typeof value === 'bigint' ? value.toString() : (JSON.stringify(value) ?? String(value))}.`,
+				`run-level fee "${field}" must be a non-negative integer amount in wei (a bigint), got ${typeof value === 'string' ? JSON.stringify(value) : String(value)}.`,
 			);
 		}
 	}

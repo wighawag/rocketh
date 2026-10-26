@@ -17,7 +17,7 @@ export type {NodeExecutionParams} from './execution-params.js';
 export {chainByCanonicalName} from './environment/chains.js';
 
 // used by hardhat-deploy's `deploy` task, so its fee options read a value exactly as this CLI does
-export {parseFeeOption} from './cli-options.js';
+export {parseFeeOption} from './fee-option.js';
 
 export type * from '@rocketh/core';
 
