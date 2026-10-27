@@ -1,6 +1,6 @@
 # @rocketh/viem
 
-[viem](https://viem.sh) clients and contract objects built from your rocketh deployments. Call `viem(env)` and you get a `publicClient`, a `walletClient`, and `getContract(name)` / `getWritableContract(name)` that resolve a deployment by name into a fully typed viem contract.
+[viem](https://viem.sh) clients and contract objects built from your rocketh deployments. `viem(env)` gives you a `publicClient`, a `walletClient`, and `getContract(name)` / `getWritableContract(name)` that resolve a deployment by name into a fully typed viem contract.
 
 Use this when you want viem's own API (its multicall, its event log handling, its simulation) rather than rocketh's `read`/`execute`. Both operate on the same deployments and the same EIP-1193 provider.
 
@@ -44,16 +44,17 @@ export default deployScript(
 	async ({deploy, viem, namedAccounts}) => {
 		const {deployer} = namedAccounts;
 
-		await deploy('Token', {account: deployer, artifact: artifacts.Token, args: ['Token', 'TKN']});
+		const deployment = await deploy('Token', {account: deployer, artifact: artifacts.Token, args: ['Token', 'TKN']});
 
-		const {publicClient, getContract, getWritableContract} = viem();
+		// `viem` is a PROPERTY in a deploy script, not a function: the extension is a getter
+		const {publicClient, getContract, getWritableContract} = viem;
 
-		// read-only contract, typed from the deployment's ABI
-		const token = getContract('Token');
+		// read-only contract, typed from the deployment's ABI (by name, pass the ABI type as a generic)
+		const token = getContract(deployment);
 		const supply = await token.read.totalSupply();
 
 		// writable contract, sending from a chosen account
-		const writable = getWritableContract('Token', {account: deployer});
+		const writable = getWritableContract(deployment, {account: deployer});
 		await writable.write.mint([deployer, 1000n]);
 
 		// or use the clients directly

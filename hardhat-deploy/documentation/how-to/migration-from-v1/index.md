@@ -36,7 +36,7 @@ You can share this file with your AI assistant to get help with:
 
 | Aspect                   | v1 Pattern                                          | v2 Pattern                                                 |
 | ------------------------ | --------------------------------------------------- | ---------------------------------------------------------- |
-| **Hardhat version**      | 2.x                                                 | 3.x (specifically `^3.1.5`)                                |
+| **Hardhat version**      | 2.x                                                 | 3.x (specifically `^3.6.0` or later)                       |
 | **Module system**        | CommonJS (`require`/`module.exports`)               | ESM (`import`/`export`)                                    |
 | **Named accounts**       | `namedAccounts` in hardhat.config.ts                | `rocketh/config.ts`                                        |
 | **Deploy function**      | `deployments.deploy(name, {...})`                   | `deploy(name, {account: ..., artifact: ...})`              |
@@ -76,7 +76,7 @@ grep -q '"type": "module"' package.json && echo "ESM" || echo "CommonJS"
 ### Required Versions
 
 - **Node.js**: 22 or higher
-- **Hardhat**: 3.x or higher (specifically `^3.1.5` recommended)
+- **Hardhat**: 3.x or higher (hardhat-deploy v2 requires `^3.6.0`)
 - **TypeScript**: 5.x (for TypeScript projects)
 
 ### Pre-Migration Assessment
@@ -129,15 +129,15 @@ Update your [`package.json`](https://github.com/wighawag/template-ethereum-contr
 {
 	"type": "module",
 	"devDependencies": {
-		"hardhat": "^3.1.4",
-		"hardhat-deploy": "^2.0.0",
-		"rocketh": "^0.17.15",
-		"@rocketh/deploy": "^0.17.9",
-		"@rocketh/read-execute": "^0.17.9",
-		"@rocketh/node": "^0.17.18",
-		"@rocketh/proxy": "^0.17.13",
+		"hardhat": "^3.6.0",
+		"hardhat-deploy": "^2.1.1",
+		"rocketh": "^0.25.1",
+		"@rocketh/deploy": "^0.22.3",
+		"@rocketh/read-execute": "^0.22.2",
+		"@rocketh/node": "^0.22.2",
+		"@rocketh/proxy": "^0.21.3",
 		"viem": "^2.45.0",
-		"@nomicfoundation/hardhat-viem": "^3.0.1",
+		"@nomicfoundation/hardhat-viem": "^3.0.2",
 		"@nomicfoundation/hardhat-node-test-runner": "^3.0.8",
 		"@nomicfoundation/hardhat-network-helpers": "^3.0.3",
 		"@nomicfoundation/hardhat-keystore": "^3.0.3"
@@ -148,7 +148,7 @@ Update your [`package.json`](https://github.com/wighawag/template-ethereum-contr
 **Transformation Rules**:
 
 1. Add `"type": "module"` at the top level
-2. Update `hardhat` to `^3.1.4` or higher
+2. Update `hardhat` to `^3.6.0` or higher (the version hardhat-deploy v2 requires)
 3. Update `hardhat-deploy` to `^2.0.0` or higher
 4. Remove `hardhat-deploy-ethers` and `hardhat-deploy-tenderly`
 5. Add rocketh packages: `rocketh`, `@rocketh/deploy`, `@rocketh/read-execute`, `@rocketh/node`, `@rocketh/signer`
@@ -602,7 +602,7 @@ func.id = 'deploy_greetings_registry';
 func.tags = ['GreetingsRegistry'];
 ```
 
-**v2 proxy deploy script example:** (see [template-ethereum-contracts/deploy/002_deploy_greetings_registry.ts](https://github.com/wighawag/template-ethereum-contracts/blob/main/contracts/deploy/002_deploy_greetings_registry.ts))
+**v2 proxy deploy script example:** (see [template-ethereum-contracts/deploy/001_deploy_greetings_registry.ts](https://github.com/wighawag/template-ethereum-contracts/blob/main/contracts/deploy/001_deploy_greetings_registry.ts))
 
 ```typescript
 import {deployScript, artifacts} from '../rocketh/deploy.js';
@@ -691,7 +691,7 @@ describe('SimpleERC20', function () {
 });
 ```
 
-**v2 test example:** (see [template-ethereum-contracts/test/GreetingsRegistry.test.ts](https://github.com/wighawag/template-ethereum-contracts/blob/main/contracts/test/GreetingsRegistry.test.ts))
+**v2 test example:** (see [template-ethereum-contracts/test/js/GreetingsRegistry.test.ts](https://github.com/wighawag/template-ethereum-contracts/blob/main/contracts/test/js/GreetingsRegistry.test.ts))
 
 ```typescript
 import {expect} from 'earl';
@@ -1385,7 +1385,7 @@ Use this checklist to verify your migration is complete and working correctly.
 - [hardhat-deploy v2 Documentation](https://rocketh.dev/hardhat-deploy/)
 - [Setup First Project Guide](../setup-first-project/)
 - [v1-to-v2 capability map](/documentation/migration/): what v1 has that v2 does not
-- [Hardhat 3.x Documentation](https://hardhat.org/docs/upgrades)
+- [Migrating from Hardhat 2](https://hardhat.org/docs/migrate-from-hardhat2)
 - [Rocketh Documentation](https://github.com/wighawag/rocketh)
 
 ### Example Projects
@@ -1399,8 +1399,8 @@ Use this checklist to verify your migration is complete and working correctly.
 
 ### Community
 
-- [GitHub Issues](https://github.com/wighawag/hardhat-deploy/issues)
-- [Discussions](https://github.com/wighawag/hardhat-deploy/discussions)
+- [GitHub Issues](https://github.com/wighawag/rocketh/issues)
+- [Discussions](https://github.com/wighawag/rocketh/discussions)
 
 ## Summary
 

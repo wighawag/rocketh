@@ -31,7 +31,7 @@ It is a custom element rather than a component, so it drops into a Vue-rendered 
 
 Optional attributes: `heading`, `description`.
 
-The EVM and rocketh (~1.6MB) are behind a dynamic import that only runs on the first **Run** press, so a page carrying the widget does not make every reader download an EVM.
+The EVM and rocketh (~1.6MB) are behind a dynamic import that only runs on the first **Start** press, so a page carrying the widget does not make every reader download an EVM.
 
 ## Publishing
 
@@ -49,7 +49,7 @@ The site imports the built `dist`, not the source, so it has to be built before 
 ```jsonc
 "docs:widgets": "nx build @rocketh/playground", // builds this package and its workspace deps
 "docs:dev": "pnpm docs:widgets && vitepress dev",
-"docs:build": "pnpm prepare && pnpm docs:widgets && vitepress build",
+"docs:build": "pnpm docs:widgets && vitepress build",
 ```
 
 Without it, `vitepress build` fails with `Rolldown failed to resolve import "@rocketh/playground/element"`, and the deployed site would break rather than merely lose the widget.

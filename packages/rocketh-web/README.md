@@ -114,7 +114,9 @@ const env = await loadAndExecuteDeploymentsFromModules([{id: 'deploy_MyContract'
 });
 ```
 
-### Loading Deployments from IndexedDB
+### Loading Deployments from IndexedDB (deprecated)
+
+`loadDeploymentsFromIndexedDB` is deprecated and misnamed: it reads the store bound to this module (in memory by default), not IndexedDB. To read deployments back, load through the store you built, as in [Storing Deployments](#storing-deployments) (`loadDeploymentsFromStore` from `rocketh`). The old call, for reference:
 
 ```typescript
 import {loadDeploymentsFromIndexedDB} from '@rocketh/web';
@@ -132,7 +134,7 @@ const {deployments, migrations, chainId, genesisHash} = await loadDeploymentsFro
 
 ## API Reference
 
-### `setupEnvironment(config, extensions)`
+### `setupEnvironment(config, extensions, options?)`
 
 Creates environment helpers for browser deployment.
 
@@ -140,6 +142,7 @@ Creates environment helpers for browser deployment.
 
 - `config` - Rocketh user configuration
 - `extensions` - Extension functions (e.g., deploy, read, execute)
+- `options.deploymentStore` - Optional: the store this environment uses (see [Storing Deployments](#storing-deployments)). Without it, every `setupEnvironment` call in the page shares one module-level in-memory store.
 
 **Returns:**
 
@@ -148,7 +151,7 @@ Creates environment helpers for browser deployment.
 
 ### `loadDeploymentsFromIndexedDB(deploymentsPath, networkName, onlyABIAndAddress?, expectedChain?)`
 
-Loads deployments from IndexedDB storage.
+Deprecated (see above): loads deployments from the module-level store, which is in memory unless you replaced it, not from IndexedDB.
 
 **Parameters:**
 
@@ -226,7 +229,7 @@ async function initializeApp() {
 
 ## Limitations
 
-- **Storage**: IndexedDB storage implementation is currently a stub. Deployments must be bundled or fetched from an API.
+- **Storage**: deployments persist across a reload only with `createIndexedDBDeploymentStore()`; the default store is in memory. A browser cannot read your `deployments/` folder, so deployments from a Node run must be bundled or fetched from an API.
 - **No File System**: Cannot read deploy scripts from filesystem - scripts must be imported directly.
 
 ## Related Packages

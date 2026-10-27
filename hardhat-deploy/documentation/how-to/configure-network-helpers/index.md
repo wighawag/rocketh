@@ -89,7 +89,7 @@ Automatically adds configurations for all known blockchain networks using their 
 
 ```typescript
 // Adds networks for all known chains using kebab-case names:
-// ethereum, polygon, arbitrum, optimism, base, arbitrum-sepolia, etc.
+// ethereum, polygon, arbitrum-one, op-mainnet, base, arbitrum-sepolia, etc.
 const networks = addNetworksFromKnownList(
 	addNetworksFromEnv({
 		// Your custom networks
@@ -113,12 +113,12 @@ Network names are converted from their display names to kebab-case:
 
 #### Supported Networks
 
-The helper includes configurations for major networks:
+The helper includes every chain in viem's chain list, named from the chain's display name, for example:
 
 - **Ethereum**: `ethereum` (mainnet)
-- **Layer 2s**: `polygon`, `arbitrum`, `optimism`, `base`
-- **Testnets**: `sepolia`, `goerli`, `mumbai`, `arbitrum-sepolia`
-- **Other chains**: `bsc`, `avalanche`, `fantom`, and many more
+- **Layer 2s**: `polygon`, `arbitrum-one`, `op-mainnet`, `base`
+- **Testnets**: `sepolia`, `holesky`, `polygon-mumbai`, `arbitrum-sepolia`
+- **Other chains**: `bnb-smart-chain`, `avalanche`, `fantom`, and many more
 
 #### Automatic Configuration
 
@@ -303,14 +303,14 @@ const config: HardhatUserConfig = {
 // ETH_NODE_URI_arbitrum=https://arb1.arbitrum.io/rpc
 // MNEMONIC_arbitrum=your arbitrum mnemonic
 
-// Results in:
+// Results in (addNetworksFromEnv sets no chainId or chainType; addNetworksFromKnownList
+// sets both, `chainType: 'op'` for OP-stack chains, but only for the known names, such
+// as `arbitrum-one`):
 // networks: {
 //   arbitrum: {
 //     type: 'http',
 //     url: 'https://arb1.arbitrum.io/rpc',
 //     accounts: { mnemonic: 'your arbitrum mnemonic' },
-//     chainId: 42161,
-//     chainType: 'op', // Automatically detected for OP-stack chains
 //   }
 // }
 ```

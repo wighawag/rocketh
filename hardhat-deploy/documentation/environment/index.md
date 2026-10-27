@@ -2,7 +2,7 @@
 
 Each deploy function is given a environment object as first argument.
 
-it contains at least the following fields :
+it contains at least the following fields (the full definition, with its documentation, is `Environment` in [`packages/rocketh-core/src/types.ts`](https://github.com/wighawag/rocketh/blob/main/packages/rocketh-core/src/types.ts)):
 
 ```typescript
 export interface Environment<
@@ -19,18 +19,26 @@ export interface Environment<
 	};
 	readonly tags: {readonly [tag: string]: boolean};
 	readonly network: {
+		/** the CONNECTED chain: what the node reports, and the chain id every transaction declares */
 		readonly chain: Chain;
 		readonly provider: TransactionHashTracker;
 		/** absent off a fork; on one, `{networkName, chainId?}` naming the network being simulated */
 		readonly fork?: ForkDescriptor;
 		readonly deterministicDeployment: DeterministicDeploymentInfo;
+		/** what a transaction is sent as when the call states no fee option: 'eip1559' or 'legacy' */
+		readonly transactionType: ChainTransactionType;
+		/** the RUN-LEVEL fee defaults (`--gas-price` and so on), absent unless the run set them */
+		readonly gasPrice?: bigint;
+		readonly maxFeePerGas?: bigint;
+		readonly maxPriorityFeePerGas?: bigint;
 	};
 	readonly deployments: Deployments;
+	/** every transaction this run broadcast, in order (see "Captured transactions") */
+	readonly capturedTransactions: readonly CapturedTransaction[];
 	readonly namedAccounts: ResolvedNamedAccounts<NamedAccounts>;
 	readonly data: ResolvedNetworkSpecificData<Data>;
 	readonly namedSigners: ResolvedNamedSigners<ResolvedNamedAccounts<NamedAccounts>>;
 	readonly unnamedAccounts: EIP1193Account[];
-	// unnamedSigners: {type: 'remote'; signer: EIP1193CoreProvider}[];
 	/**
 	 * Signers indexed by address. The keys are always LOWERCASE, so index it with a lowercased
 	 * address (`resolveAccount` already returns one). The address VALUES exposed by
@@ -44,14 +52,16 @@ export interface Environment<
 	 * `undefined`, so callers never have to handle a third case.
 	 */
 	readonly addressSignability: {[address: `0x${string}`]: Signability};
+	/** run `action` under an `onUnknownSigner` policy override (used by `@rocketh/unknown-signer`) */
+	runUnderUnknownSignerPolicy<T>(frame: UnknownSignerPolicyFrame, action: () => Promise<T>): Promise<T>;
 	save<TAbi extends Abi = Abi>(
 		name: string,
 		deployment: Deployment<TAbi>,
-		options?: {considerItAsFreshDeployment?: boolean},
+		options?: {considerItAsFreshDeployment?: boolean; keepNumDeployments?: boolean},
 	): Promise<Deployment<TAbi>>;
 	broadcastExecution(
 		transaction: TransactionToBroadcast,
-		options?: {message?: string},
+		options?: {message?: string; contract?: Omit<UnknownSignerContractCall, 'name'>},
 	): Promise<EIP1193TransactionReceipt>;
 	broadcastDeployment<TAbi extends Abi = Abi>(
 		name: string,
@@ -63,6 +73,8 @@ export interface Environment<
 	getOrNull<TAbi extends Abi>(name: string): Deployment<TAbi> | null;
 	fromAddressToNamedABI<TAbi extends Abi>(address: Address): {mergedABI: TAbi; names: string[]};
 	fromAddressToNamedABIOrNull<TAbi extends Abi>(address: Address): {mergedABI: TAbi; names: string[]} | null;
+	/** whether this run can ask a human for free text (a terminal is attached) */
+	canPromptForText(): boolean;
 	showMessage(message: string): void;
 	showProgress(message?: string): ProgressIndicator;
 	resolveAccountOrUndefined(account: string | EIP1193Account): `0x${string}` | undefined;

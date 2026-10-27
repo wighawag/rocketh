@@ -130,7 +130,6 @@ export type Deployment<TAbi extends Abi> = {
 		readonly nonce?: EIP1193DATA;
 	};
 	readonly receipt?: {
-		confirmations: number;
 		blockHash: EIP1193DATA;
 		blockNumber: EIP1193QUANTITY;
 		transactionIndex: EIP1193QUANTITY;
@@ -155,7 +154,7 @@ export type Deployment<TAbi extends Abi> = {
 } & Record<string, unknown>;
 ```
 
-As you can see, not all fields are mandatory. But having the other fields allow more feature. For example, metadata and args allow you to benefit from contract code verification.
+As you can see, not all fields are mandatory. But having the other fields allow more feature. For example, metadata and argsData allow you to benefit from contract code verification.
 
 Here is an example:
 

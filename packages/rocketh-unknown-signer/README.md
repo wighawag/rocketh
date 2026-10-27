@@ -62,7 +62,7 @@ That check is not optional thinking you can skip. Under a deferral rocketh obser
 
 ## Choosing the policy for one call
 
-The run-level policy (`onUnknownSigner`, resolved as run parameter > chain config > the default `'auto'`) decides what happens when a `from` is unsignable. `withUnknownSignerPolicy` overrides it for a single action:
+The run-level policy (`onUnknownSigner`, resolved as run parameter > chain config > top-level config > the default `'auto'`) decides what happens when a `from` is unsignable. `withUnknownSignerPolicy` overrides it for a single action:
 
 ```typescript
 import {withUnknownSignerPolicy} from '@rocketh/unknown-signer';

@@ -33,7 +33,7 @@ export default deployScript(
 			},
 		);
 	},
-	// execute takes as a second argument an options object where you can specify tags and dependencies
+	// deployScript takes as a second argument an options object where you can specify tags and dependencies
 	{tags: ['GreetingsRegistry', 'GreetingsRegistry_deploy']},
 );
 ```

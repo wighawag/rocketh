@@ -16,7 +16,7 @@ For further details on how to use it and write deploy scripts, see [How to Deplo
 
 ### 2. rocketh-verify
 
-This command is provided by the optional package `@rocketh/verify`
+This command is provided by the optional package `@rocketh/verifier`
 
 This command will submit the contract source and other info of all deployed contracts to allow services like etherscan, blockscout or sourcify to verify and record the sources.
 

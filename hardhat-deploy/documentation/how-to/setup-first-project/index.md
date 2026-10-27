@@ -4,7 +4,7 @@ This guide walks you through setting up hardhat-deploy in a new project from scr
 
 ## Prerequisites
 
-- Node.js 18+ installed
+- Node.js 22+ installed
 - Basic familiarity with [Hardhat](https://hardhat.org)
 
 ## initialize a new hardhat project
@@ -386,7 +386,6 @@ export type Deployment<TAbi extends Abi> = {
 		readonly nonce?: EIP1193DATA;
 	};
 	readonly receipt?: {
-		confirmations: number;
 		blockHash: EIP1193DATA;
 		blockNumber: EIP1193QUANTITY;
 		transactionIndex: EIP1193QUANTITY;
@@ -411,7 +410,7 @@ export type Deployment<TAbi extends Abi> = {
 } & Record<string, unknown>;
 ```
 
-As you can see, not all fields are mandatory. But having the other fields allow more feature. For example, metadata and args allow you to benefit from contract code verification.
+As you can see, not all fields are mandatory. But having the other fields allow more feature. For example, metadata and argsData allow you to benefit from contract code verification.
 
 Here is an example:
 

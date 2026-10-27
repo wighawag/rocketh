@@ -25,7 +25,7 @@
 
 _A [Hardhat](https://hardhat.org) Plugin For Replicable Deployments And Easy Testing_
 
-> **Note: This is the documentation for hardhat-deploy v2 that works with [hardhat v3](https://hardhat.org/hardhat3-alpha)**
+> **Note: This is the documentation for hardhat-deploy v2 that works with [hardhat v3](https://hardhat.org/docs)**
 >
 > Documentation for hardhat-deploy v1 can be found on the [v1 branch](https://github.com/wighawag/hardhat-deploy/tree/v1#readme)
 
@@ -105,7 +105,7 @@ Please find the [full documentation here](https://rocketh.dev/hardhat-deploy/)
 
 ### AI-Assisted Migration
 
-If you're migrating from hardhat-deploy v1 to v2 and want to use AI to help with the process, check out our [SKILL.md](https://github.com/wighawag/hardhat-deploy/blob/main/skills/hardhat-deploy-migration/SKILL.md) file. This comprehensive guide is designed for AI assistants and includes detailed instructions for systematic migration, code transformation rules, and troubleshooting guidance.
+If you're migrating from hardhat-deploy v1 to v2 and want to use AI to help with the process, check out our [SKILL.md](https://github.com/wighawag/rocketh/blob/main/skills/hardhat-deploy-migration/SKILL.md) file. This comprehensive guide is designed for AI assistants and includes detailed instructions for systematic migration, code transformation rules, and troubleshooting guidance.
 
 ## Template
 
