@@ -17,7 +17,8 @@ import {
 	run,
 } from '../src/index.js';
 import {resolveConfig} from 'rocketh';
-import type {ResolvedUserConfig} from '@rocketh/core/types';
+import {chainByCanonicalName, mergeChainConfig} from '@rocketh/node';
+import type {ChainInfo, ResolvedUserConfig} from '@rocketh/core/types';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
@@ -305,6 +306,145 @@ describe('@rocketh/export - run', () => {
 		await run(config, ENV_NAME, {tojson: outFile as any});
 
 		expect(fs.existsSync(outFile)).toBe(true);
+	});
+});
+
+/**
+ * A chain viem gives formatters (Base and the other OP-stack chains, Celo, zkSync) exports as
+ * data, not as the husks of its functions.
+ *
+ * `mergeChainConfig` layers the user's chain config over viem's chain object, so for Base the
+ * chain `info` carries `formatters`, `serializers`, `fees` and `extend`. That is right at run
+ * time, where the same `info` becomes `env.network.chain` and `@rocketh/viem` builds its clients
+ * from it, so the formatters do real work there. It is wrong in an export: `JSON.stringify`
+ * drops the functions and keeps their containers, so the file used to carry
+ * `"formatters": {"block": {"type": "block"}, ...}`, a formatter with no `format`, which no viem
+ * client accepts as a chain. These tests pin the rule at the export boundary: a function is
+ * dropped, and so is any property whose value contained one, because a half-emptied object is
+ * leftover rather than data.
+ */
+describe('@rocketh/export - a chain with function-valued fields exports as data only', () => {
+	const BASE_CHAIN_ID = 8453;
+	const BASE_ENV = 'base';
+
+	// The chain info exactly as a resolved config holds it for Base: viem's `base`, through the
+	//  same merge `@rocketh/node` applies when it reads a config file.
+	const baseInfo = mergeChainConfig(chainByCanonicalName['base'], undefined, false).info as ChainInfo;
+	const baseProperties = {averageBlockTimeMs: 2000, finality: 12};
+
+	/** Every output format, read back as the value a consumer would import. */
+	async function exportBaseInEveryFormat(info: ChainInfo): Promise<Record<string, Record<string, unknown>>> {
+		fs.mkdirSync(path.join(deploymentsDir, BASE_ENV), {recursive: true});
+		fs.writeFileSync(
+			path.join(deploymentsDir, BASE_ENV, '.chain'),
+			JSON.stringify({chainId: String(BASE_CHAIN_ID), genesisHash: GENESIS_HASH}),
+		);
+		fs.writeFileSync(
+			path.join(deploymentsDir, BASE_ENV, 'Token.json'),
+			JSON.stringify({abi: [], address: '0x' + 'a'.repeat(40)}),
+		);
+		const baseConfig = resolveConfig({
+			deployments: deploymentsDir,
+			chains: {[BASE_CHAIN_ID]: {info, properties: baseProperties}},
+		});
+
+		const out = path.join(tmpDir, 'out');
+		const files = {
+			ts: path.join(out, 'deployments.ts'),
+			js: path.join(out, 'deployments.js'),
+			json: path.join(out, 'deployments.json'),
+			tsm: path.join(out, 'deployments-module.ts'),
+			jsm: path.join(out, 'deployments-module.js'),
+		};
+		await run(baseConfig, BASE_ENV, {
+			tots: [files.ts],
+			tojs: [files.js],
+			tojson: [files.json],
+			totsm: [files.tsm],
+			tojsm: [files.jsm],
+		});
+
+		return {
+			ts: (await import(files.ts)).default.chain,
+			js: (await import(files.js)).default.chain,
+			json: JSON.parse(readOutput(files.json)).chain,
+			tsm: (await import(files.tsm)).chain,
+			jsm: (await import(files.jsm)).chain,
+		};
+	}
+
+	it('starts from a chain info that really carries functions, so the checks below are not vacuous', () => {
+		const raw = baseInfo as ChainInfo & {
+			formatters?: {block?: {format?: unknown}};
+			serializers?: {transaction?: unknown};
+			extend?: unknown;
+		};
+		expect(typeof raw.formatters?.block?.format).toBe('function');
+		expect(typeof raw.serializers?.transaction).toBe('function');
+		expect(typeof raw.extend).toBe('function');
+		// `fees` is not checked here: viem's current `base` declares it with no value, so it is in
+		//  the list below for the chains (and viem versions) that do carry fee functions.
+	});
+
+	it('leaves an object that serialises itself to JSON.stringify, rather than dropping it for its toJSON', async () => {
+		const info = {...baseInfo, custom: {toJSON: () => ({serialised: true})}} as ChainInfo;
+
+		const chains = await exportBaseInEveryFormat(info);
+
+		for (const [format, chain] of Object.entries(chains)) {
+			expect(chain.custom, format).toEqual({serialised: true});
+		}
+	});
+
+	it('exports Base without the function-valued fields, and with its plain data intact, in every format', async () => {
+		const chains = await exportBaseInEveryFormat(baseInfo);
+
+		for (const [format, chain] of Object.entries(chains)) {
+			// The residue, gone as a whole rather than emptied.
+			for (const junk of ['formatters', 'serializers', 'fees', 'extend']) {
+				expect(chain, `${format}: ${junk}`).not.toHaveProperty(junk);
+			}
+
+			// The plain data, untouched.
+			expect(chain.id, format).toBe(BASE_CHAIN_ID);
+			expect(chain.name, format).toBe('Base');
+			expect(chain.nativeCurrency, format).toEqual({name: 'Ether', symbol: 'ETH', decimals: 18});
+			expect(chain.blockTime, format).toBe(2000);
+			expect(chain.sourceId, format).toBe(1);
+			expect(chain.contracts, format).toEqual(JSON.parse(JSON.stringify(baseInfo.contracts)));
+			expect(chain.blockExplorers, format).toEqual(baseInfo.blockExplorers);
+			expect(chain.rpcUrls, format).toEqual({default: {http: []}});
+			expect(chain.properties, format).toEqual(baseProperties);
+			expect(chain.genesisHash, format).toBe(GENESIS_HASH);
+		}
+	});
+
+	it('keeps the junk out of the .d.ts sidecar too, since it is typed from the same data', async () => {
+		await exportBaseInEveryFormat(baseInfo);
+
+		const dts = readOutput(path.join(tmpDir, 'out', 'deployments.d.ts'));
+		expect(dts).not.toContain('"formatters"');
+		expect(dts).not.toContain('"serializers"');
+		expect(dts).toContain('"blockTime"');
+	});
+
+	it('drops a whole object whose subtree held a function, and keeps a sibling that held none', async () => {
+		// The rule, on a field rocketh knows nothing about: `half` loses its function deep down, so
+		//  what would be left of it is leftover, not data; `plain` never held one and survives whole.
+		const info = {
+			...baseInfo,
+			half: {keep: 1, nested: {format: () => 'x', type: 'block'}},
+			list: [{ok: true}, () => 'x'],
+			plain: {keep: 1, nested: {type: 'block'}, list: [1, 2]},
+		} as ChainInfo;
+
+		const chains = await exportBaseInEveryFormat(info);
+
+		for (const [format, chain] of Object.entries(chains)) {
+			expect(chain, format).not.toHaveProperty('half');
+			expect(chain, format).not.toHaveProperty('list');
+			expect(chain.plain, format).toEqual({keep: 1, nested: {type: 'block'}, list: [1, 2]});
+		}
 	});
 });
 
