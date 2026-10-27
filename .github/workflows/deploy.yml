@@ -2,7 +2,7 @@
 #
 # The site's CODE is github.com/wighawag/rocketh-website (made from the
 # template-svelte-docs template); its CONTENT is this repository: `index.md`,
-# `documentation/`, `hardhat-deploy/`, `public/`, and the playground widget
+# `documentation/`, `hardhat-deploy/`, `public/`, `_redirects.yaml`, and the playground widget
 # built from `packages/rocketh-playground`. Both are checked out side by side,
 # as they are locally, and built with the same `pnpm docs:build` a contributor
 # runs (scripts/docs-site.ts).
@@ -33,6 +33,7 @@ on:
       - 'documentation/**'
       - 'hardhat-deploy/**'
       - 'public/**'
+      - '_redirects.yaml'
       - 'packages/rocketh-playground/**'
       - 'scripts/docs-site.ts'
       - 'package.json'
@@ -43,7 +44,7 @@ on:
 env:
   # The rocketh-website commit this site is built from. Move it in a pull
   # request that says what it was verified against.
-  ROCKETH_WEBSITE_REF: cb82179446b9fb9b92ee9a5eb0c9a843afbb94aa
+  ROCKETH_WEBSITE_REF: e91fbf6aeb6512586f4402658ebd49698fc5f2d4
 
 # Nothing at workflow level: each job grants its own scopes.
 permissions: {}
