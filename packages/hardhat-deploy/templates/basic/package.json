@@ -15,6 +15,7 @@
     "@rocketh/node": "^0.22.2",
     "@rocketh/proxy": "^0.21.3",
     "@rocketh/read-execute": "^0.22.2",
+    "@rocketh/unknown-signer": "^0.19.14",
     "@rocketh/verifier": "^0.19.31",
     "@rocketh/viem": "^0.20.2",
     "@types/node": "^25.0.10",
