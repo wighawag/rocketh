@@ -207,6 +207,34 @@ describe('classifyPastedTransaction', () => {
 			).toEqual({tier: 'embedded'});
 		});
 
+		it('accepts a Safe call to the target itself that carries the request (its own multicall)', () => {
+			expect(
+				classifyPastedTransaction(INTENT, {
+					to: SAFE,
+					input: encodeSafeExecTransaction({
+						to: TARGET,
+						data: `0xac9650d8${'0'.repeat(64)}${UPGRADE_CALLDATA.slice(2)}`,
+					}),
+					value: '0x0',
+				}),
+			).toEqual({tier: 'embedded'});
+		});
+
+		it('does NOT accept a Safe CALL to another contract that merely carries the request', () => {
+			// e.g. the Safe calling `TimelockController.schedule(target, 0, upgradeCalldata, ...)`:
+			//  the upgrade is in there verbatim, but it was only QUEUED, not executed by the Safe.
+			const evidence = classifyPastedTransaction(INTENT, {
+				to: SAFE,
+				input: encodeSafeExecTransaction({
+					to: UNRELATED,
+					data: `0x01d5062a${'0'.repeat(24)}${TARGET.slice(2)}${UPGRADE_CALLDATA.slice(2)}`,
+				}),
+				value: '0x0',
+			});
+			expect(evidence.tier).toBe('safe-mismatch');
+			expect(requiresConfirmation(evidence)).toBe(true);
+		});
+
 		it('accepts a transaction to the account that carries the calldata (a timelock, another wallet)', () => {
 			// `TimelockController.execute(target, value, payload, ...)` sent to the timelock that is
 			//  the account: not a Safe, but the requested calldata is in there verbatim.

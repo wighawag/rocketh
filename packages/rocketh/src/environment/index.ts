@@ -1243,16 +1243,24 @@ export async function createEnvironment<
 	 * The NAME to show for the deployment at `address`, for a message. Merges nothing, so it
 	 * cannot fail the way `fromAddressToNamedABIOrNull` does on a proxy address.
 	 *
-	 * When several records share the address, the MAIN record wins: one whose name ends in
-	 * neither `_Proxy` nor `_Implementation` (the suffixes `@rocketh/proxy` gives the records it
-	 * writes next to the main one), because that is the name the user deployed under and the one
-	 * their scripts use. Among equals, the first saved wins, as before. Only when every record
-	 * is a `_Proxy` / `_Implementation` one is such a name shown.
+	 * When several records share the address, the BASE record wins: the name `N` such that
+	 * every other name there is `N_<something>`. That is how extensions name the records they
+	 * write next to the one the user deployed (`@rocketh/proxy`'s `N_Proxy`, `@rocketh/diamond`'s
+	 * `N_DiamondProxy`, `@rocketh/router`'s `N_Router`, and hardhat-deploy v1's records), but no
+	 * suffix is hard-coded here: core does not own those names, it only recognises that one name
+	 * is the stem of the others. With no such stem, the choice is still deterministic (shortest,
+	 * then alphabetical), because the order records are loaded in is the filesystem's and
+	 * differs between machines.
 	 */
 	function deploymentNameAtAddress(address: Address): string | undefined {
 		const target = address.toLowerCase();
-		const names = Object.keys(deployments).filter((name) => deployments[name].address.toLowerCase() === target);
-		return names.find((name) => !/_(Proxy|Implementation)$/.test(name)) ?? names[0];
+		const names = Object.keys(deployments)
+			.filter((name) => deployments[name].address.toLowerCase() === target)
+			.sort((a, b) => a.length - b.length || (a < b ? -1 : a > b ? 1 : 0));
+		const base = names.find((candidate) =>
+			names.every((name) => name === candidate || name.startsWith(`${candidate}_`)),
+		);
+		return base ?? names[0];
 	}
 
 	function fromAddressToNamedABI<TAbi extends Abi>(address: Address): {mergedABI: TAbi; names: string[]} {

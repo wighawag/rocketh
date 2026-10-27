@@ -228,9 +228,15 @@ export function classifyPastedTransaction(
 	//  without knowing anything about the wallet. This keeps accepting what it always accepted.
 	//  The `0x` guard matters: an empty payload is a substring of everything, and a plain ETH
 	//  transfer would otherwise "match" every transaction in existence.
-	//  For a decoded Safe call only the INNER calldata is searched (a MultiSend batch), not the
-	//  signatures and gas fields around it.
-	const searchedInput = safeCall ? normalizeData(safeCall.data) : actualInput;
+	//  For a decoded Safe call only the INNER calldata is searched, and only where the requested
+	//  call can actually have run from the Safe: a DELEGATECALL (MultiSend runs each packed call
+	//  as the Safe) or a CALL to the target itself (its own `multicall`). A Safe CALL to any
+	//  OTHER contract that merely carries the calldata (queueing it in a timelock with
+	//  `schedule`, say) did not make the call, and is `safe-mismatch` below.
+	const safeCallCanCarryTheRequest =
+		safeCall !== undefined &&
+		(safeCall.operation === 1n || (intended.to !== undefined && sameAddress(safeCall.to, intended.to)));
+	const searchedInput = safeCall ? (safeCallCanCarryTheRequest ? normalizeData(safeCall.data) : '0x') : actualInput;
 	if (intendedData !== '0x' && searchedInput.includes(intendedData.slice(2))) {
 		return {tier: 'embedded'};
 	}

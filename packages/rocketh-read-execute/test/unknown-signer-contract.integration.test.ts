@@ -220,10 +220,10 @@ describe('@rocketh/read-execute - UnknownSignerError contract enrichment', () =>
 
 	it('leaves name absent when the target address matches no deployment', async () => {
 		/**
-		 * `name` is opportunistic enrichment resolved through the environment's existing
-		 * `fromAddressToNamedABIOrNull`. `execute` accepts any `MinimalDeployment`
-		 * (`{address, abi}`), so an address that was never saved has no name — and the
-		 * message falls back to the `to` address.
+		 * `name` is opportunistic enrichment, resolved from the deployment records at the target
+		 * address (by name only, no ABI merge). `execute` accepts any `MinimalDeployment`
+		 * (`{address, abi}`), so an address that was never saved has no name, and the message
+		 * falls back to the `to` address.
 		 */
 		const {env} = await setup();
 		const unregistered: MinimalDeployment<typeof PROXY_ABI> = {
@@ -245,18 +245,20 @@ describe('@rocketh/read-execute - UnknownSignerError contract enrichment', () =>
 		expect(error.message).toContain(`${UNREGISTERED_ADDRESS}.upgradeTo(`);
 	});
 
-	it('prefers the main record when several deployments share the address', async () => {
-		// Several records can share an address (a proxy, its `_Proxy` record, an `_Implementation`
-		//  record). The one shown is the main record: not suffixed `_Proxy` / `_Implementation`.
+	it('prefers the base record when several deployments share the address, whatever the save order', async () => {
+		// Extensions save extra records next to the one the user deployed, named `<name>_<role>`
+		//  (`@rocketh/proxy`'s `_Proxy`, `@rocketh/diamond`'s `_DiamondProxy`, `@rocketh/router`'s
+		//  `_Router`). The name shown is the stem of the others. No suffix is hard-coded in core,
+		//  and the save order does not matter (a reload lists records in filesystem order).
 		const {env} = await setup();
-		const proxy = await saveProxy(env, 'Proxy');
-		await env.save('Proxy_Implementation', {
+		await env.save('Proxy_Proxy', {
 			address: PROXY_ADDRESS,
-			abi: IMPLEMENTATION_ABI,
+			abi: PROXY_ABI,
 			bytecode: '0x6080604052' as `0x${string}`,
 			argsData: '0x' as `0x${string}`,
 			metadata: '{}',
 		});
+		const proxy = await saveProxy(env, 'Proxy');
 
 		const error = await expectUnknownSignerError(() =>
 			execute(env)(proxy, {
@@ -267,6 +269,26 @@ describe('@rocketh/read-execute - UnknownSignerError contract enrichment', () =>
 		);
 
 		expect(error.data.contract?.name).toBe('Proxy');
+	});
+
+	it('names a diamond after its base record, not its `_DiamondProxy` record', async () => {
+		// The shape `@rocketh/diamond` leaves: `<name>` and `<name>_DiamondProxy` at one address.
+		//  A diamond cut from a Safe is an `execute` on that address, so it is named here too.
+		const {env} = await setup();
+		await env.save('Market_DiamondProxy', {
+			address: PROXY_ADDRESS,
+			abi: PROXY_ABI,
+			bytecode: '0x6080604052' as `0x${string}`,
+			argsData: '0x' as `0x${string}`,
+			metadata: '{}',
+		});
+		const diamond = await saveProxy(env, 'Market');
+
+		const error = await expectUnknownSignerError(() =>
+			execute(env)(diamond, {account: 'safeOwner', functionName: 'upgradeTo', args: [NEW_IMPLEMENTATION]}),
+		);
+
+		expect(error.data.contract?.name).toBe('Market');
 	});
 
 	it('names a record whose ABI conflicts with another one at the same address, without a warning', async () => {
