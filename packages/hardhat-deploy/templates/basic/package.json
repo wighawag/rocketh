@@ -11,7 +11,7 @@
     "@nomicfoundation/hardhat-viem-assertions": "^3.0.5",
     "@rocketh/deploy": "^0.22.1",
     "@rocketh/doc": "^0.19.29",
-    "@rocketh/export": "^0.20.0",
+    "@rocketh/export": "^0.20.1",
     "@rocketh/node": "^0.22.0",
     "@rocketh/proxy": "^0.21.1",
     "@rocketh/read-execute": "^0.22.0",
@@ -21,7 +21,7 @@
     "forge-std": "foundry-rs/forge-std#v1.9.4",
     "hardhat": "^3.6.0",
     "hardhat-deploy": "workspace:*",
-    "rocketh": "^0.24.0",
+    "rocketh": "^0.24.1",
     "typescript": "~6.0.3",
     "viem": "^2.43.0"
   },
