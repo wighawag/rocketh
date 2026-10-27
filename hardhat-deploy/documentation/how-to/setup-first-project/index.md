@@ -374,7 +374,7 @@ For example for an environment named "sepolia" (for the corresponding network) t
 }
 ```
 
-Each contract file must follow this type (as defined in [types.ts](types.ts)) :
+Each contract file must follow this type (as defined in [`packages/rocketh-core/src/types.ts`](https://github.com/wighawag/rocketh/blob/main/packages/rocketh-core/src/types.ts)) :
 
 ```typescript skip
 export type Deployment<TAbi extends Abi> = {

@@ -5,7 +5,7 @@ slug: docs-site-astro-starlight
 
 # Migrate the docs site to Astro Starlight
 
-Decision for now: **stay on the unified VitePress site.** This note captures a real, working evaluation of Astro Starlight as a future replacement, so it can be picked up later without redoing the exploration.
+Superseded on 2026-10-27 by `docs-site-on-a-sveltekit-docs-template.md`: the site moves to a SvelteKit docs template of our own, not to Starlight. This note still captures a real, working evaluation of Astro Starlight as a future replacement, so it can be picked up later without redoing the exploration.
 
 ## Context
 
