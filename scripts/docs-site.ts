@@ -37,7 +37,21 @@ const commands = {
 
 type Command = keyof typeof commands;
 
-function run(args: readonly string[], env: NodeJS.ProcessEnv = process.env): void {
+/**
+ * The environment for the site's pnpm. The site is its own pnpm project, with its own
+ * `pnpm-workspace.yaml`, so the configuration THIS workspace's pnpm exports to scripts as
+ * `npm_config_*` (`strictDepBuilds`, `allowBuilds`, the overrides...) must not leak into it:
+ * it would judge the site's dependencies by rocketh's rules.
+ */
+function siteEnv(extra: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
+	const env: NodeJS.ProcessEnv = {};
+	for (const [key, value] of Object.entries(process.env)) {
+		if (!/^(npm|pnpm)_config_/.test(key)) env[key] = value;
+	}
+	return {...env, ...extra};
+}
+
+function run(args: readonly string[], env: NodeJS.ProcessEnv = siteEnv()): void {
 	const result = spawnSync('pnpm', args, {cwd: site, stdio: 'inherit', env, shell: process.platform === 'win32'});
 	if (result.status !== 0) process.exit(result.status ?? 1);
 }
@@ -88,7 +102,7 @@ if (command !== 'preview' && !existsSync(join(site, 'node_modules'))) {
 	run(['install', '--frozen-lockfile']);
 }
 
-run(commands[command], {...process.env, ROCKETH_DIR: root});
+run(commands[command], siteEnv({ROCKETH_DIR: root}));
 
 if (command === 'build') {
 	console.log(`docs-site: built ${join(site, 'web', 'build')}`);
