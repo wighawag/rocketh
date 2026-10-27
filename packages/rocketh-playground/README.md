@@ -1,21 +1,18 @@
 # @rocketh/playground
 
-Run real rocketh deploy scripts against a real EVM, in the reader's browser.
+Run real rocketh deploy scripts against a real EVM, in the reader's browser, as a widget. It powers the stepped tutorial on the [rocketh introduction](https://rocketh.dev/documentation/#try-it-here): press **Start** and the page boots an EVM in the tab and walks four deploy scripts through the actual `@rocketh/deploy` and `@rocketh/proxy`, streaming what each printed. Nothing is mocked and nothing touches a network.
 
-This is what powers the stepped tutorial in the [rocketh documentation](https://rocketh.dev/documentation/): press **Start** and the page boots an EVM in your tab, then walks four actual deploy scripts through the actual `@rocketh/deploy` and `@rocketh/proxy` packages, streaming back what each one printed. Nothing is mocked, nothing is recorded, and nothing touches a network.
+It has two entry points: `@rocketh/playground`, the framework-free core (EVM lifecycle, deployment store, log stream), and `@rocketh/playground/element`, the `<rocketh-playground>` custom element built on it.
 
-The four steps deploy a contract behind a proxy, expose a bug in it, upgrade the implementation to fix it, and show what survived the upgrade. All four run against **one** chain and **one** deployment store, which is the only reason the upgrade means anything: step 3 has to find the proxy step 1 deployed.
+## Installation
 
-It exists because rocketh's central claim is that its core is framework-agnostic and browser-capable ([ADR-0002](../../docs/adr/0002-framework-agnostic-browser-capable-core.md)). A page where you watch a deploy script run is a better argument for that than a paragraph.
+```bash
+pnpm add @rocketh/playground rocketh
+# or
+npm install @rocketh/playground rocketh
+```
 
-## Two layers, one seam
-
-| Entry point                   | What it is                                                     | Built by |
-| ----------------------------- | -------------------------------------------------------------- | -------- |
-| `@rocketh/playground`         | the framework-free core: EVM lifecycle, store, log stream      | `tsc`    |
-| `@rocketh/playground/element` | the `<rocketh-playground>` custom element (Svelte 5, compiled) | `vite`   |
-
-The core has no DOM in it and runs unchanged under node, which is why the deploy pipeline is tested headlessly in `test/` rather than only behind a browser runner. The UI is a consumer of the core's public entry, never the other way round.
+`rocketh` is a peer dependency.
 
 ## Using the widget
 
@@ -27,36 +24,13 @@ The core has no DOM in it and runs unchanged under node, which is why the deploy
 <rocketh-playground></rocketh-playground>
 ```
 
-It is a custom element rather than a component, so it drops into a Vue page, a Svelte app, or a plain HTML file with no per-framework wrapper. Styles are in a shadow root, so the host page's CSS cannot leak in and the widget's cannot leak out.
+It is a custom element, so it drops into any framework or a plain HTML file. Styles are in a shadow root, so the host page's CSS cannot leak in and the widget's cannot leak out.
 
 Optional attributes: `heading`, `description`.
 
 The EVM and rocketh (~1.6MB) are behind a dynamic import that only runs on the first **Start** press, so a page carrying the widget does not make every reader download an EVM.
 
-## Publishing
-
-Published as `@rocketh/playground`. The docs site does not go through the registry (it consumes the build in the rocketh checkout), so a release only matters for outside consumers embedding the widget.
-
-Two things about this repo's release flow bit us once each, and both are worth knowing before you touch versioning here:
-
-- **npm Trusted Publishing (OIDC) cannot create a brand-new package.** npm ties a trusted publisher to an already-existing package, so the first publish of any new package in this repo has to be done by hand (`npm publish --access public`) and the trusted publisher registered on npmjs.com afterwards. Until that is done, `changeset publish` fails the entire release job with `E404 Not Found - PUT /@rocketh%2f<name>`, taking the other packages' release down with it.
-- **An empty changeset sitting on `main` silently blocks publishing.** `changesets/action` takes the version/PR path whenever any changeset file exists. If every one of them is empty it logs `All changesets are empty; not creating PR` and exits WITHOUT publishing, so a package whose version is ahead of the registry stays unpublished with a green release job. The publish path only runs when there are no changeset files at all. So an empty changeset needs a real one alongside it, or it has to be consumed, before anything can ship.
-
-## How the docs site consumes it
-
-The site ([wighawag/rocketh-website](https://github.com/wighawag/rocketh-website)) imports the built `dist` of this package from the rocketh checkout it renders, never an npm release, so the widget on a page is always the one of the same commit. It has to be built first, which is wired into the docs scripts themselves rather than left to CI, so a fresh clone works:
-
-```jsonc
-"docs:widgets": "nx build @rocketh/playground", // builds this package and its workspace deps
-"docs:dev": "pnpm docs:widgets && tsx scripts/docs-site.ts dev",
-"docs:build": "pnpm docs:widgets && tsx scripts/docs-site.ts build",
-```
-
-Without it, the site's build stops with `rocketh-playground: .../dist/element/rocketh-playground.js does not exist`, rather than deploying a page whose widget never loads.
-
-`docs:widgets` runs ONCE when the dev server starts. While iterating on the core or the components, run `pnpm --filter @rocketh/playground dev` alongside it to rebuild on change.
-
-## Using the core on its own
+## Using the core, or your own tutorial
 
 ```typescript
 import {createPlayground, greetingsRegistryPlayground} from '@rocketh/playground';
@@ -76,7 +50,7 @@ playground.vfs.subscribe((change) => {
 
 while (!playground.isFinished()) {
 	const result = await playground.runNextStep();
-	// result.status        'success' | 'failure' — never rejects
+	// result.status        'success' | 'failure' (it never rejects)
 	// result.deployments   [{name, address, codeSize, change, changedAtStep}]
 	// result.files         deployment-store paths after this step
 	// result.logs          the whole transcript so far
@@ -117,48 +91,12 @@ Three things about that shape are worth knowing, because each one costs an after
 - **Accounts are private keys, not indices.** They are configured as `privateKey:0x…` through `@rocketh/signer`. An index-based account resolves through `eth_accounts`, which `webevm` deliberately does not implement: it is execution-only, taking signed raw transactions and answering reads.
 - **`modules` are imported modules, not source text.** `@rocketh/web` takes `ModuleObject[]`, so deploy scripts are bundled at build time. Letting a reader edit a script needs a compiler in the page, which is a separate problem.
 
-## The contracts it deploys
+## Documentation
 
-Two implementations of the same registry, behind one proxy.
-
-| Implementation        | Origin                                                     | Regenerate with          |
-| --------------------- | ---------------------------------------------------------- | ------------------------ |
-| `GreetingsRegistry`   | vendored verbatim from `template-ethereum-contracts@0.0.3` | `pnpm artifact:sync`     |
-| `GreetingsRegistryV2` | ours, in `contracts/`                                      | `pnpm contracts:compile` |
-
-The origins differ on purpose. v1 is kept exactly as published so its provenance stays "the real template contract", bug included. The template has no v2, so that one is ours, and its source lives in `contracts/` precisely so the code the tutorial **shows** is provably the code it **runs**.
-
-`contracts:compile` shells out to `solc` and is **not** an npm dependency, the same way `artifact:sync` shells out to `npm` and `tar`. Artifacts are committed, so you only need solc to change a contract, never to use the package.
-
-### The bug, and why it stays
-
-v1 passes a `"proxy:"` prefix to its **constructor**, and greetings read back without it. That is not a bug in rocketh or in the proxy, and it is deliberately not fixed: a constructor runs against the _implementation's_ storage, never the proxy's, so the proxy's own `_prefix` slot is never written. v2 fixes it by setting the prefix through a `postUpgrade` call that rocketh makes **through the proxy** during the upgrade.
-
-v2 also only ever **appends** storage variables (`_prefixInitialized` at slot 2, leaving `_prefix` and `messages` where v1 put them). Reordering them, or inserting one above `messages`, would leave the new code reading the old slots and silently reinterpret every greeting anyone had stored.
-
-## Testing
-
-```bash
-pnpm test          # headless, node, runs in CI and in the root `pnpm test`
-pnpm test:browser  # real chromium; needs `pnpm exec playwright install chromium` first
-```
-
-The browser suite is opt-in and lives in its own `vitest.browser.config.ts`, which the root runner does not collect (it globs `packages/*/vitest.config.ts` by exact name). A default test command that fails until you download a browser is one people stop running.
-
-It earns its keep. Every bug this widget has had was found in a browser and none by the headless suite: a keyed-list crash that only appeared on the SECOND run, and a `console.error` from rocketh being painted as a failure.
-
-One lesson is baked into the tests themselves. A widget-level "run it twice" test is nearly worthless here, because both runs print identical text: when the keyed-list bug threw, the render froze on the first run's output and the assertions happily passed against the stale DOM. The regression is therefore pinned at the `Terminal` level, where the two runs say different things and a frozen render is detectable. That test was verified to fail with the bug reintroduced.
-
-## Requirements
-
-`webevm` **0.5.0 or later**. This package was formerly published as `embedded-eth-node`, whose last release under the old name was 0.4.0; `webevm@0.5.0` continues that version line and is otherwise identical. Releases before that answered `eth_estimateGas` with gas _consumed_ rather than a usable limit, which silently reverted the inner `CREATE2` and so broke exactly the deterministic deployment this demonstrates.
-
-## Related packages
-
-- [`@rocketh/web`](../rocketh-web) — the browser executor and the observable deployment store
-- [`@rocketh/deploy`](../rocketh-deploy), [`@rocketh/proxy`](../rocketh-proxy) — what the deploy script actually calls
-- [`@rocketh/signer`](../rocketh-signer) — the `privateKey` signer protocol
+- [The playground, and what its four steps show](https://rocketh.dev/documentation/#try-it-here)
+- [Run deploy scripts in a browser](https://rocketh.dev/documentation/browser/): `@rocketh/web`, which this is built on
+- Working on this package: [CONTRIBUTING.md](https://github.com/wighawag/rocketh/blob/main/CONTRIBUTING.md#the-playground-rocketh-playground)
 
 ## License
 
-[MIT](../../LICENSE)
+[MIT](https://github.com/wighawag/rocketh/blob/main/LICENSE)

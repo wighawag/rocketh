@@ -1,188 +1,49 @@
 # @rocketh/deploy
 
-The standard deployment function for rocketh. `deploy` takes a compiled artifact and constructor arguments, deploys the contract if it is not already deployed, saves the deployment record, and returns it. Re-running a script that calls it is a no-op by default, which is what makes deploy scripts idempotent.
-
-This is the package almost every rocketh project starts with. `@rocketh/proxy` and `@rocketh/diamond` build on it.
+`deploy` for rocketh deploy scripts: deploys a contract from its artifact, records it, and on the next run does nothing unless the code or the constructor arguments changed. Also `computeDeterministicAddress`, the address of a create2 or create3 deployment before it exists. Almost every rocketh project uses it, and `@rocketh/proxy`, `@rocketh/diamond` and `@rocketh/router` build on it.
 
 ## Installation
 
 ```bash
-# Using pnpm
-pnpm add @rocketh/deploy
-
-# Using npm
-npm install @rocketh/deploy
-
-# Using yarn
-yarn add @rocketh/deploy
+pnpm add -D @rocketh/deploy
+# or
+npm install --save-dev @rocketh/deploy
 ```
 
 ## Wiring it up
 
-`@rocketh/deploy` is an **extension**: its root exports curried `(env) => …` functions, which rocketh turns into methods on the environment your deploy script receives. Spread the namespace into `extensions` in `rocketh/config.ts`:
+`@rocketh/deploy` is an extension: spread it into `extensions` in `rocketh/config.ts`, and your deploy scripts receive its functions.
 
 ```typescript
 // rocketh/config.ts
 import * as deployExtension from '@rocketh/deploy';
 
-const extensions = {
-	...deployExtension,
-};
+const extensions = {...deployExtension};
 export {extensions};
 ```
 
-Your deploy script then gets `deploy` with no `env` to thread:
+## Example
 
 ```typescript
-// deploy/deploy_Counter.ts
+// deploy/001_deploy_counter.ts
 import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(
 	async ({deploy, namedAccounts}) => {
-		const {deployer} = namedAccounts;
-
-		await deploy('Counter', {
-			account: deployer,
-			artifact: artifacts.Counter,
-			args: [42n],
-		});
+		await deploy('Counter', {account: namedAccounts.deployer, artifact: artifacts.Counter, args: [42n]});
 	},
-	{tags: ['Counter', 'Counter_deploy']},
+	{tags: ['Counter']},
 );
 ```
 
-Outside a deploy script (in a test, or a standalone script) call the curried form directly:
+## Documentation
 
-```typescript
-import {deploy} from '@rocketh/deploy';
+- [Deploy contracts](https://rocketh.dev/documentation/deploy-contracts/)
+- [Deterministic addresses](https://rocketh.dev/documentation/deterministic-addresses/)
+- [Deploy scripts, tags and dependencies](https://rocketh.dev/documentation/deploy-scripts/)
 
-const deployment = await deploy(env)('Counter', {account: 'deployer', artifact: artifacts.Counter, args: [42n]});
-```
+The whole documentation is at [rocketh.dev](https://rocketh.dev), the hardhat-deploy section at [rocketh.dev/hardhat-deploy](https://rocketh.dev/hardhat-deploy/).
 
-## What you get back
+## License
 
-```typescript
-type DeployResult<TAbi extends Abi> = Deployment<TAbi> & {newlyDeployed: boolean};
-```
-
-`newlyDeployed` is the flag to branch on when a follow-up step should run only on a first deployment (seeding, an initial `transferOwnership`, and so on):
-
-```typescript
-const token = await deploy('Token', {account: deployer, artifact: artifacts.Token, args: [name, symbol]});
-
-if (token.newlyDeployed) {
-	await execute(token, {account: deployer, functionName: 'mint', args: [treasury, 1000n]});
-}
-```
-
-## Deployment arguments
-
-```typescript
-deploy(name, {account, artifact, args?, value?, ...}, options?)
-```
-
-| Field      | Description                                                                                                    |
-| ---------- | -------------------------------------------------------------------------------------------------------------- |
-| `account`  | A **named account** (`'deployer'`) or a raw address. Named accounts are resolved per network from your config. |
-| `artifact` | The compiled artifact (ABI + bytecode). Typed with `abitype`, so `args` are checked against the constructor.   |
-| `args`     | Constructor arguments, type-checked against the artifact's ABI.                                                |
-| `value`    | Wei to send to a `payable` constructor.                                                                        |
-
-Remaining fields come from viem's `DeployContractParameters` (minus `bytecode`, `account`, `abi` and `chain`, which rocketh supplies).
-
-## Options
-
-```typescript
-type DeployOptions = {
-	linkedData?: LinkedDataProvided;
-	deterministic?: boolean | `0x${string}` | {type: 'create2' | 'create3'; salt?: `0x${string}`};
-	libraries?: {[name: string]: Address};
-} & ({skipIfAlreadyDeployed?: boolean} | {alwaysOverride?: boolean} | {strictBytecodeMatch?: boolean});
-```
-
-### Re-deployment control
-
-The last three options are **mutually exclusive** in the type, because they are three answers to one question: when should an existing deployment be replaced?
-
-- **Default** - redeploy when the bytecode differs, ignoring the trailing CBOR metadata. Changing only a code comment does not trigger a redeployment.
-- `alwaysOverride: true` - redeploy every run, no comparison.
-- `strictBytecodeMatch: true` - compare bytecode byte-exactly, metadata included. Opt in only when you genuinely need it, since a comment change will then redeploy.
-- `skipIfAlreadyDeployed: true` - keep any existing deployment regardless of bytecode.
-
-See [`docs/adr/0004-non-strict-bytecode-matching-by-default.md`](https://github.com/wighawag/rocketh/blob/main/docs/adr/0004-non-strict-bytecode-matching-by-default.md) for the reasoning.
-
-### Deterministic deployments
-
-Deploy to an address that does not depend on the deployer's nonce, so the same contract lands on the same address across chains:
-
-```typescript
-// CREATE2 with a zero salt
-await deploy('Token', {account: deployer, artifact: artifacts.Token}, {deterministic: true});
-
-// CREATE2 with an explicit salt
-await deploy('Token', {account: deployer, artifact: artifacts.Token}, {deterministic: '0x000...001'});
-
-// CREATE3: address depends on deployer and salt only, not on the bytecode
-await deploy('Token', {account: deployer, artifact: artifacts.Token}, {deterministic: {type: 'create3', salt}});
-```
-
-A bare `true` means CREATE2 with a zero salt; a hex string is a CREATE2 salt, left-padded to 32 bytes.
-
-With `create2` the address is derived from the init code, so changing constructor arguments changes the address. With `create3` it is not: the address comes from the deployer and the salt alone, so the same address can host different bytecode across chains.
-
-Both paths deploy through a factory that must be described by the chain's `deterministicDeployment` configuration. If it is missing, the deployment fails with `create2 deterministic deployment info not found` (or the `create3` equivalent). rocketh also checks that the code at the configured factory address really is that factory, rather than trusting an occupied address.
-
-### Knowing a deterministic address before deploying
-
-`computeDeterministicAddress` returns the address a deterministic `deploy` WILL land on, without sending anything. Pass the artifact, the constructor arguments and the same `account`, `deterministic` (and `libraries`) the later `deploy` call will use. It is the replacement for hardhat-deploy v1's `deployments.deterministic`, and it is what lets two contracts each know the other's address:
-
-```typescript
-export default deployScript(async ({deploy, computeDeterministicAddress, namedAccounts}) => {
-	const {deployer} = namedAccounts;
-	const deterministic = {type: 'create3', salt: '0xa1'} as const;
-
-	// A's address, before A exists. A create3 address ignores A's constructor arguments.
-	const {address: a} = await computeDeterministicAddress(artifacts.A, [zeroAddress], {
-		account: deployer,
-		deterministic,
-	});
-
-	const b = await deploy('B', {account: deployer, artifact: artifacts.B, args: [a]});
-	await deploy('A', {account: deployer, artifact: artifacts.A, args: [b.address]}, {deterministic});
-});
-```
-
-It never broadcasts, even on a chain where `deploy` would first have to deploy the create2 or create3 factory: the address is computed from chain config with the same derivation and salt normalisation `deploy` uses.
-
-- **create2** makes no provider request at all. The constructor arguments and libraries are part of the address, so they must be the ones `deploy` will get.
-- **create3** makes one read (`eth_getCode` at the computed address) and also returns `occupied`: whether that address already holds code. It does not say whose code: a create3 address ignores the bytecode, so it may be this contract from an earlier run (which `deploy` records as already deployed) or another contract deployed from the same account with the same salt (which `deploy` refuses).
-
-The result is a promise about the address only. It does not reserve it: something deployed there between the preview and the `deploy` is found by `deploy`, not by the preview.
-
-### Libraries
-
-Pass the addresses of already-deployed libraries; rocketh links them into the bytecode:
-
-```typescript
-const math = await deploy('MathLib', {account: deployer, artifact: artifacts.MathLib});
-
-await deploy('Consumer', {account: deployer, artifact: artifacts.Consumer}, {libraries: {MathLib: math.address}});
-```
-
-### Linked data
-
-`linkedData` attaches arbitrary JSON to the deployment record, and it survives into exports consumed by a frontend. Useful for values a UI needs but cannot read from the chain cheaply.
-
-Do **not** put secrets in `linkedData`: deployment records are committed and exported.
-
-## Related packages
-
-- [`rocketh`](https://www.npmjs.com/package/rocketh) - core environment and executor
-- [`@rocketh/proxy`](https://www.npmjs.com/package/@rocketh/proxy) - upgradeable deployments built on this function
-- [`@rocketh/diamond`](https://www.npmjs.com/package/@rocketh/diamond) - EIP-2535 Diamond deployments
-- [`@rocketh/read-execute`](https://www.npmjs.com/package/@rocketh/read-execute) - call and transact against what you deployed
-- [`@rocketh/node`](https://www.npmjs.com/package/@rocketh/node) - the `rocketh` CLI that runs your scripts
-
-For full documentation, visit [rocketh.dev](https://rocketh.dev).
-
-For hardhat-deploy documentation, see [rocketh.dev/hardhat-deploy/](https://rocketh.dev/hardhat-deploy/).
+[MIT](https://github.com/wighawag/rocketh/blob/main/LICENSE)

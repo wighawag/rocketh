@@ -1,160 +1,55 @@
 # @rocketh/diamond
 
-[EIP-2535 Diamond](https://eips.ethereum.org/EIPS/eip-2535) deployments for rocketh. You declare the **set of facets** the diamond should have; rocketh compares that against what is on chain and performs the `diamondCut` that closes the gap, adding, replacing and removing function selectors as needed.
-
-Where `@rocketh/proxy` swaps one implementation wholesale, a diamond is upgraded facet by facet, and is not bound by the contract size limit.
+`diamond` for rocketh deploy scripts: deploys an [EIP-2535](https://eips.ethereum.org/EIPS/eip-2535) diamond from the set of facets you declare, and on later runs performs the `diamondCut` that brings the diamond to that set, adding, replacing and removing selectors. Removing a facet from the list removes its functions from the live diamond, and the cut is printed, removals first, before it is sent.
 
 ## Installation
 
 ```bash
-# Using pnpm
-pnpm add @rocketh/diamond
-
-# Using npm
-npm install @rocketh/diamond
-
-# Using yarn
-yarn add @rocketh/diamond
+pnpm add -D @rocketh/diamond
+# or
+npm install --save-dev @rocketh/diamond
 ```
 
 ## Wiring it up
 
-`@rocketh/diamond` is an **extension**: spread its namespace into `extensions` in `rocketh/config.ts`.
+`@rocketh/diamond` is an extension: spread it into `extensions` in `rocketh/config.ts`, and your deploy scripts receive its functions.
 
 ```typescript
 // rocketh/config.ts
 import * as deployExtension from '@rocketh/deploy';
 import * as diamondExtension from '@rocketh/diamond';
 
-const extensions = {
-	...deployExtension,
-	...diamondExtension,
-};
+const extensions = {...deployExtension, ...diamondExtension};
 export {extensions};
 ```
 
-## Usage
+## Example
 
 ```typescript
-// deploy/deploy_Kingdom.ts
+// deploy/001_deploy_my_diamond.ts
 import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(
 	async ({diamond, namedAccounts}) => {
 		const {deployer, admin} = namedAccounts;
-
 		await diamond(
-			'Kingdom',
+			'MyDiamond',
 			{account: deployer},
-			{
-				owner: admin,
-				facets: [
-					{artifact: artifacts.CastleFacet},
-					{artifact: artifacts.ArmyFacet},
-					{artifact: artifacts.TreasuryFacet, args: [treasuryAddress]},
-				],
-			},
+			{facets: [{artifact: artifacts.CounterFacet}, {artifact: artifacts.AdminFacet}], owner: admin},
 		);
 	},
-	{tags: ['Kingdom', 'Kingdom_deploy']},
+	{tags: ['MyDiamond']},
 );
 ```
 
-`env.get('Kingdom')` returns the diamond address with the **merged ABI** of every facet, so callers and frontends see one contract. The underlying proxy is also saved as `Kingdom_DiamondProxy`.
+The bundled facet and diamond artifacts are on the `./artifacts/*` and `./solc_0_8/*` subpaths.
 
-Note that the deployment arguments take **no `artifact` and no `args`**: the diamond base contract is this package's bundled one, and the facets carry their own artifacts. (Constructor arguments for the base go in `diamondContractArgs`.)
+## Documentation
 
-## The facet set is declarative
+- [Diamonds](https://rocketh.dev/documentation/diamonds/)
 
-`facets` is the desired end state, not a list of changes. Add an entry and its selectors are added; change a facet's code and its selectors are replaced; **remove an entry and its selectors are removed from the diamond**. That last one is the one to read carefully before running against a live deployment: deleting a line from `facets` deletes functionality on chain.
+The whole documentation is at [rocketh.dev](https://rocketh.dev), the hardhat-deploy section at [rocketh.dev/hardhat-deploy](https://rocketh.dev/hardhat-deploy/).
 
-```typescript
-type FacetOptions = {
-	name?: string; // defaults to the artifact's contract name
-	artifact: Artifact;
-	args?: any[]; // facet constructor arguments
-	linkedData?: LinkedDataProvided;
-	libraries?: Libraries;
-	deterministic?: boolean | `0x${string}`;
-};
-```
+## License
 
-Facets are deployed **deterministically by default**, so an unchanged facet keeps its address across chains and runs. Set `deterministic` on a facet to override that.
-
-Use `excludeSelectors` when a facet exposes a function the diamond should not route:
-
-```typescript
-{
-	excludeSelectors: {
-		TreasuryFacet: ['0x12345678'];
-	}
-}
-```
-
-## Options
-
-`facets` is required. The rest:
-
-| Option                                   | Description                                                                                                                                                                          |
-| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `owner`                                  | Address that may cut the diamond. Defaults to the deployer.                                                                                                                          |
-| `execute`                                | Initialization call(s) attached to a cut: one call, or `{init, onUpgrade}`. See below.                                                                                               |
-| `defaultCutFacet`                        | Include the built-in `DiamondCutFacet` (on by default). Turning it off makes the diamond permanently un-cuttable.                                                                    |
-| `defaultOwnershipFacet`                  | Include the built-in `OwnershipFacet` (on by default).                                                                                                                               |
-| `diamondContractArgs`                    | Constructor arguments for the diamond base contract.                                                                                                                                 |
-| `excludeSelectors`                       | Per-facet selectors to leave out of the cut.                                                                                                                                         |
-| `facetsArgs`                             | Default constructor arguments for every facet. A facet's own `args` overrides them. (`linkedData` and `libraries` work the same way: set once for all facets, overridden per facet.) |
-| `deterministicSalt`                      | Deploy the diamond deterministically with this salt.                                                                                                                                 |
-| `alwaysOverride` / `strictBytecodeMatch` | Mutually exclusive re-deployment controls, as in `@rocketh/deploy`.                                                                                                                  |
-
-## `execute` rides a cut, it is not a call you schedule
-
-`execute` is EIP-2535's `_init` / `_calldata` pair: a `delegatecall` made in the diamond's storage context as part of `diamondCut`.
-
-**A run that produces no facet change performs no cut, so `execute` does not run.** This is deliberate, and it matches how `@rocketh/proxy` gates its own `execute`: deploy scripts are re-run, and an initializer that fired on every re-run would not be idempotent.
-
-Within that rule, `execute` takes two forms, mirroring `@rocketh/proxy`:
-
-- **Flat**, a single call (`{type: 'facet', functionName, args}` or `{type: 'artifact', artifact, functionName, args}`): made on the fresh deploy **and on every later cut** that changes something, with the same arguments. Use it only for a call that is safe to repeat.
-- **Explicit**, `{init, onUpgrade}` (both optional): `init` is made only when the diamond is first created, `onUpgrade` only on a later cut that changes facets. Each carries its own target, so they may name different functions, even on different contracts.
-
-**Anything that must run exactly once belongs in `init`.** In the flat form an initializer runs again on every later cut.
-
-```typescript
-execute: {
-	init: {type: 'facet', functionName: 'initialize', args: [owner]},
-	onUpgrade: {type: 'artifact', artifact: MigrationV2, functionName: 'migrate', args: []},
-},
-```
-
-A value mixing the two forms (a `type` / `functionName` next to `init` / `onUpgrade`) is refused. A call that must run although no facet changes (a storage migration needing no cut) is not expressible: run it with `execute` from `@rocketh/read-execute`, gated on chain state.
-
-## Reading the cut before it happens
-
-A diamond upgrade can remove functions, and a removal is not always obvious from a diff of your `facets` array. rocketh reports the cut it intends to perform; read it, and pay particular attention to the removals, before letting it run against a production diamond.
-
-## Types
-
-```typescript
-enum FacetCutAction {
-	Add,
-	Replace,
-	Remove,
-}
-
-type Facet = {facetAddress: `0x${string}`; functionSelectors: readonly `0x${string}`[]};
-type FacetCut = Facet & {action: FacetCutAction};
-```
-
-Bundled facet and diamond artifacts are available under the `./artifacts/*` and `./solc_0_8/*` subpath exports.
-
-## Related packages
-
-- [`@rocketh/deploy`](https://www.npmjs.com/package/@rocketh/deploy) - the deployment function this builds on
-- [`@rocketh/proxy`](https://www.npmjs.com/package/@rocketh/proxy) - single-implementation upgradeable proxies
-- [`@rocketh/read-execute`](https://www.npmjs.com/package/@rocketh/read-execute) - call the facets once they are cut in
-- [`rocketh`](https://www.npmjs.com/package/rocketh) - core environment and executor
-
-For full documentation, visit [rocketh.dev](https://rocketh.dev).
-
-For hardhat-deploy documentation, see [rocketh.dev/hardhat-deploy/](https://rocketh.dev/hardhat-deploy/).
+[MIT](https://github.com/wighawag/rocketh/blob/main/LICENSE)

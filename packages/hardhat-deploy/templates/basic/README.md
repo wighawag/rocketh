@@ -1,8 +1,8 @@
 # Sample Hardhat 3 Project (`node:test`)
 
-This project showcases a Hardhat 3 project using the [hardhat-deploy](https://github.com/wighawag/hardhat-deploy) plugin (along with the [rocketh](https://github.com/wighawag/rocketh) deployment system) and the native Node.js test runner (`node:test`) .
+This project showcases a Hardhat 3 project using the [hardhat-deploy](https://rocketh.dev/hardhat-deploy/) plugin (along with the [rocketh](https://rocketh.dev/documentation/) deployment system) and the native Node.js test runner (`node:test`).
 
-To learn more about hardhat-deploy and rocketh, please visit the [documentation](https://rocketh.dev).
+To learn more about hardhat-deploy and rocketh, start with [the hardhat-deploy documentation](https://rocketh.dev/hardhat-deploy/): the project you have is the one [Get started with hardhat-deploy](https://rocketh.dev/hardhat-deploy/getting-started/) describes, and [Tests with Hardhat fixtures](https://rocketh.dev/hardhat-deploy/tests/) explains the test in `test/`.
 
 ## Project Overview
 
