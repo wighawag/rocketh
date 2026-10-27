@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/viem",
-	"version": "0.20.3",
+	"version": "0.20.4",
 	"description": "Use viem clients and contract helpers inside rocketh deploy scripts.",
 	"keywords": [
 		"rocketh",
