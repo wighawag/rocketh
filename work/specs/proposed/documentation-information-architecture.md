@@ -181,7 +181,7 @@ Projects built on the templates were read (2026-10-27) to see how rocketh is use
 - **Running the real deploy scripts in the browser, against an in-tab EVM**, instead of shipping a state dump (template-commit-reveal `web/src/lib/embedded/`). It records two lessons "documented nowhere": `autoMine` must be `false` on an execution-only node, which answers `evm_mine` with `-32601`; and named accounts cannot be indexes there (no `eth_accounts`), so they are given as `privateKey:` entries. Both belong in Run deploy scripts in a browser, which this makes a real guide rather than a README excerpt.
 - **Artifacts from another package** (`solidity-kit/generated/artifacts.js` in `stratagems` `contracts/deploy/000_debug/001_deploy_time.ts`) and per-network deterministic salts. Belongs in Share contracts between projects and Deterministic addresses.
 
-Reading them also surfaced a code bug (observation `export-writes-function-residue-for-op-stack-chains`): the export writes viem's function-valued chain fields as residue, which one project works around by hand.
+Reading them also surfaced a code bug: the export wrote viem's function-valued chain fields as residue, which one project worked around by hand. It is fixed in `@rocketh/export` 0.20.4 (#217), and that project's workaround is gone.
 
 ### Package READMEs
 
