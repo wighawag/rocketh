@@ -359,3 +359,7 @@ It takes a function for the same reason `catchUnknownSigner` does, returns whate
 It accepts the whole policy vocabulary, `'auto'` included, not just `'ask'` and `'throw'`. Per call, `'auto'` means "use this run's capability-aware default for this one action", which is the only way to opt a single call back OUT of a run-level `'throw'` without deciding for it what to do instead.
 
 The override chooses among what the run can do; it cannot exceed it. Asking for `'ask'` where the run cannot ask a human for text still takes the `throw` path and never prompts, so a script that hardcodes the override is still safe in CI.
+
+## Stability
+
+This surface is frozen for the whole 0.x line: `catchUnknownSigner` and its return value, `withUnknownSignerPolicy`, `UnknownSignerError` and its `data`, the `throw` / `ask` / `auto` policies and where they are set, and the `--on-unknown-signer` and `--skip-prompts` flags are not removed, renamed or given a different meaning before 1.0. Message wording is not part of it, and optional fields may be added. The exact list is in [ADR 0016](https://github.com/wighawag/rocketh/blob/main/docs/adr/0016-the-unknown-signer-surface-is-frozen-for-0x.md).
