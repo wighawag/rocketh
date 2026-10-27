@@ -607,6 +607,10 @@ export async function createEnvironment<
 		remoteAccountsError = err;
 	}
 	const accountCache: {[name: string]: ResolvedAccount} = {};
+	// The named accounts the config declares by ADDRESS (`safe: '0x…'`), as opposed to by index
+	//  (`deployer: 0`, the node's own account) or by a signer protocol. Lowercased, like every
+	//  address key. Read by `isNodeHeld` below.
+	const declaredByAddressLower = new Set<`0x${string}`>();
 
 	/**
 	 * Resolves one named account. THREE outcomes, kept apart on purpose:
@@ -684,6 +688,7 @@ export async function createEnvironment<
 						address,
 					};
 				} else {
+					declaredByAddressLower.add(accountDef.toLowerCase() as `0x${string}`);
 					accountCache[name] = account = {
 						type: 'remote',
 						address: accountDef as `0x${string}`,
@@ -887,37 +892,21 @@ export async function createEnvironment<
 	// unpicking a hard-coded assumption at the call site.
 	const remoteAccountsLower = new Set(allRemoteAccounts.map((a) => a.toLowerCase()));
 
-	// A CONTRACT in `eth_accounts` is not held by the node, whatever the list says: no node holds a
-	// key for code. anvil lists an address it has impersonated as one of its own accounts, and
-	// keeps listing it, so on a node an earlier run (or an earlier, failed attempt of this one)
-	// impersonated a Safe through, the Safe would otherwise classify as `node` here. That is
-	// wrong in the way that hurts most: a batch consumer proposes exactly the `impersonated`
-	// entries to the Safe, and would silently get none.
+	// IMPERSONATION WINS for an account the config declares by ADDRESS. Declaring an address (a
+	//  Safe, a timelock, a real deployer) says "this account", not "the node's account", so when
+	//  auto-impersonation is on it is impersonated and classified `impersonated` even if the node
+	//  lists it in `eth_accounts`. anvil lists an address it has impersonated as one of its own,
+	//  and keeps listing it, so on a node reused across rehearsals the Safe used to classify as
+	//  `node`, and a batch consumer proposing the `impersonated` entries silently got none.
 	//
-	// Asked only when auto-impersonation is on, which is the only time the answer changes
-	// anything, and only for named accounts the node lists: one `eth_getCode` each, on fork runs
-	// and dev nodes alone. An EIP-7702 delegation (`0xef0100` + address) is CODE on an EOA whose
-	// key the node may really hold, so it does not count.
-	const contractAccountsLower = new Set<`0x${string}`>();
-	if (resolvedExecutionParams.environment.autoImpersonate) {
-		for (const address of Object.values(namedAccounts)) {
-			const lower = address.toLowerCase() as `0x${string}`;
-			if (!remoteAccountsLower.has(lower) || addressSigners[lower]?.type !== 'remote') continue;
-			let code: string | undefined;
-			try {
-				code = await rawProvider.request({method: 'eth_getCode', params: [address, 'latest']});
-			} catch (e) {
-				// A node that cannot answer leaves `eth_accounts` as the answer, which is what a run
-				//  got before this check existed.
-				logger.debug(`eth_getCode failed for ${address}, keeping eth_accounts' answer: ${e}`);
-			}
-			if (code && code !== '0x' && !code.toLowerCase().startsWith('0xef0100')) {
-				contractAccountsLower.add(lower);
-			}
-		}
-	}
+	// Decided from the DECLARATION rather than from the account's code: an EOA can carry code
+	//  too (EIP-7702), so code says nothing reliable about who holds the key. An account declared
+	//  by index is the node's own and stays `node`. The one visible change is a node's dev account
+	//  written out by address while auto-impersonation is on: it is now labelled `impersonated`,
+	//  and signs exactly as before.
 	function isNodeHeld(lower: `0x${string}`): boolean {
-		return remoteAccountsLower.has(lower) && !contractAccountsLower.has(lower);
+		if (!remoteAccountsLower.has(lower)) return false;
+		return !(resolvedExecutionParams.environment.autoImpersonate && declaredByAddressLower.has(lower));
 	}
 
 	function needsImpersonationForRun(address: `0x${string}`): boolean {
@@ -984,7 +973,7 @@ export async function createEnvironment<
 	// Classification runs AFTER impersonation, since impersonation is what moves an address from
 	// `unsignable` to `impersonated`. Enumerates every variant of the `Signer` union (three:
 	// `signerOnly`, `wallet`, `remote`) so a future variant surfaces as a compile error rather
-	// than silently classifying as `unsignable`. Precedence `local` > `node` > `impersonated` >
+	// than silently classifying as `unsignable`. Precedence `local` > `impersonated` > `node` >
 	// `unsignable` is defensive: it stays correct even if `needsImpersonationForRun` above ever
 	// regresses and sweeps a `signerOnly` account back into the candidate set.
 	function classifySigner(signer: Signer | undefined, lower: `0x${string}`): Signability {
@@ -994,8 +983,11 @@ export async function createEnvironment<
 			case 'wallet':
 				return 'local';
 			case 'remote':
-				if (isNodeHeld(lower)) return 'node';
+				// `impersonated` FIRST: only a candidate can be in that set, and an account declared by
+				//  address that the node also lists is a candidate. If impersonating it failed, the
+				//  node still holds it, so it falls through to `node` rather than to `unsignable`.
 				if (impersonatedAccountsLower.has(lower)) return 'impersonated';
+				if (remoteAccountsLower.has(lower)) return 'node';
 				return 'unsignable';
 		}
 	}
@@ -1578,11 +1570,14 @@ export async function createEnvironment<
 	 * by that transaction's hash, until the transaction is mined and the loan is settled.
 	 *
 	 * Impersonation makes the impersonated account (typically a Safe) the PAYER, which it never is
-	 * for real: whoever submits the Safe transaction pays. So the loan covers the gas, and settling
-	 * sets the balance to what it would be had the account paid no gas at all: the balance after
-	 * mining, minus the loan, plus the gas it paid. Whatever the transaction itself moved (value
-	 * sent, ETH received) stays. A run that stops before the receipt leaves the loan in place,
-	 * which on a fork or a dev node is the whole of the cost.
+	 * for real: whoever submits the Safe transaction pays. So the loan covers the gas and NOTHING
+	 * else: exactly the transaction's gas limit times its max fee per gas, which rocketh fills
+	 * itself for such a transaction so the node cannot pick a higher one. Value the transaction
+	 * sends must come from the account's own balance, so a Safe that cannot afford it fails on the
+	 * fork as it would for real. Settling sets the balance to what it would be had the account paid
+	 * no gas at all: the balance after mining, minus the loan, plus the gas it paid. A run that
+	 * stops before the receipt leaves the loan in place, which on a fork or a dev node is the whole
+	 * of the cost.
 	 *
 	 * Lending and settling each read the balance and then write it, so two transactions from the
 	 * SAME impersonated account broadcast concurrently (a `Promise.all` of two `execute`s) can
@@ -1590,8 +1585,6 @@ export async function createEnvironment<
 	 * a deploy script runs, compose exactly.
 	 */
 	const impersonationLoans = new Map<string, {from: `0x${string}`; loan: bigint}>();
-	/** Far more than any transaction's gas, and a round number to spot in a balance. */
-	const IMPERSONATION_LOAN = 10n ** 21n; // 1000 ETH
 
 	async function setBalanceOnNode(address: `0x${string}`, balance: bigint): Promise<void> {
 		try {
@@ -1962,15 +1955,34 @@ export async function createEnvironment<
 						resolvedExecutionParams.environment.fundImpersonatedAccounts &&
 						env.addressSignability[from] === 'impersonated';
 					let balanceBeforeLoan: bigint | undefined;
+					let loan = 0n;
+					let toSend = transactionData;
 					if (lend) {
+						// Gas limit and fees filled HERE, the way a local signer's are, so the loan is the
+						//  most this transaction can cost in gas and the node cannot spend more of it. The
+						//  nonce stays the node's to pick, as for any node-signed transaction.
+						const {nonce: _filledNonce, ...prepared} = (await prepareForLocalSigning(
+							env.network.provider,
+							transactionData,
+						)) as EIP1193TransactionData & {gas: `0x${string}`; nonce?: `0x${string}`};
+						toSend = (
+							'nonce' in transactionData && transactionData.nonce !== undefined
+								? {...prepared, nonce: transactionData.nonce}
+								: prepared
+						) as EIP1193TransactionData;
+						const feeCap =
+							'maxFeePerGas' in prepared && prepared.maxFeePerGas !== undefined
+								? prepared.maxFeePerGas
+								: (prepared as {gasPrice?: `0x${string}`}).gasPrice;
+						loan = BigInt(prepared.gas) * BigInt(feeCap ?? 0);
 						balanceBeforeLoan = await getBalanceOnNode(transactionData.from);
-						await setBalanceOnNode(transactionData.from, balanceBeforeLoan + IMPERSONATION_LOAN);
+						await setBalanceOnNode(transactionData.from, balanceBeforeLoan + loan);
 					}
 					let txHash: `0x${string}`;
 					try {
 						txHash = await signer.signer.request({
 							method: 'eth_sendTransaction',
-							params: [transactionData],
+							params: [toSend],
 						});
 					} catch (e) {
 						// Refused before it was mined, so nothing was paid: take the loan straight back,
@@ -1985,7 +1997,7 @@ export async function createEnvironment<
 						throw e;
 					}
 					if (balanceBeforeLoan !== undefined) {
-						impersonationLoans.set(txHash.toLowerCase(), {from: transactionData.from, loan: IMPERSONATION_LOAN});
+						impersonationLoans.set(txHash.toLowerCase(), {from: transactionData.from, loan});
 					}
 
 					// CAPTURED on the SUCCESS path of this arm, never at the entry of the function:
