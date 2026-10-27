@@ -91,6 +91,10 @@ The root is deliberately function-only. Its exports are meant to be spread into 
 
 The policy frame these wrappers push forces the `throw` path over the interactive `ask` path. It never overrides impersonation: an account the node can sign for, including one `autoImpersonate` took on, is signable and still broadcasts inside the wrapper. To exercise the unknown-signer path on a fork, set `autoImpersonate: false` for the run. See `docs/adr/0006-unknown-signer-seam-and-orthogonal-autoimpersonate.md`.
 
+## Stability
+
+This surface is frozen for the whole 0.x line: `catchUnknownSigner` and its return value, `withUnknownSignerPolicy`, `UnknownSignerError` and its `data`, the `throw` / `ask` / `auto` policies and where they are set, and the `--on-unknown-signer` and `--skip-prompts` flags are not removed, renamed or given a different meaning before 1.0. Message wording is not part of it, and optional fields may be added. The exact list is in [ADR 0016](https://github.com/wighawag/rocketh/blob/main/docs/adr/0016-the-unknown-signer-surface-is-frozen-for-0x.md).
+
 ## Worked examples
 
 [`test/scenarios.integration.test.ts`](https://github.com/wighawag/rocketh/blob/main/packages/rocketh-unknown-signer/test/scenarios.integration.test.ts) is written as documentation (linked rather than referenced by path, because the published npm tarball ships `dist` and `src` only): a Safe-governed proxy upgrade, the same mechanism firing for a plain `tx`, a deploy, an `execute` and a value transfer, a run that mixes signable and Safe-only steps, and the full execute-on-the-Safe-then-re-run loop. Each test body reads as a deploy script.
