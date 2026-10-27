@@ -1384,7 +1384,6 @@ Use this checklist to verify your migration is complete and working correctly.
 
 - [hardhat-deploy v2 Documentation](https://rocketh.dev/hardhat-deploy/)
 - [Setup First Project Guide](../setup-first-project/)
-- [Migration from v1 Guide](.//)
 - [v1-to-v2 capability map](/documentation/migration/): what v1 has that v2 does not
 - [Hardhat 3.x Documentation](https://hardhat.org/docs/upgrades)
 - [Rocketh Documentation](https://github.com/wighawag/rocketh)
