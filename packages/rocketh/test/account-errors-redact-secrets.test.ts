@@ -77,7 +77,7 @@ describe('named-account errors do not leak private keys', () => {
 			signerProtocols: {privateKey},
 		});
 
-		expect(message).toMatch(/cannot get account for deployer/);
+		expect(message).toMatch(/"deployer" is configured as \{sepolia: .*\}, which gives nothing for this environment/);
 		expect(message).toContain('sepolia: "privateKey:<redacted>"');
 		expect(message).toContain('holesky: <redacted>');
 		expect(message).toMatch(/no entry for "memory"/);
@@ -93,7 +93,7 @@ describe('named-account errors do not leak private keys', () => {
 	it('names the missing privateKey protocol without printing the key', async () => {
 		const message = await environmentError({accounts: {deployer: KEY_A}});
 
-		expect(message).toMatch(/named account "deployer" is configured as a private key/);
+		expect(message).toMatch(/"deployer" is configured as a private key/);
 		expect(message).toMatch(/signerProtocols: \{privateKey\}/);
 		expect(message).not.toContain(KEY_A.slice(2));
 		expect(message).not.toMatch(LONG_HEX);
@@ -110,7 +110,7 @@ describe('named-account errors do not leak private keys', () => {
 			signerProtocols: {privateKey},
 		});
 
-		expect(message).toMatch(/named account "deployer" is configured as <redacted>/);
+		expect(message).toMatch(/"deployer" is configured as <redacted>/);
 		expect(message).not.toContain(unprefixed);
 		expect(message).not.toMatch(LONG_HEX);
 	});

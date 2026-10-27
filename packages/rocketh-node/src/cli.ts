@@ -6,6 +6,7 @@ import {loadAndExecuteDeploymentsFromFiles} from './executor/index.js';
 import type {NodeExecutionParams} from './execution-params.js';
 import {packagesWithLogsEnabled} from './index.js';
 import {buildCLIProgram, toExecutionParams, type RockethCLIOptions} from './cli-options.js';
+import {runFromCLI} from './cli-run.js';
 
 hookup();
 loadEnv();
@@ -55,4 +56,6 @@ try {
 	process.exit(1);
 }
 
-loadAndExecuteDeploymentsFromFiles(executionParams);
+// A named account that cannot be resolved is a configuration mistake too, and is reported the
+//  same way (see `runFromCLI`); any other failure keeps its stack trace.
+runFromCLI(() => loadAndExecuteDeploymentsFromFiles(executionParams));

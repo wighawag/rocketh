@@ -70,12 +70,14 @@ For production deployments, use Hardhat's secret management:
 ETH_NODE_URI_mainnet=SECRET
 MNEMONIC_mainnet=SECRET
 
-# Or specify custom secret name
-ETH_NODE_URI_mainnet=SECRET:MAINNET_RPC_URL
-MNEMONIC_mainnet=SECRET:MAINNET_MNEMONIC
+# Or read the secret stored under another name, for example to share one across networks
+ETH_NODE_URI_mainnet=SECRET:production
+MNEMONIC_mainnet=SECRET:production
 ```
 
-This will use `configVariable('SECRET_ETH_NODE_URI_mainnet')` or `configVariable('SECRET_MAINNET_RPC_URL')`.
+`SECRET` reads the configuration variable named after the environment variable itself, with `SECRET_` in front: `ETH_NODE_URI_mainnet=SECRET` uses `configVariable('SECRET_ETH_NODE_URI_mainnet')` and `MNEMONIC_mainnet=SECRET` uses `configVariable('SECRET_MNEMONIC_mainnet')`.
+
+`SECRET:<name>` keeps the `SECRET_ETH_NODE_URI_` or `SECRET_MNEMONIC_` part and replaces only the network name with `<name>`: `ETH_NODE_URI_mainnet=SECRET:production` uses `configVariable('SECRET_ETH_NODE_URI_production')` and `MNEMONIC_mainnet=SECRET:production` uses `configVariable('SECRET_MNEMONIC_production')`. So `MNEMONIC_sepolia=SECRET:testnet` and `MNEMONIC_holesky=SECRET:testnet` both read `SECRET_MNEMONIC_testnet`. `<name>` is used as written (dashes are not turned into underscores, unlike in the network name) and may not contain another `:`.
 
 ### 2. `addNetworksFromKnownList`
 
@@ -124,6 +126,20 @@ For each known network, it automatically sets:
 - **RPC URL**: Default public RPC or your custom `ETH_NODE_URI_<network>`
 - **Accounts**: Network-specific mnemonic or fallback
 - **Chain Type**: L1, L2, or OP-stack classification
+
+For a real network it adds, the accounts come only from `MNEMONIC_<network>` or `MNEMONIC`: unlike `hardhat`, `localhost`, `memory` and `test`, it gets no test mnemonic. With neither set, the network has no accounts and its public RPC endpoint holds none, so a named account given by index (`deployer: 0`) cannot be resolved and `hardhat deploy` stops with a message naming the network, the endpoint and the variable to set:
+
+```
+Error in community plugin hardhat-deploy: cannot resolve the named account "deployer" for environment "arbitrum-sepolia" (chain 421614, endpoint https://sepolia-rollup.arbitrum.io/<redacted>):
+  - "deployer" is configured as index 0, but the node lists no accounts.
+The hardhat network "arbitrum-sepolia" configures no accounts (its `accounts` is 'remote'), so hardhat asks the node for its own, and this node holds none.
+To fix it, configure accounts for "arbitrum-sepolia" in your hardhat config, for example `accounts: {mnemonic: configVariable('MNEMONIC_arbitrum_sepolia')}` or `accounts: [configVariable('DEPLOYER_PRIVATE_KEY')]`. If "arbitrum-sepolia" is added by hardhat-deploy's `addNetworksFromKnownList`, set the environment variable MNEMONIC_arbitrum_sepolia to the mnemonic (or MNEMONIC, which every network without its own falls back to); the value SECRET reads it from the configuration variable SECRET_MNEMONIC_arbitrum_sepolia instead.
+Alternatively, in the `accounts` of rocketh/config.ts, give the account a signer protocol (for example 'privateKey:...', read from the environment) or an address for "arbitrum-sepolia".
+```
+
+See [Accounts on a Real Network](../configure-named-accounts/#accounts-on-a-real-network).
+
+`addNetworksFromEnv` behaves differently: a network it adds (one for every `ETH_NODE_URI_<network>` set, and in the composition below it runs first, so `addNetworksFromKnownList` then leaves that network alone) falls back to the public `test test test test test test test test test test test junk` mnemonic when neither `MNEMONIC_<network>` nor `MNEMONIC` is set. Such a run does not stop with this error: it signs with a key everyone knows, so always set the mnemonic for a real network you give an `ETH_NODE_URI_<network>`.
 
 ### 3. `addForkConfiguration`
 
