@@ -52,6 +52,7 @@ import type {
 	EIP1193TransactionType0,
 	EIP1193TransactionType1,
 	EIP1193TransactionType2,
+	RequestRPC,
 } from 'eip-1193';
 import {logger, spin} from '../internal/logging.js';
 import {mergeArtifacts} from '@rocketh/core/artifacts';
@@ -876,7 +877,7 @@ export async function createEnvironment<
 
 	// A named account needs impersonation iff it has no USABLE signer for this run: its resolved
 	// signer is `remote` (i.e. we would otherwise ask the node to sign) AND the node does not
-	// already list it in `eth_accounts`. `signerOnly` and `wallet` accounts sign without the
+	// hold it (`isNodeHeld` below: listed in `eth_accounts`, and not a contract). `signerOnly` and `wallet` accounts sign without the
 	// node, so impersonating them is wasted RPC (and contradicts the helper's own doc comment,
 	// which says it exists "for named accounts that don't have private keys available").
 	//
@@ -885,9 +886,43 @@ export async function createEnvironment<
 	// an account with a real signer a candidate again) can extend the rule here without
 	// unpicking a hard-coded assumption at the call site.
 	const remoteAccountsLower = new Set(allRemoteAccounts.map((a) => a.toLowerCase()));
+
+	// A CONTRACT in `eth_accounts` is not held by the node, whatever the list says: no node holds a
+	// key for code. anvil lists an address it has impersonated as one of its own accounts, and
+	// keeps listing it, so on a node an earlier run (or an earlier, failed attempt of this one)
+	// impersonated a Safe through, the Safe would otherwise classify as `node` here. That is
+	// wrong in the way that hurts most: a batch consumer proposes exactly the `impersonated`
+	// entries to the Safe, and would silently get none.
+	//
+	// Asked only when auto-impersonation is on, which is the only time the answer changes
+	// anything, and only for named accounts the node lists: one `eth_getCode` each, on fork runs
+	// and dev nodes alone. An EIP-7702 delegation (`0xef0100` + address) is CODE on an EOA whose
+	// key the node may really hold, so it does not count.
+	const contractAccountsLower = new Set<`0x${string}`>();
+	if (resolvedExecutionParams.environment.autoImpersonate) {
+		for (const address of Object.values(namedAccounts)) {
+			const lower = address.toLowerCase() as `0x${string}`;
+			if (!remoteAccountsLower.has(lower) || addressSigners[lower]?.type !== 'remote') continue;
+			let code: string | undefined;
+			try {
+				code = await rawProvider.request({method: 'eth_getCode', params: [address, 'latest']});
+			} catch (e) {
+				// A node that cannot answer leaves `eth_accounts` as the answer, which is what a run
+				//  got before this check existed.
+				logger.debug(`eth_getCode failed for ${address}, keeping eth_accounts' answer: ${e}`);
+			}
+			if (code && code !== '0x' && !code.toLowerCase().startsWith('0xef0100')) {
+				contractAccountsLower.add(lower);
+			}
+		}
+	}
+	function isNodeHeld(lower: `0x${string}`): boolean {
+		return remoteAccountsLower.has(lower) && !contractAccountsLower.has(lower);
+	}
+
 	function needsImpersonationForRun(address: `0x${string}`): boolean {
 		const lower = address.toLowerCase() as `0x${string}`;
-		if (remoteAccountsLower.has(lower)) return false;
+		if (isNodeHeld(lower)) return false;
 		const signer = addressSigners[lower];
 		return signer?.type === 'remote';
 	}
@@ -959,7 +994,7 @@ export async function createEnvironment<
 			case 'wallet':
 				return 'local';
 			case 'remote':
-				if (remoteAccountsLower.has(lower)) return 'node';
+				if (isNodeHeld(lower)) return 'node';
 				if (impersonatedAccountsLower.has(lower)) return 'impersonated';
 				return 'unsignable';
 		}
@@ -1430,6 +1465,9 @@ export async function createEnvironment<
 			spinner.fail();
 			throw new Error(`receipt for ${hash} not found`);
 		}
+		// Mined, successful or not: either way the gas was paid, so a loan made for it is settled
+		//  now (see `fundImpersonatedAccounts`).
+		await settleImpersonationLoan(hash, receipt);
 
 		// A REVERTED transaction is not a completed one. This is the single choke point every
 		// normal-path receipt passes through, and until this check existed only the pasted-
@@ -1532,6 +1570,80 @@ export async function createEnvironment<
 			return save(pendingDeployment.name, deployment);
 		} else {
 			return deployment;
+		}
+	}
+
+	/**
+	 * `fundImpersonatedAccounts`: the ETH lent to an impersonated sender for ONE transaction, keyed
+	 * by that transaction's hash, until the transaction is mined and the loan is settled.
+	 *
+	 * Impersonation makes the impersonated account (typically a Safe) the PAYER, which it never is
+	 * for real: whoever submits the Safe transaction pays. So the loan covers the gas, and settling
+	 * sets the balance to what it would be had the account paid no gas at all: the balance after
+	 * mining, minus the loan, plus the gas it paid. Whatever the transaction itself moved (value
+	 * sent, ETH received) stays. A run that stops before the receipt leaves the loan in place,
+	 * which on a fork or a dev node is the whole of the cost.
+	 *
+	 * Lending and settling each read the balance and then write it, so two transactions from the
+	 * SAME impersonated account broadcast concurrently (a `Promise.all` of two `execute`s) can
+	 * interleave and leave the account short. Transactions sent one after the other, which is how
+	 * a deploy script runs, compose exactly.
+	 */
+	const impersonationLoans = new Map<string, {from: `0x${string}`; loan: bigint}>();
+	/** Far more than any transaction's gas, and a round number to spot in a balance. */
+	const IMPERSONATION_LOAN = 10n ** 21n; // 1000 ETH
+
+	async function setBalanceOnNode(address: `0x${string}`, balance: bigint): Promise<void> {
+		try {
+			// Not part of any EIP: a dev-node method, like `hardhat_impersonateAccount` above, which
+			//  anvil and hardhat both accept under this name, so it is typed here rather than in the
+			//  provider's method table.
+			const devNode = env.network.provider as unknown as RequestRPC<{
+				hardhat_setBalance: {params: [`0x${string}`, `0x${string}`]; result: unknown};
+			}>;
+			await devNode.request({
+				method: 'hardhat_setBalance',
+				params: [address, `0x${balance.toString(16)}`],
+			});
+		} catch (e) {
+			throw new Error(
+				`fundImpersonatedAccounts: the node refused \`hardhat_setBalance\` for ${address}, which lending an impersonated account the ETH for its gas needs. ` +
+					`Turn \`fundImpersonatedAccounts\` off for this network, or give the account ETH yourself. (${e instanceof Error ? e.message : String(e)})`,
+			);
+		}
+	}
+
+	async function getBalanceOnNode(address: `0x${string}`): Promise<bigint> {
+		return BigInt(await env.network.provider.request({method: 'eth_getBalance', params: [address, 'latest']}));
+	}
+
+	/**
+	 * Settle the loan made for `hash`, if any. It NEVER throws: the transaction is mined, and what
+	 * the run reports next (a revert, a deployment to save) matters more than the balance of an
+	 * account on a fork, so a failure here is a warning naming the balance it should have.
+	 */
+	async function settleImpersonationLoan(hash: string, receipt: EIP1193TransactionReceipt): Promise<void> {
+		const loan = impersonationLoans.get(hash.toLowerCase());
+		if (!loan) {
+			return;
+		}
+		impersonationLoans.delete(hash.toLowerCase());
+		try {
+			if (receipt.effectiveGasPrice === undefined) {
+				// Without the price the gas paid is unknown; taking back only the loan leaves the account
+				//  short by that gas, which it then visibly paid.
+				logger.warn(
+					`fundImpersonatedAccounts: the receipt of ${hash} has no effectiveGasPrice, so ${loan.from} keeps paying its gas`,
+				);
+			}
+			const gasPaid = BigInt(receipt.gasUsed) * BigInt(receipt.effectiveGasPrice ?? 0);
+			const now = await getBalanceOnNode(loan.from);
+			const settled = now - loan.loan + gasPaid;
+			await setBalanceOnNode(loan.from, settled < 0n ? 0n : settled);
+		} catch (e) {
+			logger.warn(
+				`fundImpersonatedAccounts: could not take back the ETH lent to ${loan.from} for ${hash}, so it holds up to ${loan.loan} wei more than it should on this node (${e instanceof Error ? e.message : String(e)})`,
+			);
 		}
 	}
 
@@ -1842,10 +1954,39 @@ export async function createEnvironment<
 			switch (signer.type) {
 				case 'wallet':
 				case 'remote': {
-					const txHash = await signer.signer.request({
-						method: 'eth_sendTransaction',
-						params: [transactionData],
-					});
+					// `fundImpersonatedAccounts`: lend an impersonated sender the ETH for this
+					//  transaction's gas (settled once it is mined, in `waitForTransaction`). Only
+					//  accounts rocketh IMPERSONATED: a key it holds, or one the node holds, pays as it
+					//  would for real.
+					const lend =
+						resolvedExecutionParams.environment.fundImpersonatedAccounts &&
+						env.addressSignability[from] === 'impersonated';
+					let balanceBeforeLoan: bigint | undefined;
+					if (lend) {
+						balanceBeforeLoan = await getBalanceOnNode(transactionData.from);
+						await setBalanceOnNode(transactionData.from, balanceBeforeLoan + IMPERSONATION_LOAN);
+					}
+					let txHash: `0x${string}`;
+					try {
+						txHash = await signer.signer.request({
+							method: 'eth_sendTransaction',
+							params: [transactionData],
+						});
+					} catch (e) {
+						// Refused before it was mined, so nothing was paid: take the loan straight back,
+						//  without letting a failure to do so replace the error that matters.
+						if (balanceBeforeLoan !== undefined) {
+							try {
+								await setBalanceOnNode(transactionData.from, balanceBeforeLoan);
+							} catch (restoreError) {
+								logger.warn(`fundImpersonatedAccounts: ${restoreError}`);
+							}
+						}
+						throw e;
+					}
+					if (balanceBeforeLoan !== undefined) {
+						impersonationLoans.set(txHash.toLowerCase(), {from: transactionData.from, loan: IMPERSONATION_LOAN});
+					}
 
 					// CAPTURED on the SUCCESS path of this arm, never at the entry of the function:
 					// every branch here returns or throws, so there is no single post-send line, and

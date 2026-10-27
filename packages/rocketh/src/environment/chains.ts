@@ -21,7 +21,13 @@ const KNOWN_DEV_CHAIN_IDS = new Set([1337, 31337]);
  */
 export type ChainSemantics = Pick<
 	ChainConfig,
-	'tags' | 'deterministicDeployment' | 'onUnknownSigner' | 'autoMine' | 'confirmationsRequired' | 'transactionType'
+	| 'tags'
+	| 'deterministicDeployment'
+	| 'onUnknownSigner'
+	| 'autoMine'
+	| 'confirmationsRequired'
+	| 'transactionType'
+	| 'fundImpersonatedAccounts'
 > & {
 	/**
 	 * Deliberately UNDEFAULTED here (unlike on `ChainConfig`, which keeps a plain `boolean`), for
@@ -103,6 +109,7 @@ export function getChainSemanticsFromUserConfig(config: ResolvedUserConfig, id: 
 		//  rejects EIP-1559 is a rehearsal of that chain, and legacy transactions run on the fork node
 		//  too, so nothing is lost by following the simulated side.
 		transactionType: chainConfig?.transactionType ?? 'eip1559',
+		fundImpersonatedAccounts: chainConfig?.fundImpersonatedAccounts ?? false,
 	};
 }
 
