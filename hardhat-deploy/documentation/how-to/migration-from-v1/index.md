@@ -130,10 +130,10 @@ Update your [`package.json`](https://github.com/wighawag/template-ethereum-contr
 	"type": "module",
 	"devDependencies": {
 		"hardhat": "^3.6.0",
-		"hardhat-deploy": "^2.1.1",
-		"rocketh": "^0.25.1",
+		"hardhat-deploy": "^2.2.0",
+		"rocketh": "^0.26.0",
 		"@rocketh/deploy": "^0.22.3",
-		"@rocketh/read-execute": "^0.22.2",
+		"@rocketh/read-execute": "^0.23.0",
 		"@rocketh/node": "^0.22.2",
 		"@rocketh/proxy": "^0.21.3",
 		"viem": "^2.45.0",

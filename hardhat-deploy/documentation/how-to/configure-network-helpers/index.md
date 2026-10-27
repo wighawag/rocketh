@@ -127,7 +127,6 @@ For each known network, it automatically sets:
 - **Chain ID**: Correct chain ID for the network
 - **RPC URL**: Default public RPC or your custom `ETH_NODE_URI_<network>`
 - **Accounts**: Network-specific mnemonic or fallback
-- **Chain Type**: L1, L2, or OP-stack classification
 
 For a real network it adds, the accounts come only from `MNEMONIC_<network>` or `MNEMONIC`: unlike `hardhat`, `localhost`, `memory` and `test`, it gets no test mnemonic. With neither set, the network has no accounts and its public RPC endpoint holds none, so a named account given by index (`deployer: 0`) cannot be resolved and `hardhat deploy` stops with a message naming the network, the endpoint and the variable to set:
 
@@ -304,8 +303,8 @@ const config: HardhatUserConfig = {
 // MNEMONIC_arbitrum=your arbitrum mnemonic
 
 // Results in (addNetworksFromEnv sets no chainId or chainType; addNetworksFromKnownList
-// sets both, `chainType: 'op'` for OP-stack chains, but only for the known names, such
-// as `arbitrum-one`):
+// sets chainId, but only for the known names, such as `arbitrum-one`, and currently never
+// sets chainType):
 // networks: {
 //   arbitrum: {
 //     type: 'http',
