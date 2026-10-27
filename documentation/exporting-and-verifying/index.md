@@ -1,24 +1,104 @@
 # Exporting, verifying and documenting
 
-Once contracts are deployed, three separate packages turn the deployment records into things other people consume: verified source on a block explorer, addresses and ABIs for a frontend, and generated reference documentation.
+Once contracts are deployed, three packages turn the [deployment records](../deployment-records/) into things other people consume: verified source on a block explorer, addresses and ABIs for a frontend, and generated reference documentation. Each is a command of its own, run after `hardhat deploy` or `rocketh`, and they behave the same under both.
 
 ## Contract Verification
 
-The `@rocketh/verifier` package publishes your contract source to a block explorer, so the code at your address can be read and audited:
+`@rocketh/verifier` publishes your contracts' source to a block explorer, so the code at each address can be read and audited. It needs nothing but the deployment records: they carry the solc metadata, sources included, so verification can run at any time after the deployment, from any machine that has the records.
 
 ```bash
-npx rocketh-verify -e sepolia etherscan
+pnpm add -D @rocketh/verifier
 ```
 
-Sourcify and Blockscout are supported alongside Etherscan. See the [`@rocketh/verifier` README](https://github.com/wighawag/rocketh/tree/main/packages/rocketh-verifier#readme) for the full option list, supported networks and troubleshooting.
+```bash
+# Etherscan (and every chain Etherscan's V2 API covers): one API key for all of them
+ETHERSCAN_API_KEY=<your key> npx rocketh-verify -e sepolia etherscan
+
+# Sourcify: no key
+npx rocketh-verify -e sepolia sourcify
+
+# Blockscout: a default endpoint is known for the main chains, give the API v2 url otherwise
+npx rocketh-verify -e mychain blockscout --endpoint https://blockscout.example/api/v2
+```
+
+`-e` comes before the explorer. `ETHERSCAN_API_KEY` can live in `.env` or `.env.local`, which the command loads. Every deployment of the environment is submitted; one that is already verified is reported as such, not as an error. An explorer outside Etherscan's V2 API that speaks its protocol takes `--endpoint`, and `--min-interval <ms>` spaces requests out under a rate limit. `rocketh-verify -e sepolia metadata --out ./metadata` writes the metadata files instead, for verifying by hand. Every option is in [the CLI reference](../reference/cli/#rocketh-verify), and the programmatic API (verifying only some deployments) in the [`@rocketh/verifier` README](https://github.com/wighawag/rocketh/tree/main/packages/rocketh-verifier#readme).
 
 ## Exporting Deployments
 
-The `@rocketh/export` package allows you to export deployments for use in frontends:
+`@rocketh/export` turns an environment's deployment records into one file a frontend imports: the chain, and each contract's address and ABI.
 
 ```bash
+pnpm add -D @rocketh/export
 npx rocketh-export -e sepolia --ts ./src/contracts.ts
 ```
+
+`--ts`, `--js` and `--json` each take one or more comma-separated paths, and at least one output is required. The file looks like this:
+
+```typescript
+// src/contracts.ts (abridged)
+export default {
+	chain: {
+		id: 11155111,
+		name: 'Sepolia',
+		nativeCurrency: {name: 'Sepolia Ether', symbol: 'ETH', decimals: 18},
+		// only the urls your config states: a public default endpoint is left out
+		rpcUrls: {default: {http: []}},
+		genesisHash: '0x25a5cc106eea7138acab33231d7160d69cb777ee0c2c553fcddf5138993e6dd9',
+		properties: {},
+	},
+	name: 'sepolia',
+	contracts: {
+		GreetingsRegistry: {
+			address: '0x...',
+			abi: [/* ... */],
+			linkedData: {prefix: ''},
+			startBlock: 7000000,
+		},
+	},
+} as const;
+```
+
+`startBlock` (the block of the deployment transaction) is where an indexer starts syncing; `linkedData` is whatever the script attached. `-b, --bytecode` adds the bytecode. Because the file is `as const`, the ABIs are typed, and viem infers every function and argument from them:
+
+```typescript
+import {createPublicClient, http} from 'viem';
+import deployments from './contracts.js';
+
+const {chain, contracts} = deployments;
+const client = createPublicClient({
+	chain: {id: chain.id, name: chain.name, nativeCurrency: chain.nativeCurrency, rpcUrls: chain.rpcUrls},
+	// the export carries an RPC url only when your config set one, so name the endpoint here
+	transport: http('https://my-sepolia-endpoint.example/rpc'),
+});
+
+const message = await client.readContract({
+	address: contracts.GreetingsRegistry.address,
+	abi: contracts.GreetingsRegistry.abi,
+	functionName: 'messages',
+	args: ['0x0000000000000000000000000000000000000001'],
+});
+```
+
+### Chain properties in the export
+
+The chain's [`properties`](../environments/#chain-properties-properties) from `rocketh/config.ts` are exported as `chain.properties`. This is the place for what a frontend needs to know about the chain and cannot ask it: the average block time to schedule polling, the number of blocks to treat as final, the gas price to expect.
+
+```typescript
+const {averageBlockTimeMs, finality} = deployments.chain.properties as {averageBlockTimeMs?: number; finality?: number};
+```
+
+The export keeps the chain as data only: viem's function-valued fields (the formatters and serializers of OP-stack chains, Celo, zkSync) are dropped rather than written half-serialised.
+
+### Exporting from a contracts package
+
+In a monorepo (the [template](https://github.com/wighawag/template-ethereum-contracts) is one), the contracts package writes the export into the app, after each deployment:
+
+```bash
+pnpm contracts:export sepolia --ts ../web/src/lib/deployments.ts
+# runs: rocketh-export -e sepolia --ts ../web/src/lib/deployments.ts
+```
+
+During development the template's watcher does it after every redeploy, see [Development workflow](/hardhat-deploy/development-workflow/). An app can also import the contracts package itself (its generated ABIs and artifacts, its deployment records), see [Share contracts between projects](../sharing-contracts/).
 
 If the named environment has no deployments (a misspelled name, or a network you have not deployed to yet), the export fails with a non-zero exit code and writes nothing. That is deliberate: the generated file is your app's source of truth for addresses, and it is usually already there from an export against another network, so succeeding without writing would leave the app pointing at that other network's contracts without saying so.
 
@@ -58,4 +138,4 @@ npx rocketh-doc -e sepolia -o ./docs/contracts --except-suffix _Implementation,_
 
 The suffixes are one comma-separated value.
 
-Output is rendered through Handlebars templates, and `-t` points at your own. See the [`@rocketh/doc` README](https://github.com/wighawag/rocketh/tree/main/packages/rocketh-doc#readme) for the template format and the programmatic API, including `generateDocumentationData` for building the model and rendering it yourself.
+Output is rendered through Handlebars templates, and `-t` points at your own. NatSpec reaches the documentation only when the compiler put it in the artifact (`devdoc` and `userdoc`). See the [`@rocketh/doc` README](https://github.com/wighawag/rocketh/tree/main/packages/rocketh-doc#readme) for the template format and the programmatic API, including `generateDocumentationData` for building the model and rendering it yourself.

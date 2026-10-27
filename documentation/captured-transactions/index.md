@@ -368,5 +368,5 @@ One smaller gap, for completeness: transactions a PREVIOUS run broadcast and thi
 - [Rehearsing a deployment on a fork](../fork-runs/) for starting the run that produces a batch, what it inherits from the network it simulates, and the two chain ids involved ([ADR 0014](https://github.com/wighawag/rocketh/blob/main/docs/adr/0014-a-fork-run-simulates-one-chain-and-talks-to-another.md)).
 - [Handling unknown signers](../unknown-signers/) for the privileged calls a rehearsal exists to exercise, and for what `signability` means outside this page.
 - [Guarding execute calls](../execute-guard/) for making a deferred privileged step converge on the re-run.
-- [Testing your deploy scripts](../testing/) for the TypeScript-side harness, which is a different thing from a Solidity fixture.
+- [Tests with Hardhat fixtures](/hardhat-deploy/tests/) for running the deploy scripts in TypeScript tests, which is a different thing from a Solidity fixture.
 - [Running once, and running last](../script-lifecycle/) for `runAtTheEnd`, which is where a consumer of this list lives when you want the batch proposed from inside the run itself.

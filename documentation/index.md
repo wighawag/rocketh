@@ -1,17 +1,45 @@
 # Introduction
 
-## What is rocketh?
+rocketh is a deployment system for smart contracts on Ethereum-compatible networks. You write **deploy scripts**, plain TypeScript functions that say what should be deployed and configured, and rocketh runs them against a network, records what it deployed, and on the next run does only what changed. The same scripts run from a command line, inside your tests, and in a browser.
 
-rocketh is a framework-agnostic system for deploying smart contracts on Ethereum-compatible networks. It provides a minimal API to save and load deployments, making it easy to track and manage contract deployments across different networks.
+**hardhat-deploy** v2 is the [Hardhat](https://hardhat.org) plugin built on it: the same scripts, the same configuration and the same records, run through `hardhat deploy` and available to Hardhat's tests. Most projects that use rocketh use it this way.
 
-Key features of rocketh include:
+## What it does for you
 
-- Deployment tracking and management
-- Deploy Scripts that can run anywhere, including in the browser
-- Named accounts for easier contract interaction
-- Deterministic deployments
-- Library linking
-- Support for various deployment strategies
+- **Deploy scripts that converge.** A script states the result (this contract, behind this proxy, owned by this account), and running it again deploys, upgrades or cuts only what differs from the chain. Re-running is how a stopped deployment finishes and how tests get a deployed system.
+- **Named accounts.** Scripts say `deployer` and `admin`, never `accounts[0]`; each environment says which account each name is and how it signs: a dev node's key, a private key from the environment, a hardware wallet, or a Safe that rocketh hands its transactions to.
+- **Accounts rocketh cannot sign for.** A proxy owned by a Safe, a diamond cut by a timelock: the run pauses, prints the transaction, and checks the hash you paste back, or rehearses it all on a fork by impersonating the owner. See [A Safe-owned project, end to end](./safe-owned-project/).
+- **Records you can rely on.** Every deployment is saved per environment in a [published format](./deployment-records/), which exports to a frontend, verifies on a block explorer and generates documentation.
+- **Upgradeable patterns, declaratively.** Proxies (ERC-173, UUPS, transparent), [EIP-2535](https://eips.ethereum.org/EIPS/eip-2535) diamonds and routers: you declare the new implementation or facet set, rocketh works out the upgrade.
+- **Deterministic addresses**, with create2 and create3, and the address known before deploying.
+- **Hot Contract Replacement** during development: edit a contract and the proxy behind your running app is upgraded in place, the way HMR swaps a module. See [Development workflow](/hardhat-deploy/development-workflow/).
+- **Modular.** At its core rocketh only saves and reads deployments; `deploy`, `deployViaProxy`, `diamond`, `read` and `execute` are extensions you choose, and you can write your own.
+
+Where Hardhat's [Ignition](https://hardhat.org/ignition) asks you to describe a deployment in its module DSL, a rocketh deploy script is ordinary code: any logic, any library, any condition on the network it runs on.
+
+## A deploy script
+
+```typescript
+// deploy/001_deploy_greetings_registry.ts
+import {deployScript, artifacts} from '../rocketh/deploy.js';
+
+export default deployScript(
+	// the environment: the functions of your extensions, the named accounts, the network
+	async ({deployViaProxy, namedAccounts}) => {
+		const {deployer, admin} = namedAccounts;
+
+		await deployViaProxy(
+			'GreetingsRegistry',
+			{account: deployer, artifact: artifacts.GreetingsRegistry, args: ['hello: ']},
+			{owner: admin, execute: {init: {methodName: 'init', args: ['hello: ']}}},
+		);
+	},
+	// tags select the script, dependencies run other scripts first
+	{tags: ['GreetingsRegistry']},
+);
+```
+
+Every script in the `deploy` folder runs in turn when you deploy (`npx hardhat deploy --network sepolia`, or `npx rocketh -e sepolia`), and a test gets the deployed system with one call, `loadAndExecuteDeploymentsFromFiles({provider})`, so it tests the contracts as they are deployed rather than a copy assembled by the test.
 
 ## Try it here
 
@@ -36,47 +64,30 @@ That last asymmetry is worth sitting with. An upgrade replaces **code**, not **s
 Both implementations live in [`packages/rocketh-playground/contracts/`](https://github.com/wighawag/rocketh/tree/main/packages/rocketh-playground/contracts), and the four deploy scripts are in [`src/fixture/deploy-scripts.ts`](https://github.com/wighawag/rocketh/blob/main/packages/rocketh-playground/src/fixture/deploy-scripts.ts). They are compiled from that source, so what you read is what ran.
 :::
 
-## What is hardhat-deploy?
+## Which one to start with
 
-hardhat-deploy is a plugin for the Hardhat Ethereum development environment that leverages rocketh to provide a comprehensive deployment system. It makes it easy to deploy contracts to any network, keeping track of them and replicating the same environment for testing.
+- **You use Hardhat**, or have no preference: start with hardhat-deploy. It compiles your contracts, generates typed artifacts, and gives your tests deployment fixtures. [Get started with hardhat-deploy](/hardhat-deploy/getting-started/).
+- **You compile with something else** (Foundry, solc, another framework), or want deploy scripts with no framework around them: use the `rocketh` command line directly. [Get started without Hardhat](./getting-started/).
+- **You use hardhat-deploy v1**: [Coming from hardhat-deploy v1](/hardhat-deploy/migration/) says what changed and whether your project can move.
 
-Key features of hardhat-deploy include:
+The rest of the documentation is shared: every page that is true of both shows both commands.
 
-- Integration with Hardhat's testing and task system
-- Deployment scripts with tags and dependencies
-- Named accounts for clearer tests and deployment scripts
-- Support for specific deploy scripts per network
-- Deployment retrying through saved pending transactions
+## Reading paths
 
-## Relationship Between rocketh and hardhat-deploy
+**With hardhat-deploy**, start at [the hardhat-deploy section](/hardhat-deploy/), which has its own numbered path through its pages and into the shared guides.
 
-hardhat-deploy v2 is a complete rewrite that uses rocketh under the hood. While rocketh provides the core deployment functionality, hardhat-deploy integrates it with the Hardhat environment, making it accessible through Hardhat tasks and configuration.
+**With the `rocketh` command line:**
 
-rocketh is designed to be modular, with core functionality provided by separate packages like `@rocketh/deploy`, `@rocketh/proxy`, and `@rocketh/diamond`. hardhat-deploy wires these modules together and adds Hardhat-specific functionality.
+1. [Get started without Hardhat](./getting-started/): a project from nothing, deployed to a local node.
+2. [Deploy scripts, tags and dependencies](./deploy-scripts/), then [Named accounts and signers](./named-accounts/) and [Environments and chains](./environments/).
+3. [Deploy contracts](./deploy-contracts/), and as you need them [Upgradeable contracts with proxies](./proxies/), [Diamonds](./diamonds/), [Routers](./routers/) and [Deterministic addresses](./deterministic-addresses/).
+4. [Rehearse on a fork](./fork-runs/), then [A Safe-owned project, end to end](./safe-owned-project/) if anything you deploy is owned by a Safe, a multisig or a timelock.
+5. [Export, verify and document](./exporting-and-verifying/), so a frontend and a block explorer see what you deployed.
+6. Before a live privileged change: [Production hardening](./production-hardening/).
 
-## Where to go next
-
-If you are starting a project, read these in order:
-
-1. [Installation and Setup](./installation/) - install the packages and create the three files rocketh expects.
-2. [Core Concepts](./core-concepts/) - deployments, environments, chains, named accounts, tags and dependencies.
-3. [Using rocketh](./deploying/) - deploy contracts, proxies and diamonds, link libraries, deploy deterministically.
-4. [Examples](./examples/) - complete deploy scripts to copy from.
-
-Then, as you need them:
-
-- [Using hardhat-deploy with rocketh](./hardhat-deploy/) - the Hardhat plugin, and running deploy scripts in tests.
-- [Testing your deploy scripts](./testing/) - the `@rocketh/test-utils` harness, no node required.
-- [Exporting, verifying and documenting](./exporting-and-verifying/) - getting addresses and ABIs to a frontend, and source to a block explorer.
-- [Handling unknown signers](./unknown-signers/) - privileged calls owned by a Safe, multisig or governance key.
-- [Captured transactions](./captured-transactions/) - what a run sent, in order: a Safe batch from a fork rehearsal, or a deployment replayed in a Solidity test.
-- [Running once, and running last](./script-lifecycle/) - `id` and `return true` for a script that must never run again, and `runAtTheEnd` for the one that consumes what the others left behind.
-- [Production hardening](./production-hardening/) - what to check before a deployment touches a live chain.
-- [Architecture Overview](./architecture/) - how the packages fit together.
-
-Migrating an existing project? See [Migrating from hardhat-deploy v1 to v2](./migration/), and the dedicated [hardhat-deploy documentation](/hardhat-deploy/).
+Reference: [the CLI](./reference/cli/), [the configuration](./reference/configuration/), [the environment](./reference/environment/) and [the packages](./reference/packages/). Writing your own extension: [Extending rocketh](./extending/).
 
 ## Source
 
-- [rocketh GitHub repository](https://github.com/wighawag/rocketh)
-- [hardhat-deploy GitHub repository](https://github.com/wighawag/hardhat-deploy)
+- [rocketh on GitHub](https://github.com/wighawag/rocketh): the core, every package, hardhat-deploy, and this documentation.
+- [template-ethereum-contracts](https://github.com/wighawag/template-ethereum-contracts): a complete project to start from.

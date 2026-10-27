@@ -48,15 +48,31 @@ rocketh -e mainnet --is-fork   # dials whenForked.rpcUrl when you named one
 
 If the node is not up, the run stops and says which endpoint it tried, rather than guessing an id and signing for a chain nobody is running.
 
-### Through hardhat-deploy
+### Through hardhat-deploy: `HARDHAT_FORK`
 
-Set `HARDHAT_FORK` to the network you are forking:
+Set `HARDHAT_FORK` to the network you are forking, and hardhat creates the fork in process: no node to start.
 
 ```bash
 HARDHAT_FORK=mainnet npx hardhat deploy
+
+# at a pinned block
+HARDHAT_FORK=mainnet HARDHAT_FORK_NUMBER=18500000 npx hardhat deploy
 ```
 
-The plugin creates the forking network, passes its provider to rocketh, and builds the fork input for you. The value is both the hardhat network to fork FROM and the rocketh environment whose deployment records are read, so `HARDHAT_FORK=mainnet` reads `deployments/mainnet`. See the [fork testing guide](/hardhat-deploy/documentation/how-to/use-fork-testing/) for the network helpers that set this up.
+The value is both the hardhat network to fork FROM and the rocketh environment whose deployment records are read, so `HARDHAT_FORK=mainnet` reads `deployments/mainnet`. The plugin creates the forking network, passes its provider to rocketh and builds the fork input for you. It needs the network's endpoint, which the network helpers read from `ETH_NODE_URI_mainnet` (`addForkConfiguration` in `hardhat.config.ts`, see [Forking with `HARDHAT_FORK`](/hardhat-deploy/networks/#forking-with-hardhat_fork)).
+
+::: warning A hardhat fork reports chain 31337
+The node hardhat creates keeps its own chain id while it simulates mainnet. Without `environments.mainnet.chain` in `rocketh/config.ts`, rocketh looks the settings up under 31337, your local dev chain, and the rehearsal runs with your dev node's tags and settings instead of mainnet's. Declare the chain of every network you rehearse, as in [the condition](#what-a-fork-run-inherits-and-the-one-condition) below:
+
+```typescript
+environments: {
+	mainnet: {chain: 1},
+},
+```
+
+:::
+
+The same applies to a `hardhat node` started with forking and reached with `--is-fork`. anvil does not need it: it reports the forked chain's id.
 
 ### Driving `@rocketh/node` yourself
 
@@ -274,9 +290,40 @@ From the command line that is `rocketh -e mainnet --is-fork --save-deployments`.
 
 That is the whole escape hatch, and it is deliberately the only one: rocketh does not offer a "save a fork somewhere else" destination. There is nowhere else that would be true.
 
+## Checking the result against live contracts
+
+A rehearsal runs your scripts against the real state, so a script can also check what it deployed against the contracts that are already there, and do it only on a fork:
+
+```typescript
+import {erc20Abi} from 'viem';
+import {deployScript, artifacts} from '../rocketh/deploy.js';
+
+export default deployScript(
+	async ({deploy, read, data, namedAccounts, network}) => {
+		const vault = await deploy('Vault', {
+			account: namedAccounts.deployer,
+			artifact: artifacts.Vault,
+			args: [data.usdc],
+		});
+
+		if (network.fork) {
+			const balance = await read(
+				{address: data.usdc, abi: erc20Abi},
+				{functionName: 'balanceOf', args: [vault.address]},
+			);
+			console.log(`vault USDC balance on the fork of ${network.fork.networkName}: ${balance}`);
+		}
+	},
+	{tags: ['Vault']},
+);
+```
+
+Here `data.usdc` is the token's address per environment ([`data`](../environments/#per-environment-data-data)), which resolves on a fork because data is keyed by the environment name.
+
 ## See also
 
 - [Captured transactions](../captured-transactions/) for turning what the rehearsal sent into Safe proposals, and for replaying a deployment inside a Solidity test.
 - [Handling unknown signers](../unknown-signers/) for the Safe-owned steps a rehearsal exists to exercise, and for turning impersonation off to test the deferral path.
 - [Guarding execute calls](../execute-guard/) for making a deferred privileged step converge on the re-run.
+- [A Safe-owned project, end to end](../safe-owned-project/) for a whole rehearsal, from a Safe-owned proxy to the upgrade executed in the Safe app.
 - [Production hardening](../production-hardening/) for where a fork rehearsal sits among the other checks before a privileged change.
