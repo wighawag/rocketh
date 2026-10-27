@@ -70,12 +70,14 @@ For production deployments, use Hardhat's secret management:
 ETH_NODE_URI_mainnet=SECRET
 MNEMONIC_mainnet=SECRET
 
-# Or specify custom secret name
-ETH_NODE_URI_mainnet=SECRET:MAINNET_RPC_URL
-MNEMONIC_mainnet=SECRET:MAINNET_MNEMONIC
+# Or read the secret stored under another name, for example to share one across networks
+ETH_NODE_URI_mainnet=SECRET:production
+MNEMONIC_mainnet=SECRET:production
 ```
 
-This will use `configVariable('SECRET_ETH_NODE_URI_mainnet')` or `configVariable('SECRET_MAINNET_RPC_URL')`.
+`SECRET` reads the configuration variable named after the environment variable itself, with `SECRET_` in front: `ETH_NODE_URI_mainnet=SECRET` uses `configVariable('SECRET_ETH_NODE_URI_mainnet')` and `MNEMONIC_mainnet=SECRET` uses `configVariable('SECRET_MNEMONIC_mainnet')`.
+
+`SECRET:<name>` keeps the `SECRET_ETH_NODE_URI_` or `SECRET_MNEMONIC_` part and replaces only the network name with `<name>`: `ETH_NODE_URI_mainnet=SECRET:production` uses `configVariable('SECRET_ETH_NODE_URI_production')` and `MNEMONIC_mainnet=SECRET:production` uses `configVariable('SECRET_MNEMONIC_production')`. So `MNEMONIC_sepolia=SECRET:testnet` and `MNEMONIC_holesky=SECRET:testnet` both read `SECRET_MNEMONIC_testnet`. `<name>` is used as written (dashes are not turned into underscores, unlike in the network name) and may not contain another `:`.
 
 ### 2. `addNetworksFromKnownList`
 
