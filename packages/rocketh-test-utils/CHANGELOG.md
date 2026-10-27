@@ -1,5 +1,13 @@
 # @rocketh/test-utils
 
+## 0.4.2
+
+### Patch Changes
+
+- Updated dependencies [2f05095]
+  - rocketh@0.25.1
+  - @rocketh/core@0.25.1
+
 ## 0.4.1
 
 ### Patch Changes
