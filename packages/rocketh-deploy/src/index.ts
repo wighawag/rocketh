@@ -26,12 +26,7 @@ import {
 	zeroHash,
 } from 'viem';
 
-// Re-exported so a consumer's emitted declarations can NAME every viem type this package's public
-//  signatures mention. `computeDeterministicAddress` takes `ContractConstructorArgs<TAbi>`, and a
-//  project with `declaration: true` that spreads this package into its extensions but never imports
-//  `viem` itself otherwise fails with TS2883 ("cannot be named without a reference to ... viem"):
-//  under pnpm, TypeScript only finds a portable specifier for a module the program has resolved.
-export type {Abi, Chain, ContractConstructorArgs};
+export type {Abi, Chain};
 
 const logger = logs('@rocketh/deploy');
 
@@ -823,6 +818,19 @@ export function deploy(env: Environment): <TAbi extends Abi>(
 	};
 }
 
+/**
+ * The constructor arguments of a contract with ABI `TAbi`, as `computeDeterministicAddress` takes
+ * them (the same tuple `deploy`'s `args` takes).
+ *
+ * Our own name for viem's `ContractConstructorArgs`, the way `DeploymentConstruction` wraps viem's
+ * deploy parameters, and not merely a convenience: a public signature that mentions a viem type
+ * directly makes a consumer's emitted declarations name viem, and a project with
+ * `declaration: true` that never imports `viem` itself then fails under pnpm with TS2883 ("cannot
+ * be named without a reference to ... viem"). A type this package exports is always nameable
+ * through the package the consumer imported.
+ */
+export type ConstructorArgs<TAbi extends Abi> = ContractConstructorArgs<TAbi>;
+
 export type ComputeDeterministicAddressOptions<TDeterministic extends DeterministicOption = DeterministicOption> = {
 	/**
 	 * The account that WILL deploy, as named in `deploy`. A create3 address depends on it (the
@@ -893,12 +901,12 @@ export function computeDeterministicAddress(
 	env: Environment,
 ): <TAbi extends Abi, const TDeterministic extends DeterministicOption>(
 	artifact: Artifact<TAbi>,
-	args: ContractConstructorArgs<TAbi>,
+	args: ConstructorArgs<TAbi>,
 	options: ComputeDeterministicAddressOptions<TDeterministic>,
 ) => Promise<DeterministicAddressFor<TDeterministic>> {
 	return async <TAbi extends Abi, const TDeterministic extends DeterministicOption>(
 		artifact: Artifact<TAbi>,
-		args: ContractConstructorArgs<TAbi>,
+		args: ConstructorArgs<TAbi>,
 		options: ComputeDeterministicAddressOptions<TDeterministic>,
 	): Promise<DeterministicAddressFor<TDeterministic>> => {
 		const result = await computeAddress(env, artifact, args as readonly unknown[], options);
