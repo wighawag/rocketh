@@ -135,7 +135,7 @@ describe('@rocketh/read-execute - transactions sent as an impersonated account',
 			expect(env.capturedTransactions.at(-1)).toMatchObject({from: SAFE, signability: 'impersonated'});
 		});
 
-		it('asks for code only when auto-impersonation is on, and then changes nothing for EOAs', async () => {
+		it('asks for no code when auto-impersonation is off, and keeps the node list as the answer', async () => {
 			const {env, provider} = await setup({
 				nodeAccounts: [DEPLOYER, SAFE],
 				executionParams: {autoImpersonate: false},
@@ -203,7 +203,72 @@ describe('@rocketh/read-execute - transactions sent as an impersonated account',
 			expect(setBalanceCalls).toEqual([]);
 		});
 
-		it('can be set per chain, which is how a fork-only setting reaches it through whenForked', async () => {
+		it('reaches a fork run through whenForked, the usual way to turn it on', async () => {
+			/**
+			 * `whenForked` applies only when the run is a fork, so a plain run of the same
+			 * environment pays as it would for real.
+			 */
+			const {env, balanceOf} = await setup({
+				nodeAccounts: [DEPLOYER],
+				executionParams: {environment: {fork: 'memory'}},
+				config: {environments: {memory: {chain: 31337, whenForked: {fundImpersonatedAccounts: true}}}},
+			});
+			expect(env.network.fork).toBeDefined();
+
+			await tx(env)({account: 'admin', to: RECIPIENT, value: 0n});
+
+			expect(balanceOf(SAFE)).toBe(0n);
+		});
+
+		it('is not reached by whenForked on a run that is not a fork', async () => {
+			const {env, provider} = await setup({
+				nodeAccounts: [DEPLOYER],
+				safeBalance: 10n ** 18n,
+				config: {environments: {memory: {chain: 31337, whenForked: {fundImpersonatedAccounts: true}}}},
+			});
+
+			await tx(env)({account: 'admin', to: RECIPIENT, value: 0n});
+
+			expect(provider.getRequests().some((r) => r.method === 'hardhat_setBalance')).toBe(false);
+		});
+
+		it('a run-level false wins over the chain config', async () => {
+			const {env, provider} = await setup({
+				nodeAccounts: [DEPLOYER],
+				safeBalance: 10n ** 18n,
+				executionParams: {fundImpersonatedAccounts: false},
+				config: {chains: {31337: {fundImpersonatedAccounts: true}}},
+			});
+
+			await tx(env)({account: 'admin', to: RECIPIENT, value: 0n});
+
+			expect(provider.getRequests().some((r) => r.method === 'hardhat_setBalance')).toBe(false);
+		});
+
+		it('settles a transaction that reverted: its gas was paid all the same', async () => {
+			const {env, provider, balanceOf} = await setup({
+				nodeAccounts: [DEPLOYER],
+				executionParams: {fundImpersonatedAccounts: true},
+			});
+			provider.setResponse('eth_getTransactionReceipt', (params?: unknown[]) => ({
+				contractAddress: null,
+				status: '0x0',
+				transactionHash: params?.[0],
+				blockHash: ('0x' + 'b'.repeat(64)) as `0x${string}`,
+				blockNumber: '0x1',
+				transactionIndex: '0x0',
+				gasUsed: '0x5208',
+				effectiveGasPrice: '0x3b9aca00',
+				logs: [],
+				from: SAFE,
+			}));
+
+			await expect(tx(env)({account: 'admin', to: RECIPIENT, value: 0n})).rejects.toThrow();
+
+			expect(balanceOf(SAFE)).toBe(0n);
+		});
+
+		it('can be set per chain', async () => {
 			const {env, balanceOf} = await setup({
 				nodeAccounts: [DEPLOYER],
 				config: {chains: {31337: {fundImpersonatedAccounts: true}}},

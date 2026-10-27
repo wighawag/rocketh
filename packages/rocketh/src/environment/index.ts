@@ -52,6 +52,7 @@ import type {
 	EIP1193TransactionType0,
 	EIP1193TransactionType1,
 	EIP1193TransactionType2,
+	RequestRPC,
 } from 'eip-1193';
 import {logger, spin} from '../internal/logging.js';
 import {mergeArtifacts} from '@rocketh/core/artifacts';
@@ -1573,6 +1574,80 @@ export async function createEnvironment<
 	}
 
 	/**
+	 * `fundImpersonatedAccounts`: the ETH lent to an impersonated sender for ONE transaction, keyed
+	 * by that transaction's hash, until the transaction is mined and the loan is settled.
+	 *
+	 * Impersonation makes the impersonated account (typically a Safe) the PAYER, which it never is
+	 * for real: whoever submits the Safe transaction pays. So the loan covers the gas, and settling
+	 * sets the balance to what it would be had the account paid no gas at all: the balance after
+	 * mining, minus the loan, plus the gas it paid. Whatever the transaction itself moved (value
+	 * sent, ETH received) stays. A run that stops before the receipt leaves the loan in place,
+	 * which on a fork or a dev node is the whole of the cost.
+	 *
+	 * Lending and settling each read the balance and then write it, so two transactions from the
+	 * SAME impersonated account broadcast concurrently (a `Promise.all` of two `execute`s) can
+	 * interleave and leave the account short. Transactions sent one after the other, which is how
+	 * a deploy script runs, compose exactly.
+	 */
+	const impersonationLoans = new Map<string, {from: `0x${string}`; loan: bigint}>();
+	/** Far more than any transaction's gas, and a round number to spot in a balance. */
+	const IMPERSONATION_LOAN = 10n ** 21n; // 1000 ETH
+
+	async function setBalanceOnNode(address: `0x${string}`, balance: bigint): Promise<void> {
+		try {
+			// Not part of any EIP: a dev-node method, like `hardhat_impersonateAccount` above, which
+			//  anvil and hardhat both accept under this name, so it is typed here rather than in the
+			//  provider's method table.
+			const devNode = env.network.provider as unknown as RequestRPC<{
+				hardhat_setBalance: {params: [`0x${string}`, `0x${string}`]; result: unknown};
+			}>;
+			await devNode.request({
+				method: 'hardhat_setBalance',
+				params: [address, `0x${balance.toString(16)}`],
+			});
+		} catch (e) {
+			throw new Error(
+				`fundImpersonatedAccounts: the node refused \`hardhat_setBalance\` for ${address}, which lending an impersonated account the ETH for its gas needs. ` +
+					`Turn \`fundImpersonatedAccounts\` off for this network, or give the account ETH yourself. (${e instanceof Error ? e.message : String(e)})`,
+			);
+		}
+	}
+
+	async function getBalanceOnNode(address: `0x${string}`): Promise<bigint> {
+		return BigInt(await env.network.provider.request({method: 'eth_getBalance', params: [address, 'latest']}));
+	}
+
+	/**
+	 * Settle the loan made for `hash`, if any. It NEVER throws: the transaction is mined, and what
+	 * the run reports next (a revert, a deployment to save) matters more than the balance of an
+	 * account on a fork, so a failure here is a warning naming the balance it should have.
+	 */
+	async function settleImpersonationLoan(hash: string, receipt: EIP1193TransactionReceipt): Promise<void> {
+		const loan = impersonationLoans.get(hash.toLowerCase());
+		if (!loan) {
+			return;
+		}
+		impersonationLoans.delete(hash.toLowerCase());
+		try {
+			if (receipt.effectiveGasPrice === undefined) {
+				// Without the price the gas paid is unknown; taking back only the loan leaves the account
+				//  short by that gas, which it then visibly paid.
+				logger.warn(
+					`fundImpersonatedAccounts: the receipt of ${hash} has no effectiveGasPrice, so ${loan.from} keeps paying its gas`,
+				);
+			}
+			const gasPaid = BigInt(receipt.gasUsed) * BigInt(receipt.effectiveGasPrice ?? 0);
+			const now = await getBalanceOnNode(loan.from);
+			const settled = now - loan.loan + gasPaid;
+			await setBalanceOnNode(loan.from, settled < 0n ? 0n : settled);
+		} catch (e) {
+			logger.warn(
+				`fundImpersonatedAccounts: could not take back the ETH lent to ${loan.from} for ${hash}, so it holds up to ${loan.loan} wei more than it should on this node (${e instanceof Error ? e.message : String(e)})`,
+			);
+		}
+	}
+
+	/**
 	 * The single broadcast choke point. Deliberately NOT exported and absent from the
 	 * `Environment` interface: it is reached only through `broadcastExecution` and
 	 * `broadcastDeployment`.
@@ -1591,53 +1666,6 @@ export async function createEnvironment<
 	 * `expectedAddress` for the same reason: the interactive path's address invariants have
 	 * to run HERE, before anything is saved or tracked, and this is where that fact arrives.
 	 */
-	/**
-	 * `fundImpersonatedAccounts`: the ETH lent to an impersonated sender for ONE transaction, keyed
-	 * by that transaction's hash, until the transaction is mined and the loan is settled.
-	 *
-	 * Impersonation makes the impersonated account (typically a Safe) the PAYER, which it never is
-	 * for real: whoever submits the Safe transaction pays. So the loan covers the gas, and settling
-	 * sets the balance to what it would be had the account paid no gas at all: the balance after
-	 * mining, minus the loan, plus the gas it paid. Whatever the transaction itself moved (value
-	 * sent, ETH received) stays. A run that stops before the receipt leaves the loan in place,
-	 * which on a fork or a dev node is the whole of the cost.
-	 */
-	const impersonationLoans = new Map<string, {from: `0x${string}`; loan: bigint}>();
-	/** Far more than any transaction's gas, and a round number to spot in a balance. */
-	const IMPERSONATION_LOAN = 10n ** 21n; // 1000 ETH
-
-	async function setBalanceOnNode(address: `0x${string}`, balance: bigint): Promise<void> {
-		try {
-			// Not part of any EIP: a dev-node method, like `hardhat_impersonateAccount` above, which
-			//  anvil and hardhat both accept under this name.
-			await (env.network.provider as any).request({
-				method: 'hardhat_setBalance',
-				params: [address, `0x${balance.toString(16)}`],
-			});
-		} catch (e) {
-			throw new Error(
-				`fundImpersonatedAccounts: the node refused \`hardhat_setBalance\` for ${address}, so the gas of a transaction sent as that impersonated account cannot be paid for it. ` +
-					`Turn \`fundImpersonatedAccounts\` off for this network, or give the account ETH yourself. (${e instanceof Error ? e.message : String(e)})`,
-			);
-		}
-	}
-
-	async function getBalanceOnNode(address: `0x${string}`): Promise<bigint> {
-		return BigInt(await env.network.provider.request({method: 'eth_getBalance', params: [address, 'latest']}));
-	}
-
-	async function settleImpersonationLoan(hash: string, receipt: EIP1193TransactionReceipt): Promise<void> {
-		const loan = impersonationLoans.get(hash.toLowerCase());
-		if (!loan) {
-			return;
-		}
-		impersonationLoans.delete(hash.toLowerCase());
-		const gasPaid = BigInt(receipt.gasUsed) * BigInt(receipt.effectiveGasPrice ?? 0);
-		const now = await getBalanceOnNode(loan.from);
-		const settled = now - loan.loan + gasPaid;
-		await setBalanceOnNode(loan.from, settled < 0n ? 0n : settled);
-	}
-
 	async function broadcastTransaction(
 		transaction: TransactionToBroadcast,
 		source: BroadcastSource,
@@ -1945,9 +1973,14 @@ export async function createEnvironment<
 							params: [transactionData],
 						});
 					} catch (e) {
-						// Refused before it was mined, so nothing was paid: take the loan straight back.
+						// Refused before it was mined, so nothing was paid: take the loan straight back,
+						//  without letting a failure to do so replace the error that matters.
 						if (balanceBeforeLoan !== undefined) {
-							await setBalanceOnNode(transactionData.from, balanceBeforeLoan);
+							try {
+								await setBalanceOnNode(transactionData.from, balanceBeforeLoan);
+							} catch (restoreError) {
+								logger.warn(`fundImpersonatedAccounts: ${restoreError}`);
+							}
 						}
 						throw e;
 					}
