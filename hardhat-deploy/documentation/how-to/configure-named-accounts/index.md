@@ -63,7 +63,7 @@ Error in community plugin hardhat-deploy: cannot resolve 2 named accounts ("depl
   - "deployer" is configured as index 0, but the node lists no accounts.
   - "admin" is configured as index 1, but the node lists no accounts.
 The hardhat network "sepolia" configures no accounts (its `accounts` is 'remote'), so hardhat asks the node for its own, and this node holds none.
-To fix it, configure accounts for "sepolia" in your hardhat config, for example `accounts: {mnemonic: configVariable('MNEMONIC_sepolia')}` or `accounts: [configVariable('DEPLOYER_PRIVATE_KEY')]`. If "sepolia" is added by hardhat-deploy's `addNetworksFromKnownList`, set the environment variable MNEMONIC_sepolia to the mnemonic (or MNEMONIC, which every network without its own falls back to); the value SECRET reads it from the configuration variable SECRET_MNEMONIC_sepolia instead.
+To fix it, configure accounts for "sepolia" in your hardhat config, for example `accounts: {mnemonic: configVariable('MNEMONIC_sepolia')}` or `accounts: [configVariable('DEPLOYER_PRIVATE_KEY')]`. If "sepolia" is added by hardhat-deploy's `addNetworksFromEnv` or `addNetworksFromKnownList`, set the environment variable MNEMONIC_sepolia to the mnemonic (or MNEMONIC, which every network without its own falls back to); the value SECRET reads it from the configuration variable SECRET_MNEMONIC_sepolia instead.
 Alternatively, in the `accounts` of rocketh/config.ts, give the account a signer protocol (for example 'privateKey:...', read from the environment) or an address for "sepolia".
 ```
 
