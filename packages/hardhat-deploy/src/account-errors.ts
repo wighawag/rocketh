@@ -70,9 +70,9 @@ function hardhatNodeAccountsFix(network: NetworkDescription, data: UnresolvableA
 			(data.nodeAccountCount !== undefined && data.nodeAccountCount > 0
 				? `, or give the account an index below ${data.nodeAccountCount}. `
 				: '. ') +
-			// Only `addNetworksFromKnownList` leaves a network's accounts 'remote' when no mnemonic is
-			//  set: `addNetworksFromEnv` falls back to the public test mnemonic (`getMnemonic`).
-			`If "${name}" is added by hardhat-deploy's \`addNetworksFromKnownList\`, set the ` +
+			// Both helpers leave a network's accounts 'remote' when no mnemonic is set, except for the
+			//  local names that fall back to the test mnemonic (`listOfNetworkNamesWithTestAccountAllowed`).
+			`If "${name}" is added by hardhat-deploy's \`addNetworksFromEnv\` or \`addNetworksFromKnownList\`, set the ` +
 			`environment variable ${variable} to the mnemonic (or MNEMONIC, which every network without its own falls ` +
 			`back to); the value SECRET reads it from the configuration variable SECRET_${variable} instead.\n` +
 			rockethAlternative

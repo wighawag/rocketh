@@ -41,6 +41,8 @@ const networks = addNetworksFromEnv({
 });
 ```
 
+Each network's accounts come from `MNEMONIC_<network>`, else `MNEMONIC`. Only the local network names `hardhat`, `localhost`, `memory` and `test` fall back further, to the public test mnemonic (`test test ... junk`). Any other network with neither variable set gets no accounts, so a deploy that needs one stops and names the variable to set (see [Accounts on a Real Network](../configure-named-accounts/#accounts-on-a-real-network)) instead of signing with a key everyone knows. A dev node under another name (`ETH_NODE_URI_lan`, say) therefore needs its mnemonic set explicitly, for example `MNEMONIC_lan="test test test test test test test test test test test junk"`.
+
 #### Environment Variable Patterns
 
 ```bash
@@ -133,13 +135,13 @@ For a real network it adds, the accounts come only from `MNEMONIC_<network>` or 
 Error in community plugin hardhat-deploy: cannot resolve the named account "deployer" for environment "arbitrum-sepolia" (chain 421614, endpoint https://sepolia-rollup.arbitrum.io/<redacted>):
   - "deployer" is configured as index 0, but the node lists no accounts.
 The hardhat network "arbitrum-sepolia" configures no accounts (its `accounts` is 'remote'), so hardhat asks the node for its own, and this node holds none.
-To fix it, configure accounts for "arbitrum-sepolia" in your hardhat config, for example `accounts: {mnemonic: configVariable('MNEMONIC_arbitrum_sepolia')}` or `accounts: [configVariable('DEPLOYER_PRIVATE_KEY')]`. If "arbitrum-sepolia" is added by hardhat-deploy's `addNetworksFromKnownList`, set the environment variable MNEMONIC_arbitrum_sepolia to the mnemonic (or MNEMONIC, which every network without its own falls back to); the value SECRET reads it from the configuration variable SECRET_MNEMONIC_arbitrum_sepolia instead.
+To fix it, configure accounts for "arbitrum-sepolia" in your hardhat config, for example `accounts: {mnemonic: configVariable('MNEMONIC_arbitrum_sepolia')}` or `accounts: [configVariable('DEPLOYER_PRIVATE_KEY')]`. If "arbitrum-sepolia" is added by hardhat-deploy's `addNetworksFromEnv` or `addNetworksFromKnownList`, set the environment variable MNEMONIC_arbitrum_sepolia to the mnemonic (or MNEMONIC, which every network without its own falls back to); the value SECRET reads it from the configuration variable SECRET_MNEMONIC_arbitrum_sepolia instead.
 Alternatively, in the `accounts` of rocketh/config.ts, give the account a signer protocol (for example 'privateKey:...', read from the environment) or an address for "arbitrum-sepolia".
 ```
 
 See [Accounts on a Real Network](../configure-named-accounts/#accounts-on-a-real-network).
 
-`addNetworksFromEnv` behaves differently: a network it adds (one for every `ETH_NODE_URI_<network>` set, and in the composition below it runs first, so `addNetworksFromKnownList` then leaves that network alone) falls back to the public `test test test test test test test test test test test junk` mnemonic when neither `MNEMONIC_<network>` nor `MNEMONIC` is set. Such a run does not stop with this error: it signs with a key everyone knows, so always set the mnemonic for a real network you give an `ETH_NODE_URI_<network>`.
+`addNetworksFromEnv` follows the same rule for the networks it adds from `ETH_NODE_URI_<network>`.
 
 ### 3. `addForkConfiguration`
 

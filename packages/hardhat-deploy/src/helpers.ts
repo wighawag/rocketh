@@ -211,6 +211,15 @@ export function getAccounts(
 	return {mnemonic};
 }
 
+/**
+ * The only network names that fall back to the PUBLIC test mnemonic
+ * (`test test ... junk`) when neither `MNEMONIC_<network>` nor `MNEMONIC` is set. Every other
+ * network gets no accounts instead, so a run on it that needs one stops with a message saying
+ * which variable to set, rather than signing with a key everyone knows. Shared by
+ * `addNetworksFromEnv` and `addNetworksFromKnownList`, which must agree.
+ */
+const listOfNetworkNamesWithTestAccountAllowed = ['hardhat', 'localhost', 'memory', 'test'];
+
 export function addNetworksFromEnv(networks?: Record<string, NetworkUserConfig>): Record<string, NetworkUserConfig> {
 	const newNetworks: Record<string, NetworkUserConfig> = networks ? {...networks} : {};
 	const allEnv = Object.keys(process.env);
@@ -223,7 +232,7 @@ export function addNetworksFromEnv(networks?: Record<string, NetworkUserConfig>)
 					newNetworks[networkName] = {
 						type: 'http',
 						url,
-						accounts: getAccounts(networkName),
+						accounts: getAccounts(networkName, !listOfNetworkNamesWithTestAccountAllowed.includes(networkName)),
 					};
 				} else {
 					// TODO ?
@@ -237,7 +246,6 @@ export function addNetworksFromEnv(networks?: Record<string, NetworkUserConfig>)
 	return newNetworks;
 }
 
-const listOfNetworkNamesWithTestAccountAllowed = ['hardhat', 'localhost', 'memory', 'test'];
 export function addNetworksFromKnownList(
 	networks?: Record<string, NetworkUserConfig>,
 ): Record<string, NetworkUserConfig> {
