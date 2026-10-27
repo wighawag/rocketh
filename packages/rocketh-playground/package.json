@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/playground",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "Run a real rocketh deploy script against a real EVM, in the reader's browser",
 	"keywords": [
 		"rocketh",
