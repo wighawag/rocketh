@@ -10,6 +10,7 @@
  * ADR 0006).
  */
 
+import type {AbiFunction} from 'abitype';
 import {postfixBigIntReplacer} from './json.js';
 
 export type UnknownSignerContractCall = {
@@ -17,6 +18,17 @@ export type UnknownSignerContractCall = {
 	name?: string;
 	method: string;
 	args: readonly unknown[];
+	/**
+	 * The ABI of the ONE function being called, as a one-entry ABI array, so it can be pasted
+	 * as is into a tool that decodes a call from an ABI (a Safe's Transaction Builder accepts a
+	 * pasted ABI when it cannot fetch one for the target address).
+	 *
+	 * Taken at the CALL SITE (`execute` knows the deployment's ABI and which entry it encoded),
+	 * never by a reverse lookup on the target address, which can fail or be ambiguous. For an
+	 * overloaded function it is the overload that was actually encoded. Absent when the call site
+	 * could not tell, and the message then simply has no `abi:` line.
+	 */
+	abi?: readonly [AbiFunction];
 };
 
 export type UnknownSignerErrorData = {
@@ -56,6 +68,20 @@ function formatValue(value: bigint | string | undefined): string | undefined {
 	return typeof value === 'bigint' ? value.toString() : value;
 }
 
+/**
+ * The called function's ABI as ONE JSON line, ready to paste into a Safe's Transaction Builder.
+ * Never throws: an ABI is plain JSON, but rendering this error must not be able to replace it
+ * with an unrelated failure, so anything that cannot be serialised simply prints no line.
+ */
+function formatAbi(abi: readonly [AbiFunction] | undefined): string | undefined {
+	if (abi === undefined) return undefined;
+	try {
+		return JSON.stringify(abi);
+	} catch {
+		return undefined;
+	}
+}
+
 function buildMessage(data: UnknownSignerErrorData): string {
 	const lines: string[] = [
 		'Unknown signer for account ' + data.from,
@@ -91,6 +117,8 @@ function buildMessage(data: UnknownSignerErrorData): string {
 		//  error the user needs with an opaque TypeError.
 		const args = data.contract.args.map((a) => JSON.stringify(a, postfixBigIntReplacer)).join(', ');
 		lines.push(`  contract: ${target}.${data.contract.method}(${args})`);
+		const abi = formatAbi(data.contract.abi);
+		if (abi !== undefined) lines.push(`  abi: ${abi}`);
 	}
 	lines.push(`  from: ${data.from}`);
 	if (data.to !== undefined) lines.push(`  to: ${data.to}`);

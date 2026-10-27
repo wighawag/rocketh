@@ -206,7 +206,7 @@ Without a `guard`, `execute` returns the transaction receipt exactly as it alway
 
 ## Calls from an account you cannot sign for
 
-If `account` resolves to an address rocketh has no way to sign for (a Safe, a governance key, an unplugged hardware wallet), the run does not silently continue and does not simply fail. By default it prints the exact transaction, waits while you execute it under that authority, takes back the transaction hash you paste and carries on with the same run. Nothing to install.
+If `account` resolves to an address rocketh has no way to sign for (a Safe, a governance key, an unplugged hardware wallet), the run does not silently continue and does not simply fail. By default it prints the exact transaction, waits while you execute it under that authority, takes back the transaction hash you paste and carries on with the same run. Nothing to install. Because `execute` knows the function it called, the printed transaction names it (`contract: Token.transferOwnership(...)`) and gives its ABI on one line (`abi: [...]`), ready to paste into a Safe's Transaction Builder.
 
 In CI, where there is no terminal to ask, the same situation raises `UnknownSignerError` instead of blocking.
 

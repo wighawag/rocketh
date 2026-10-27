@@ -1085,8 +1085,10 @@ export interface Environment<
 	 * unsignable `from` can name the function the user must execute out-of-band rather
 	 * than showing only an address. Leave it out for a plain transaction, a value
 	 * transfer or a deploy — there is no function to name. It carries no `name`: the
-	 * deployment name is resolved at the throw site through `fromAddressToNamedABIOrNull`,
-	 * so callers never have to look it up (ADR 0006).
+	 * deployment name is resolved at the throw site from the deployment records at `to`
+	 * (by name only, without merging their ABIs), so callers never have to look it up
+	 * (ADR 0006). It MAY carry `abi`, the called function's ABI entry, which only the call
+	 * site knows reliably.
 	 */
 	broadcastExecution(
 		transaction: TransactionToBroadcast,

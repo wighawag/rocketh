@@ -5,8 +5,9 @@
  * case: a proxy whose owner is a Safe), the seam at the broadcast choke point throws
  * an `UnknownSignerError`. These tests document the enrichment on top of that: a
  * throw that ORIGINATED from `execute` / `executeByName` carries
- * `contract: {name?, method, args}`, so the printed message names the function the
- * user has to run on their Safe instead of only an address.
+ * `contract: {name?, method, args, abi}`, so the printed message names the function the
+ * user has to run on their Safe instead of only an address, and prints that function's ABI
+ * as one JSON line for a Safe's Transaction Builder.
  *
  * They also fence the negative half: a plain `tx()`, a value transfer and a deploy
  * leave `contract` unset, because none of them has a function to name.
@@ -19,12 +20,33 @@
  * project-graph cycle).
  */
 
-import {describe, it, expect} from 'vitest';
+import {describe, it, expect, vi} from 'vitest';
 import {execute, executeByName, tx} from '../src/index.js';
 import {createTestEnvironment} from '@rocketh/test-utils';
 import {UnknownSignerError} from '@rocketh/core';
 import type {Abi} from 'abitype';
 import type {MinimalDeployment, PartialDeployment} from '@rocketh/core/types';
+
+/**
+ * Every `named-logs` warning any package emits during this file, recorded. Installed with
+ * `vi.hoisted` because `named-logs` binds each module's logger when the module LOADS, and the
+ * imports above load first: this is what lets a test assert that a lookup did NOT warn, where a
+ * spy on `console` would see nothing either way (no logger is hooked up in a test run).
+ */
+const warnings = vi.hoisted(() => {
+	const recorded: string[] = [];
+	(globalThis as {_logFactory?: unknown})._logFactory = (namespace: string) =>
+		new Proxy(
+			{},
+			{
+				get: (_target, method) =>
+					method === 'warn'
+						? (...args: unknown[]) => recorded.push(`${namespace}: ${args.map(String).join(' ')}`)
+						: () => {},
+			},
+		);
+	return recorded;
+});
 
 /** An address the mock node lists in `eth_accounts`, so it is signable. */
 const NODE_ACCOUNT = '0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266' as `0x${string}`;
@@ -58,6 +80,37 @@ const IMPLEMENTATION_ABI = [
 		type: 'function',
 		name: 'initialize',
 		inputs: [{type: 'address', name: 'owner'}],
+		outputs: [],
+		stateMutability: 'nonpayable',
+	},
+] as const satisfies Abi;
+
+/** Shared by a proxy's main record and its `_Proxy` record, so merging their ABIs conflicts. */
+const OWNABLE_ABI = [
+	{
+		type: 'function',
+		name: 'owner',
+		inputs: [],
+		outputs: [{type: 'address', name: ''}],
+		stateMutability: 'view',
+	},
+] as const satisfies Abi;
+
+const OVERLOADED_ABI = [
+	{
+		type: 'function',
+		name: 'setValue',
+		inputs: [{type: 'uint256', name: 'value'}],
+		outputs: [],
+		stateMutability: 'nonpayable',
+	},
+	{
+		type: 'function',
+		name: 'setValue',
+		inputs: [
+			{type: 'uint256', name: 'value'},
+			{type: 'string', name: 'label'},
+		],
 		outputs: [],
 		stateMutability: 'nonpayable',
 	},
@@ -118,6 +171,7 @@ describe('@rocketh/read-execute - UnknownSignerError contract enrichment', () =>
 			name: 'Proxy',
 			method: 'upgradeTo',
 			args: [NEW_IMPLEMENTATION],
+			abi: [PROXY_ABI[0]],
 		});
 		expect(error.data.to?.toLowerCase()).toBe(PROXY_ADDRESS);
 		expect(error.message).toContain(`Proxy.upgradeTo("${NEW_IMPLEMENTATION}")`);
@@ -139,6 +193,7 @@ describe('@rocketh/read-execute - UnknownSignerError contract enrichment', () =>
 			name: 'Proxy',
 			method: 'upgradeTo',
 			args: [NEW_IMPLEMENTATION],
+			abi: [PROXY_ABI[0]],
 		});
 	});
 
@@ -159,16 +214,16 @@ describe('@rocketh/read-execute - UnknownSignerError contract enrichment', () =>
 			}),
 		);
 
-		expect(error.data.contract).toEqual({name: 'Proxy', method: 'setLimits', args: [[1n, 2n]]});
+		expect(error.data.contract).toEqual({name: 'Proxy', method: 'setLimits', args: [[1n, 2n]], abi: [PROXY_ABI[1]]});
 		expect(error.message).toContain('Proxy.setLimits(');
 	});
 
 	it('leaves name absent when the target address matches no deployment', async () => {
 		/**
-		 * `name` is opportunistic enrichment resolved through the environment's existing
-		 * `fromAddressToNamedABIOrNull`. `execute` accepts any `MinimalDeployment`
-		 * (`{address, abi}`), so an address that was never saved has no name — and the
-		 * message falls back to the `to` address.
+		 * `name` is opportunistic enrichment, resolved from the deployment records at the target
+		 * address (by name only, no ABI merge). `execute` accepts any `MinimalDeployment`
+		 * (`{address, abi}`), so an address that was never saved has no name, and the message
+		 * falls back to the `to` address.
 		 */
 		const {env} = await setup();
 		const unregistered: MinimalDeployment<typeof PROXY_ABI> = {
@@ -184,23 +239,26 @@ describe('@rocketh/read-execute - UnknownSignerError contract enrichment', () =>
 			}),
 		);
 
-		expect(error.data.contract).toEqual({method: 'upgradeTo', args: [NEW_IMPLEMENTATION]});
+		// The ABI entry comes from the CALL SITE, so it is there even with no record to name.
+		expect(error.data.contract).toEqual({method: 'upgradeTo', args: [NEW_IMPLEMENTATION], abi: [PROXY_ABI[0]]});
 		expect(error.data.contract?.name).toBeUndefined();
 		expect(error.message).toContain(`${UNREGISTERED_ADDRESS}.upgradeTo(`);
 	});
 
-	it('takes the first name when several deployments share the address', async () => {
-		// `fromAddressToNamedABIOrNull` returns every deployment registered at an address
-		//  (a proxy and its implementation record commonly share one). The first is used.
+	it('prefers the base record when several deployments share the address, whatever the save order', async () => {
+		// Extensions save extra records next to the one the user deployed, named `<name>_<role>`
+		//  (`@rocketh/proxy`'s `_Proxy`, `@rocketh/diamond`'s `_DiamondProxy`, `@rocketh/router`'s
+		//  `_Router`). The name shown is the stem of the others. No suffix is hard-coded in core,
+		//  and the save order does not matter (a reload lists records in filesystem order).
 		const {env} = await setup();
-		const proxy = await saveProxy(env, 'Proxy');
-		await env.save('Proxy_Implementation', {
+		await env.save('Proxy_Proxy', {
 			address: PROXY_ADDRESS,
-			abi: IMPLEMENTATION_ABI,
+			abi: PROXY_ABI,
 			bytecode: '0x6080604052' as `0x${string}`,
 			argsData: '0x' as `0x${string}`,
 			metadata: '{}',
 		});
+		const proxy = await saveProxy(env, 'Proxy');
 
 		const error = await expectUnknownSignerError(() =>
 			execute(env)(proxy, {
@@ -213,16 +271,38 @@ describe('@rocketh/read-execute - UnknownSignerError contract enrichment', () =>
 		expect(error.data.contract?.name).toBe('Proxy');
 	});
 
-	it('still surfaces the UnknownSignerError when the name lookup cannot resolve', async () => {
+	it('names a diamond after its base record, not its `_DiamondProxy` record', async () => {
+		// The shape `@rocketh/diamond` leaves: `<name>` and `<name>_DiamondProxy` at one address.
+		//  A diamond cut from a Safe is an `execute` on that address, so it is named here too.
+		const {env} = await setup();
+		await env.save('Market_DiamondProxy', {
+			address: PROXY_ADDRESS,
+			abi: PROXY_ABI,
+			bytecode: '0x6080604052' as `0x${string}`,
+			argsData: '0x' as `0x${string}`,
+			metadata: '{}',
+		});
+		const diamond = await saveProxy(env, 'Market');
+
+		const error = await expectUnknownSignerError(() =>
+			execute(env)(diamond, {account: 'safeOwner', functionName: 'upgradeTo', args: [NEW_IMPLEMENTATION]}),
+		);
+
+		expect(error.data.contract?.name).toBe('Market');
+	});
+
+	it('names a record whose ABI conflicts with another one at the same address, without a warning', async () => {
 		/**
-		 * `fromAddressToNamedABIOrNull` MERGES the ABIs of every deployment at the address
-		 * and throws on a selector conflict. Enrichment is presentation-only, so a
-		 * conflicting address must go unnamed rather than replace the error the user needs
-		 * with an unrelated `ABI conflict` one.
+		 * Two records at one address declaring the same selectors. `fromAddressToNamedABIOrNull`
+		 * MERGES their ABIs and throws an `ABI conflict` here, which is why it is not what names
+		 * the deployment: a NAME needs no merged ABI. The lookup the error uses merges nothing, so
+		 * the address is named and nothing is logged.
 		 */
 		const {env} = await setup();
 		const proxy = await saveProxy(env, 'Proxy');
-		await saveProxy(env, 'ProxyClone'); // same address, same selectors -> conflict
+		await saveProxy(env, 'ProxyClone'); // same address, same selectors: the merge conflicts
+		expect(() => env.fromAddressToNamedABIOrNull(PROXY_ADDRESS)).toThrow(/ABI conflict/);
+		warnings.length = 0;
 
 		const error = await expectUnknownSignerError(() =>
 			execute(env)(proxy, {
@@ -232,8 +312,99 @@ describe('@rocketh/read-execute - UnknownSignerError contract enrichment', () =>
 			}),
 		);
 
-		expect(error.data.contract).toEqual({method: 'upgradeTo', args: [NEW_IMPLEMENTATION]});
-		expect(error.message).toContain(`${PROXY_ADDRESS}.upgradeTo(`);
+		expect(error.data.contract?.name).toBe('Proxy');
+		expect(error.message).toContain(`Proxy.upgradeTo(`);
+		expect(warnings).toEqual([]);
+	});
+
+	it('names a proxy after its main record, not its `_Proxy` record, and does not warn', async () => {
+		/**
+		 * Example: what `deployViaProxy` leaves at a proxy's address. The MAIN record
+		 * (`GreetingsRegistry`, whose ABI merges the implementation's and the proxy's) and the
+		 * `_Proxy` record (the proxy contract alone) share the address AND functions such as
+		 * `owner()`. Merging those ABIs is an `ABI conflict`, which used to surface as a
+		 * "could not resolve a deployment name" warning on every Safe-owned upgrade.
+		 *
+		 * The name shown is the main record's even when the `_Proxy` record was saved first:
+		 * it is the name the user deployed under and the one their scripts use.
+		 */
+		const {env} = await setup();
+		await env.save('GreetingsRegistry_Proxy', {
+			address: PROXY_ADDRESS,
+			abi: [...OWNABLE_ABI, ...PROXY_ABI],
+			bytecode: '0x6080604052' as `0x${string}`,
+			argsData: '0x' as `0x${string}`,
+			metadata: '{}',
+		});
+		const main = await env.save('GreetingsRegistry', {
+			address: PROXY_ADDRESS,
+			abi: [...OWNABLE_ABI, ...PROXY_ABI, ...IMPLEMENTATION_ABI],
+			bytecode: '0x6080604052' as `0x${string}`,
+			argsData: '0x' as `0x${string}`,
+			metadata: '{}',
+		});
+		expect(() => env.fromAddressToNamedABIOrNull(PROXY_ADDRESS)).toThrow(/ABI conflict/);
+		warnings.length = 0;
+
+		const error = await expectUnknownSignerError(() =>
+			execute(env)(main, {
+				account: 'safeOwner',
+				functionName: 'upgradeTo',
+				args: [NEW_IMPLEMENTATION],
+			}),
+		);
+
+		expect(warnings).toEqual([]);
+		expect(error.data.contract?.name).toBe('GreetingsRegistry');
+		expect(error.message).toContain(`contract: GreetingsRegistry.upgradeTo("${NEW_IMPLEMENTATION}")`);
+	});
+});
+
+describe("@rocketh/read-execute - the called function's ABI, ready for a Safe Transaction Builder", () => {
+	it('prints the ABI of the one function called, as a single JSON line', async () => {
+		/**
+		 * Example: the line to paste into a Safe's Transaction Builder ("Enter ABI") when it
+		 * cannot fetch the target's ABI itself. It is the ABI of THIS function only, taken from
+		 * the deployment `execute` was given, so it does not depend on a lookup by address.
+		 */
+		const {env} = await setup();
+		const proxy = await saveProxy(env, 'Proxy');
+
+		const error = await expectUnknownSignerError(() =>
+			execute(env)(proxy, {account: 'safeOwner', functionName: 'upgradeTo', args: [NEW_IMPLEMENTATION]}),
+		);
+
+		const lines = error.message.split('\n');
+		const contractLine = lines.findIndex((line) => line.startsWith('  contract: '));
+		expect(lines[contractLine + 1]).toBe(`  abi: ${JSON.stringify([PROXY_ABI[0]])}`);
+		expect(JSON.parse(lines[contractLine + 1].slice('  abi: '.length))).toEqual([PROXY_ABI[0]]);
+	});
+
+	it('picks the overload that was actually called', async () => {
+		/**
+		 * `setValue(uint256)` and `setValue(uint256,string)`: the ABI line must describe the
+		 * one encoded, or the Builder would decode the call against the wrong inputs. The entry
+		 * is matched on the selector of the calldata `execute` produced.
+		 */
+		const {env} = await setup();
+		const overloaded = await env.save('Overloaded', {
+			address: PROXY_ADDRESS,
+			abi: OVERLOADED_ABI,
+			bytecode: '0x6080604052' as `0x${string}`,
+			argsData: '0x' as `0x${string}`,
+			metadata: '{}',
+		});
+
+		const one = await expectUnknownSignerError(() =>
+			(execute(env) as any)(overloaded, {account: 'safeOwner', functionName: 'setValue', args: [1n]}),
+		);
+		const two = await expectUnknownSignerError(() =>
+			(execute(env) as any)(overloaded, {account: 'safeOwner', functionName: 'setValue', args: [1n, 'one']}),
+		);
+
+		expect(one.data.contract?.abi).toEqual([OVERLOADED_ABI[0]]);
+		expect(two.data.contract?.abi).toEqual([OVERLOADED_ABI[1]]);
+		expect(two.message).toContain(`abi: ${JSON.stringify([OVERLOADED_ABI[1]])}`);
 	});
 });
 
@@ -251,6 +422,7 @@ describe('@rocketh/read-execute - non-contract paths leave contract unset', () =
 
 		expect(error.data.contract).toBeUndefined();
 		expect(error.message).not.toContain('contract:');
+		expect(error.message).not.toContain('abi:');
 	});
 
 	it('a value transfer carries no contract', async () => {
@@ -300,5 +472,6 @@ describe('@rocketh/read-execute - non-contract paths leave contract unset', () =
 
 		expect(error.data.contract).toBeUndefined();
 		expect(error.data.to).toBeUndefined();
+		expect(error.message).not.toContain('abi:');
 	});
 });

@@ -52,6 +52,15 @@ const SAFE_ADDRESS = '0x1111111111111111111111111111111111111111';
 const NODE_ACCOUNT = '0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266';
 const TARGET_CONTRACT = '0x0000000000000000000000000000000000000001';
 
+/** An ABI entry as `execute` attaches it to `contract.abi`. */
+const UPGRADE_TO_ENTRY = {
+	type: 'function',
+	name: 'upgradeTo',
+	inputs: [{type: 'address', name: 'newImplementation'}],
+	outputs: [],
+	stateMutability: 'nonpayable',
+} as const;
+
 /** v1's four keys, in sorted order, which is how `Object.keys(...).sort()` compares them. */
 const V1_KEYS = ['data', 'from', 'to', 'value'];
 
@@ -253,6 +262,29 @@ describe('@rocketh/unknown-signer - hardhat-deploy v1 parity', () => {
 			);
 
 			expect('contract' in result!).toBe(false);
+			expect(Object.keys(result!).sort()).toEqual(V1_KEYS);
+			expectV1Core(result, {from: SAFE_ADDRESS, to: TARGET_CONTRACT, value: '7', data: '0xdeadbeef'});
+		});
+
+		/**
+		 * The called function's ABI rides `contract` too (for the Safe Transaction Builder line
+		 * in the printed block), and is no more a key of the result than `contract` is.
+		 */
+		it("never has an `abi` key, even when the error carries the called function's ABI", async () => {
+			const {env} = await safeOwnerEnvironment();
+
+			const result = await catchUnknownSigner(env)(
+				throwing({
+					from: SAFE_ADDRESS,
+					to: TARGET_CONTRACT,
+					data: '0xdeadbeef',
+					value: 7n,
+					contract: {name: 'MyProxy', method: 'upgradeTo', args: ['0xnewimpl'], abi: [UPGRADE_TO_ENTRY]},
+				}),
+				{log: false},
+			);
+
+			expect('abi' in result!).toBe(false);
 			expect(Object.keys(result!).sort()).toEqual(V1_KEYS);
 			expectV1Core(result, {from: SAFE_ADDRESS, to: TARGET_CONTRACT, value: '7', data: '0xdeadbeef'});
 		});
@@ -559,6 +591,47 @@ describe('@rocketh/unknown-signer - hardhat-deploy v1 parity', () => {
 					separator,
 				].join('\n'),
 			]);
+		});
+
+		/**
+		 * The one line added to the v1 block, and only when the error carries the called
+		 * function's ABI (an `execute`): `abi:` right after the arguments, as ONE JSON line, ready
+		 * to paste into a Safe's Transaction Builder. Without an ABI the block is exactly v1's.
+		 */
+		it('adds the ABI line after the arguments when the call carries one', async () => {
+			const {env} = await safeOwnerEnvironment();
+			const messages: string[] = [];
+			vi.spyOn(env, 'showMessage').mockImplementation((message: string) => {
+				messages.push(message);
+			});
+
+			const result = await catchUnknownSigner(env)(
+				throwing({
+					from: SAFE_ADDRESS,
+					to: TARGET_CONTRACT,
+					data: '0xdeadbeef',
+					contract: {name: 'MyProxy', method: 'upgradeTo', args: ['0xnewimpl'], abi: [UPGRADE_TO_ENTRY]},
+				}),
+			);
+
+			const separator = '-'.repeat(87);
+			expect(messages).toEqual([
+				[
+					separator,
+					`no signer for ${SAFE_ADDRESS}`,
+					'Please execute the following transaction, then re-run this script:',
+					separator,
+					`from: ${SAFE_ADDRESS}`,
+					`to: ${TARGET_CONTRACT} (MyProxy)`,
+					'method: upgradeTo',
+					'args:',
+					'  - 0xnewimpl',
+					`abi: ${JSON.stringify([UPGRADE_TO_ENTRY])}`,
+					'data: 0xdeadbeef',
+					separator,
+				].join('\n'),
+			]);
+			expect(Object.keys(result!).sort()).toEqual(V1_KEYS);
 		});
 
 		/** The same, end to end through the real seam: one message, no repeat-execution note. */

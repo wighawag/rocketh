@@ -30,9 +30,15 @@
 
 import {describe, it, expect, vi} from 'vitest';
 import {decodeFunctionData, encodeFunctionData, encodeFunctionResult, zeroAddress} from 'viem';
-import type {Abi, Artifact, DeploymentStore, Environment} from '@rocketh/core/types';
+import type {Abi, Artifact, DeploymentStore, Environment, PromptExecutor} from '@rocketh/core/types';
 import {UnknownSignerError} from '@rocketh/core';
-import {createMockArtifact, createTestEnvironment, createMapDeploymentStore} from '@rocketh/test-utils';
+import {
+	createMockArtifact,
+	createMockPromptExecutor,
+	createTestEnvironment,
+	createMapDeploymentStore,
+} from '@rocketh/test-utils';
+import {encodeSafeExecTransaction} from './support/safe-exec-transaction.js';
 import {deploy} from '@rocketh/deploy';
 import {deployViaProxy, type ImplementationDeployer} from '@rocketh/proxy';
 import {execute, read, tx} from '@rocketh/read-execute';
@@ -159,8 +165,20 @@ async function runEnvironment(options?: {
 	owners?: ReturnType<typeof createOwners>;
 	registrar?: ReturnType<typeof createRegistrar>;
 	autoImpersonate?: boolean;
+	/**
+	 * Run under `onUnknownSigner: 'ask'` with this fake human, who answers the pause with a
+	 * hash; `pastedTransactions` is what the node returns for that hash.
+	 */
+	ask?: {promptExecutor: PromptExecutor; pastedTransactions: Record<string, Record<string, unknown>>};
 }) {
 	const responses: Record<string, (params?: unknown[]) => unknown> = {};
+	if (options?.ask) {
+		const pasted = options.ask.pastedTransactions;
+		responses.eth_getTransactionByHash = (params?: unknown[]) => {
+			const hash = String(params?.[0]).toLowerCase();
+			return pasted[hash] ? {hash, nonce: '0x3', value: '0x0', gasPrice: '0x1', type: '0x0', ...pasted[hash]} : null;
+		};
+	}
 	let thisRun: Environment | undefined;
 	if (options?.storage) {
 		responses.eth_getStorageAt = (params?: unknown[]) => options.storage!.respondToGetStorageAt(params);
@@ -172,7 +190,10 @@ async function runEnvironment(options?: {
 	const result = await createTestEnvironment({
 		accounts: {deployer: DEPLOYER, safe: SAFE},
 		nodeAccounts: [DEPLOYER],
-		executionParams: {autoImpersonate: options?.autoImpersonate ?? false},
+		executionParams: {
+			autoImpersonate: options?.autoImpersonate ?? false,
+			...(options?.ask ? {onUnknownSigner: 'ask' as const, promptExecutor: options.ask.promptExecutor} : {}),
+		},
 		deploymentStore: options?.deploymentStore,
 		providerConfig: Object.keys(responses).length > 0 ? {responses} : undefined,
 	});
@@ -240,10 +261,12 @@ function broadcastFrom(provider: {getRequests: () => {method: string; params?: u
  * Note who does what: the DEPLOYER deploys (it can sign), and the SAFE owns. That
  * split is the whole point: everything is signable until governance is involved.
  */
-async function deployVaultOwnedBySafe() {
+async function deployVaultOwnedBySafe(options?: {
+	ask?: Parameters<typeof runEnvironment>[0] extends infer O ? (O extends {ask?: infer A} ? A : never) : never;
+}) {
 	const storage = createStorage();
 	const deploymentStore = createMapDeploymentStore();
-	const {env, provider} = await runEnvironment({deploymentStore, storage});
+	const {env, provider} = await runEnvironment({deploymentStore, storage, ask: options?.ask});
 
 	const vault = await deployViaProxy(env)(
 		'Vault',
@@ -305,6 +328,34 @@ describe('@rocketh/unknown-signer - Story 1: upgrading a proxy owned by a Safe',
 		expect(printed()).toContain(`to: ${vault.address}`);
 		expect(printed()).toContain('method: upgradeTo');
 		expect(printed()).toContain(newImplementation);
+	});
+
+	it('names the proxy, and prints the ABI line to paste into the Safe Transaction Builder', async () => {
+		/**
+		 * The Safe Transaction Builder decodes a call, and shows its method and inputs, when it
+		 * has an ABI for the target. It tries to fetch one for the address, which is not always
+		 * possible, and accepts a pasted one: the `abi:` line is exactly that, the ABI of the one
+		 * function to call, on one line.
+		 *
+		 * The proxy's address carries two records here, `Vault` and `Vault_Proxy`, which share
+		 * the proxy's functions. The block names the main one, `Vault`.
+		 */
+		const {env, vault} = await deployVaultOwnedBySafe();
+		const {printed} = capturePrinted(env);
+
+		const deferred = await catchUnknownSigner(env)(() =>
+			deployViaProxy(env)('Vault', {account: 'deployer', artifact: vaultArtifact(2), args: [42n]}, {owner: SAFE}),
+		);
+
+		expect(printed()).toContain(`to: ${vault.address} (Vault)`);
+		const abiLine = printed()
+			.split('\n')
+			.find((line) => line.startsWith('abi: '));
+		const abi = JSON.parse(abiLine!.slice('abi: '.length));
+		expect(abi).toHaveLength(1);
+		expect(abi[0]).toMatchObject({type: 'function', name: 'upgradeTo', inputs: [{type: 'address'}]});
+		// The block gained a line; the RETURNED value did not gain a key (v1's shape exactly).
+		expect(Object.keys(deferred!).sort()).toEqual(['data', 'from', 'to', 'value']);
 	});
 
 	it('lets the rest of the deploy script run', async () => {
@@ -1892,5 +1943,85 @@ describe('@rocketh/unknown-signer - Matrix: a registry contract as proxy admin, 
 		await catchUnknownSigner(reRunEnv)(() => deployRegisteredVault(reRunEnv, executor, 2));
 
 		expect(await storedFiles(deploymentStore, reRunEnv)).toEqual(filesAfterRun1);
+	});
+});
+
+// ============================================================================
+// Story 9: executing the paused upgrade from the Safe app, then pasting the hash
+// ============================================================================
+
+describe('@rocketh/unknown-signer - Story 9: a Safe-owned upgrade executed through the Safe app', () => {
+	/**
+	 * The interactive flow, end to end: the run PAUSES at the upgrade and prints it (with the
+	 * `abi:` line for the Transaction Builder), the human executes it from the Safe app, pastes
+	 * the hash back, and the run continues. What the Safe app sends is `execTransaction` TO the
+	 * Safe, carrying the upgrade inside it; rocketh decodes it and checks the Safe executed
+	 * exactly the requested call before recording anything.
+	 */
+	const PASTED_HASH = `0x${'aa'.repeat(32)}` as `0x${string}`;
+	const SAFE_OWNER = '0x9999999999999999999999999999999999999999';
+
+	/** The upgrade the run will ask for, known before the run because the artifact is. */
+	async function expectedUpgrade() {
+		// A dry run whose upgrade is deferred, to learn the exact calldata and target.
+		const {env, vault} = await deployVaultOwnedBySafe();
+		const deferred = await catchUnknownSigner(env)(
+			() => deployViaProxy(env)('Vault', {account: 'deployer', artifact: vaultArtifact(2), args: [42n]}, {owner: SAFE}),
+			{log: false},
+		);
+		return {to: vault.address, data: deferred!.data as `0x${string}`};
+	}
+
+	it('accepts the pasted hash when the Safe executed exactly the upgrade, and says so', async () => {
+		const upgrade = await expectedUpgrade();
+		const promptExecutor = createMockPromptExecutor({textAnswers: [PASTED_HASH]});
+		const {env} = await deployVaultOwnedBySafe({
+			ask: {
+				promptExecutor,
+				pastedTransactions: {
+					[PASTED_HASH]: {from: SAFE_OWNER, to: SAFE, input: encodeSafeExecTransaction(upgrade)},
+				},
+			},
+		});
+		const {printed} = capturePrinted(env);
+
+		await deployViaProxy(env)('Vault', {account: 'deployer', artifact: vaultArtifact(2), args: [42n]}, {owner: SAFE});
+
+		// the pause printed the upgrade with its ABI line...
+		expect(printed()).toContain('contract: Vault.upgradeTo(');
+		const abiLine = printed()
+			.split('\n')
+			.find((line) => line.startsWith('  abi: '));
+		expect(JSON.parse(abiLine!.slice('  abi: '.length))).toMatchObject([{type: 'function', name: 'upgradeTo'}]);
+		// ...and accepted the paste on the strongest evidence, asking nothing else
+		expect(printed()).toContain('the Safe executed exactly this call');
+		expect(promptExecutor.textRequests).toHaveLength(1);
+	});
+
+	it('asks before recording a pasted Safe transaction that executed something else', async () => {
+		const upgrade = await expectedUpgrade();
+		// the hash of ANOTHER transaction of the same Safe: the right Safe, the wrong call
+		const promptExecutor = createMockPromptExecutor({textAnswers: [PASTED_HASH, '']});
+		const {env} = await deployVaultOwnedBySafe({
+			ask: {
+				promptExecutor,
+				pastedTransactions: {
+					[PASTED_HASH]: {
+						from: SAFE_OWNER,
+						to: SAFE,
+						input: encodeSafeExecTransaction({to: upgrade.to, data: '0x8da5cb5b'}),
+					},
+				},
+			},
+		});
+		const {printed} = capturePrinted(env);
+
+		// declined (an empty answer), so the upgrade is deferred rather than recorded
+		await expect(
+			deployViaProxy(env)('Vault', {account: 'deployer', artifact: vaultArtifact(2), args: [42n]}, {owner: SAFE}),
+		).rejects.toBeInstanceOf(UnknownSignerError);
+		expect(promptExecutor.textRequests).toHaveLength(2);
+		expect(printed()).toContain('the Safe executed a DIFFERENT call than the one requested');
+		expect(printed()).toContain(`CALL to ${upgrade.to.toLowerCase()}, value 0, data 0x8da5cb5b`);
 	});
 });

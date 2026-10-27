@@ -233,19 +233,29 @@ export async function confirmUnrelatedTransaction(params: {
 	/** What rocketh looked for and did not find, in words a human can act on. */
 	finding: string;
 	hash: `0x${string}`;
+	/**
+	 * The headline and the lines explaining why rocketh is asking. Default: the case where
+	 * NOTHING links the transaction to the request (governance executed by proposal id). A
+	 * caller that knows more, such as "the Safe executed a different call", says so instead.
+	 */
+	headline?: string;
+	explanation?: string[];
 }): Promise<{type: 'accepted'} | {type: 'rejected'; reason: 'declined' | 'cancelled' | 'prompt-failed'}> {
 	const {promptText, showMessage, finding, hash} = params;
 
 	showMessage(
 		[
 			SEPARATOR,
-			`The transaction you pasted SUCCEEDED, but rocketh cannot tell that it is the one it asked for.`,
+			params.headline ??
+				`The transaction you pasted SUCCEEDED, but rocketh cannot tell that it is the one it asked for.`,
 			`  ${hash}`,
 			`  ${finding}`,
 			'',
-			'That is expected for governance executed by proposal id, where the payload was queued',
-			'earlier and this transaction only references it. It is also what pasting the wrong hash',
-			'looks like. rocketh cannot tell those apart, so it is your call.',
+			...(params.explanation ?? [
+				'That is expected for governance executed by proposal id, where the payload was queued',
+				'earlier and this transaction only references it. It is also what pasting the wrong hash',
+				'looks like. rocketh cannot tell those apart, so it is your call.',
+			]),
 			SEPARATOR,
 		].join('\n'),
 	);
