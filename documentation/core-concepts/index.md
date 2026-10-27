@@ -210,7 +210,7 @@ The same error, listing each account with its own reason, covers the other ways 
 
 ## Deploy Scripts
 
-Deploy scripts are JavaScript or TypeScript files that define how contracts should be deployed. They use the `execute` function from rocketh to define a deployment function and its metadata (tags and dependencies).
+Deploy scripts are JavaScript or TypeScript files that define how contracts should be deployed. They use the `deployScript` function (created by `setupDeployScripts` from `rocketh`, in your `rocketh/deploy.ts`) to define a deployment function and its metadata (tags and dependencies).
 
 Deploy scripts are placed in the `deploy` folder and are executed in alphabetical order when running the `hardhat deploy` task.
 

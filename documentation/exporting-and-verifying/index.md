@@ -53,7 +53,9 @@ npx rocketh-doc -e sepolia -o ./docs/contracts
 A proxied contract saves three records (`MyContract`, `MyContract_Proxy`, `MyContract_Implementation`), so most projects want to filter the generated ones out:
 
 ```bash
-npx rocketh-doc -e sepolia -o ./docs/contracts --except-suffix _Implementation _Proxy
+npx rocketh-doc -e sepolia -o ./docs/contracts --except-suffix _Implementation,_Proxy
 ```
+
+The suffixes are one comma-separated value.
 
 Output is rendered through Handlebars templates, and `-t` points at your own. See the [`@rocketh/doc` README](https://github.com/wighawag/rocketh/tree/main/packages/rocketh-doc#readme) for the template format and the programmatic API, including `generateDocumentationData` for building the model and rendering it yourself.

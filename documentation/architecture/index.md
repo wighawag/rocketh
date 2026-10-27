@@ -22,4 +22,4 @@ hardhat-deploy integrates rocketh with Hardhat through:
 1. **Plugin Registration**: Registers the `deploy` task with Hardhat.
 2. **Config Hook Handler**: Processes Hardhat configuration to set up rocketh.
 3. **Solidity Hook Handler**: Processes Solidity compilation results for use with rocketh.
-4. **Deploy Task**: Executes deployment scripts using rocketh's `loadAndExecuteDeployments` function.
+4. **Deploy Task**: Executes deployment scripts using `loadAndExecuteDeploymentsFromFiles` from `@rocketh/node`.

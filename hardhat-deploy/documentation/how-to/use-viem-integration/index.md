@@ -9,11 +9,11 @@ Install the viem extension:
 ::: code-group
 
 ```bash [npm]
-npm install -D @rocketh/viem
+npm install -D @rocketh/viem viem
 ```
 
 ```bash [pnpm]
-pnpm add -D @rocketh/viem
+pnpm add -D @rocketh/viem viem
 ```
 
 :::
@@ -38,11 +38,16 @@ export const config = {
 	data: {},
 } as const satisfies UserConfig;
 
+// the deploy and read/execute extensions, which the examples below also use
+import * as deployExtension from '@rocketh/deploy';
+import * as readExecuteExtension from '@rocketh/read-execute';
 // this one provide a viem handle to clients and contracts
 import * as viemExtension from '@rocketh/viem';
 
 // and export them as a unified object
 const extensions = {
+	...deployExtension,
+	...readExecuteExtension,
 	...viemExtension,
 };
 export {extensions};

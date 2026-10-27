@@ -43,7 +43,9 @@ export default {
 		},
 		rpcUrls: {
 			default: {
-				http: ['http://127.0.0.1:8545'],
+				// empty unless your rocketh config sets `info.rpcUrls` for this chain
+				//  (or `includeDefaultRPCUrlsInChainInfos: true`)
+				http: [],
 			},
 		},
 		genesisHash: '0x0078bf1c86dfafc8610927cdb57a15bf17005156777f4c4a0c4b2efa8ec1d27f',
@@ -84,7 +86,7 @@ export default {
 
 The exported file includes:
 
-- **Chain information**: Chain ID, name, native currency, and RPC URLs
+- **Chain information**: Chain ID, name, native currency, and RPC URLs (only the ones your config states explicitly: a public default endpoint is deliberately left out, see [Environments and Chains](/documentation/core-concepts/#environments-and-chains))
 - **Contract data**: For each deployed contract:
   - Full ABI for type-safe interactions
   - Deployed address
@@ -104,7 +106,8 @@ const client = createPublicClient({
 		nativeCurrency: contracts.chain.nativeCurrency,
 		rpcUrls: contracts.chain.rpcUrls,
 	},
-	transport: http(),
+	// the export carries no RPC url unless your config set one, so name the endpoint here
+	transport: http('http://127.0.0.1:8545'),
 });
 
 // Read from a contract

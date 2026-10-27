@@ -28,7 +28,7 @@ The package provides the `rocketh-doc` command.
 rocketh-doc -e mainnet -o ./docs/contracts
 
 # skip the generated proxy/implementation records
-rocketh-doc -e mainnet -o ./docs/contracts --except-suffix _Implementation _Proxy
+rocketh-doc -e mainnet -o ./docs/contracts --except-suffix _Implementation,_Proxy
 
 # use your own template
 rocketh-doc -e mainnet -o ./docs/contracts -t ./my-templates
@@ -36,13 +36,13 @@ rocketh-doc -e mainnet -o ./docs/contracts -t ./my-templates
 
 ### Options
 
-| Option                                | Description                                                  |
-| ------------------------------------- | ------------------------------------------------------------ |
-| `-e, --environment <value>`           | **(Required)** Environment context to use.                   |
-| `-o, --output <value>`                | Folder to generate the docs into.                            |
-| `-d, --deployments <value>`           | Folder where deployments are saved.                          |
-| `-t, --template <value>`              | Template used to generate the docs.                          |
-| `--except-suffix <suffix, suffix...>` | Ignore contracts whose name ends with any of these suffixes. |
+| Option                                | Description                                                                                      |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `-e, --environment <value>`           | **(Required)** Environment context to use.                                                       |
+| `-o, --output <value>`                | Folder to generate the docs into.                                                                |
+| `-d, --deployments <value>`           | Folder where deployments are saved.                                                              |
+| `-t, --template <value>`              | Template used to generate the docs.                                                              |
+| `--except-suffix <suffix, suffix...>` | Ignore contracts whose name ends with any of these suffixes, given as one comma-separated value. |
 
 `--except-suffix` is the option most projects want straight away: a proxy deployment saves `MyContract_Proxy` and `MyContract_Implementation` next to `MyContract`, and documenting all three says the same thing three times.
 

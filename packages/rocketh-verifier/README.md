@@ -35,8 +35,12 @@ rocketh-verify -e mainnet etherscan
 # With custom options
 rocketh-verify -e mainnet etherscan --license MIT --force-license
 
-# With custom endpoint (for Etherscan-compatible explorers)
-rocketh-verify -e polygon etherscan --endpoint https://api.polygonscan.com/api
+# Any chain Etherscan's V2 API covers (Polygon, Arbitrum, Base, ...) needs no endpoint:
+#  the default one is used with the environment's chain id
+rocketh-verify -e polygon etherscan
+
+# With custom endpoint (for another Etherscan-compatible explorer)
+rocketh-verify -e mychain etherscan --endpoint https://explorer.example/api
 ```
 
 ### Verify on Sourcify
@@ -55,8 +59,8 @@ rocketh-verify -e mainnet sourcify --endpoint https://sourcify.dev/server
 # Basic usage
 rocketh-verify -e mainnet blockscout
 
-# With custom endpoint
-rocketh-verify -e gnosis blockscout --endpoint https://blockscout.com/xdai/mainnet/api
+# With custom endpoint (a Blockscout API v2 base url)
+rocketh-verify -e mychain blockscout --endpoint https://blockscout.example/api/v2
 ```
 
 ### Export Metadata
@@ -179,19 +183,9 @@ interface BlockscoutOptions {
 
 ### Etherscan Networks
 
-The verifier automatically detects the correct Etherscan endpoint for common networks:
+The verifier uses Etherscan's V2 API, `https://api.etherscan.io/v2/api`, for every chain, passing the environment's chain id as `chainid`. One Etherscan API key covers every chain that API supports.
 
-| Network          | Chain ID | Endpoint                    |
-| ---------------- | -------- | --------------------------- |
-| Ethereum Mainnet | 1        | api.etherscan.io            |
-| Goerli           | 5        | api-goerli.etherscan.io     |
-| Sepolia          | 11155111 | api-sepolia.etherscan.io    |
-| Polygon          | 137      | api.polygonscan.com         |
-| Arbitrum         | 42161    | api.arbiscan.io             |
-| Optimism         | 10       | api-optimistic.etherscan.io |
-| Base             | 8453     | api.basescan.org            |
-
-For other networks, use the `--endpoint` option.
+For an explorer that is not on Etherscan's V2 API, use the `--endpoint` option.
 
 ### Sourcify
 
@@ -199,7 +193,7 @@ Sourcify supports all EVM chains. The default endpoint is `https://sourcify.dev/
 
 ### Blockscout
 
-Blockscout is self-hosted by many chains. Use the `--endpoint` option to specify the correct API URL for your chain.
+Blockscout is self-hosted by many chains. A default API url is known for Ethereum, Sepolia, Optimism, OP Sepolia, Base, Base Sepolia, Gnosis, Gnosis Chiado, Ethereum Classic and zkSync Era (among others); for any other chain, use the `--endpoint` option to give the chain's Blockscout API v2 url.
 
 ## Examples
 
@@ -259,18 +253,14 @@ rocketh-verify -e mainnet etherscan --min-interval 5000
 
 ### Missing API Key
 
-Etherscan requires an API key. Get one at:
-
-- [Etherscan](https://etherscan.io/apis)
-- [Polygonscan](https://polygonscan.com/apis)
-- [Arbiscan](https://arbiscan.io/apis)
+Etherscan requires an API key, set as `ETHERSCAN_API_KEY`. Get one at [Etherscan](https://etherscan.io/apis): with the V2 API the same key works for every chain it supports.
 
 ### Wrong Network Endpoint
 
-For Etherscan-compatible explorers, ensure you're using the correct API endpoint:
+For an Etherscan-compatible explorer outside Etherscan's V2 API, pass its API endpoint (the verifier appends `?chainid=<id>` and the usual query parameters to it):
 
 ```bash
-rocketh-verify -e bsc etherscan --endpoint https://api.bscscan.com/api
+rocketh-verify -e mychain etherscan --endpoint https://explorer.example/api
 ```
 
 ## Related Packages

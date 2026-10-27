@@ -44,10 +44,13 @@ hardhat-deploy supports several proxy patterns:
 - Lower gas costs
 - Implementation must include upgrade functionality
 
-### 3. Beacon Proxy
+### 3. ERC-173 Proxy (the default)
 
-- Multiple proxies share same implementation
-- Efficient for deploying many identical contracts
+- An ownable proxy (`ERC173Proxy`, or `ERC173ProxyWithReceive` to accept plain ETH)
+- Its owner upgrades it directly, with no admin contract
+- Used when you do not set `proxyContract`
+
+Beacon proxies are not built in. To have several proxies run one implementation, see [one implementation behind many proxies](/documentation/migration/#one-implementation-behind-many-proxies).
 
 ## Basic Proxy Deployment
 
@@ -124,14 +127,16 @@ When you modify your contract and redeploy, hardhat-deploy automatically detects
 
 ### Checking for Upgrades
 
-You can also check if an upgrade is needed before deploying:
+You can also tell whether a run deployed or upgraded the proxy:
 
 ```typescript
 import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(
-	async ({deployViaProxy, namedAccounts}) => {
+	async ({deployViaProxy, getOrNull, namedAccounts}) => {
 		const {deployer, admin} = namedAccounts;
+
+		const before = getOrNull('MyContract');
 
 		const result = await deployViaProxy(
 			'MyContract',
@@ -146,8 +151,12 @@ export default deployScript(
 			},
 		);
 
-		if (result.newlyDeployed) {
-			console.log('Contract was upgraded or newly deployed');
+		// `deployViaProxy` returns the proxy's record, which has no `newlyDeployed` flag: compare
+		// the implementation the record describes before and after instead
+		if (!before) {
+			console.log('Contract newly deployed');
+		} else if (before.implementation !== result.implementation) {
+			console.log('Contract upgraded');
 		} else {
 			console.log('Contract unchanged, no upgrade needed');
 		}

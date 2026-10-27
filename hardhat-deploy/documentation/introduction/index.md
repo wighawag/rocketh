@@ -2,7 +2,7 @@
 
 _A [Hardhat](https://hardhat.org) Plugin For Replicable Deployments And Easy Testing_
 
-> **Note: This is the documentation for hardhat-deploy v2 that works with [hardhat v3](https://hardhat.org/hardhat3-alpha)**
+> **Note: This is the documentation for hardhat-deploy v2 that works with [hardhat v3](https://hardhat.org/docs)**
 >
 > Documentation for hardhat-deploy v1 can be found on the [v1 branch](https://github.com/wighawag/hardhat-deploy/tree/v1#readme)
 

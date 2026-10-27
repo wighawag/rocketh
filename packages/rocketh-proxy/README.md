@@ -176,7 +176,7 @@ Everything from `@rocketh/deploy`'s `DeployOptions` (minus the re-deployment fla
 | `deterministicImplementation`            | Deploy the implementation deterministically while leaving the proxy address nonce-derived.                     |
 | `alwaysOverride` / `strictBytecodeMatch` | Mutually exclusive re-deployment controls, as in `@rocketh/deploy`.                                            |
 
-**Proxies force `strictBytecodeMatch: false`.** A metadata-only difference (a changed comment) must never trigger an upgrade. See [`docs/adr/0004-non-strict-bytecode-matching-by-default.md`](https://github.com/wighawag/rocketh/blob/main/docs/adr/0004-non-strict-bytecode-matching-by-default.md).
+**The proxy contract itself is always compared with `strictBytecodeMatch: false`.** A metadata-only difference (a changed comment) must never trigger an upgrade. The `strictBytecodeMatch` option above applies to the implementation only. See [`docs/adr/0004-non-strict-bytecode-matching-by-default.md`](https://github.com/wighawag/rocketh/blob/main/docs/adr/0004-non-strict-bytecode-matching-by-default.md).
 
 ## Telling an upgrade story with `upgradeIndex`
 

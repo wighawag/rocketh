@@ -42,7 +42,7 @@ A deploy script is meant to be re-runnable, so `deploy` first asks whether the c
 
 With neither `skipIfAlreadyDeployed` nor `alwaysOverride`, rocketh compares the saved deployment's code and constructor arguments against what you are deploying now, and redeploys only if they differ.
 
-By default that comparison **ignores the contract metadata**. Solidity appends a CBOR metadata blob to a contract's runtime bytecode, and that blob changes when things that do not affect behaviour change: a comment, an absolute source path, a compiler patch version. Comparing raw bytes would therefore redeploy — or, worse, UPGRADE A PROXY — because someone reformatted a file. So rocketh strips the metadata from both sides before comparing (`docs/adr/0004-non-strict-bytecode-matching-by-default.md`). `@rocketh/proxy` forces this off for exactly that reason and does not let you change it.
+By default that comparison **ignores the contract metadata**. Solidity appends a CBOR metadata blob to a contract's runtime bytecode, and that blob changes when things that do not affect behaviour change: a comment, an absolute source path, a compiler patch version. Comparing raw bytes would therefore redeploy (or, worse, UPGRADE A PROXY) because someone reformatted a file. So rocketh strips the metadata from both sides before comparing (`docs/adr/0004-non-strict-bytecode-matching-by-default.md`). For the proxy contract itself, `@rocketh/proxy` forces this off for exactly that reason and does not let you change it; a `strictBytecodeMatch` you pass to `deployViaProxy` still applies to the implementation.
 
 Set `strictBytecodeMatch: true` to compare the bytes verbatim instead, metadata included:
 
@@ -86,7 +86,7 @@ export default deployScript(
 			},
 		);
 	},
-	// execute takes as a second argument an options object where you can specify tags and dependencies
+	// deployScript takes as a second argument an options object where you can specify tags and dependencies
 	{tags: ['GreetingsRegistry', 'GreetingsRegistry_deploy']},
 );
 ```

@@ -65,7 +65,7 @@ export default deployScript(
 			account: deployer,
 			artifact: artifacts.MyDeFiContract,
 			args: [
-				'0xA0b86a33E6441E8C8C7014b5C1e8e8b8C8C8C8C8', // USDC on mainnet
+				'0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', // USDC on mainnet
 				'0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9', // Aave LendingPool
 			],
 		});
@@ -75,7 +75,7 @@ export default deployScript(
 			console.log('Running fork-specific validation...');
 
 			// Test interaction with live USDC contract
-			const usdcAddress = '0xA0b86a33E6441E8C8C7014b5C1e8e8b8C8C8C8C8';
+			const usdcAddress = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
 			const usdcBalance = await env.read(
 				{
 					address: usdcAddress,

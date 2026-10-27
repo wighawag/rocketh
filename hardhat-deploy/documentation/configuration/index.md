@@ -53,7 +53,7 @@ In the above file, the deployer is set to be the first account on all environmen
 
 ---
 
-The config also allow you to set an optional `deterministicDeployment` field.
+The config also allows you to set an optional `deterministicDeployment` field on each chain, under `chains[<chainId>]` (or per environment, in `environments[<name>].overrides`). It takes the create2 fields below directly, or `{create2: {...}, create3: {...}}` to configure both factories.
 
 `deterministicDeployment` allows you to associate information that are used on each chain for deterministic deployment. The information for each deterministic deployment consist out of a `factory`, a `deployer`, the required `funding` and a `signedTx` to deploy the factory. The default deterministic deployment used is the [Deterministic Deployment Proxy](https://github.com/Arachnid/deterministic-deployment-proxy). The factory expects a 32 bytes `salt` concatenated with the deployment data (see [EIP-1014](https://eips.ethereum.org/EIPS/eip-1014) for more information on these parameters).
 
@@ -72,13 +72,16 @@ export const config = {
 		},
 	},
   chains: {
-    sepolia: {
+    // keyed by chain id (here sepolia), and set under `deterministicDeployment`
+    11155111: {
+      deterministicDeployment: {
         factory: '0x4e59b44847b379578588920ca78fbf26c0b4956c',
         deployer: '0x3fab184622dc19b6109349b94811493bf2a45362',
         funding: '10000000000000000',
         signedTx:
           '0xf8a58085174876e800830186a08080b853604580600e600039806000f350fe7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe03601600081602082378035828234f58015156039578182fd5b8082525050506014600cf31ba02222222222222222222222222222222222222222222222222222222222222222a02222222222222222222222222222222222222222222222222222222222222222',
-      }
-  }
+      },
+    },
+  },
 } as const satisfies UserConfig;
 ```

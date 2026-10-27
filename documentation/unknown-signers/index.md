@@ -354,7 +354,7 @@ const receipt = await withUnknownSignerPolicy(env)('ask', () =>
 );
 ```
 
-It takes a function for the same reason `catchUnknownSigner` does, returns whatever the action returned, and propagates whatever it threw (so wrapping it in `catchUnknownSigner` still defers). Precedence is one rule: the innermost override wins, then the run parameter, then the chain config, then the default `'auto'`.
+It takes a function for the same reason `catchUnknownSigner` does, returns whatever the action returned, and propagates whatever it threw (so wrapping it in `catchUnknownSigner` still defers). Precedence is one rule: the innermost override wins, then the run parameter, then the chain config, then the top-level config, then the default `'auto'`.
 
 It accepts the whole policy vocabulary, `'auto'` included, not just `'ask'` and `'throw'`. Per call, `'auto'` means "use this run's capability-aware default for this one action", which is the only way to opt a single call back OUT of a run-level `'throw'` without deciding for it what to do instead.
 

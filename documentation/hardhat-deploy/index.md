@@ -86,11 +86,12 @@ When the network does configure accounts but fewer than the index asks for, the 
 
 The point of running deploy scripts in tests is that you test the contracts **as deployed**, wired together exactly as they will be on chain, rather than a fresh set of contracts assembled by the test.
 
-Wrap `loadAndExecuteDeploymentsFromFiles` (from your `rocketh/environment.ts`) in a fixture, so Hardhat can snapshot the chain after the deployment and restore it for each test instead of redeploying every time:
+Wrap `loadAndExecuteDeploymentsFromFiles` (from your `rocketh/environment.ts`; the artifacts come from `rocketh/deploy.ts`) in a fixture, so Hardhat can snapshot the chain after the deployment and restore it for each test instead of redeploying every time:
 
 ```typescript
 // test/utils/index.ts
-import {loadAndExecuteDeploymentsFromFiles, artifacts} from '../../rocketh/environment.js';
+import {loadAndExecuteDeploymentsFromFiles} from '../../rocketh/environment.js';
+import {artifacts} from '../../rocketh/deploy.js';
 import {EthereumProvider} from 'hardhat/types/providers';
 
 export function setupFixtures(provider: EthereumProvider) {

@@ -16,11 +16,13 @@ For additional functionality, you can install these optional packages:
 
 ```bash
 # Using npm
-npm install -D @rocketh/proxy @rocketh/diamond @rocketh/export @rocketh/verifier @rocketh/doc
+npm install -D @rocketh/proxy @rocketh/diamond @rocketh/viem viem @rocketh/export @rocketh/verifier @rocketh/doc
 
 # Using pnpm
-pnpm add -D @rocketh/proxy @rocketh/diamond @rocketh/export @rocketh/verifier @rocketh/doc
+pnpm add -D @rocketh/proxy @rocketh/diamond @rocketh/viem viem @rocketh/export @rocketh/verifier @rocketh/doc
 ```
+
+`viem` is a peer dependency of `@rocketh/viem`, so it is installed alongside it. The config below also registers `@rocketh/proxy` and `@rocketh/viem` as extensions: remove those lines if you did not install them.
 
 ## Setting Up Your Project
 

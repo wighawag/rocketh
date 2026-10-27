@@ -36,23 +36,25 @@ Framework-agnostic deployment system for EVM smart contracts, and the deployment
 
 ## Packages
 
-| Package                                                        | Description                                           |
-| -------------------------------------------------------------- | ----------------------------------------------------- |
-| [`rocketh`](./packages/rocketh)                                | Core deployment environment and execution             |
-| [`@rocketh/core`](./packages/rocketh-core)                     | Shared types and utilities                            |
-| [`@rocketh/deploy`](./packages/rocketh-deploy)                 | Standard contract deployment                          |
-| [`@rocketh/proxy`](./packages/rocketh-proxy)                   | Proxy deployment patterns (UUPS, Transparent, ERC173) |
-| [`@rocketh/diamond`](./packages/rocketh-diamond)               | EIP-2535 Diamond proxy support                        |
-| [`@rocketh/read-execute`](./packages/rocketh-read-execute)     | Contract read/write utilities                         |
-| [`@rocketh/unknown-signer`](./packages/rocketh-unknown-signer) | `catchUnknownSigner` for Safe/multisig-owned calls    |
-| [`@rocketh/node`](./packages/rocketh-node)                     | Node.js deployment executor                           |
-| [`@rocketh/verifier`](./packages/rocketh-verifier)             | Contract verification (Etherscan, Sourcify)           |
-| [`@rocketh/export`](./packages/rocketh-export)                 | Export deployments for frontend consumption           |
-| [`@rocketh/doc`](./packages/rocketh-doc)                       | Documentation generation                              |
-| [`@rocketh/signer`](./packages/rocketh-signer)                 | Signer utilities                                      |
-| [`@rocketh/router`](./packages/rocketh-router)                 | Route-based contract deployment                       |
-| [`@rocketh/web`](./packages/rocketh-web)                       | rocketh in web browser                                |
-| [`@rocketh/test-utils`](./packages/rocketh-test-utils)         | Test harness (`createTestEnvironment`, artifacts)     |
+| Package                                                        | Description                                            |
+| -------------------------------------------------------------- | ------------------------------------------------------ |
+| [`rocketh`](./packages/rocketh)                                | Core deployment environment and execution              |
+| [`@rocketh/core`](./packages/rocketh-core)                     | Shared types and utilities                             |
+| [`@rocketh/deploy`](./packages/rocketh-deploy)                 | Standard contract deployment                           |
+| [`@rocketh/proxy`](./packages/rocketh-proxy)                   | Proxy deployment patterns (UUPS, Transparent, ERC173)  |
+| [`@rocketh/diamond`](./packages/rocketh-diamond)               | EIP-2535 Diamond proxy support                         |
+| [`@rocketh/read-execute`](./packages/rocketh-read-execute)     | Contract read/write utilities                          |
+| [`@rocketh/unknown-signer`](./packages/rocketh-unknown-signer) | `catchUnknownSigner` for Safe/multisig-owned calls     |
+| [`@rocketh/node`](./packages/rocketh-node)                     | Node.js deployment executor                            |
+| [`@rocketh/verifier`](./packages/rocketh-verifier)             | Contract verification (Etherscan, Sourcify)            |
+| [`@rocketh/export`](./packages/rocketh-export)                 | Export deployments for frontend consumption            |
+| [`@rocketh/doc`](./packages/rocketh-doc)                       | Documentation generation                               |
+| [`@rocketh/signer`](./packages/rocketh-signer)                 | Signer utilities                                       |
+| [`@rocketh/router`](./packages/rocketh-router)                 | Route-based contract deployment                        |
+| [`@rocketh/web`](./packages/rocketh-web)                       | rocketh in web browser                                 |
+| [`@rocketh/viem`](./packages/rocketh-viem)                     | viem clients and contracts from your deployments       |
+| [`@rocketh/test-utils`](./packages/rocketh-test-utils)         | Test harness (`createTestEnvironment`, artifacts)      |
+| [`@rocketh/playground`](./packages/rocketh-playground)         | Run rocketh deploy scripts in the browser, as a widget |
 
 ## Installation
 
@@ -83,7 +85,7 @@ We will be using hardhat for contract compilation and hardhat-deploy to hook har
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/en/download/) (v20 or later)
+- [Node.js](https://nodejs.org/en/download/) (v22 or later)
 - [pnpm](https://pnpm.io/installation) (v9 or later)
 
 ### create a new directory and cd into it

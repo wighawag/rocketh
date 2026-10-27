@@ -53,26 +53,12 @@ export default deployScript(
 	async ({diamond, namedAccounts}) => {
 		const {deployer, admin} = namedAccounts;
 
+		// the cut, loupe and ownership facets are added by @rocketh/diamond: list only your own
 		await diamond(
 			'MyDiamond',
+			{account: deployer},
 			{
-				account: deployer,
-				facets: [
-					{
-						name: 'DiamondCutFacet',
-						artifact: artifacts.DiamondCutFacet,
-					},
-					{
-						name: 'DiamondLoupeFacet',
-						artifact: artifacts.DiamondLoupeFacet,
-					},
-					{
-						name: 'OwnershipFacet',
-						artifact: artifacts.OwnershipFacet,
-					},
-				],
-			},
-			{
+				facets: [{artifact: artifacts.CounterFacet}, {artifact: artifacts.AdminFacet}],
 				owner: admin,
 			},
 		);
