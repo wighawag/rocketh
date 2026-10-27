@@ -27,3 +27,7 @@ Readers without JavaScript, search engines and any crawler-based tool (including
 # Not done here
 
 Found during the documentation audit, which changes no build configuration. Candidate directions for whoever picks it up: dedupe Vue in the lockfile (a `pnpm.overrides` pin or a dedupe), or check whether the `<rocketh-playground>` custom-element handling is involved; and make the docs build fail on SSR errors so this cannot recur silently.
+
+## Update 2026-10-27: the site left VitePress
+
+rocketh.dev now builds with wighawag/rocketh-website (SvelteKit, from the template-svelte-docs template), and `.vitepress/` and the vitepress dependency are gone from this repository. On that build the prerendered HTML carries each page's body: `grep -c "attaches to a fork" web/build/documentation/fork-runs/index.html` returns `3`, where the VitePress build gave `0`, and the site's end-to-end suite (`web/e2e/tests/rocketh.e2e.ts`, "serves every address the previous site served") asserts that every page's static HTML holds its article. The VitePress mechanism above was never confirmed and no longer applies. Whether this note can now be discharged is left to a human.

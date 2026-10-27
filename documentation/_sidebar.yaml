@@ -1,0 +1,45 @@
+# The sidebar of the documentation section of rocketh.dev, in reading order.
+# Transcribed from the VitePress sidebar this site had before it moved to the
+# docs template, so the order and the labels are unchanged. Links are site
+# paths. Read by the site only: GitHub shows the folder as it is.
+- text: Introduction
+  link: /documentation/
+- text: Getting Started
+  collapsed: false
+  items:
+    - text: Installation and Setup
+      link: /documentation/installation/
+    - text: Core Concepts
+      link: /documentation/core-concepts/
+    - text: Using rocketh
+      link: /documentation/deploying/
+    - text: Examples
+      link: /documentation/examples/
+- text: Going Further
+  collapsed: false
+  items:
+    - text: Using hardhat-deploy
+      link: /documentation/hardhat-deploy/
+    - text: Testing Deploy Scripts
+      link: /documentation/testing/
+    - text: Rehearsing on a Fork
+      link: /documentation/fork-runs/
+    - text: Captured Transactions
+      link: /documentation/captured-transactions/
+    - text: Exporting and Verifying
+      link: /documentation/exporting-and-verifying/
+    - text: Handling Unknown Signers
+      link: /documentation/unknown-signers/
+    - text: Guarding Execute Calls
+      link: /documentation/execute-guard/
+    - text: Running Once, and Running Last
+      link: /documentation/script-lifecycle/
+- text: Reference
+  collapsed: false
+  items:
+    - text: Production Hardening
+      link: /documentation/production-hardening/
+    - text: Architecture Overview
+      link: /documentation/architecture/
+    - text: Migrating from v1
+      link: /documentation/migration/

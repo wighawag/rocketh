@@ -27,7 +27,7 @@ The core has no DOM in it and runs unchanged under node, which is why the deploy
 <rocketh-playground></rocketh-playground>
 ```
 
-It is a custom element rather than a component, so it drops into a Vue-rendered VitePress page, a Svelte app, or a plain HTML file with no per-framework wrapper. Styles are in a shadow root, so the host page's CSS cannot leak in and the widget's cannot leak out.
+It is a custom element rather than a component, so it drops into a Vue page, a Svelte app, or a plain HTML file with no per-framework wrapper. Styles are in a shadow root, so the host page's CSS cannot leak in and the widget's cannot leak out.
 
 Optional attributes: `heading`, `description`.
 
@@ -35,7 +35,7 @@ The EVM and rocketh (~1.6MB) are behind a dynamic import that only runs on the f
 
 ## Publishing
 
-Published as `@rocketh/playground`. The docs site does not go through the registry (it consumes the package through the pnpm workspace), so a release only matters for outside consumers embedding the widget.
+Published as `@rocketh/playground`. The docs site does not go through the registry (it consumes the build in the rocketh checkout), so a release only matters for outside consumers embedding the widget.
 
 Two things about this repo's release flow bit us once each, and both are worth knowing before you touch versioning here:
 
@@ -44,15 +44,15 @@ Two things about this repo's release flow bit us once each, and both are worth k
 
 ## How the docs site consumes it
 
-The site imports the built `dist`, not the source, so it has to be built before VitePress runs. That is wired into the docs scripts themselves rather than left to CI, so a fresh clone works:
+The site ([wighawag/rocketh-website](https://github.com/wighawag/rocketh-website)) imports the built `dist` of this package from the rocketh checkout it renders, never an npm release, so the widget on a page is always the one of the same commit. It has to be built first, which is wired into the docs scripts themselves rather than left to CI, so a fresh clone works:
 
 ```jsonc
 "docs:widgets": "nx build @rocketh/playground", // builds this package and its workspace deps
-"docs:dev": "pnpm docs:widgets && vitepress dev",
-"docs:build": "pnpm docs:widgets && vitepress build",
+"docs:dev": "pnpm docs:widgets && tsx scripts/docs-site.ts dev",
+"docs:build": "pnpm docs:widgets && tsx scripts/docs-site.ts build",
 ```
 
-Without it, `vitepress build` fails with `Rolldown failed to resolve import "@rocketh/playground/element"`, and the deployed site would break rather than merely lose the widget.
+Without it, the site's build stops with `rocketh-playground: .../dist/element/rocketh-playground.js does not exist`, rather than deploying a page whose widget never loads.
 
 `docs:widgets` runs ONCE when the dev server starts. While iterating on the core or the components, run `pnpm --filter @rocketh/playground dev` alongside it to rebuild on change.
 
