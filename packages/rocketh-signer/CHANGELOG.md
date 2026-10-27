@@ -1,5 +1,12 @@
 # @rocketh/signer
 
+## 0.20.1
+
+### Patch Changes
+
+- Updated dependencies [626ff54]
+  - @rocketh/core@0.25.0
+
 ## 0.20.0
 
 ### Minor Changes

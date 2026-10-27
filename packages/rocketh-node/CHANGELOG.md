@@ -1,5 +1,13 @@
 # @rocketh/node
 
+## 0.22.1
+
+### Patch Changes
+
+- Updated dependencies [626ff54]
+  - @rocketh/core@0.25.0
+  - rocketh@0.25.0
+
 ## 0.22.0
 
 ### Minor Changes
