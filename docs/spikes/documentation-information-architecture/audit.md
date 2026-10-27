@@ -84,6 +84,10 @@ Found from each package's exports and options and from the CHANGELOGs since its 
 - CLI reference on the site: the `rocketh` flags live only in the `@rocketh/node` README; the `hardhat deploy` task's `--polling-interval`, `--default-build-profile`, `--report-gas-used` and `--save-deployments true|false` are nowhere; `rocketh-verify metadata` is README only.
 - hardhat-deploy specifics: `getHardhatConnection(env)`, the `generateTypedArtifacts` option, `hardhat-deploy init [folder] --install`, `loadEnvironmentFromHardhat` for scripts (migration guide only).
 - `env.save`'s `considerItAsFreshDeployment` / `keepNumDeployments` (0.24.0), and the deployment record as a published format (ADR 0015).
+- Deploy script arguments (the second parameter of a script, passed as the second argument of `loadAndExecuteDeploymentsFromFiles`), which real projects use to override configuration per test.
+- Which files the executor skips in `deploy/` (names starting with `.` or `_`; `traverse` in `packages/rocketh-node/src/utils/fs.ts` and the `_` filter in its executor), and that sub-folders are walked.
+- Chain `properties` and how a frontend reads them through the export.
+- In-browser deployment against an execution-only node: `autoMine` must be `false` and accounts must be private keys, both learned the hard way by a project (see the spec).
 - The eip-1193 0.7 provider typing change (0.24.0: `EIP1193CoreProvider`, extended method tables for `evm_mine`), CHANGELOG only.
 
 ## Checks run
