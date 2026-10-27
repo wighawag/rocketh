@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/unknown-signer",
-	"version": "0.20.0",
+	"version": "0.20.1",
 	"description": "catchUnknownSigner for rocketh: capture calls your deployer cannot sign, for execution by a Safe or other multisig.",
 	"keywords": [
 		"rocketh",
