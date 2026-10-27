@@ -1,36 +1,21 @@
 ---
 title: 'One documentation site a reader can follow: information architecture for rocketh and hardhat-deploy'
 slug: documentation-information-architecture
-needsAnswers: true
 ---
 
 > Launch snapshot: records intent at creation, NOT maintained. Current truth: `docs/adr/` (decisions) + the code; remaining work: `work/tasks/ready/` tasks. (The technical-detail sections below are trimmed by `to-task` once the work is tasked: they move into tasks/ADRs and this spec settles to its durable framing: Problem / Solution / User Stories / Out of Scope.)
 
-<!-- open-questions -->
-<!--
-  TRANSIENT BLOCK: stripped by the apply rung on full resolution.
-  While the spec has unresolved questions blocking autonomous tasking:
-    1. Set `needsAnswers: true` in the frontmatter above.
-    2. List the questions under the `## Open questions` heading below.
-    3. Clear the flag (and let apply strip this block) once they are answered.
-  Delete the whole fenced block (markers and all) if the spec launches fully resolved.
--->
+## Decisions on the open questions (maintainer, 2026-10-27)
 
-## Open questions
-
-Each of these decides the shape of the work and none can be settled from the code.
-
-1. **Which runner leads in samples?** Most readers arrive through hardhat-deploy, but rocketh's own CLI is the framework-agnostic path. Options: hardhat-deploy commands first everywhere with the `rocketh` command beside them; each guide picks one and links the other; or every command shown in both forms. The existing `::: code-group` container renders both as tabs on VitePress and on the planned SvelteKit template, but it is not plain Markdown on GitHub. Is a code-group acceptable for this, or should both forms be two plain consecutive blocks?
-2. **URLs and redirects.** Merging moves pages, and links to `rocketh.dev/hardhat-deploy/documentation/...` exist in READMEs on npm, in the template repository and in issues. VitePress on a static host has no redirects. Keep every old URL as a stub page that links on, configure redirects at the host, or accept the breakage and fix the links we own? This also interacts with the SvelteKit move (`work/notes/ideas/docs-site-on-a-sveltekit-docs-template.md`), which could own the redirect table.
-3. **How thin should package READMEs get?** Proposed below: purpose, install, wiring, one minimal example, and a link to the site page, with no behavioural explanations duplicated. The cost is that npm readers must click through. Is that acceptable for the packages most often read on npm (`hardhat-deploy`, `@rocketh/proxy`, `@rocketh/deploy`), or should those keep a fuller self-contained README?
-4. **The Safe-owned guide: inline or linked, and which commands?** The worked example stays on branch `examples/safe-owned-upgrade` of template-ethereum-contracts (decided: example branches stay branches). Should the guide reproduce its files (`000_deploy_safe.ts`, `rocketh/safe.ts`, the config) inline so it reads on its own, or show the key excerpts and link to the branch? Its commands are pnpm scripts wrapping `hardhat` and `anvil` (`contracts:fork:node`, `contracts:fork:rehearse`); should the guide show those, or the underlying `anvil` + `rocketh -e sepolia --is-fork --write-transactions` and `hardhat deploy` commands?
-5. **Reference pages: hand-written or generated?** The `Environment` page was several releases stale; a configuration reference and a CLI reference would go stale the same way. Generating them (TypeDoc JSON for types, commander's option list for CLIs) is natural on the SvelteKit template and awkward on VitePress. Hand-write now and generate later, or wait?
-6. **Order of work against the SvelteKit move.** The idea note says the content work comes first and stays plain Markdown. Should this restructure land on VitePress (moving files, rewriting the hand-written sidebar), or should the new tree be built directly on the template so the sidebar ordering (`order` frontmatter or a nav file, still undecided there) is decided once?
-7. **Hot Contract Replacement.** The hardhat-deploy introduction, `what-is-it-for` and the npm README advertise HCR, "via special proxy mechanism and file watch setup". v2 has no watch mode of its own (`--watch` is a TODO in the task, and the migration map lists it as not supported); the template achieves it with an external watcher (`as-soon` re-running `deploy:dev` when `generated/` or `deploy/` change, its `deploy:watch` script). Proposed: keep the claim and document that setup in the hardhat-deploy section's development workflow page, taken from the template. Agree, or drop the claim?
-8. **The v1 migration guide's troubleshooting section** quotes error messages nothing in the code produces ("namedAccounts is not supported", "from is not a valid parameter", "HardhatDeploy is not a constructor"). Rewrite each against what hardhat and rocketh actually print, or remove the section in favour of the capability map?
-9. **Who is `documentation/testing` for?** It documents `@rocketh/test-utils`, whose own README says it is for extension authors and points project authors at `loadAndExecuteDeploymentsFromFiles`. Proposed: move it under "Extending rocketh". Agree?
-
-<!-- /open-questions -->
+1. **Runner order:** hardhat-deploy commands first, the `rocketh` CLI form beside them as `::: code-group` tabs. On GitHub a code-group reads as two consecutive code blocks, which is acceptable.
+2. **URLs:** every old URL keeps working, through a redirect table in the docs template that emits a forwarding page per old URL (added to the template if it lacks it). The links we own (READMEs, template repositories) are updated too.
+3. **Package READMEs:** thin (purpose, install, wiring, one minimal example, a link to the site page) for every package except `hardhat-deploy`, whose npm README stays fuller because it is where most users land.
+4. **The Safe-owned guide:** key excerpts inline, plus a link to branch `examples/safe-owned-upgrade` of template-ethereum-contracts. Commands shown as the template's pnpm scripts, each with the underlying `anvil` / `rocketh` / `hardhat` command beside it once.
+5. **Reference pages:** hand-write the small ones now (the CLI options); generate the rest later on the docs template (TypeDoc JSON).
+6. **Order against the site move:** rocketh.dev moves to the SvelteKit docs template FIRST (mechanical, it already renders this content), then this restructure is built directly on the new site, with `order` frontmatter, so the VitePress sidebar is never rewritten for a structure about to change.
+7. **Hot Contract Replacement:** keep the claim, and document the watcher setup taken from the template, after checking it actually works.
+8. **The v1 guide's troubleshooting section:** remove it, in favour of the capability map. A "common errors" page may come later, built only from messages the code prints.
+9. **`documentation/testing`:** moves under "Extending rocketh".
 
 ## Problem Statement
 
@@ -275,7 +260,7 @@ Exceptions: the root `README.md` (it is also the npm README of `rocketh`, copied
 ### Autonomy notes
 
 - `humanOnly`: not set. The tasks this yields (merging pages, writing guides) are agent-buildable once the open questions are answered.
-- `needsAnswers: true`: the nine questions above decide the shape (runner order, URLs, README depth, the Safe guide's form, generated references, VitePress or the template first, HCR, troubleshooting, the testing page). Tasking before they are answered would cut the wrong pages.
+- The nine questions that decided the shape are answered above. Tasking waits for rocketh.dev to move to the docs template (answer 6).
 
 ## Implementation Decisions
 
