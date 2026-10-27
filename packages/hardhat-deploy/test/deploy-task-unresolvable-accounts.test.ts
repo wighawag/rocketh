@@ -114,7 +114,7 @@ describe('hardhat-deploy `deploy` task: named accounts that cannot be resolved',
 				`  - "deployer" is configured as index 0, but the node lists no accounts.`,
 				`  - "admin" is configured as index 1, but the node lists no accounts.`,
 				`The hardhat network "sepolia" configures no accounts (its \`accounts\` is 'remote'), so hardhat asks the node for its own, and this node holds none.`,
-				`To fix it, configure accounts for "sepolia" in your hardhat config, for example \`accounts: {mnemonic: configVariable('MNEMONIC_sepolia')}\` or \`accounts: [configVariable('DEPLOYER_PRIVATE_KEY')]\`. If "sepolia" is added by hardhat-deploy's \`addNetworksFromEnv\` or \`addNetworksFromKnownList\`, set the environment variable MNEMONIC_sepolia to the mnemonic (or MNEMONIC, which every network without its own falls back to); the value SECRET reads it from the configuration variable SECRET_MNEMONIC_sepolia instead.`,
+				`To fix it, configure accounts for "sepolia" in your hardhat config, for example \`accounts: {mnemonic: configVariable('MNEMONIC_sepolia')}\` or \`accounts: [configVariable('DEPLOYER_PRIVATE_KEY')]\`. If "sepolia" is added by hardhat-deploy's \`addNetworksFromKnownList\`, set the environment variable MNEMONIC_sepolia to the mnemonic (or MNEMONIC, which every network without its own falls back to); the value SECRET reads it from the configuration variable SECRET_MNEMONIC_sepolia instead.`,
 				`Alternatively, in the \`accounts\` of rocketh/config.ts, give the account a signer protocol (for example 'privateKey:...', read from the environment) or an address for "sepolia".`,
 			].join('\n'),
 		);
@@ -122,6 +122,25 @@ describe('hardhat-deploy `deploy` task: named accounts that cannot be resolved',
 		expect((error as {parent?: unknown}).parent).toBeUndefined();
 		expect((error as Error).message).not.toContain(API_KEY);
 		expect((error as Error).message).not.toContain(OTHER_NETWORK_KEY.slice(2));
+	});
+
+	it('also offers a lower index when the node does list some accounts', async () => {
+		let raised: UnresolvableAccountsError | undefined;
+		try {
+			await createTestEnvironment({
+				accounts: {deployer: 0, admin: 3},
+				nodeAccounts: ['0x70997970c51812dc3a010c7d01b50e0d17dc79c8'],
+				environmentName: 'localhost',
+			});
+		} catch (error) {
+			raised = error as UnresolvableAccountsError;
+		}
+		const error = await toHardhatAccountsError(raised!, {
+			networkName: 'localhost',
+			networkConfig: {type: 'http', url: resolved('http://127.0.0.1:8545'), accounts: 'remote'} as never,
+		});
+		expect(error.message).toContain('so hardhat asks the node for its own, and this node lists only 1.');
+		expect(error.message).toContain(', or give the account an index below 1. If "localhost" is added by');
 	});
 
 	it('maps a dashed network name to the variable the helpers read', async () => {

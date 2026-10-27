@@ -66,8 +66,13 @@ function hardhatNodeAccountsFix(network: NetworkDescription, data: UnresolvableA
 			`The hardhat network "${name}" configures no accounts (its \`accounts\` is 'remote'), so hardhat asks the ` +
 			`node for its own, ${nodeHas}.\n` +
 			`To fix it, configure accounts for "${name}" in your hardhat config, for example ` +
-			`\`accounts: {mnemonic: configVariable('${variable}')}\` or \`accounts: [configVariable('DEPLOYER_PRIVATE_KEY')]\`. ` +
-			`If "${name}" is added by hardhat-deploy's \`addNetworksFromEnv\` or \`addNetworksFromKnownList\`, set the ` +
+			`\`accounts: {mnemonic: configVariable('${variable}')}\` or \`accounts: [configVariable('DEPLOYER_PRIVATE_KEY')]\`` +
+			(data.nodeAccountCount !== undefined && data.nodeAccountCount > 0
+				? `, or give the account an index below ${data.nodeAccountCount}. `
+				: '. ') +
+			// Only `addNetworksFromKnownList` leaves a network's accounts 'remote' when no mnemonic is
+			//  set: `addNetworksFromEnv` falls back to the public test mnemonic (`getMnemonic`).
+			`If "${name}" is added by hardhat-deploy's \`addNetworksFromKnownList\`, set the ` +
 			`environment variable ${variable} to the mnemonic (or MNEMONIC, which every network without its own falls ` +
 			`back to); the value SECRET reads it from the configuration variable SECRET_${variable} instead.\n` +
 			rockethAlternative

@@ -118,7 +118,7 @@ describe('named accounts that cannot be resolved', () => {
 		expect(error.message).not.toContain('holds none');
 	});
 
-	it("says that 'eth_accounts' failed, and keeps the failure as the cause", async () => {
+	it("says that 'eth_accounts' failed, and keeps its (redacted) message as the cause", async () => {
 		const failure = new Error('eth_accounts is not available on this endpoint');
 		const error = await environmentError({
 			accounts: {deployer: 0},
@@ -134,7 +134,9 @@ describe('named accounts that cannot be resolved', () => {
 		expect(error.message).toContain(
 			`"deployer" is configured as index 0, which needs the node to list its accounts, but 'eth_accounts' failed: eth_accounts is not available on this endpoint`,
 		);
-		expect(error.cause).toBe(failure);
+		// The cause carries the failure's message, redacted like the rest (a transport error can quote
+		//  the endpoint url, key included), rather than the original object.
+		expect((error.cause as Error).message).toBe('eth_accounts is not available on this endpoint');
 		expect(error.data.nodeAccountCount).toBeUndefined();
 	});
 
@@ -168,6 +170,22 @@ describe('named accounts that cannot be resolved', () => {
 		);
 	});
 
+	it('names a private key given with no privateKey signer protocol registered', async () => {
+		const error = await environmentError({
+			accounts: {deployer: OTHER_NETWORK_KEY},
+			// the harness registers the shipped `privateKey` protocol; take it away
+			config: {signerProtocols: {privateKey: undefined as never}},
+		});
+
+		expect(error.data.accounts).toEqual([
+			{name: 'deployer', reason: 'private-key-without-protocol', definition: '<redacted>'},
+		]);
+		expect(error.message).toContain(
+			`  - "deployer" is configured as a private key, but no 'privateKey' signer protocol is registered in \`signerProtocols\`. Register the one from @rocketh/signer (\`signerProtocols: {privateKey}\`). The key itself is not shown.`,
+		);
+		expect(error.message).not.toContain(OTHER_NETWORK_KEY.slice(2));
+	});
+
 	it('never prints a key from the config', async () => {
 		/**
 		 * Keys configured for ANOTHER network sit in the same definitions as the index that fails;
@@ -190,5 +208,7 @@ describe('named accounts that cannot be resolved', () => {
 		expect(everything).not.toMatch(/[0-9a-fA-F]{41}/);
 		expect(error.message).toContain('"admin" is configured as {mainnet: <redacted>}');
 		expect(error.message).toContain('"pasted" is configured as <redacted>');
+		// A key pasted without its 0x reads as a reference; the message says what it probably is.
+		expect(error.message).toContain('If it is a private key, write it with its 0x prefix');
 	});
 });

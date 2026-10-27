@@ -60,14 +60,14 @@ npx hardhat deploy --network sepolia --gas-price 2000000000
 
 ### When the network has no accounts
 
-A named account given by index (`deployer: 0` in `rocketh/config.ts`) is the account at that index on the **hardhat network**, which comes from that network's `accounts` in `hardhat.config.ts`. A network with no `accounts` configured (hardhat resolves it to `'remote'`) asks the node instead, and a public RPC endpoint holds no keys. This is what happens with `addNetworksFromKnownList` when neither `MNEMONIC_sepolia` nor `MNEMONIC` is set. The deploy then stops before any script runs, with a plugin error rather than a crash:
+A named account given by index (`deployer: 0` in `rocketh/config.ts`) is the account at that index on the **hardhat network**, which comes from that network's `accounts` in `hardhat.config.ts`. A network with no `accounts` configured (hardhat resolves it to `'remote'`) asks the node instead, and a public RPC endpoint holds no keys. This is what happens with `addNetworksFromKnownList` when neither `MNEMONIC_sepolia` nor `MNEMONIC` is set (and `addNetworksFromEnv` did not already add the network: it falls back to the public test mnemonic instead). The deploy then stops before any script runs, with a plugin error rather than a crash:
 
 ```
 Error in community plugin hardhat-deploy: cannot resolve 2 named accounts ("deployer", "admin") for environment "sepolia" (chain 11155111, endpoint https://11155111.rpc.thirdweb.com):
   - "deployer" is configured as index 0, but the node lists no accounts.
   - "admin" is configured as index 1, but the node lists no accounts.
 The hardhat network "sepolia" configures no accounts (its `accounts` is 'remote'), so hardhat asks the node for its own, and this node holds none.
-To fix it, configure accounts for "sepolia" in your hardhat config, for example `accounts: {mnemonic: configVariable('MNEMONIC_sepolia')}` or `accounts: [configVariable('DEPLOYER_PRIVATE_KEY')]`. If "sepolia" is added by hardhat-deploy's `addNetworksFromEnv` or `addNetworksFromKnownList`, set the environment variable MNEMONIC_sepolia to the mnemonic (or MNEMONIC, which every network without its own falls back to); the value SECRET reads it from the configuration variable SECRET_MNEMONIC_sepolia instead.
+To fix it, configure accounts for "sepolia" in your hardhat config, for example `accounts: {mnemonic: configVariable('MNEMONIC_sepolia')}` or `accounts: [configVariable('DEPLOYER_PRIVATE_KEY')]`. If "sepolia" is added by hardhat-deploy's `addNetworksFromKnownList`, set the environment variable MNEMONIC_sepolia to the mnemonic (or MNEMONIC, which every network without its own falls back to); the value SECRET reads it from the configuration variable SECRET_MNEMONIC_sepolia instead.
 Alternatively, in the `accounts` of rocketh/config.ts, give the account a signer protocol (for example 'privateKey:...', read from the environment) or an address for "sepolia".
 
 For more info run Hardhat with --show-stack-traces

@@ -130,6 +130,9 @@ describe('an unresolvable account, on an endpoint rocketh opened from `rpcUrl`',
 		expect(error.data.accounts[0].reason).toBe('node-accounts-unavailable');
 		expect(error.message).toContain("'eth_accounts' failed");
 		expect(error.message + JSON.stringify(error.data)).not.toContain(API_KEY);
+		// Nor through the cause, which a caller logging the error (`console.error(err)`) prints too.
+		expect((error.cause as Error).message).toContain('https://eth-sepolia.example.invalid/<redacted>');
+		expect((error.cause as Error).message).not.toContain(API_KEY);
 	});
 });
 

@@ -829,22 +829,25 @@ export async function createEnvironment<
 		}
 		if (unresolvable.length > 0) {
 			const endpoint = endpointOf(rawProvider);
+			// The `eth_accounts` failure is passed on REDACTED, as the message and as the `cause`: a
+			//  transport error quotes the url it failed on (`JSONRPCHTTPProvider`: "Failed To Fetch at
+			//  <url>"), and a caller that logs the error (`console.error(err)`) prints its cause too.
+			const nodeAccountsError =
+				remoteAccountsError === undefined
+					? undefined
+					: redactErrorText(
+							remoteAccountsError instanceof Error ? remoteAccountsError.message : String(remoteAccountsError),
+						);
 			throw new UnresolvableAccountsError(
 				{
 					environment: environmentName,
 					chainId,
 					...(endpoint !== undefined ? {endpoint: redactEndpoint(endpoint)} : {}),
-					...(remoteAccountsError === undefined
-						? {nodeAccountCount: allRemoteAccounts.length}
-						: {
-								nodeAccountsError: redactErrorText(
-									remoteAccountsError instanceof Error ? remoteAccountsError.message : String(remoteAccountsError),
-								),
-							}),
+					...(nodeAccountsError === undefined ? {nodeAccountCount: allRemoteAccounts.length} : {nodeAccountsError}),
 					registeredProtocols: Object.keys(userConfig.signerProtocols ?? {}),
 					accounts: unresolvable,
 				},
-				remoteAccountsError === undefined ? undefined : {cause: remoteAccountsError},
+				nodeAccountsError === undefined ? undefined : {cause: new Error(nodeAccountsError)},
 			);
 		}
 	}

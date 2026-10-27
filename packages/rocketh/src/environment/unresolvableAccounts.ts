@@ -76,7 +76,7 @@ export type UnresolvableAccountsErrorData = {
 	readonly endpoint?: string;
 	/** How many accounts the node listed in `eth_accounts`; absent when that call failed. */
 	readonly nodeAccountCount?: number;
-	/** Why `eth_accounts` failed, redacted; present only when it did. */
+	/** Why `eth_accounts` failed, redacted; present only when it did (and then also the `cause`). */
 	readonly nodeAccountsError?: string;
 	/** The NAMES of the signer protocols registered in the config (`signerProtocols`). */
 	readonly registeredProtocols?: readonly string[];
@@ -174,7 +174,12 @@ function describeOne(account: UnresolvableAccount, data: UnresolvableAccountsErr
 		case 'unknown-reference':
 			return (
 				`${configured}, which is not an address, a private key, a signer protocol ('<protocol>:...') ` +
-				`or the name of another account in \`accounts\`.`
+				`or the name of another account in \`accounts\`.` +
+				// `<redacted>` is what a value that may be a secret describes as, typically a private key
+				//  pasted without its `0x` (the way wallets export it), which is read as a reference.
+				(account.definition === '<redacted>'
+					? ` If it is a private key, write it with its 0x prefix (or as 'privateKey:0x...'); it is not shown.`
+					: '')
 			);
 		case 'reference-cycle':
 			return `"${account.name}" is part of a reference cycle: ${(account.referenceChain ?? [account.name]).join(' -> ')}.`;
@@ -251,7 +256,8 @@ export function formatUnresolvableAccountsMessage(
  * Raised while the environment is built, when at least one named account cannot be resolved. It
  * names every such account, not just the first. `data` is what an entry point rebuilds its own
  * message from (see `formatUnresolvableAccountsMessage`); `message` is the default wording, whose
- * fix points at `rocketh/config.ts`. `cause` is set when `eth_accounts` failed.
+ * fix points at `rocketh/config.ts`. `cause` is set when `eth_accounts` failed, to an error carrying
+ * that failure's REDACTED message (the original can quote the endpoint url, key included).
  */
 export class UnresolvableAccountsError extends Error {
 	readonly data: UnresolvableAccountsErrorData;
