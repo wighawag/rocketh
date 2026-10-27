@@ -72,7 +72,13 @@ async function setup(options: {
 
 	const {env, provider} = await createTestEnvironment({
 		// the deployer by INDEX (the node's own account), the Safe by ADDRESS
-		accounts: {deployer: 0, admin: SAFE, byAddress: NODE_ACCOUNT_BY_ADDRESS},
+		accounts: {
+			deployer: 0,
+			admin: SAFE,
+			byAddress: NODE_ACCOUNT_BY_ADDRESS,
+			// a per-network map whose entry for this network is an address
+			perNetwork: {default: 1, memory: NODE_ACCOUNT_BY_ADDRESS},
+		},
 		nodeAccounts: options.nodeAccounts,
 		impersonation: options.impersonation,
 		config: options.config,
@@ -159,6 +165,13 @@ describe('@rocketh/read-execute - transactions sent as an impersonated account',
 			expect(env.capturedTransactions.at(-1)).toMatchObject({from: NODE_ACCOUNT_BY_ADDRESS});
 		});
 
+		it('reads the declaration this network uses from a per-network map', async () => {
+			const {env} = await setup({nodeAccounts: [DEPLOYER, NODE_ACCOUNT_BY_ADDRESS]});
+
+			expect(env.namedAccounts.perNetwork.toLowerCase()).toBe(NODE_ACCOUNT_BY_ADDRESS);
+			expect(env.addressSignability[NODE_ACCOUNT_BY_ADDRESS]).toBe('impersonated');
+		});
+
 		it('falls back to node when impersonation fails for an account the node lists', async () => {
 			const {env} = await setup({nodeAccounts: [DEPLOYER, NODE_ACCOUNT_BY_ADDRESS], impersonation: 'fail'});
 
@@ -195,6 +208,27 @@ describe('@rocketh/read-execute - transactions sent as an impersonated account',
 				{address: SAFE, balance: maxGasCostOf(SAFE)},
 				{address: SAFE, balance: 0n},
 			]);
+			expect(balanceOf(SAFE)).toBe(0n);
+		});
+
+		it('lends gas limit times gas price for a legacy transaction, and leaves the nonce to the node', async () => {
+			const {env, provider, setBalanceCalls, balanceOf} = await setup({
+				nodeAccounts: [DEPLOYER],
+				executionParams: {fundImpersonatedAccounts: true},
+				config: {chains: {31337: {transactionType: 'legacy'}}},
+			});
+
+			await tx(env)({account: 'admin', to: RECIPIENT, value: 0n});
+
+			const sent = provider
+				.getRequests()
+				.filter((r) => r.method === 'eth_sendTransaction')
+				.map((r) => r.params?.[0] as {type: string; gas: string; gasPrice: string; nonce?: string})
+				.at(-1)!;
+			expect(sent.type).toBe('0x0');
+			expect(setBalanceCalls[0].balance).toBe(BigInt(sent.gas) * BigInt(sent.gasPrice));
+			expect(sent.nonce).toBeUndefined();
+			expect(provider.getRequests().some((r) => r.method === 'eth_getTransactionCount')).toBe(false);
 			expect(balanceOf(SAFE)).toBe(0n);
 		});
 

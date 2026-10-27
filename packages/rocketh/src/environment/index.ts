@@ -882,8 +882,9 @@ export async function createEnvironment<
 
 	// A named account needs impersonation iff it has no USABLE signer for this run: its resolved
 	// signer is `remote` (i.e. we would otherwise ask the node to sign) AND the node does not
-	// hold it (`isNodeHeld` below: listed in `eth_accounts`, and not a contract). `signerOnly` and `wallet` accounts sign without the
-	// node, so impersonating them is wasted RPC (and contradicts the helper's own doc comment,
+	// hold it (`isNodeHeld` below: listed in `eth_accounts`, and not declared by address while
+	// auto-impersonation is on). `signerOnly` and `wallet` accounts sign without the node, so
+	// impersonating them is wasted RPC (and contradicts the helper's own doc comment,
 	// which says it exists "for named accounts that don't have private keys available").
 	//
 	// This is the ONE place the "no usable signer for this run" decision lives, so a later
@@ -1961,14 +1962,15 @@ export async function createEnvironment<
 						// Gas limit and fees filled HERE, the way a local signer's are, so the loan is the
 						//  most this transaction can cost in gas and the node cannot spend more of it. The
 						//  nonce stays the node's to pick, as for any node-signed transaction.
-						const {nonce: _filledNonce, ...prepared} = (await prepareForLocalSigning(
-							env.network.provider,
-							transactionData,
-						)) as EIP1193TransactionData & {gas: `0x${string}`; nonce?: `0x${string}`};
+						//  A placeholder nonce keeps `prepareForLocalSigning` from asking for one it would
+						//  only throw away.
+						const callerNonce = 'nonce' in transactionData ? transactionData.nonce : undefined;
+						const {nonce: _placeholderNonce, ...prepared} = (await prepareForLocalSigning(env.network.provider, {
+							...transactionData,
+							nonce: callerNonce ?? '0x0',
+						} as EIP1193TransactionData)) as EIP1193TransactionData & {gas: `0x${string}`; nonce?: `0x${string}`};
 						toSend = (
-							'nonce' in transactionData && transactionData.nonce !== undefined
-								? {...prepared, nonce: transactionData.nonce}
-								: prepared
+							callerNonce !== undefined ? {...prepared, nonce: callerNonce} : prepared
 						) as EIP1193TransactionData;
 						const feeCap =
 							'maxFeePerGas' in prepared && prepared.maxFeePerGas !== undefined
