@@ -1,5 +1,15 @@
 # @rocketh/core
 
+## 0.26.0
+
+### Minor Changes
+
+- 832b78c: Unknown-signer ergonomics for a Safe-owned call executed through the Safe app.
+
+  - The called function's ABI is printed with an unsignable contract call, as one JSON line (`abi: [...]`) next to `contract:`, ready to paste into a Safe's Transaction Builder when it cannot fetch the target's ABI. `execute` takes it from the deployment it was given (for an overloaded function, the overload actually encoded) and passes it on the new optional `UnknownSignerContractCall.abi`. The thrown `UnknownSignerError`, the interactive pause and `catchUnknownSigner`'s printed block show it; `catchUnknownSigner`'s returned value is unchanged (v1's four keys) and captured transactions do not carry it.
+  - The deployment named in the unknown-signer message is found without merging ABIs, so a proxy address (whose main and `_Proxy` records share functions such as `owner()`) no longer logs a "could not resolve a deployment name ... ABI conflict" warning. When several records share the address (`X` and `X_Proxy`, `X_DiamondProxy` or `X_Router`), the base name `X` is shown, deterministically whatever order the records were loaded in.
+  - A pasted transaction sent to the account rocketh could not sign for is no longer accepted on that basis alone. A Safe `execTransaction` is decoded: one whose inner call is exactly the request (same `to`, `value`, `data`, operation CALL) is accepted as "the Safe executed exactly this call"; one that executed something else goes to the confirmation prompt, which says what the Safe executed instead. A transaction to the account that carries the requested calldata verbatim is still accepted (for a Safe, only inside a MultiSend DELEGATECALL or a call to the target itself; a Safe call to another contract that merely carries it, such as a timelock `schedule`, goes to confirmation); one that shows nothing of what it executed is now confirmed by the user rather than accepted silently.
+
 ## 0.25.1
 
 ### Patch Changes

@@ -1,5 +1,12 @@
 # @rocketh/deploy
 
+## 0.22.4
+
+### Patch Changes
+
+- Updated dependencies [832b78c]
+  - @rocketh/core@0.26.0
+
 ## 0.22.3
 
 ### Patch Changes
