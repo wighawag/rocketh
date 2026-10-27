@@ -691,6 +691,10 @@ export function resolveExecutionParams<Extra extends Record<string, unknown> = R
 			deleteDeploymentsIfDifferentGenesisHash: actualChainConfig.deleteDeploymentsIfDifferentGenesisHash,
 			// `??` again because an override bag may carry the key explicitly `undefined`.
 			transactionType: actualChainSemantics.transactionType ?? 'eip1559',
+			// Execution param > the chain semantics (which already carry `overrides` and, on a fork,
+			//  `whenForked`, most specific last) > off.
+			fundImpersonatedAccounts:
+				executionParameters.fundImpersonatedAccounts ?? actualChainSemantics.fundImpersonatedAccounts ?? false,
 		},
 		extra: executionParameters.extra,
 		provider,

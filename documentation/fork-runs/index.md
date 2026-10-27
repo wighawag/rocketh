@@ -183,6 +183,31 @@ environments: {
 }
 ```
 
+A Safe stays `impersonated` on a node you reuse. anvil lists an address it has impersonated as one of its own accounts, and keeps listing it, so after a first rehearsal the Safe looks node-held. When auto-impersonation is on, rocketh checks each named account the node lists for contract code: no node holds a key for a contract, so a Safe (or a timelock, or any contract owner) is impersonated again and its transactions are captured as `impersonated`, however many runs the node has seen. An EOA carrying an EIP-7702 delegation is not treated as a contract, since the node may really hold its key.
+
+### Paying the impersonated account's gas: `fundImpersonatedAccounts`
+
+Impersonating the Safe makes the Safe the account that SENDS its calls, and so the one that pays their gas. For real it never is: whoever submits the Safe transaction pays. A Safe usually holds no ETH, so the rehearsal stops at the first Safe call with "insufficient funds".
+
+Turn on `fundImpersonatedAccounts` and rocketh lends an impersonated account the ETH for each of its transactions, then takes it back:
+
+```typescript
+export const config = {
+	accounts: {
+		deployer: {default: 0},
+		safeOwner: {default: '0x1111111111111111111111111111111111111111'},
+	},
+	environments: {
+		mainnet: {chain: 1, whenForked: {fundImpersonatedAccounts: true}},
+	},
+	data: {},
+} as const satisfies UserConfig;
+```
+
+Just before an impersonated account sends a transaction, rocketh raises its balance by 1000 ETH (`hardhat_setBalance`, which anvil and hardhat both accept). Once the transaction is mined, it sets the balance to what it would have been had the account paid no gas: the loan and the gas come back out, while anything the transaction itself moved (value sent, ETH received) stays. A transaction the node refuses gets its loan back straight away. The only moment the account holds more than it has is during its own transaction, which matters only to a contract that reads its own balance.
+
+It is off by default, applies only to accounts rocketh impersonated (a key rocketh or the node holds pays as it would for real), and can be set per chain, in `overrides`, in `whenForked` (as above, for fork runs only) or for one run with the `fundImpersonatedAccounts` execution parameter. A run that stops between a transaction and its receipt leaves that loan in place, which on a fork costs nothing.
+
 Impersonation is a node CAPABILITY and `onUnknownSigner` is a POLICY: they stay orthogonal, and the fork-aware default gives the policy no new value. Details in [Handling unknown signers](../unknown-signers/#on-a-fork-or-in-the-browser-impersonation-instead).
 
 ## Taking the rehearsal to your Safe

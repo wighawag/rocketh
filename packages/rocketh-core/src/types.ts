@@ -260,6 +260,24 @@ export type ChainUserConfig = {
 	readonly pollingInterval?: number;
 	readonly properties?: Record<string, JSONTypePlusBigInt>;
 	readonly autoImpersonate?: boolean;
+	/**
+	 * Pay the gas of every transaction an IMPERSONATED account sends, by lending it ETH for that
+	 * transaction. Off by default.
+	 *
+	 * Impersonation (a fork, or a dev node with `autoImpersonate`) lets the node send AS an account
+	 * rocketh holds no key for, typically a Safe. That shortcut also makes the account the one
+	 * paying for gas, which it never is for real (whoever submits the Safe transaction pays), and a
+	 * Safe usually holds no ETH, so the rehearsal fails with "insufficient funds". With this on,
+	 * rocketh raises the account's balance just before such a transaction (`hardhat_setBalance`,
+	 * which anvil and hardhat both accept) and, once it is mined, sets it to what it would be had
+	 * the account paid no gas: the loan and the gas are taken back out, anything the transaction
+	 * itself moved stays. Only DURING the transaction does the account hold more than it has, which
+	 * matters only to a contract that reads its own balance.
+	 *
+	 * Accounts rocketh did not impersonate (local keys, node-held accounts) are never touched.
+	 * Usually set for forks only, in `environments[<network>].whenForked`.
+	 */
+	readonly fundImpersonatedAccounts?: boolean;
 	/** Policy for an `unsignable` `from` at this chain; see `UnknownSignerPolicy`. */
 	readonly onUnknownSigner?: UnknownSignerPolicy;
 	readonly autoMine?: boolean;
@@ -283,6 +301,8 @@ export type ChainConfig = {
 	readonly pollingInterval: number;
 	readonly properties: Record<string, JSONTypePlusBigInt>;
 	readonly autoImpersonate: boolean;
+	/** Defaulted to `false`; see `ChainUserConfig.fundImpersonatedAccounts`. */
+	readonly fundImpersonatedAccounts: boolean;
 	/**
 	 * Left OPTIONAL (unlike `autoImpersonate`, which defaults to `false` here) so the
 	 * `'auto'` default has exactly ONE home, `resolveExecutionParams`. Defaulting it
@@ -443,6 +463,8 @@ export type ExecutionParams<Extra extends Record<string, unknown> = Record<strin
 	provider?: EIP1193CoreProvider;
 	config?: ConfigOverrides;
 	autoImpersonate?: boolean;
+	/** Run-level `fundImpersonatedAccounts` (see `ChainUserConfig`); wins over the chain config. */
+	fundImpersonatedAccounts?: boolean;
 	/** Run-level policy for an `unsignable` `from`; wins over the chain config. */
 	onUnknownSigner?: UnknownSignerPolicy;
 	autoMine?: boolean;
@@ -813,6 +835,8 @@ export type ResolvedExecutionParams<Extra extends Record<string, unknown> = Reco
 		readonly fork?: ForkDescriptor;
 		readonly deterministicDeployment: DeterministicDeploymentInfo;
 		readonly autoImpersonate?: boolean;
+		/** Resolved as: execution param > chain config (of the SIMULATED network on a fork) > `false`. */
+		readonly fundImpersonatedAccounts: boolean;
 		/** Resolved as: execution param > chain config > `'auto'`. */
 		readonly onUnknownSigner: UnknownSignerPolicy;
 		readonly confirmationsRequired?: number;
