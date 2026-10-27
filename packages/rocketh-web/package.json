@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/web",
-	"version": "0.19.28",
+	"version": "0.19.29",
 	"description": "Run rocketh deploy scripts in the browser.",
 	"keywords": [
 		"rocketh",

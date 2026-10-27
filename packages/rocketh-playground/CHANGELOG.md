@@ -1,5 +1,18 @@
 # @rocketh/playground
 
+## 0.1.2
+
+### Patch Changes
+
+- Updated dependencies [626ff54]
+  - @rocketh/core@0.25.0
+  - rocketh@0.25.0
+  - @rocketh/deploy@0.22.2
+  - @rocketh/proxy@0.21.2
+  - @rocketh/read-execute@0.22.1
+  - @rocketh/signer@0.20.1
+  - @rocketh/web@0.19.29
+
 ## 0.1.1
 
 ### Patch Changes
