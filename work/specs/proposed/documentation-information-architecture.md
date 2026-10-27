@@ -20,16 +20,15 @@ needsAnswers: true
 
 Each of these decides the shape of the work and none can be settled from the code.
 
-1. **One tree, or two trees that link to each other?** This spec proposes ONE tree (a single sidebar, one page per topic) with a hardhat-deploy reading path through it, and keeps `/hardhat-deploy/` only as a landing page. The alternative keeps `/hardhat-deploy/` as its own tree whose pages are thin and link into the shared one. One tree removes the duplication for good; two trees keep the hardhat-deploy brand visible in the sidebar. Which?
-2. **Which runner leads in samples?** Most readers arrive through hardhat-deploy, but rocketh's own CLI is the framework-agnostic path. Options: hardhat-deploy commands first everywhere with the `rocketh` command beside them; each guide picks one and links the other; or every command shown in both forms. The existing `::: code-group` container renders both as tabs on VitePress and on the planned SvelteKit template, but it is not plain Markdown on GitHub. Is a code-group acceptable for this, or should both forms be two plain consecutive blocks?
-3. **URLs and redirects.** Merging moves pages, and links to `rocketh.dev/hardhat-deploy/documentation/...` exist in READMEs on npm, in the template repository and in issues. VitePress on a static host has no redirects. Keep every old URL as a stub page that links on, configure redirects at the host, or accept the breakage and fix the links we own? This also interacts with the SvelteKit move (`work/notes/ideas/docs-site-on-a-sveltekit-docs-template.md`), which could own the redirect table.
-4. **How thin should package READMEs get?** Proposed below: purpose, install, wiring, one minimal example, and a link to the site page, with no behavioural explanations duplicated. The cost is that npm readers must click through. Is that acceptable for the packages most often read on npm (`hardhat-deploy`, `@rocketh/proxy`, `@rocketh/deploy`), or should those keep a fuller self-contained README?
-5. **The Safe-owned guide's source of truth.** The worked example lives on branch `examples/safe-owned-upgrade` of template-ethereum-contracts. Should the guide reproduce its files (`000_deploy_safe.ts`, `rocketh/safe.ts`, the config) inline so it reads on its own, or link to the branch and explain? Will that branch be merged into the template's `main`, kept as a long-lived example branch, or moved into this repository's `demoes/`? Its commands are pnpm scripts wrapping `hardhat` and `anvil` (`contracts:fork:node`, `contracts:fork:rehearse`); should the guide show those, or the underlying `anvil` + `rocketh -e sepolia --is-fork --write-transactions` / `hardhat deploy` commands?
-6. **Reference pages: hand-written or generated?** The `Environment` page was several releases stale; a configuration reference and a CLI reference would go stale the same way. Generating them (TypeDoc JSON for types, commander's option list for CLIs) is natural on the SvelteKit template and awkward on VitePress. Hand-write now and generate later, or wait?
-7. **Order of work against the SvelteKit move.** The idea note says the content work comes first and stays plain Markdown. Should this restructure land on VitePress (moving files, rewriting the hand-written sidebar), or should the new tree be built directly on the template so the sidebar ordering (`order` frontmatter or a nav file, still undecided there) is decided once?
-8. **Hot Contract Replacement.** The hardhat-deploy introduction, `what-is-it-for` and the npm README advertise HCR, "via special proxy mechanism and file watch setup". v2 has no watch mode (`--watch` is a TODO in the task, and the migration map lists it as not supported); the template achieves it with an external watcher (`as-soon`). Keep the claim with a guide showing the external-watcher setup, or drop it?
-9. **The v1 migration guide's troubleshooting section** quotes error messages nothing in the code produces ("namedAccounts is not supported", "from is not a valid parameter", "HardhatDeploy is not a constructor"). Rewrite each against what hardhat and rocketh actually print, or remove the section in favour of the capability map?
-10. **Who is `documentation/testing` for?** It documents `@rocketh/test-utils`, whose own README says it is for extension authors and points project authors at `loadAndExecuteDeploymentsFromFiles`. Proposed: move it under "Extending rocketh". Agree?
+1. **Which runner leads in samples?** Most readers arrive through hardhat-deploy, but rocketh's own CLI is the framework-agnostic path. Options: hardhat-deploy commands first everywhere with the `rocketh` command beside them; each guide picks one and links the other; or every command shown in both forms. The existing `::: code-group` container renders both as tabs on VitePress and on the planned SvelteKit template, but it is not plain Markdown on GitHub. Is a code-group acceptable for this, or should both forms be two plain consecutive blocks?
+2. **URLs and redirects.** Merging moves pages, and links to `rocketh.dev/hardhat-deploy/documentation/...` exist in READMEs on npm, in the template repository and in issues. VitePress on a static host has no redirects. Keep every old URL as a stub page that links on, configure redirects at the host, or accept the breakage and fix the links we own? This also interacts with the SvelteKit move (`work/notes/ideas/docs-site-on-a-sveltekit-docs-template.md`), which could own the redirect table.
+3. **How thin should package READMEs get?** Proposed below: purpose, install, wiring, one minimal example, and a link to the site page, with no behavioural explanations duplicated. The cost is that npm readers must click through. Is that acceptable for the packages most often read on npm (`hardhat-deploy`, `@rocketh/proxy`, `@rocketh/deploy`), or should those keep a fuller self-contained README?
+4. **The Safe-owned guide: inline or linked, and which commands?** The worked example stays on branch `examples/safe-owned-upgrade` of template-ethereum-contracts (decided: example branches stay branches). Should the guide reproduce its files (`000_deploy_safe.ts`, `rocketh/safe.ts`, the config) inline so it reads on its own, or show the key excerpts and link to the branch? Its commands are pnpm scripts wrapping `hardhat` and `anvil` (`contracts:fork:node`, `contracts:fork:rehearse`); should the guide show those, or the underlying `anvil` + `rocketh -e sepolia --is-fork --write-transactions` and `hardhat deploy` commands?
+5. **Reference pages: hand-written or generated?** The `Environment` page was several releases stale; a configuration reference and a CLI reference would go stale the same way. Generating them (TypeDoc JSON for types, commander's option list for CLIs) is natural on the SvelteKit template and awkward on VitePress. Hand-write now and generate later, or wait?
+6. **Order of work against the SvelteKit move.** The idea note says the content work comes first and stays plain Markdown. Should this restructure land on VitePress (moving files, rewriting the hand-written sidebar), or should the new tree be built directly on the template so the sidebar ordering (`order` frontmatter or a nav file, still undecided there) is decided once?
+7. **Hot Contract Replacement.** The hardhat-deploy introduction, `what-is-it-for` and the npm README advertise HCR, "via special proxy mechanism and file watch setup". v2 has no watch mode of its own (`--watch` is a TODO in the task, and the migration map lists it as not supported); the template achieves it with an external watcher (`as-soon` re-running `deploy:dev` when `generated/` or `deploy/` change, its `deploy:watch` script). Proposed: keep the claim and document that setup in the hardhat-deploy section's development workflow page, taken from the template. Agree, or drop the claim?
+8. **The v1 migration guide's troubleshooting section** quotes error messages nothing in the code produces ("namedAccounts is not supported", "from is not a valid parameter", "HardhatDeploy is not a constructor"). Rewrite each against what hardhat and rocketh actually print, or remove the section in favour of the capability map?
+9. **Who is `documentation/testing` for?** It documents `@rocketh/test-utils`, whose own README says it is for extension authors and points project authors at `loadAndExecuteDeploymentsFromFiles`. Proposed: move it under "Extending rocketh". Agree?
 
 <!-- /open-questions -->
 
@@ -45,20 +44,37 @@ The user-facing documentation grew one page per feature, written at different ti
 
 ## Solution
 
-One site, one page per topic, organised by what the reader is trying to do, with two clearly marked paths through it: one for a hardhat-deploy user and one for a rocketh user without Hardhat. Package READMEs become short entry points that link to the site.
+One site, about rocketh, with hardhat-deploy as a large section of it rather than a site of its own. One page per topic, organised by what the reader is trying to do. Package READMEs become short entry points that link to the site, and the template-ethereum-contracts project (its `main` and its example branches) is the worked source the guides are written from.
+
+### Decisions taken
+
+- **One site, not two** (answered 2026-10-27). The site is the rocketh documentation; hardhat-deploy is a section inside it, not a separate tree or site. Pages that only exist because of Hardhat live in that section. Topics that apply to both runners have one shared page that shows both commands. `/hardhat-deploy/` stays as that section's entry page, because npm, the plugin README, the template and search all point there.
+- **Template example branches stay branches** (answered 2026-10-27), to keep the template's `main` simple. The guides depend on them being kept current, which today they are not (see [Sources](#sources-template-ethereum-contracts)).
 
 ### Proposed information architecture
 
-Five sections. Every topic has exactly one page; where a page serves both runners it shows both commands (see open question 2).
+Six sections. Every topic has exactly one page; where a shared page serves both runners it shows both commands (see open question 1).
 
 **1. Start**
 
-- Introduction: what rocketh is, what hardhat-deploy v2 is, how they relate, which one to start with, and the playground. Merges `documentation/` (intro), `hardhat-deploy/.../introduction/`, `what-is-it-for/`, `in-a-nutshell/`.
-- Get started with hardhat-deploy: `hardhat-deploy init`, or by hand. The single home of the setup walkthrough (from `setup-first-project/`, `hardhat-deploy/.../installation/`, the root README's Getting Started, which stays as the tested copy, see below).
+- Introduction: what rocketh is, what hardhat-deploy v2 is, how they relate, which one to start with, and the playground. Merges `documentation/` (intro), `hardhat-deploy/.../introduction/`, `what-is-it-for/`, `in-a-nutshell/`. Ends with the two reading paths below.
 - Get started without Hardhat: the `rocketh` CLI with any compiler that produces artifacts (from `documentation/installation/`).
-- Coming from hardhat-deploy v1: two pages under one heading, the capability map (`documentation/migration/`) first and the step-by-step guide (`migration-from-v1/`) second, as today, but trimmed (the guide carries full v1 and v2 config dumps that the template already shows).
 
-**2. Concepts**
+**2. hardhat-deploy** (entry page at `/hardhat-deploy/`)
+
+The section owns what only exists because of Hardhat, and gives a hardhat-deploy reader a numbered path into the shared pages.
+
+- hardhat-deploy (section entry, at `/hardhat-deploy/`): what the plugin is, how it relates to rocketh, and the numbered path: Get started, Deploy contracts, Proxies, Test, Rehearse on a fork, A Safe-owned project, Export and verify. Replaces the second hero (`hardhat-deploy/index.md`).
+- Get started with hardhat-deploy: `hardhat-deploy init`, or by hand. The single home of the Hardhat setup walkthrough (from `setup-first-project/`, `hardhat-deploy/.../installation/`, the plugin-configuration part of `documentation/hardhat-deploy/`; the root README's Getting Started stays as the tested copy, see Package READMEs).
+- Coming from hardhat-deploy v1: the capability map (`documentation/migration/`) first and the step-by-step guide (`migration-from-v1/`) second, as today, but trimmed (the guide carries full v1 and v2 config dumps that the template already shows). The template's `examples/old-template-for-hardhat-deploy-v1-comparison` and `examples/old-template-migration-to-v2-by-ai` branches give it a real before and after.
+- The `hardhat deploy` task: its options (today undocumented: `--polling-interval`, `--default-build-profile`, `--report-gas-used`, `--save-deployments true|false`), how it maps to the `rocketh` CLI, and what it does not have (`--write-transactions`).
+- Networks and accounts from the environment: the network helpers and `HARDHAT_FORK` / `HARDHAT_FORK_NUMBER` (from `configure-network-helpers`, the network half of `use-fork-testing`).
+- Typed artifacts: `generateTypedArtifacts` and the generated `artifacts` / `abis` modules.
+- Tests with Hardhat fixtures: `networkHelpers.loadFixture` over `loadAndExecuteDeploymentsFromFiles`, TypeScript and Solidity tests (from `deployment-fixtures-in-tests`, the tests half of `documentation/hardhat-deploy`, and the template's "Writing tests").
+- Scripts and the Hardhat connection: `loadEnvironmentFromHardhat`, `getHardhatConnection(env)` (the template's `examples/hardhat-connection-access` branch).
+- Development workflow: local node, watch mode and redeploy on change (Hot Contract Replacement, open question 7), from the template's README.
+
+**3. Concepts**
 
 - Deploy scripts, tags and dependencies (from `core-concepts`, `use-tags-and-dependencies`, `how-to-deploy-contracts`).
 - Running once, and running last (`script-lifecycle`, unchanged).
@@ -66,32 +82,32 @@ Five sections. Every topic has exactly one page; where a page serves both runner
 - Named accounts and signers (from `core-concepts`, `configure-named-accounts`, the account-error sections of `documentation/hardhat-deploy`, and the signer protocol part of the `@rocketh/signer` README).
 - Deployment records: what is saved, where, the `.chain` file, importing existing deployments, reading them from other tools (from the second half of `installation`/`setup-first-project`, the record-format table in the capability map, ADR 0015).
 
-**3. Guides**
+**4. Guides** (shared: each shows the `hardhat deploy` and the `rocketh` command)
 
 - Deploy contracts, including libraries (`deploying`, `examples`).
 - Deterministic addresses: create2, create3, `computeDeterministicAddress` (NEW, from the `@rocketh/deploy` README).
-- Upgradeable contracts with proxies (`deploying#deploying-proxies`, `deploy-with-proxies`, the `@rocketh/proxy` README's behaviour sections).
+- Upgradeable contracts with proxies (`deploying#deploying-proxies`, `deploy-with-proxies`, the `@rocketh/proxy` README's behaviour sections, and the template's `examples/proxy-no-constructor-but-initializer`).
 - Diamonds (`deploying#deploying-diamonds`, `deploy-diamond-contracts`).
 - Routers (NEW, from the `@rocketh/router` README).
-- Test with your deploy scripts: Hardhat fixtures (`deployment-fixtures-in-tests`, the tests half of `documentation/hardhat-deploy`).
-- Rehearse on a fork (`fork-runs` and `use-fork-testing` merged; both entry points, `--is-fork` and `HARDHAT_FORK`, with the hardhat chain-id condition stated where a hardhat user will see it).
+- Rehearse on a fork (`fork-runs` and the rehearsal half of `use-fork-testing` merged; both entry points, `--is-fork` and `HARDHAT_FORK`, with the hardhat chain-id condition stated where a hardhat user will see it).
 - **A Safe-owned project, end to end (NEW, see below).**
 - Unknown signers: pause, paste, defer (`unknown-signers`).
 - Guard execute calls (`execute-guard`).
 - Captured transactions (`captured-transactions`).
-- Export, verify and document (`exporting-and-verifying`, `verify-contracts`, `export-deployments`, and the matching half of `command-and-tasks`).
+- Export, verify and document (`exporting-and-verifying`, `verify-contracts`, `export-deployments`, the matching half of `command-and-tasks`, and the template's "Adding a web frontend").
+- Share contracts between projects: publishing a project's artifacts, deployments and deploy scripts as a package and consuming them (the capability map's "Consuming another project", the template's "Publishing & Consuming Contracts" and its `examples/deploy-export`, `examples/deploy-import`, `examples/ens-import` branches).
 - Use viem (`use-viem-integration`).
 - Run deploy scripts in a browser (NEW, from the `@rocketh/web` README).
 - Production hardening (`production-hardening`, unchanged).
 
-**4. Reference**
+**5. Reference**
 
-- CLI: `rocketh`, the `hardhat deploy` task, `rocketh-verify`, `rocketh-export`, `rocketh-doc`, `hardhat-deploy init` (NEW; today only in READMEs or nowhere).
-- Configuration: every key of `rocketh/config.ts` (`UserConfig`, `ChainUserConfig`, `DeploymentEnvironmentConfig`), and the Hardhat-side additions (`generateTypedArtifacts`, the network helpers from `configure-network-helpers`). Absorbs `hardhat-deploy/.../configuration/`.
-- The environment API (`hardhat-deploy/.../environment/`, ideally generated, open question 6).
+- CLI: `rocketh`, the `hardhat deploy` task (summary, linking to its section page), `rocketh-verify`, `rocketh-export`, `rocketh-doc`, `hardhat-deploy init` (NEW; today only in READMEs or nowhere).
+- Configuration: every key of `rocketh/config.ts` (`UserConfig`, `ChainUserConfig`, `DeploymentEnvironmentConfig`). Absorbs `hardhat-deploy/.../configuration/`. The Hardhat-side configuration lives in the hardhat-deploy section and is linked from here.
+- The environment API (`hardhat-deploy/.../environment/`, ideally generated, open question 5).
 - Packages: one table, each row a one-line purpose and a link to its README and to its guide.
 
-**5. Extending rocketh**
+**6. Extending rocketh**
 
 - Writing an extension (from the `@rocketh/core` README's "Writing an extension").
 - Testing an extension (`documentation/testing`).
@@ -99,10 +115,10 @@ Five sections. Every topic has exactly one page; where a page serves both runner
 
 ### The two reading paths
 
-- **A hardhat-deploy user** lands on `/hardhat-deploy/` (npm, the plugin's README and search all point there). That page stays: a short landing that says what the plugin is and gives a numbered path through the shared tree: Get started with hardhat-deploy, Deploy contracts, Proxies, Test with your deploy scripts, Rehearse on a fork, A Safe-owned project, Export and verify. A v1 user gets a third entry at the top: Coming from hardhat-deploy v1.
-- **A rocketh user** lands on the home page or `/documentation/`, and the Introduction gives the same numbered path starting from Get started without Hardhat.
+- **A hardhat-deploy user** lands on `/hardhat-deploy/` (npm, the plugin's README, the template and search all point there): the hardhat-deploy section's entry page, with its numbered path through its own pages and into the shared guides. A v1 user's first stop is Coming from hardhat-deploy v1, at the top of the section.
+- **A rocketh user** lands on the home page or `/documentation/`, and the Introduction gives a numbered path starting from Get started without Hardhat.
 
-Both paths read the same pages. A page that differs by runner says so in one place (a command shown both ways), never as a second page.
+Both paths read the same shared pages. A topic that differs by runner says so in one place (a command shown both ways), never as a second page.
 
 ### The Safe-owned project guide (new)
 
@@ -117,6 +133,41 @@ The worked example is branch `examples/safe-owned-upgrade` of github.com/wighawa
 
 It links out to the existing guides for depth (fork runs, unknown signers, captured transactions, execute guard) rather than repeating them, and it is linked from the hardhat-deploy landing page and from the proxies guide.
 
+### Sources: template-ethereum-contracts
+
+The template (github.com/wighawag/template-ethereum-contracts) is the most realistic working project there is, and the guides are written from it:
+
+| Template material | Feeds |
+| --- | --- |
+| README: setup, compile, watch mode, local development, deploy, verify, scripts | Get started with hardhat-deploy; Development workflow |
+| README: "Writing Tests" (TypeScript and Solidity) | Tests with Hardhat fixtures (Solidity tests are absent from the docs today) |
+| README: "Publishing & Consuming Contracts" | Share contracts between projects |
+| README: "Adding a Web Frontend" | Export, verify and document |
+| `examples/safe-owned-upgrade` | A Safe-owned project, end to end |
+| `examples/deploy-export`, `examples/deploy-import`, `examples/ens-import` | Share contracts between projects |
+| `examples/hardhat-connection-access` | Scripts and the Hardhat connection (`getHardhatConnection`) |
+| `examples/proxy-no-constructor-but-initializer` | Proxies, initializer section |
+| `examples/old-template-for-hardhat-deploy-v1-comparison`, `examples/old-template-migration-to-v2-by-ai` | Coming from hardhat-deploy v1 (frozen snapshots, see below) |
+| `examples/npmFilesToBuild` | to be decided when the branch is brought up to date |
+
+**Linking rule.** A page carries inline the minimal snippet a reader needs, so it reads on its own, and links to the template as the full working project. For an example branch it links to the comparison with `main` (`compare/main...examples/<name>`), which shows exactly what the example adds.
+
+**Dependency: the example branches must be kept current.** Measured 2026-10-27 with GitHub's compare API, each branch is a small change on `main` (1 to 6 commits of its own), and all but one are far behind it:
+
+| Branch | Own commits | Behind `main` | Last commit |
+| --- | --- | --- | --- |
+| `examples/safe-owned-upgrade` | 5 | 0 | 2026-10-27 |
+| `examples/old-template-for-hardhat-deploy-v1-comparison` | 1 | 39 | 2026-01 |
+| `examples/npmFilesToBuild` | 1 | 90 | 2025-10 |
+| `examples/proxy-no-constructor-but-initializer` | 2 | 90 | 2025-10 |
+| `examples/deploy-export` | 6 | 109 | 2025-09 |
+| `examples/deploy-import` | 3 | 109 | 2025-09 |
+| `examples/hardhat-connection-access` | 1 | 120 | 2025-08 |
+| `examples/ens-import` | 2 | 129 | 2025-05 |
+| `examples/old-template-migration-to-v2-by-ai` | 6 | 195 | 2026-01 |
+
+A guide may link to an example branch only if that branch is kept current against `main` and checked, by a mechanism that lives in the template repository and is tracked there (on its orphan `work` branch, since the template's `main` must not carry it). The two `old-template-*` branches are frozen on purpose (they show v1 and the migration as they were) and are exempt; the docs say so where they link to them. A branch that is neither kept current nor frozen is not linked.
+
 ### Package READMEs
 
 A README is what npm shows, and it should stop being a second copy of the site. Each package README keeps: one paragraph of purpose, installation (with peers), the extension wiring snippet where it is an extension, one minimal example, and a "Documentation" link to the site page(s) that own its behaviour. It drops: behavioural explanations the site owns (the unknown-signer flow in `@rocketh/proxy` and `@rocketh/read-execute`, the `guard` section of `@rocketh/read-execute`, the fork and fee sections of `@rocketh/node`), and option tables that move to the Reference section. Relative links (`../rocketh-node`, `../../LICENSE`), which break on npm, become absolute.
@@ -127,15 +178,15 @@ Exceptions: the root `README.md` (it is also the npm README of `rocketh`, copied
 
 | Page | Disposition |
 | --- | --- |
-| `hardhat-deploy/index.md` (hero) | Keep as the hardhat-deploy landing, rewritten as the entry to the hardhat-deploy path; drop the second hero layout |
-| `introduction`, `what-is-it-for`, `in-a-nutshell` | Merge into the Introduction; drop the v1-era feature list |
-| `installation`, `how-to/setup-first-project` | Merge into Get started with hardhat-deploy; the deployment-import half moves to Deployment records |
-| `command-and-tasks` | Delete; its content moves to Reference: CLI |
+| `hardhat-deploy/index.md` (hero) | Becomes the hardhat-deploy section's entry page at the same URL; drop the second hero layout |
+| `introduction`, `what-is-it-for`, `in-a-nutshell` | Merge into the site Introduction (what rocketh and hardhat-deploy are) and the section entry page; drop the v1-era feature list |
+| `installation`, `how-to/setup-first-project` | Merge into Get started with hardhat-deploy (section); the deployment-import half moves to Deployment records |
+| `command-and-tasks` | Becomes The `hardhat deploy` task (section); `rocketh-verify` and `rocketh-export` move to Reference: CLI |
 | `environment` | Move to Reference |
 | `configuration` | Merge into Reference: configuration and the named-accounts concept page |
 | `how-to-deploy-contracts` | Merge into Deploy contracts and Deploy scripts |
-| `how-to/` (index) | Delete; the sidebar is the index |
-| every other `how-to/*` | Merge into the shared guide on the same topic (table below) |
+| `how-to/` (index) | Delete; the section's sidebar is the index |
+| every other `how-to/*` | Hardhat-only ones stay in the section, the rest merge into the shared page on the same topic (table below) |
 
 ### Every page
 
@@ -148,7 +199,7 @@ Exceptions: the root `README.md` (it is also the npm README of `rocketh`, copied
 | `documentation/core-concepts` | split | into Deploy scripts, Environments and chains, Named accounts |
 | `documentation/deploying` | split | into Deploy contracts, Proxies, Diamonds |
 | `documentation/examples` | merge into Deploy contracts | it repeats `deploying` |
-| `documentation/hardhat-deploy` | split | plugin config to Get started with hardhat-deploy, account errors to Named accounts, fixtures to Test |
+| `documentation/hardhat-deploy` | split | plugin config to Get started with hardhat-deploy, account errors to Named accounts, fixtures to Tests with Hardhat fixtures (all but the second in the hardhat-deploy section) |
 | `documentation/testing` | move to Extending rocketh | audience is extension authors |
 | `documentation/fork-runs` | keep, absorb `use-fork-testing` | |
 | `documentation/captured-transactions` | keep | |
@@ -158,26 +209,26 @@ Exceptions: the root `README.md` (it is also the npm README of `rocketh`, copied
 | `documentation/script-lifecycle` | keep | |
 | `documentation/production-hardening` | keep | |
 | `documentation/architecture` | move to Extending rocketh, complete it | lists 8 of 18 packages |
-| `documentation/migration` | keep (capability map) | |
-| `hardhat-deploy/index.md` | keep as landing | see above |
+| `documentation/migration` | move to the hardhat-deploy section (capability map) | its readers are hardhat-deploy v1 users |
+| `hardhat-deploy/index.md` | becomes the section entry page | same URL |
 | `hardhat-deploy/.../introduction` | merge into Introduction | |
 | `hardhat-deploy/.../what-is-it-for` | merge into Introduction | |
 | `hardhat-deploy/.../in-a-nutshell` | merge into Introduction | |
-| `hardhat-deploy/.../installation` | merge into Get started with hardhat-deploy and Deployment records | |
-| `hardhat-deploy/.../command-and-tasks` | delete, content to Reference: CLI | |
+| `hardhat-deploy/.../installation` | merge into Get started with hardhat-deploy (section) and Deployment records | |
+| `hardhat-deploy/.../command-and-tasks` | becomes The `hardhat deploy` task (section) | verify/export parts to Reference: CLI |
 | `hardhat-deploy/.../environment` | move to Reference | |
 | `hardhat-deploy/.../configuration` | merge into Reference: configuration | |
 | `hardhat-deploy/.../how-to-deploy-contracts` | merge into Deploy contracts | |
 | `hardhat-deploy/.../how-to/` | delete | sidebar |
-| `.../how-to/setup-first-project` | merge into Get started with hardhat-deploy | |
-| `.../how-to/migration-from-v1` | keep, trim | the step-by-step guide |
+| `.../how-to/setup-first-project` | merge into Get started with hardhat-deploy (section) | |
+| `.../how-to/migration-from-v1` | keep in the section, trim | the step-by-step guide |
 | `.../how-to/configure-named-accounts` | merge into Named accounts | |
-| `.../how-to/configure-network-helpers` | move to Reference: configuration (Hardhat side) | |
+| `.../how-to/configure-network-helpers` | becomes Networks and accounts from the environment (section) | |
 | `.../how-to/use-tags-and-dependencies` | merge into Deploy scripts | |
 | `.../how-to/deploy-with-proxies` | merge into Proxies | |
 | `.../how-to/deploy-diamond-contracts` | merge into Diamonds | |
-| `.../how-to/deployment-fixtures-in-tests` | merge into Test with your deploy scripts | |
-| `.../how-to/use-fork-testing` | merge into Rehearse on a fork | |
+| `.../how-to/deployment-fixtures-in-tests` | becomes Tests with Hardhat fixtures (section) | |
+| `.../how-to/use-fork-testing` | split | `HARDHAT_FORK` setup to Networks and accounts (section), rehearsal to Rehearse on a fork |
 | `.../how-to/use-viem-integration` | keep as Use viem | |
 | `.../how-to/verify-contracts` | merge into Export, verify and document | |
 | `.../how-to/export-deployments` | merge into Export, verify and document | |
@@ -203,11 +254,13 @@ Exceptions: the root `README.md` (it is also the npm README of `rocketh`, copied
 16. As a maintainer, I want behaviour documented once, so that a change to it is updated in one place and stale copies cannot survive.
 17. As a maintainer, I want old URLs to keep working or to fail visibly, so that links in npm READMEs, the template and issues do not silently break.
 18. As a maintainer planning the SvelteKit docs template, I want the restructured content in plain Markdown with a navigation order stated explicitly, so that the switch stays mechanical.
+19. As a reader following a guide to the template, I want the example branch it links to to work with the current template and rocketh, so that I am not handed a project that no longer builds.
+20. As a hardhat-deploy user, I want the pages that only concern Hardhat gathered in one section, so that I can tell what is specific to my setup from what is true of rocketh in general.
 
 ### Autonomy notes
 
 - `humanOnly`: not set. The tasks this yields (merging pages, writing guides) are agent-buildable once the open questions are answered.
-- `needsAnswers: true`: the ten questions above decide the shape (one tree or two, runner order, URLs, README depth, the guide's source of truth, generated references, VitePress or the template first). Tasking before they are answered would cut the wrong pages.
+- `needsAnswers: true`: the nine questions above decide the shape (runner order, URLs, README depth, the Safe guide's form, generated references, VitePress or the template first, HCR, troubleshooting, the testing page). Tasking before they are answered would cut the wrong pages.
 
 ## Implementation Decisions
 
@@ -229,8 +282,9 @@ Exceptions: the root `README.md` (it is also the npm README of `rocketh`, copied
 
 - The move to the SvelteKit docs template itself (`work/notes/ideas/docs-site-on-a-sveltekit-docs-template.md`); this spec decides the content and its order, which that move inherits.
 - Editable deploy scripts in the playground (`work/specs/proposed/editable-deploy-scripts-in-the-docs.md`).
-- Generated API reference from TypeDoc, beyond the decision in open question 6.
+- Generated API reference from TypeDoc, beyond the decision in open question 5.
 - Documentation of hardhat-deploy v1 (it lives on its own branch).
+- The mechanism that keeps the template's example branches current: it belongs to the template repository and is tracked there. This spec only depends on it.
 - Any source code change. Code bugs the audit found are observations (`work/notes/observations/proxy-execute-object-form-type-requires-init.md`, `work/notes/observations/docs-site-pages-prerender-without-content.md`).
 - The errors the audit could settle from the code: those were fixed in place on branch `docs/audit-and-accuracy` and are not part of this restructure.
 
