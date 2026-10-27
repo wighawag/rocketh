@@ -458,6 +458,71 @@ export type ExportedDeployments = {
 	contracts: {[name: string]: ContractExport};
 };
 
+/**
+ * What `stripFunctions` made of one value: the data left, and whether a function was found in it.
+ */
+type Stripped = {value: unknown; heldFunction: boolean};
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+	if (value === null || typeof value !== 'object') {
+		return false;
+	}
+	const prototype = Object.getPrototypeOf(value);
+	return prototype === Object.prototype || prototype === null;
+}
+
+function stripFunctions(value: unknown): Stripped {
+	if (typeof value === 'function') {
+		return {value: undefined, heldFunction: true};
+	}
+	if (Array.isArray(value)) {
+		const items = value.map(stripFunctions);
+		return {value: items.map((item) => item.value), heldFunction: items.some((item) => item.heldFunction)};
+	}
+	// Only PLAIN objects are walked. Anything else (a Date, an object with its own `toJSON`) is
+	//  left for `JSON.stringify` to serialise the way it already did.
+	if (isPlainObject(value)) {
+		const kept: Record<string, unknown> = {};
+		let heldFunction = false;
+		for (const [key, child] of Object.entries(value)) {
+			const stripped = stripFunctions(child);
+			if (stripped.heldFunction) {
+				heldFunction = true;
+			} else {
+				kept[key] = stripped.value;
+			}
+		}
+		return {value: kept, heldFunction};
+	}
+	return {value, heldFunction: false};
+}
+
+/**
+ * The chain info with every function-valued field removed, and every field whose value held one.
+ *
+ * WHY this exists: the chain `info` a config resolves to is viem's chain object with the user's
+ * entry layered on top (`mergeChainConfig` in `@rocketh/node`), and for a chain viem gives
+ * formatters (Base and the other OP-stack chains, Celo, zkSync) that object carries
+ * `formatters`, `serializers`, `fees` and `extend`. Every output format here goes through
+ * `JSON.stringify`, which drops the functions and KEEPS their containers, so the export used to
+ * carry `"formatters": {"block": {"type": "block"}, ...}`: a formatter with no `format`, typed
+ * `as const`, which no viem client accepts as a chain.
+ *
+ * The rule is therefore not "drop the functions" but "drop whatever held one": a property whose
+ * value contained a function ANYWHERE below it is removed whole, because what JSON would leave of
+ * it is leftover, not data. A property that held no function is kept untouched, so plain data
+ * (`blockTime`, `contracts`, `rpcUrls`, `properties`, `genesisHash`) passes through as it was.
+ *
+ * WHY HERE and not in `mergeChainConfig`: the same `info` becomes `env.network.chain` at run
+ * time, and `@rocketh/viem` builds its clients from it, so there the formatters do real work.
+ * Only a serialised copy has no use for them, so the export boundary is where they go.
+ *
+ * The result is typed as the input: `ChainInfo` declares none of the fields this removes.
+ */
+function withoutFunctionResidue<T extends object>(info: T): T {
+	return stripFunctions(info).value as T;
+}
+
 type Trandformed<O, Value> = {
 	[Property in keyof O]: Value;
 };
@@ -530,7 +595,7 @@ export async function run(
 
 	const idToFetch = parseInt(chainId);
 	const chainConfig = getChainConfigFromUserConfig(config, idToFetch, {} as EIP1193CoreProvider);
-	const chainInfo = {...chainConfig.info, genesisHash, properties: chainConfig.properties};
+	const chainInfo = withoutFunctionResidue({...chainConfig.info, genesisHash, properties: chainConfig.properties});
 
 	// The dummy provider above is passed only so `getChainConfigFromUserConfig` returns the
 	//  metadata this export needs (`info`, `properties`), and it takes the `provider` branch

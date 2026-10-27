@@ -91,6 +91,8 @@ interface ContractExport {
 
 `startBlock` is useful for an indexer: it is the block to start syncing from rather than genesis. `linkedData` carries whatever your deploy script attached to the record.
 
+`chain` is data only. For a chain viem gives formatters (Base and the other OP-stack chains, Celo, zkSync), the chain info rocketh resolves carries viem's `formatters`, `serializers`, `fees` and `extend`, which cannot be serialised. The export drops any field whose value held a function, rather than writing what would be left of it, and keeps plain data such as `blockTime`, `contracts`, `rpcUrls`, `properties` and `genesisHash`.
+
 ## An empty export is an error, not a no-op
 
 If the named environment has no deployments, the command fails with `NoDeploymentsError` (with `reason` being either `missing-folder` or `no-records`).
