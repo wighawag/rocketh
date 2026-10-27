@@ -479,9 +479,10 @@ function stripFunctions(value: unknown): Stripped {
 		const items = value.map(stripFunctions);
 		return {value: items.map((item) => item.value), heldFunction: items.some((item) => item.heldFunction)};
 	}
-	// Only PLAIN objects are walked. Anything else (a Date, an object with its own `toJSON`) is
-	//  left for `JSON.stringify` to serialise the way it already did.
-	if (isPlainObject(value)) {
+	// Only PLAIN objects without a `toJSON` are walked. Anything else (a Date, any object that
+	//  says how to serialise itself) is left for `JSON.stringify` to serialise as it already did,
+	//  since its `toJSON` is a function by definition and would otherwise drop the whole value.
+	if (isPlainObject(value) && typeof value.toJSON !== 'function') {
 		const kept: Record<string, unknown> = {};
 		let heldFunction = false;
 		for (const [key, child] of Object.entries(value)) {

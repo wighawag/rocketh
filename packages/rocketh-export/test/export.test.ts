@@ -374,9 +374,26 @@ describe('@rocketh/export - a chain with function-valued fields exports as data 
 	}
 
 	it('starts from a chain info that really carries functions, so the checks below are not vacuous', () => {
-		const raw = baseInfo as ChainInfo & {formatters?: {block?: {format?: unknown}}; extend?: unknown};
+		const raw = baseInfo as ChainInfo & {
+			formatters?: {block?: {format?: unknown}};
+			serializers?: {transaction?: unknown};
+			extend?: unknown;
+		};
 		expect(typeof raw.formatters?.block?.format).toBe('function');
+		expect(typeof raw.serializers?.transaction).toBe('function');
 		expect(typeof raw.extend).toBe('function');
+		// `fees` is not checked here: viem's current `base` declares it with no value, so it is in
+		//  the list below for the chains (and viem versions) that do carry fee functions.
+	});
+
+	it('leaves an object that serialises itself to JSON.stringify, rather than dropping it for its toJSON', async () => {
+		const info = {...baseInfo, custom: {toJSON: () => ({serialised: true})}} as ChainInfo;
+
+		const chains = await exportBaseInEveryFormat(info);
+
+		for (const [format, chain] of Object.entries(chains)) {
+			expect(chain.custom, format).toEqual({serialised: true});
+		}
 	});
 
 	it('exports Base without the function-valued fields, and with its plain data intact, in every format', async () => {
