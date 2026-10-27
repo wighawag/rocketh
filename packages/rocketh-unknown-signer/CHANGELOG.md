@@ -1,5 +1,14 @@
 # @rocketh/unknown-signer
 
+## 0.19.12
+
+### Patch Changes
+
+- Updated dependencies [77d4f02]
+- Updated dependencies [73cb641]
+- Updated dependencies [5cc0bbd]
+  - @rocketh/core@0.24.0
+
 ## 0.19.11
 
 ### Patch Changes
