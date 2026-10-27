@@ -1,5 +1,5 @@
 ---
-# https://vitepress.dev/reference/default-theme-home-page
+# A landing page: the `hero` and `features` of the site's home layout.
 layout: home
 
 hero:
@@ -26,20 +26,8 @@ features:
   - title: Modular
     details: At its core, hardhat-deploy only provide a save and read function for deployment, everything else is an external module
 
-# Without this, sharing a hardhat-deploy page falls back to the site-wide card in
-# .vitepress/config.mts, which shows the rocketh mark and the rocketh tagline.
-# Keys use `name` rather than `property` to match the site-wide convention.
-head:
-  - - meta
-    - name: 'og:image'
-      content: 'https://rocketh.dev/hardhat-deploy-preview.png'
-  - - meta
-    - name: 'twitter:image'
-      content: 'https://rocketh.dev/hardhat-deploy-preview.png'
-  - - meta
-    - name: 'og:title'
-      content: 'hardhat-deploy'
-  - - meta
-    - name: 'og:description'
-      content: 'A Hardhat Plugin For Replicable Deployments And Easy Testing'
+# The social card and its description. Without them, sharing this page falls
+# back to the site-wide card, which shows the rocketh mark and tagline.
+image: /hardhat-deploy-preview.png
+description: 'A Hardhat Plugin For Replicable Deployments And Easy Testing'
 ---

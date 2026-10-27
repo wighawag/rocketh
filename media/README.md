@@ -27,14 +27,14 @@ Requires Python with [Pillow](https://python-pillow.org/), and Inkscape on `PATH
 An Ethereum mark as a rocket nose, with faceted fins and a three-layer exhaust plume. Notes on the things that are easy to "fix" by mistake:
 
 - **The single `matrix(...)` is not arbitrary.** It folds three steps: `rotate(30, 128, 128)` for the pose, a scale-and-translate that centres the bounding box in the 256 viewBox with a 12px margin, and a deliberate leftward nudge. The nudge exists because bounding-box centring reads right-heavy: the flame is a thin taper that stretches the bounding box leftward while carrying almost no visual weight, leaving roughly 67% of the ink mass right of centre. The shift is 35% of the measured centroid drift. Correcting the full drift crowds the flame tip against the left edge and trades one imbalance for another.
-- **The darkest ETH facet is `#2c313a`, not the canonical `#141414`.** It was lightened so the mark survives on the VitePress dark background (`#1b1b1f`), where the original facets were effectively invisible.
+- **The darkest ETH facet is `#2c313a`, not the canonical `#141414`.** It was lightened so the mark survives on a dark background (VitePress's `#1b1b1f`, where the site lived when this was decided), where the original facets were effectively invisible.
 - **The ETH mark keeps its own nested transform** so the six upstream Ethereum paths stay byte-identical to the canonical artwork and remain easy to re-sync. Flattening it would obscure that provenance.
 
 If the geometry changes, the fit and the optical nudge need re-deriving rather than eyeballing.
 
 ## hardhat-deploy
 
-`hardhat-deploy` is no longer built as a separate site; its docs live in `hardhat-deploy/` in this repo and are served by this VitePress site. Its assets are therefore generated here too.
+`hardhat-deploy` is no longer built as a separate site; its docs live in `hardhat-deploy/` in this repo and are served by rocketh.dev, a section of the same site. Its assets are therefore generated here too.
 
 `public/hardhat-deploy-logo.svg` is **generated, not authored**. It is the rocketh mark plus a porthole holding the Hardhat mascot. The rocket geometry is _read from_ `logo.svg` at build time rather than copied, so the two marks cannot drift apart; only the porthole is additive. Edit `logo.svg` and both marks change together.
 

@@ -14,7 +14,6 @@
 	"devDependencies": {
 		"@changesets/cli": "^3.0.0",
 		"@nx/js": "^23.2.1",
-		"@rocketh/playground": "workspace:*",
 		"@types/node": "^26.2.0",
 		"@vitest/coverage-v8": "^4.1.11",
 		"dorfl": "0.15.1",
@@ -24,7 +23,6 @@
 		"prettier": "^3.9.6",
 		"solc": "0.8.10",
 		"tsx": "^4.23.12",
-		"vitepress": "2.0.0-alpha.18",
 		"vitest": "^4.1.11",
 		"zellij-launcher": "^0.0.1"
 	},
@@ -42,9 +40,9 @@
 		"changeset:version": "pnpm changeset version && pnpm sync:template && pnpm changeset:check-graduation",
 		"reset": "git clean -fdX; pnpm i",
 		"docs:widgets": "nx build @rocketh/playground",
-		"docs:dev": "pnpm docs:widgets && vitepress dev",
-		"docs:build": "pnpm docs:widgets && vitepress build",
-		"docs:preview": "vitepress preview",
+		"docs:dev": "pnpm docs:widgets && tsx scripts/docs-site.ts dev",
+		"docs:build": "pnpm docs:widgets && tsx scripts/docs-site.ts build",
+		"docs:preview": "tsx scripts/docs-site.ts preview",
 		"typecheck": "pnpm -r --parallel exec tsc --noEmit",
 		"test:getting-started": "lock=$(mktemp) && cp pnpm-lock.yaml \"$lock\" && ezx --verbose README.md -s 'Getting Started'; s=$?; rm -Rf my-rocketh-project; cp \"$lock\" pnpm-lock.yaml; rm -f \"$lock\"; exit $s",
 		"test": "vitest run",

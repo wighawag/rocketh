@@ -33,6 +33,24 @@ pnpm verify:artifacts  # rebuild vendored Solidity and compare to committed arti
 
 `pnpm reset` (`git clean -fdX` plus a reinstall) is the escape hatch when the workspace gets into a state you do not want to debug.
 
+## The documentation site
+
+[rocketh.dev](https://rocketh.dev) is built from this repository's Markdown: `index.md`, `documentation/` and `hardhat-deploy/`, with `public/` for the logos and social cards and a `_sidebar.yaml` per section for the sidebar order. A page is plain Markdown that reads on GitHub too. The site's code is a separate repository, [wighawag/rocketh-website](https://github.com/wighawag/rocketh-website), so a change to a page is a pull request here and a change to how the site works is one there.
+
+To preview a change, clone the site next to this repository once, then run it from here:
+
+```bash
+git clone https://github.com/wighawag/rocketh-website ../rocketh-website
+
+pnpm docs:dev       # dev server, with hot reload and search
+pnpm docs:build     # static build in ../rocketh-website/web/build
+pnpm docs:preview   # serve that build
+```
+
+Each builds the playground (`packages/rocketh-playground`) first, so the page shows the widget of this checkout, and points the site at this checkout, so a worktree previews its own content. `ROCKETH_WEBSITE_DIR` names a site checkout somewhere else. `pnpm docs:build` fails on a dead link or an `#anchor` that is not on its page; the deploy workflow runs the same build on a pull request that touches the content.
+
+`.github/workflows/deploy.yml` deploys on every push to `main`, building the commit of rocketh-website it pins in `ROCKETH_WEBSITE_REF`. A change to the site goes live through a pull request here that moves that pin.
+
 ## Before you open a pull request
 
 1. `pnpm test` passes.

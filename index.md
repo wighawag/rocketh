@@ -1,5 +1,5 @@
 ---
-# https://vitepress.dev/reference/default-theme-home-page
+# The site's home page: the `hero` and `features` of its home layout.
 layout: home
 
 hero:

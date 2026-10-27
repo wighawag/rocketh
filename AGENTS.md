@@ -37,7 +37,8 @@ rocketh/
 │   ├── rocketh-read-execute/ # Contract read/write utilities
 │   ├── rocketh-unknown-signer/ # catchUnknownSigner for Safe/multisig-owned calls
 │   └── rocketh-test-utils/   # Test utilities and mock helpers
-├── documentation.md          # Main documentation
+├── index.md, documentation/, hardhat-deploy/, public/
+│                             # The docs site's content (rocketh.dev, built by wighawag/rocketh-website)
 ├── TESTING.md               # Testing guide
 └── README.md                # Getting started guide
 ```
@@ -90,11 +91,11 @@ pnpm format:check
 # Lint a specific file
 pnpm prettier --write path/to/file.ts
 
-# Run docs development server
-pnpm docs:dev
-
-# Build docs
-pnpm docs:build
+# Docs site (rocketh.dev): needs a rocketh-website checkout next to this one,
+# see CONTRIBUTING.md, "The documentation site"
+pnpm docs:dev       # dev server
+pnpm docs:build     # static build; dead links and missing anchors fail it
+pnpm docs:preview   # serve the build
 ```
 
 ---
@@ -321,7 +322,7 @@ When modifying a package, consider impacts on dependent packages.
 
 - Check existing implementations in similar packages
 - Look at integration tests for usage examples
-- Review `documentation.md` and `TESTING.md`
+- Review `documentation/` and `TESTING.md`
 - Ask a clarifying question before making large speculative changes
 - Propose a short plan for significant architectural changes
 

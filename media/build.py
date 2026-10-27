@@ -68,7 +68,7 @@ TAG_WGHT = 400
 LOGO_PX = 340
 LOGO_ANGLE = 30                   # keep in sync with the pose baked into logo.svg
 
-ICON_PX = 512                     # favicon, referenced from .vitepress/config.mts
+ICON_PX = 512                     # public/icon.png; rocketh-website's app icon is a copy
 ICON_MARGIN = 24                  # same proportion as logo.svg's 12/256
 ICON_SUPERSAMPLE = 4
 # Fraction of the measured centroid drift to correct when optically centring.

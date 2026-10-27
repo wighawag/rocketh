@@ -46,7 +46,7 @@ Each boundary below is taken through all six STRIDE categories, threat by threat
 
 Report these as ordinary issues, or not at all.
 
-- **The documentation site** (`rocketh.dev`, built from `docs/` and published to GitHub Pages by `.github/workflows/deploy.yml`). It is static, has no accounts, no backend and no data to reach. Wrong or dangerous ADVICE on it is in scope, because someone will follow it; report that as a normal issue unless it discloses something not yet fixed.
+- **The documentation site** (`rocketh.dev`, the Markdown of this repository built by the site in [`wighawag/rocketh-website`](https://github.com/wighawag/rocketh-website), at a commit `.github/workflows/deploy.yml` pins, and published to GitHub Pages by that workflow). It is static, has no accounts, no backend and no data to reach. Wrong or dangerous ADVICE on it is in scope, because someone will follow it; report that as a normal issue unless it discloses something not yet fixed.
 - **`demoes/`.** Example repositories, published nowhere, meant to be read and run by hand.
 - **Advisories in third-party dependencies**, on their own. Dependabot alerts cover the tree, the security floors are pinned in `overrides:` in `pnpm-workspace.yaml`, and `minimumReleaseAge` there keeps an install off a release less than a week old. What IS in scope is a dependency advisory that rocketh's own usage makes reachable: name the call path.
 - **Anything that presupposes control of the operator's machine**, their shell, their deploy scripts, their config or their `node_modules`. At that point the private key is the smaller problem, and see the first accepted property below.

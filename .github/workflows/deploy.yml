@@ -1,40 +1,81 @@
-# Sample workflow for building and deploying a VitePress site to GitHub Pages
+# Builds rocketh.dev and deploys it to GitHub Pages.
 #
-name: Deploy VitePress site to Pages
+# The site's CODE is github.com/wighawag/rocketh-website (made from the
+# template-svelte-docs template); its CONTENT is this repository: `index.md`,
+# `documentation/`, `hardhat-deploy/`, `public/`, and the playground widget
+# built from `packages/rocketh-playground`. Both are checked out side by side,
+# as they are locally, and built with the same `pnpm docs:build` a contributor
+# runs (scripts/docs-site.ts).
+#
+# The site is PINNED to one commit (ROCKETH_WEBSITE_REF below) rather than
+# following its main:
+#   - the same rocketh commit always builds the same site, so a deploy can be
+#     reproduced and a broken one bisected;
+#   - a change to the site can only reach rocketh.dev through a pull request
+#     HERE that moves the pin, which runs this workflow's build first and is
+#     reviewed like any change to a workflow;
+#   - the cost is that a site change needs that pull request to go live.
+# Following main would deploy every site change on rocketh's next push without
+# that check, and a site commit that breaks against rocketh's content would
+# take the deploy down with nothing in this repository having changed.
+#
+# On a pull request it only builds: a dead link or a missing anchor in the
+# content fails the build, before it reaches main.
+
+name: Deploy rocketh.dev to Pages
 
 on:
-  # Runs on pushes targeting the `main` branch. Change this to `master` if you're
-  # using the `master` branch as the default branch.
   push:
     branches: [main]
-
-  # Allows you to run this workflow manually from the Actions tab
+  pull_request:
+    paths:
+      - 'index.md'
+      - 'documentation/**'
+      - 'hardhat-deploy/**'
+      - 'public/**'
+      - 'packages/rocketh-playground/**'
+      - 'scripts/docs-site.ts'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/deploy.yml'
   workflow_dispatch:
 
-# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
-permissions:
-  contents: read
-  pages: write
-  id-token: write
+env:
+  # The rocketh-website commit this site is built from. Move it in a pull
+  # request that says what it was verified against.
+  ROCKETH_WEBSITE_REF: cb82179446b9fb9b92ee9a5eb0c9a843afbb94aa
+
+# Nothing at workflow level: each job grants its own scopes.
+permissions: {}
 
 # Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
 # However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
 concurrency:
-  group: pages
-  cancel-in-progress: false
+  group: ${{ github.event_name == 'pull_request' && format('pages-pr-{0}', github.ref) || 'pages' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  # Build job
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # configure-pages reads the Pages settings; only `deploy` can write.
+      pages: read
     steps:
-      - name: Checkout
+      - name: Checkout rocketh (the content)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0 # Not needed if lastUpdated is not enabled
-          # The build reads git history locally for VitePress `lastUpdated` and
-          # publishes through the Pages artifact upload, never through a git push,
-          # so the checkout token is not needed after this step.
+          path: rocketh
+          # The build publishes through the Pages artifact upload, never
+          # through a git push, so the token is not needed after this step.
+          persist-credentials: false
+
+      - name: Checkout rocketh-website (the site)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: wighawag/rocketh-website
+          ref: ${{ env.ROCKETH_WEBSITE_REF }}
+          path: rocketh-website
           persist-credentials: false
 
       - name: Setup pnpm
@@ -47,28 +88,38 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-
-      - name: Setup Pages
-        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+          cache-dependency-path: |
+            rocketh/pnpm-lock.yaml
+            rocketh-website/pnpm-lock.yaml
 
       - name: Install dependencies
-        run: pnpm i --ignore-scripts
+        working-directory: rocketh
+        run: pnpm i --frozen-lockfile --ignore-scripts
 
-      # Single unified VitePress site: rocketh docs plus the hardhat-deploy
-      # section (under hardhat-deploy/) are one build, one config.
-      - name: VitePress build
-        run: pnpm run docs:build
+      # Builds the playground in this workspace, installs the site, builds it
+      # against this checkout. The site resolves `@rocketh/playground` to the
+      # build here, never to an npm release.
+      - name: Build the site
+        working-directory: rocketh
+        env:
+          ROCKETH_WEBSITE_DIR: ../rocketh-website
+        run: pnpm docs:build
 
-      - name: ls
-        run: ls .vitepress/dist
+      - name: Setup Pages
+        if: github.event_name != 'pull_request'
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
 
       - name: Upload artifact
+        if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
-          path: .vitepress/dist
+          path: rocketh-website/web/build
 
-  # Deployment job
   deploy:
+    if: github.event_name != 'pull_request'
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

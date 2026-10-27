@@ -10,9 +10,6 @@ node_modules
 *.local
 tmp
 
-.vitepress/cache
-.vitepress/dist
-
 .nx
 
 .ezx*
