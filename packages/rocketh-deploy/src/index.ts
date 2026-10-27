@@ -26,7 +26,12 @@ import {
 	zeroHash,
 } from 'viem';
 
-export type {Abi, Chain};
+// Re-exported so a consumer's emitted declarations can NAME every viem type this package's public
+//  signatures mention. `computeDeterministicAddress` takes `ContractConstructorArgs<TAbi>`, and a
+//  project with `declaration: true` that spreads this package into its extensions but never imports
+//  `viem` itself otherwise fails with TS2883 ("cannot be named without a reference to ... viem"):
+//  under pnpm, TypeScript only finds a portable specifier for a module the program has resolved.
+export type {Abi, Chain, ContractConstructorArgs};
 
 const logger = logs('@rocketh/deploy');
 
