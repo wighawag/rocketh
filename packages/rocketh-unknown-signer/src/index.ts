@@ -73,7 +73,10 @@ import type {Environment, UnknownSignerPolicy} from '@rocketh/core/types';
  * compares or forwards this object needs no change — every key is PRESENT even when
  * its value is `undefined` (v1 returned a destructure), and `value` is a string.
  *
- * `contract` is deliberately absent: it exists only to enrich the printed message.
+ * `contract` is deliberately absent: it exists only to enrich the printed message. That
+ * includes the called function's ABI, which is printed for a Safe's Transaction Builder
+ * and is NOT a key here: adding one would break v1 parity for a script that compares or
+ * forwards this object.
  */
 export type CaughtUnknownSignerTransaction = {
 	from: string;
@@ -135,6 +138,16 @@ function stringifyArg(arg: unknown): string {
 	}
 }
 
+/** One JSON line, or nothing: printing the deferred transaction must never be able to throw. */
+function stringifyAbi(abi: readonly unknown[] | undefined): string | undefined {
+	if (abi === undefined) return undefined;
+	try {
+		return JSON.stringify(abi);
+	} catch {
+		return undefined;
+	}
+}
+
 /**
  * The v1-style block a user reads before opening their Safe. Kept separate from
  * `UnknownSignerError.message` (which serves the UNWRAPPED, halt-the-run path) because
@@ -158,6 +171,11 @@ function formatDeferredTransaction(data: UnknownSignerErrorData): string {
 		for (const arg of data.contract.args) {
 			lines.push(`  - ${stringifyArg(arg)}`);
 		}
+		// The called function's ABI, one JSON line, for a Safe's Transaction Builder: given an ABI
+		//  it decodes and shows the method and its inputs, which it cannot always do on its own.
+		//  Printed only; the RETURNED value keeps v1's four keys (see `catchUnknownSigner`).
+		const abi = stringifyAbi(data.contract.abi);
+		if (abi !== undefined) lines.push(`abi: ${abi}`);
 	}
 	const value = stringifyValue(data.value);
 	if (value !== undefined) lines.push(`value: ${value}`);

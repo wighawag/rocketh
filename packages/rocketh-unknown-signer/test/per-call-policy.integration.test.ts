@@ -2,6 +2,7 @@ import {describe, it, expect, vi} from 'vitest';
 import {UnknownSignerError} from '@rocketh/core';
 import type {Environment, PromptExecutor} from '@rocketh/core/types';
 import {createMockPromptExecutor, createTestEnvironment} from '@rocketh/test-utils';
+import {encodeSafeExecTransaction} from './support/safe-exec-transaction.js';
 
 import {catchUnknownSigner, withUnknownSignerPolicy} from '../src/index.js';
 
@@ -33,7 +34,7 @@ import {catchUnknownSigner, withUnknownSignerPolicy} from '../src/index.js';
 const SAFE_ADDRESS = '0x1111111111111111111111111111111111111111';
 /** An address the mock node lists in `eth_accounts`, so it is signable. */
 const NODE_ACCOUNT = '0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266';
-const TARGET_CONTRACT = '0x0000000000000000000000000000000000000001';
+const TARGET_CONTRACT = '0x0000000000000000000000000000000000000001' as `0x${string}`;
 
 /** What the human pastes back after executing the transaction on their Safe. */
 const PASTED_HASH = '0x00000000000000000000000000000000000000000000000000000000000000aa' as `0x${string}`;
@@ -103,7 +104,8 @@ async function safeOwnerEnvironment(options: {
 					nonce: '0x3',
 					from: '0x9999999999999999999999999999999999999999',
 					to: SAFE_ADDRESS,
-					input: '0x6a761202',
+					// a real `execTransaction` of exactly the requested call, which rocketh decodes
+					input: encodeSafeExecTransaction({to: TARGET_CONTRACT, value: 500n, data: '0xdeadbeef'}),
 					value: '0x0',
 					gasPrice: '0x1',
 					type: '0x0',

@@ -3,16 +3,25 @@
  *
  * The classifier is pure, so every tier is testable without a chain, a prompt or an
  * environment. What matters here is not that each tier fires, but the JUDGEMENT encoded in
- * the ordering: a Safe execution must land in `account`, a MultiSend/timelock wrapper in
- * `embedded`, and governance-by-id in `none` WITHOUT that being treated as a mistake.
+ * the ordering: a Safe execution of exactly the request lands in `safe`, a Safe execution of
+ * anything else in `safe-mismatch` (asked about, never accepted silently), a MultiSend/timelock
+ * wrapper in `embedded`, and governance-by-id in `none` WITHOUT that being treated as a mistake.
  */
 
 import {describe, it, expect} from 'vitest';
-import {classifyPastedTransaction} from '../src/environment/pastedTransactionIntent.js';
+import {
+	classifyPastedTransaction,
+	confirmationWording,
+	decodeSafeExecTransaction,
+	describeEvidence,
+	requiresConfirmation,
+} from '../src/environment/pastedTransactionIntent.js';
+import {encodeSafeExecTransaction} from './support/safe-exec-transaction.js';
 
 const SAFE = '0x1111111111111111111111111111111111111111';
 const TARGET = '0x2222222222222222222222222222222222222222';
 const UNRELATED = '0x3333333333333333333333333333333333333333';
+const MULTISEND = '0x5555555555555555555555555555555555555555';
 
 /** `upgradeTo(0x4444...)`, the kind of privileged call this whole path exists for. */
 const UPGRADE_CALLDATA = '0x3659cfe60000000000000000000000004444444444444444444444444444444444444444';
@@ -58,21 +67,117 @@ describe('classifyPastedTransaction', () => {
 		});
 	});
 
+	describe('safe', () => {
+		it('accepts a Safe execution of exactly the requested call, and says so', () => {
+			// What executing the transaction from the Safe app sends: `execTransaction` TO the
+			//  Safe, whose inner call is decoded and compared with the request.
+			const evidence = classifyPastedTransaction(INTENT, {
+				to: SAFE,
+				input: encodeSafeExecTransaction({to: TARGET, data: UPGRADE_CALLDATA}),
+				value: '0x0',
+			});
+			expect(evidence).toEqual({tier: 'safe'});
+			expect(requiresConfirmation(evidence)).toBe(false);
+			expect(describeEvidence(evidence, INTENT)).toContain('the Safe executed exactly this call');
+		});
+
+		it('compares the inner value, numerically', () => {
+			expect(
+				classifyPastedTransaction(
+					{...INTENT, value: '0x1f4'},
+					{to: SAFE, input: encodeSafeExecTransaction({to: TARGET, value: 500n, data: UPGRADE_CALLDATA}), value: '0x0'},
+				),
+			).toEqual({tier: 'safe'});
+		});
+
+		it('ignores casing of the target and the calldata', () => {
+			expect(
+				classifyPastedTransaction(
+					{
+						...INTENT,
+						to: TARGET.toUpperCase().replace('0X', '0x'),
+						data: UPGRADE_CALLDATA.toUpperCase().replace('0X', '0x'),
+					},
+					{
+						to: SAFE.toUpperCase().replace('0X', '0x') as `0x${string}`,
+						input: encodeSafeExecTransaction({to: TARGET, data: UPGRADE_CALLDATA}),
+						value: '0x0',
+					},
+				),
+			).toEqual({tier: 'safe'});
+		});
+	});
+
+	describe('safe-mismatch', () => {
+		it('does NOT accept a Safe execution of another call: it goes to confirmation', () => {
+			// The hole this closes: the hash of ANOTHER transaction of the same Safe used to be
+			//  accepted as `account`, whatever the Safe executed.
+			const evidence = classifyPastedTransaction(INTENT, {
+				to: SAFE,
+				input: encodeSafeExecTransaction({to: UNRELATED, data: '0xa9059cbb'}),
+				value: '0x0',
+			});
+			expect(evidence).toEqual({
+				tier: 'safe-mismatch',
+				executed: {to: UNRELATED, value: 0n, data: '0xa9059cbb', operation: 0n},
+			});
+			expect(requiresConfirmation(evidence)).toBe(true);
+			const finding = describeEvidence(evidence, INTENT);
+			expect(finding).toContain('the Safe executed a DIFFERENT call');
+			expect(finding).toContain(`CALL to ${UNRELATED}`);
+			expect(confirmationWording(evidence).headline).toContain('the Safe executed a DIFFERENT call');
+		});
+
+		it('does not accept the right call made as a DELEGATECALL', () => {
+			// Same target and calldata, but run in the Safe's own storage: another transaction.
+			//  Not `embedded` either, even though the calldata is in there.
+			const evidence = classifyPastedTransaction(INTENT, {
+				to: SAFE,
+				input: encodeSafeExecTransaction({to: TARGET, data: UPGRADE_CALLDATA, operation: 1}),
+				value: '0x0',
+			});
+			expect(evidence.tier).toBe('safe-mismatch');
+			expect(describeEvidence(evidence, INTENT)).toContain('DELEGATECALL');
+		});
+
+		it('does not accept the right call with another value', () => {
+			const evidence = classifyPastedTransaction(INTENT, {
+				to: SAFE,
+				input: encodeSafeExecTransaction({to: TARGET, value: 1n, data: UPGRADE_CALLDATA}),
+				value: '0x0',
+			});
+			expect(evidence.tier).toBe('safe-mismatch');
+		});
+
+		it('does not accept the same calldata sent to another target', () => {
+			const evidence = classifyPastedTransaction(INTENT, {
+				to: SAFE,
+				input: encodeSafeExecTransaction({to: UNRELATED, data: UPGRADE_CALLDATA}),
+				value: '0x0',
+			});
+			expect(evidence.tier).toBe('safe-mismatch');
+		});
+	});
+
 	describe('account', () => {
-		it('recognises a transaction sent to the account rocketh needed to act as', () => {
-			// What every Safe execution looks like from outside: an owner sends to the Safe, and
-			//  the Safe makes the inner call. Neither `to` nor `data` matches the request.
+		it('asks about a transaction to the account that shows nothing of what it executed', () => {
+			// Sent to the right account, but neither a Safe `execTransaction` nor carrying the
+			//  calldata: a wallet executing a transaction submitted earlier by id looks like this,
+			//  and so does any unrelated transaction to that account. Asked, not refused.
+			const evidence = classifyPastedTransaction(INTENT, {
+				to: SAFE,
+				input: '0xc01a8c840000000000000000000000000000000000000000000000000000000000000007',
+				value: '0x0',
+			});
+			expect(evidence).toEqual({tier: 'account'});
+			expect(requiresConfirmation(evidence)).toBe(true);
+		});
+
+		it('does not take a truncated execTransaction for a Safe execution', () => {
+			// The selector alone is not a decodable call: it shows nothing of what was executed.
 			expect(classifyPastedTransaction(INTENT, {to: SAFE, input: '0x6a761202deadbeef', value: '0x0'})).toEqual({
 				tier: 'account',
 			});
-		});
-
-		it('outranks embedded, so a Safe execution is identified by its target', () => {
-			// Both signals are present here. `account` is the stronger statement (it names the
-			//  executing account) and the message the user reads should say that.
-			expect(
-				classifyPastedTransaction(INTENT, {to: SAFE, input: `0x6a761202${UPGRADE_CALLDATA.slice(2)}`, value: '0x0'}),
-			).toEqual({tier: 'account'});
 		});
 	});
 
@@ -84,6 +189,43 @@ describe('classifyPastedTransaction', () => {
 				classifyPastedTransaction(INTENT, {
 					to: UNRELATED,
 					input: `0x8d80ff0a0000000000000000${UPGRADE_CALLDATA.slice(2)}0000`,
+					value: '0x0',
+				}),
+			).toEqual({tier: 'embedded'});
+		});
+
+		it('accepts a MultiSend executed through the Safe, which carries the call verbatim', () => {
+			// The Safe DELEGATECALLs MultiSend, so the decoded inner call is not the request, but
+			//  the packed batch carries it verbatim: accepted, exactly as before this was decoded.
+			const multiSendData = `0x8d80ff0a0000000000000000${TARGET.slice(2)}${UPGRADE_CALLDATA.slice(2)}` as const;
+			expect(
+				classifyPastedTransaction(INTENT, {
+					to: SAFE,
+					input: encodeSafeExecTransaction({to: MULTISEND, data: multiSendData, operation: 1}),
+					value: '0x0',
+				}),
+			).toEqual({tier: 'embedded'});
+		});
+
+		it('accepts a transaction to the account that carries the calldata (a timelock, another wallet)', () => {
+			// `TimelockController.execute(target, value, payload, ...)` sent to the timelock that is
+			//  the account: not a Safe, but the requested calldata is in there verbatim.
+			expect(
+				classifyPastedTransaction(INTENT, {
+					to: SAFE,
+					input: `0x134008d3${'0'.repeat(24)}${TARGET.slice(2)}${UPGRADE_CALLDATA.slice(2)}`,
+					value: '0x0',
+				}),
+			).toEqual({tier: 'embedded'});
+		});
+
+		it("does not decode an execTransaction sent to another address as this account's Safe execution", () => {
+			// A Safe executes its OWN `execTransaction`: the same input to another Safe is that
+			//  other Safe acting. The calldata is still found in it, which is all it shows.
+			expect(
+				classifyPastedTransaction(INTENT, {
+					to: UNRELATED,
+					input: encodeSafeExecTransaction({to: TARGET, data: UPGRADE_CALLDATA}),
 					value: '0x0',
 				}),
 			).toEqual({tier: 'embedded'});
@@ -130,6 +272,33 @@ describe('classifyPastedTransaction', () => {
 					{to: TARGET, input: UPGRADE_CALLDATA, value: '0x0'},
 				),
 			).not.toThrow();
+		});
+	});
+
+	describe('decodeSafeExecTransaction', () => {
+		it('round-trips what the Safe app sends', () => {
+			expect(
+				decodeSafeExecTransaction(
+					encodeSafeExecTransaction({to: TARGET, value: 7n, data: UPGRADE_CALLDATA, operation: 1}),
+				),
+			).toEqual({to: TARGET, value: 7n, data: UPGRADE_CALLDATA, operation: 1n});
+		});
+
+		it('never throws, and decodes nothing, for any truncation of a real input', () => {
+			// The classifier must be total: a malformed input is simply not a Safe execution.
+			const input = encodeSafeExecTransaction({to: TARGET, data: UPGRADE_CALLDATA});
+			const head = 2 + 8 + 10 * 64 + 64; // up to the length word of `data`
+			for (let end = 0; end < head + UPGRADE_CALLDATA.length - 2; end += 2) {
+				expect(decodeSafeExecTransaction(input.slice(0, end))).toBeUndefined();
+			}
+		});
+
+		it('refuses an offset pointing outside the input', () => {
+			const input = encodeSafeExecTransaction({to: TARGET, data: UPGRADE_CALLDATA});
+			const dataOffsetWord = 2 + 8 + 2 * 64;
+			const corrupted = input.slice(0, dataOffsetWord) + 'f'.repeat(64) + input.slice(dataOffsetWord + 64);
+			expect(() => decodeSafeExecTransaction(corrupted)).not.toThrow();
+			expect(decodeSafeExecTransaction(corrupted)).toBeUndefined();
 		});
 	});
 

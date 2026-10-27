@@ -1,5 +1,6 @@
 import {describe, it, expect, vi} from 'vitest';
 import {LOCAL_SIGNING_RPC_RESPONSES} from './support/local-signing-responses.js';
+import {encodeSafeExecTransaction} from './support/safe-exec-transaction.js';
 
 import {resolveConfig, getChainIdForEnvironment, resolveExecutionParams} from '../src/executor/index.js';
 import {createEnvironment, PASTED_TRANSACTION_LOOKUP_ROUNDS} from '../src/environment/index.js';
@@ -55,6 +56,12 @@ const SECOND_PASTED_HASH = '0x00000000000000000000000000000000000000000000000000
  */
 const NOT_FOUND_HASH = '0x00000000000000000000000000000000000000000000000000000000000000cc' as `0x${string}`;
 const GENESIS_HASH = '0x0000000000000000000000000000000000000000000000000000000000000042';
+
+/**
+ * What executing `safeTransaction` (below) from the Safe app sends: `execTransaction` on the
+ * Safe, carrying the requested call (to `TARGET_CONTRACT`, value 500, data `0xdeadbeef`).
+ */
+const SAFE_EXECUTION_OF_THE_REQUEST = encodeSafeExecTransaction({to: TARGET_CONTRACT, value: 500n, data: '0xdeadbeef'});
 
 type Call = {method: string; params?: unknown};
 
@@ -136,12 +143,14 @@ function createMockProvider(options?: {
 					//  result, and rocketh now weighs them to decide whether the pasted transaction is
 					//  the one it asked for. `to: SAFE_ADDRESS` is what a Safe execution looks like from
 					//  the outside: the transaction is sent to the Safe, which then makes the inner call.
+					//  The input is a real `execTransaction` of exactly what `safeTransaction` asks
+					//  for, because rocketh decodes it and compares the inner call with the request.
 					return {
 						hash,
 						nonce: '0x3',
 						from: SAFE_OWNER,
 						to: SAFE_ADDRESS,
-						input: '0x6a761202',
+						input: SAFE_EXECUTION_OF_THE_REQUEST,
 						value: '0x0',
 						gasPrice: '0x1',
 						type: '0x0',
@@ -502,6 +511,10 @@ describe('interactive resolver - a pasted hash resolves the execution', () => {
 			onUnknownSigner: 'ask',
 			promptExecutor,
 			saveDeployments: true,
+			// The second step is another call, so its Safe execution carries that call.
+			transactions: {
+				[SECOND_PASTED_HASH]: {input: encodeSafeExecTransaction({to: TARGET_CONTRACT, data: '0xfeedface'})},
+			},
 		});
 		const from = env.resolveAccount('admin');
 
@@ -1270,10 +1283,10 @@ describe('interactive resolver - signable accounts are untouched', () => {
  * `SAFE_ADDRESS` is the account rocketh cannot sign for.
  */
 describe('interactive resolver - the pasted transaction must look like the requested one', () => {
-	it('accepts a Safe execution without asking anything further', async () => {
-		// The default mock: sent TO the Safe by one of its owners. Neither `to` nor `data`
-		// matches the request, and it must still go through unchallenged, or the common case
-		// gains a prompt for no reason.
+	it('accepts a Safe execution of exactly this call without asking anything further', async () => {
+		// The default mock: `execTransaction` sent TO the Safe by one of its owners. Neither the
+		// outer `to` nor `data` matches the request, but the decoded inner call does, and it must
+		// go through unchallenged, or the common case gains a prompt for no reason.
 		const promptExecutor = createScriptedPrompt([{value: PASTED_HASH}]);
 		const {env} = await buildEnvironment({accounts: {admin: SAFE_ADDRESS}, onUnknownSigner: 'ask', promptExecutor});
 		const shown = captureMessages(env);
@@ -1283,7 +1296,78 @@ describe('interactive resolver - the pasted transaction must look like the reque
 		expect(receipt.transactionHash).toBe(PASTED_HASH);
 		// ONE prompt: the hash. No confirmation was needed.
 		expect(promptExecutor.promptText).toHaveBeenCalledTimes(1);
-		expect(shown.join('\n')).toContain('the account this transaction had to come from');
+		expect(shown.join('\n')).toContain(
+			`accepted: the transaction you pasted is a Safe execution (execTransaction) on ${SAFE_ADDRESS}`,
+		);
+		expect(shown.join('\n')).toContain('the Safe executed exactly this call');
+	});
+
+	it('asks before recording a Safe execution of a DIFFERENT call, and says what the Safe executed', async () => {
+		// The hole this closes: the hash of ANOTHER transaction of the same Safe (here a token
+		// transfer) used to be accepted because it was sent to the Safe. It is not refused (the
+		// human may know better), but it is no longer recorded without a word.
+		const promptExecutor = createScriptedPrompt([{value: PASTED_HASH}, {value: 'yes'}]);
+		const {env} = await buildEnvironment({
+			accounts: {admin: SAFE_ADDRESS},
+			onUnknownSigner: 'ask',
+			promptExecutor,
+			transactions: {
+				[PASTED_HASH]: {
+					input: encodeSafeExecTransaction({to: '0x8888888888888888888888888888888888888888', data: '0xa9059cbb'}),
+				},
+			},
+		});
+		const shown = captureMessages(env);
+
+		const receipt = await env.broadcastExecution(safeTransaction(env.resolveAccount('admin')));
+
+		expect(receipt.transactionHash).toBe(PASTED_HASH);
+		expect(promptExecutor.promptText).toHaveBeenCalledTimes(2);
+		expect(promptExecutor.requests[1].name).toBe('confirmUnrelatedTransaction');
+		const output = shown.join('\n');
+		expect(output).toContain('the Safe executed a DIFFERENT call than the one requested');
+		expect(output).toContain('CALL to 0x8888888888888888888888888888888888888888, value 0, data 0xa9059cbb');
+		expect(output).not.toContain('accepted:');
+	});
+
+	it('defers a Safe execution of a different call when the confirmation is declined', async () => {
+		const promptExecutor = createScriptedPrompt([{value: PASTED_HASH}, {value: ''}]);
+		const {env, writes} = await buildEnvironment({
+			accounts: {admin: SAFE_ADDRESS},
+			onUnknownSigner: 'ask',
+			promptExecutor,
+			transactions: {
+				[PASTED_HASH]: {
+					input: encodeSafeExecTransaction({to: TARGET_CONTRACT, value: 500n, data: '0xdeadbeef', operation: 1}),
+				},
+			},
+		});
+
+		await expect(env.broadcastExecution(safeTransaction(env.resolveAccount('admin')))).rejects.toBeInstanceOf(
+			UnknownSignerError,
+		);
+		expect(writes).toHaveLength(0);
+	});
+
+	it('asks before recording a transaction to the account that shows nothing of what it executed', async () => {
+		// Sent to the right account, but not a Safe execution and not carrying the calldata (a
+		// wallet confirming a transaction by id looks like this). It used to be accepted as
+		// `account`; it is now asked about, like `none`.
+		const promptExecutor = createScriptedPrompt([{value: PASTED_HASH}, {value: 'yes'}]);
+		const {env} = await buildEnvironment({
+			accounts: {admin: SAFE_ADDRESS},
+			onUnknownSigner: 'ask',
+			promptExecutor,
+			transactions: {
+				[PASTED_HASH]: {input: '0xc01a8c840000000000000000000000000000000000000000000000000000000000000007'},
+			},
+		});
+		const shown = captureMessages(env);
+
+		await env.broadcastExecution(safeTransaction(env.resolveAccount('admin')));
+
+		expect(promptExecutor.promptText).toHaveBeenCalledTimes(2);
+		expect(shown.join('\n')).toContain('nothing shows what that account executed');
 	});
 
 	it('accepts the exact transaction, and says so', async () => {

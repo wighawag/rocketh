@@ -38,7 +38,12 @@ import {
 	createHashPromptBudget,
 	describeRemainingAttempts,
 } from './interactiveUnknownSigner.js';
-import {classifyPastedTransaction, describeEvidence} from './pastedTransactionIntent.js';
+import {
+	classifyPastedTransaction,
+	confirmationWording,
+	describeEvidence,
+	requiresConfirmation,
+} from './pastedTransactionIntent.js';
 import {
 	UnresolvableAccountsError,
 	redactEndpoint,
@@ -1234,6 +1239,22 @@ export async function createEnvironment<
 		};
 	}
 
+	/**
+	 * The NAME to show for the deployment at `address`, for a message. Merges nothing, so it
+	 * cannot fail the way `fromAddressToNamedABIOrNull` does on a proxy address.
+	 *
+	 * When several records share the address, the MAIN record wins: one whose name ends in
+	 * neither `_Proxy` nor `_Implementation` (the suffixes `@rocketh/proxy` gives the records it
+	 * writes next to the main one), because that is the name the user deployed under and the one
+	 * their scripts use. Among equals, the first saved wins, as before. Only when every record
+	 * is a `_Proxy` / `_Implementation` one is such a name shown.
+	 */
+	function deploymentNameAtAddress(address: Address): string | undefined {
+		const target = address.toLowerCase();
+		const names = Object.keys(deployments).filter((name) => deployments[name].address.toLowerCase() === target);
+		return names.find((name) => !/_(Proxy|Implementation)$/.test(name)) ?? names[0];
+	}
+
 	function fromAddressToNamedABI<TAbi extends Abi>(address: Address): {mergedABI: TAbi; names: string[]} {
 		const n = fromAddressToNamedABIOrNull<TAbi>(address);
 		if (!n) {
@@ -1773,27 +1794,16 @@ export async function createEnvironment<
 				// `contract` is present only when the caller said this transaction IS a contract
 				// call (`execute` / `executeByName`); a plain `tx`, a value transfer and a deploy
 				// leave it unset, because they have no function to name.
-				// The deployment name is resolved HERE, on the error path only, through the
-				// environment's existing reverse lookup rather than a second hand-rolled one
-				// (ADR 0006 predates that helper). It is opportunistic: an address matching no
-				// deployment leaves `name` ABSENT (not `undefined`-valued) and the printed
-				// message falls back to `to`. An address CAN carry several names (a proxy and
-				// its implementation record commonly share one); the first is used, since this
-				// is presentation-only enrichment and the unambiguous `to` is printed anyway.
+				// The deployment name is resolved HERE, on the error path only. It is
+				// opportunistic: an address matching no deployment leaves `name` ABSENT (not
+				// `undefined`-valued) and the printed message falls back to `to`. It does NOT go
+				// through `fromAddressToNamedABIOrNull`: that one MERGES the ABIs of every record at
+				// the address, which a NAME does not need, and the merge throws for every ordinary
+				// proxy (the main record and the `_Proxy` record share `owner()` and friends), which
+				// used to print a scary "ABI conflict" warning for a perfectly normal upgrade.
 				let contract: UnknownSignerContractCall | undefined;
 				if (source.type === 'execution' && source.contract) {
-					let name: string | undefined;
-					if (transactionData.to) {
-						try {
-							name = fromAddressToNamedABIOrNull(transactionData.to)?.names[0];
-						} catch (e) {
-							// The lookup MERGES the ABIs of every deployment at the address and throws on
-							// a selector conflict (`mergeArtifacts`). Enriching a name must never be able
-							// to replace the error the user actually needs with an unrelated one, so a
-							// conflicting address simply goes unnamed and the message falls back to `to`.
-							logger.warn(`could not resolve a deployment name for ${transactionData.to}: ${e}`);
-						}
-					}
+					const name = transactionData.to ? deploymentNameAtAddress(transactionData.to) : undefined;
 					contract = name ? {name, ...source.contract} : {...source.contract};
 				}
 				// The auto-impersonation note is attached HERE, on the error-building path only, and is
@@ -1939,18 +1949,20 @@ export async function createEnvironment<
 					//  the check for an execution, so an unrelated successful hash was taken at face
 					//  value. It cannot be a straight comparison either: a Safe execution goes TO the
 					//  Safe carrying our call inside it, so `to` and `data` legitimately differ. The
-					//  classifier ranks the evidence instead, and only a total absence of it involves the
-					//  human (see `pastedTransactionIntent.ts` for the tiers and why `none` must not be a
-					//  refusal).
+					//  classifier ranks the evidence instead, and a human is involved wherever it is not
+					//  positive evidence of THIS call: none at all, a transaction to the account that shows
+					//  nothing, or a Safe that demonstrably executed something else (see
+					//  `pastedTransactionIntent.ts` for the tiers and why none of them is a refusal).
 					const evidence = classifyPastedTransaction(unknownSignerError.data, pastedTransaction);
 					const finding = describeEvidence(evidence, unknownSignerError.data);
 
-					if (evidence.tier === 'none') {
+					if (requiresConfirmation(evidence)) {
 						const confirmation = await confirmUnrelatedTransaction({
 							promptText: promptExecutor!.promptText!,
 							showMessage: (message) => env.showMessage(message),
 							finding,
 							hash: acceptedHash,
+							...confirmationWording(evidence),
 						});
 						if (confirmation.type === 'rejected') {
 							// DEGRADES to the defer path, exactly as "cannot sign" does: the same error,

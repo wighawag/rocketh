@@ -46,6 +46,8 @@ A promise argument has already started executing before the wrapper is called, s
 
 `null` when the action ran to completion, otherwise `{from, to, value, data}` — v1's shape exactly: every key present even when `undefined`, `value` as a string, and no `contract` (that exists only to enrich the printed message).
 
+The printed block is v1's layout (`from`, `to`, `method`, each argument on its own line, `value`, `data`) plus, for a call made through `execute`, one `abi:` line after the arguments: the ABI of that one function as a single JSON line, to paste into a Safe's Transaction Builder when it cannot fetch the target's ABI itself. It is printed only; the returned value above does not gain a key.
+
 Pass `{log: false}` to suppress the printed block and only take the returned value.
 
 ## One wrapper captures one transaction

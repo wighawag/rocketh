@@ -1,4 +1,4 @@
-import {Abi} from 'abitype';
+import type {Abi, AbiFunction} from 'abitype';
 import {EIP1193TransactionData, EIP1193TransactionReceipt} from 'eip-1193';
 import type {Artifact, Environment, MinimalDeployment, PendingExecution} from '@rocketh/core/types';
 import type {
@@ -21,7 +21,7 @@ export type {
 	WriteContractParameters,
 };
 import {resolveTransactionFees, type TransactionFeeOptions} from '@rocketh/core';
-import {encodeFunctionData} from 'viem';
+import {encodeFunctionData, getAbiItem} from 'viem';
 import {logs} from 'named-logs';
 import {evaluateGuard} from './guard.js';
 import {describeSkippedStep} from './guard-message.js';
@@ -308,6 +308,31 @@ function refuseUnsupportedExecuteOptions(functionName: string, args: {[field: st
 	}
 }
 
+/**
+ * The ABI entry of the function `calldata` calls, as a one-entry ABI ready to paste into a Safe's
+ * Transaction Builder (see `UnknownSignerContractCall.abi`).
+ *
+ * The entry is picked by the SELECTOR of the calldata that was actually encoded, through viem's
+ * own `getAbiItem` (which accepts a selector in place of a name). For an overloaded function that
+ * is exactly the overload `encodeFunctionData` chose from the args, without re-running the
+ * argument matching a second time and risking a different answer.
+ *
+ * Presentation-only, so it never throws: an entry it cannot find leaves the field absent.
+ */
+function calledFunctionAbi(abi: Abi, calldata: `0x${string}`): readonly [AbiFunction] | undefined {
+	try {
+		const item = getAbiItem({abi, name: calldata.slice(0, 10) as `0x${string}`});
+		return item && item.type === 'function' ? [item as AbiFunction] : undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+/** `{abi}` when there is one, and NO key at all otherwise (absent, not `undefined`-valued). */
+function withAbi(abi: readonly [AbiFunction] | undefined): {abi?: readonly [AbiFunction]} {
+	return abi ? {abi} : {};
+}
+
 export function execute(env: Environment): ExecuteFunction {
 	const executeImplementation = async <
 		TAbi extends Abi,
@@ -411,9 +436,13 @@ export function execute(env: Environment): ExecuteFunction {
 				// the function to run out-of-band instead of only the address. The calldata alone
 				// cannot say it: only this call site knows the function name and the decoded args.
 				// The deployment NAME is not passed: the environment resolves it at the throw site.
+				// The ABI entry IS passed, because only this call site knows it reliably: the
+				// environment's reverse lookup by address can fail (a proxy's address carries several
+				// records) and `execute` accepts a deployment that was never saved at all.
 				contract: {
 					method: viemArgs.functionName,
 					args: (viemArgs.args ?? []) as readonly unknown[],
+					...withAbi(calledFunctionAbi(abi as Abi, encoded)),
 				},
 			},
 		);

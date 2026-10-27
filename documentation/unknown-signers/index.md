@@ -14,6 +14,33 @@ That is the whole workflow. There is no re-run dance, nothing to install, and an
 
 Because the run never gives up on the step, a script that resolves its privileged calls this way finishes normally, and rocketh watched each transaction land before saving anything. So a [run-once script](../script-lifecycle/) that ends with `return true` is telling the truth on this path. It is the CAUGHT deferral further down, not the pause, that can record a completion nobody earned.
 
+### What the pause prints
+
+For a contract call made through `execute` (which is also how `deployViaProxy` sends an upgrade), the pause names the deployment, the function and its arguments, and prints the ABI of that ONE function on a single line:
+
+```
+Unknown signer for account 0x1111111111111111111111111111111111111111
+  Execute the following transaction out-of-band, then re-run:
+  contract: Vault.upgradeTo("0xcccccccccccccccccccccccccccccccccccccc03")
+  abi: [{"inputs":[{"internalType":"address","name":"newImplementation","type":"address"}],"name":"upgradeTo","outputs":[],"stateMutability":"nonpayable","type":"function"}]
+  from: 0x1111111111111111111111111111111111111111
+  to: 0xcccccccccccccccccccccccccccccccccccccc02
+  data: 0x3659cfe6000000000000000000000000cccccccccccccccccccccccccccccccccccccc03
+```
+
+The name is the deployment record at `to`. A proxy's address carries both the main record (`Vault`) and the `_Proxy` record that `@rocketh/proxy` writes next to it, and the main one is the name shown; an address with no record shows no name, and `to` is always printed anyway. A plain `tx`, a value transfer and a deployment have no function to name, so they print neither `contract:` nor `abi:`.
+
+#### Executing it from a Safe with the Transaction Builder
+
+The `abi:` line is there for a Safe's Transaction Builder. Given an ABI, the Builder decodes the call and shows its method and inputs, so you (and every co-signer) can read what you are approving instead of a hex blob. It tries to fetch an ABI for the address you enter, which is not always possible (an unverified contract, a proxy, a network its explorer does not cover), and it accepts a pasted one:
+
+1. Open the Transaction Builder in the Safe that is the `from` above, and enter the `to` address.
+2. If it does not find an ABI, paste the whole `[...]` after `abi:` into its ABI field.
+3. Choose the method named on the `contract:` line and enter the arguments shown there (or use the custom-data option with the `data:` line, which is the exact calldata).
+4. Create the batch, collect the signatures, execute it, and paste the hash of that execution back at the pause.
+
+The ABI comes from the deployment your script passed to `execute`, not from looking anything up by address, so it is printed even for a contract that was never saved, and for an overloaded function it is the overload that was actually called.
+
 ### At the pause you have two answers
 
 - **Paste the transaction hash.** rocketh looks the transaction up on the network, waits for it to be mined, requires the receipt to report a SUCCESSFUL status, saves state through the same pending-transaction path a normal broadcast uses, records the hash for gas reporting, and returns the receipt to your script. It never sends a transaction of its own.
@@ -73,16 +100,32 @@ This applies to the interactive path only. A deployment rocketh broadcast itself
 
 For an EXECUTION there is no address to anchor on, so rocketh weighs whether the transaction you pasted looks like the one it asked for. It cannot simply compare `to` and `data`: a governed execution is routinely wrapped by the multisig into a different shape, so a mismatch is not evidence of a mistake. It ranks the evidence instead:
 
-| what it finds                                                 | what that is                                    |
-| ------------------------------------------------------------- | ----------------------------------------------- |
-| same `to`, `data` and `value`                                 | the transaction itself                          |
-| sent TO the account rocketh needed to act as                  | what every Safe execution looks like            |
-| your calldata appears verbatim inside the transaction's input | a Safe `execTransaction`, MultiSend, a timelock |
-| none of the above                                             | nothing linking the two                         |
+| what it finds                                                                                                       | what that is                                                | outcome  |
+| ------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- | -------- |
+| same `to`, `data` and `value`                                                                                       | the transaction itself                                      | accepted |
+| a Safe `execTransaction` sent TO the account, whose inner call is exactly the request (`to`, `value`, `data`, CALL) | executing it from the Safe app                              | accepted |
+| your calldata appears verbatim inside the transaction's input                                                       | a Safe MultiSend, a timelock, another wallet's `execute`    | accepted |
+| a Safe `execTransaction` sent TO the account, whose inner call is something else                                    | another transaction of the same Safe                        | asks you |
+| sent TO the account, but neither of the above                                                                       | a wallet executing by id, or any other call to that account | asks you |
+| none of the above                                                                                                   | nothing linking the two                                     | asks you |
 
-The first three are accepted, and the run says which one matched. The last one PAUSES and asks you to confirm before recording anything, because it is genuinely ambiguous: governance executed by proposal id (the payload was queued in an earlier transaction) carries no trace of your calldata, and so does an unrelated transaction you pasted by mistake. Anything but an explicit `yes` defers the transaction exactly as `cannot sign` does, saving nothing.
+The accepted tiers say which one matched. A Safe execution of exactly the requested call prints:
 
-ACCEPTED RESIDUAL RISK, stated rather than engineered around: no wallet ABI is decoded, so the evidence is structural rather than semantic, and a user who deliberately confirms the wrong transaction is believed. What is no longer possible is recording an unrelated transaction SILENTLY.
+```
+  - accepted: the transaction you pasted is a Safe execution (execTransaction) on 0x1111...1111, the account this transaction had to come from, and the Safe executed exactly this call (same to, value and data, operation CALL)
+```
+
+The others PAUSE and ask you to confirm before recording anything. When the Safe demonstrably executed something else, the question says what it executed instead, next to what was requested:
+
+```
+The transaction you pasted SUCCEEDED, but the Safe executed a DIFFERENT call than the one requested.
+  0x...
+  is a Safe execution (execTransaction) on 0x1111...1111, but the Safe executed a DIFFERENT call: CALL to 0x8888...8888, value 0, data 0xa9059cbb; the requested call is CALL to 0x0000...0001, value 500, data 0xdeadbeef
+```
+
+The same call made as a DELEGATECALL, or with another value, counts as a different call: it is not the transaction you were asked to execute. Being sent to the Safe is no longer enough on its own: it says WHO acted, not WHAT they did, and for a Safe the what is right there in the transaction, so it is decoded and compared. A transaction to the account that is not a Safe execution and does not carry your calldata is asked about for the same reason, rather than refused, because a wallet that executes a transaction submitted earlier by its id looks exactly like that. Governance executed by proposal id (the payload was queued in an earlier transaction) carries no trace of your calldata either, and neither does an unrelated transaction you pasted by mistake. In every case anything but an explicit `yes` defers the transaction exactly as `cannot sign` does, saving nothing.
+
+ACCEPTED RESIDUAL RISK, stated rather than engineered around: only a Safe's `execTransaction` is decoded; every other wallet is judged structurally (does it carry your calldata), and a user who deliberately confirms the wrong transaction is believed. What is no longer possible is recording an unrelated transaction SILENTLY, including another transaction of the same Safe.
 
 ## Choosing the behaviour (`onUnknownSigner`)
 
@@ -234,7 +277,7 @@ const deferred = await catchUnknownSigner(env)(() =>
 
 Both forms are the same function: an extension package's root exports only curried `(env) => …` functions, which is precisely what lets the spread above turn them into methods on the environment.
 
-It returns `null` when the action succeeded, and otherwise hardhat-deploy v1's exact shape: every key present even when `undefined`, `value` as a string. Pass `{log: false}` to suppress the printed block. Nothing is persisted: idempotency comes from on-chain state, so you execute the transaction on your Safe and re-run the idempotent script. One wrapper captures one transaction (the first unsignable one inside it), so deferring several steps means one `catchUnknownSigner` per step. When the `from` it hands back is a governance contract rather than a multisig, read [When the owner is governance, not a multisig](#when-the-owner-is-governance-not-a-multisig) before acting on it.
+It returns `null` when the action succeeded, and otherwise hardhat-deploy v1's exact shape: every key present even when `undefined`, `value` as a string. The printed block names the method and its arguments, and for an `execute` adds an `abi:` line after them, the same one-function ABI as the pause prints (see [Executing it from a Safe with the Transaction Builder](#executing-it-from-a-safe-with-the-transaction-builder)); the returned object does not carry it. Pass `{log: false}` to suppress the printed block. Nothing is persisted: idempotency comes from on-chain state, so you execute the transaction on your Safe and re-run the idempotent script. One wrapper captures one transaction (the first unsignable one inside it), so deferring several steps means one `catchUnknownSigner` per step. When the `from` it hands back is a governance contract rather than a multisig, read [When the owner is governance, not a multisig](#when-the-owner-is-governance-not-a-multisig) before acting on it.
 
 ::: danger A caught deferral must never reach an unconditional `return true`
 Catching is what lets the script SURVIVE the deferral and run on to its end. If that end is a `return true` and the script declares an `id`, rocketh records it as complete and skips the WHOLE script on every later run, including the privileged step nobody has executed yet. Return the outcome instead of asserting one: `return deferred === null` records the script only on the run where nothing was left outstanding. [Running once, and running last](../script-lifecycle/#never-return-true-on-a-path-where-a-step-was-deferred) has the mechanism, and why rocketh documents this rather than refusing it.

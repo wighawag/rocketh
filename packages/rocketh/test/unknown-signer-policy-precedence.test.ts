@@ -1,5 +1,6 @@
 import {describe, it, expect, vi} from 'vitest';
 import {LOCAL_SIGNING_RPC_RESPONSES} from './support/local-signing-responses.js';
+import {encodeSafeExecTransaction} from './support/safe-exec-transaction.js';
 
 import {resolveConfig, getChainIdForEnvironment, resolveExecutionParams} from '../src/executor/index.js';
 import {createEnvironment} from '../src/environment/index.js';
@@ -78,7 +79,8 @@ function createMockProvider(options?: {accounts?: string[]}): {
 						nonce: '0x3',
 						from: '0x9999999999999999999999999999999999999999',
 						to: SAFE_ADDRESS,
-						input: '0x6a761202',
+						// a real `execTransaction` of exactly what `safeTransaction` asks for
+						input: encodeSafeExecTransaction({to: TARGET_CONTRACT, value: 500n, data: '0xdeadbeef'}),
 						value: '0x0',
 						gasPrice: '0x1',
 						type: '0x0',
