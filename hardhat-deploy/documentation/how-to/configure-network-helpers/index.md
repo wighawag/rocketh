@@ -125,6 +125,18 @@ For each known network, it automatically sets:
 - **Accounts**: Network-specific mnemonic or fallback
 - **Chain Type**: L1, L2, or OP-stack classification
 
+For a real network, the accounts come only from `MNEMONIC_<network>` or `MNEMONIC`: unlike `hardhat`, `localhost`, `memory` and `test`, it gets no test mnemonic. With neither set, the network has no accounts and its public RPC endpoint holds none, so a named account given by index (`deployer: 0`) cannot be resolved and `hardhat deploy` stops with a message naming the network, the endpoint and the variable to set:
+
+```
+Error in community plugin hardhat-deploy: cannot resolve the named account "deployer" for environment "arbitrum-sepolia" (chain 421614, endpoint https://sepolia-rollup.arbitrum.io/<redacted>):
+  - "deployer" is configured as index 0, but the node lists no accounts.
+The hardhat network "arbitrum-sepolia" configures no accounts (its `accounts` is 'remote'), so hardhat asks the node for its own, and this node holds none.
+To fix it, configure accounts for "arbitrum-sepolia" in your hardhat config, for example `accounts: {mnemonic: configVariable('MNEMONIC_arbitrum_sepolia')}` or `accounts: [configVariable('DEPLOYER_PRIVATE_KEY')]`. If "arbitrum-sepolia" is added by hardhat-deploy's `addNetworksFromEnv` or `addNetworksFromKnownList`, set the environment variable MNEMONIC_arbitrum_sepolia to the mnemonic (or MNEMONIC, which every network without its own falls back to); the value SECRET reads it from the configuration variable SECRET_MNEMONIC_arbitrum_sepolia instead.
+Alternatively, in the `accounts` of rocketh/config.ts, give the account a signer protocol (for example 'privateKey:...', read from the environment) or an address for "arbitrum-sepolia".
+```
+
+See [Accounts on a Real Network](../configure-named-accounts/#accounts-on-a-real-network).
+
 ### 3. `addForkConfiguration`
 
 Enables fork testing by automatically configuring the `fork` network based on the `HARDHAT_FORK` environment variable.

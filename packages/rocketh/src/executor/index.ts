@@ -26,6 +26,7 @@ import {JSONRPCHTTPProvider} from '@eip-1193/jsonrpc-provider';
 import {createEnvironment} from '../environment/index.js';
 import {formatEther, getRoughGasPriceEstimate} from '../utils/eth.js';
 import {logger, spin} from '../internal/logging.js';
+import {rememberEndpoint} from '../internal/endpoints.js';
 import {getChainConfigFromUserConfig, getChainSemanticsFromUserConfig} from '../environment/chains.js';
 
 /**
@@ -586,10 +587,15 @@ export function resolveExecutionParams<Extra extends Record<string, unknown> = R
 		}
 	}
 
-	const provider =
-		'provider' in actualChainConfig
-			? actualChainConfig.provider
-			: (new JSONRPCHTTPProvider(actualChainConfig.rpcUrl) as EIP1193CoreProvider);
+	let provider: EIP1193CoreProvider;
+	if ('provider' in actualChainConfig) {
+		provider = actualChainConfig.provider;
+	} else {
+		provider = new JSONRPCHTTPProvider(actualChainConfig.rpcUrl) as EIP1193CoreProvider;
+		// So an account that cannot be resolved can be reported against the endpoint it was asked
+		//  of (redacted when shown). See `../internal/endpoints.ts`.
+		rememberEndpoint(provider, actualChainConfig.rpcUrl);
+	}
 
 	// Where a run's records go, and the ONE place the fork rule lives.
 	//

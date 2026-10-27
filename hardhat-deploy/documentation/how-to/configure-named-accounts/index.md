@@ -54,6 +54,23 @@ export const config = {
 } as const satisfies UserConfig;
 ```
 
+## Accounts on a Real Network
+
+An index (`deployer: 0`) is the account at that index on the hardhat network you deploy to, and those accounts come from that network's `accounts` in `hardhat.config.ts`: a mnemonic or a list of private keys. A network with no `accounts` configured asks its node, and a public RPC endpoint holds no keys, so the index points at nothing. `npx hardhat deploy --network sepolia` then stops before running any script:
+
+```
+Error in community plugin hardhat-deploy: cannot resolve 2 named accounts ("deployer", "admin") for environment "sepolia" (chain 11155111, endpoint https://11155111.rpc.thirdweb.com):
+  - "deployer" is configured as index 0, but the node lists no accounts.
+  - "admin" is configured as index 1, but the node lists no accounts.
+The hardhat network "sepolia" configures no accounts (its `accounts` is 'remote'), so hardhat asks the node for its own, and this node holds none.
+To fix it, configure accounts for "sepolia" in your hardhat config, for example `accounts: {mnemonic: configVariable('MNEMONIC_sepolia')}` or `accounts: [configVariable('DEPLOYER_PRIVATE_KEY')]`. If "sepolia" is added by hardhat-deploy's `addNetworksFromEnv` or `addNetworksFromKnownList`, set the environment variable MNEMONIC_sepolia to the mnemonic (or MNEMONIC, which every network without its own falls back to); the value SECRET reads it from the configuration variable SECRET_MNEMONIC_sepolia instead.
+Alternatively, in the `accounts` of rocketh/config.ts, give the account a signer protocol (for example 'privateKey:...', read from the environment) or an address for "sepolia".
+```
+
+The usual fix is the first one: give the network its keys. With the [network helpers](../configure-network-helpers/), that is one environment variable, `MNEMONIC_<network>` (dashes in the network name become underscores, so `arbitrum-sepolia` reads `MNEMONIC_arbitrum_sepolia`). Every account that cannot be resolved is listed at once, and the endpoint is shown with any path, query string or credentials replaced by `<redacted>`, so an API key in the RPC url is never printed.
+
+If instead an account should not use the network's keys at all (a multisig, say), give it an address for that network in `rocketh/config.ts`, as in the mainnet entries above.
+
 ## Using Named Accounts in Deploy Scripts
 
 Access named accounts in your deploy scripts:

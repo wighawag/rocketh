@@ -219,7 +219,9 @@ describe('a null per-network account entry', () => {
 				nodeAccounts: [NAMED_ADDR, ADMIN_ADDR],
 				environment: 'localhost',
 			}),
-		).rejects.toThrow(/cannot get account for admin/);
+		).rejects.toThrow(
+			/"admin" is configured as \{mainnet: index 1\}, which gives nothing for this environment: no entry for "localhost"/,
+		);
 	});
 
 	it('types such a name as possibly undefined, so a script must handle it', () => {
@@ -256,9 +258,7 @@ describe('an account that references another account by name', () => {
 	it('refuses a reference to a name that is not in the config, naming both', async () => {
 		await expect(
 			buildEnv({accounts: {owner: 'nosuchname'}, nodeAccounts: [ADMIN_ADDR], environment: 'localhost'}),
-		).rejects.toThrow(
-			/named account "owner" is configured as "nosuchname", which is not .* another account in `accounts`/,
-		);
+		).rejects.toThrow(/"owner" is configured as "nosuchname", which is not .* another account in `accounts`/);
 	});
 
 	it('refuses an unknown name reached through a per-network map, with the reference chain', async () => {
@@ -267,18 +267,18 @@ describe('an account that references another account by name', () => {
 				accounts: {owner: 'admin', admin: {default: 'nosuchname'}},
 				nodeAccounts: [ADMIN_ADDR],
 			}),
-		).rejects.toThrow(/named account "owner" is configured as "nosuchname", .*\(reference chain: owner -> admin\)/);
+		).rejects.toThrow(/"owner" is configured as "nosuchname" \(through owner -> admin\), which is not/);
 	});
 
 	it('refuses a reference cycle instead of recursing forever', async () => {
 		await expect(buildEnv({accounts: {a: 'b', b: 'a'}, nodeAccounts: [ADMIN_ADDR]})).rejects.toThrow(
-			'named account "a" is part of a reference cycle: a -> b -> a',
+			'"a" is part of a reference cycle: a -> b -> a.',
 		);
 	});
 
 	it('refuses a self-reference', async () => {
 		await expect(buildEnv({accounts: {a: 'a'}, nodeAccounts: [ADMIN_ADDR]})).rejects.toThrow(
-			'named account "a" is part of a reference cycle: a -> a',
+			'"a" is part of a reference cycle: a -> a.',
 		);
 	});
 });

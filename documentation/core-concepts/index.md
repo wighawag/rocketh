@@ -176,6 +176,38 @@ export const config = {
 
 In this example, `deployer` refers to the first account (index 0) on all environment except Sepolia, where it refers to the second account (index 1).
 
+### Named accounts on a real network
+
+An index means one of the **node's own** accounts, the ones it lists in `eth_accounts`. A local dev node holds keys, so `deployer: 0` works there. A real network's public RPC endpoint holds none and answers `eth_accounts` with an empty list, so an account given only by index cannot be resolved there, and the run stops before any script runs. It reports every account that cannot be resolved, where it asked, and the fix:
+
+```
+cannot resolve 2 named accounts ("deployer", "admin") for environment "sepolia" (chain 11155111, endpoint https://sepolia.infura.io/<redacted>):
+  - "deployer" is configured as index 0, but the node lists no accounts.
+  - "admin" is configured as index 1, but the node lists no accounts.
+An account given by index is one of the node's own accounts, and this node holds none: nodes without keys (most public RPC endpoints) answer 'eth_accounts' with an empty list.
+To fix it, in the `accounts` of your rocketh config (rocketh/config.ts), give each of these accounts a signer protocol or an address for "sepolia". Read any key from the environment rather than writing it in the file, for example:
+    deployer: {default: 0, sepolia: `privateKey:${process.env.DEPLOYER_PRIVATE_KEY}`},
+The 'privateKey' protocol is registered with `signerProtocols: {privateKey}` (from @rocketh/signer). Or point "sepolia" at a node that holds the keys.
+```
+
+The endpoint is shown with its path, query string and credentials replaced by `<redacted>`, since RPC providers put API keys there, and a key from your config is never printed. The `rocketh` CLI prints this message and exits with code 1, without a stack trace. The fix it describes looks like this:
+
+```typescript
+import {privateKey} from '@rocketh/signer';
+
+export const config = {
+	accounts: {
+		deployer: {default: 0, sepolia: `privateKey:${process.env.DEPLOYER_PRIVATE_KEY}`},
+		admin: {default: 1, sepolia: '0x...'}, // an address: a multisig, say, that signs out of band
+	},
+	signerProtocols: {privateKey},
+} as const satisfies UserConfig;
+```
+
+Under hardhat-deploy the accounts at an index are the ones the hardhat network configures, so the fix is different: see [Using hardhat-deploy with rocketh](../hardhat-deploy/#when-the-network-has-no-accounts).
+
+The same error, listing each account with its own reason, covers the other ways a named account can fail to resolve: an index beyond what the node lists, `eth_accounts` failing on the node, a per-network map with no entry for the environment and no `default`, a reference to an account name that does not exist (or a cycle of them), a private key with no `privateKey` protocol registered, and a `<protocol>:...` string whose protocol is not in `signerProtocols`. Programmatically it is an `UnresolvableAccountsError` (exported by `rocketh`), whose `data` carries the environment, chain id, endpoint and each failing account.
+
 ## Deploy Scripts
 
 Deploy scripts are JavaScript or TypeScript files that define how contracts should be deployed. They use the `execute` function from rocketh to define a deployment function and its metadata (tags and dependencies).

@@ -341,13 +341,13 @@ describe('a provider that does not implement eth_accounts', () => {
 		// situation as one that rejects the call, so it gets the same actionable message rather
 		// than the generic "cannot get account".
 		await expect(buildEnvironment({accounts: {deployer: 0}, nodeAccounts: []})).rejects.toThrow(
-			/lists 0 account\(s\).*privateKey:0x/s,
+			/"deployer" is configured as index 0, but the node lists no accounts\..*privateKey:/s,
 		);
 	});
 
 	it('re-raises the original failure, with its cause, for an INDEX-based account', async () => {
 		await expect(buildEnvironment({accounts: {deployer: 0}, failAccounts: true})).rejects.toThrow(
-			/named account "deployer" is configured as index 0/,
+			/"deployer" is configured as index 0, which needs the node to list its accounts, but 'eth_accounts' failed/,
 		);
 
 		await expect(buildEnvironment({accounts: {deployer: 0}, failAccounts: true})).rejects.toMatchObject({

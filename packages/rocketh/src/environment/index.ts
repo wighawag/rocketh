@@ -39,6 +39,13 @@ import {
 	describeRemainingAttempts,
 } from './interactiveUnknownSigner.js';
 import {classifyPastedTransaction, describeEvidence} from './pastedTransactionIntent.js';
+import {
+	UnresolvableAccountsError,
+	redactEndpoint,
+	redactErrorText,
+	type UnresolvableAccount,
+} from './unresolvableAccounts.js';
+import {endpointOf} from '../internal/endpoints.js';
 import {Abi, Address} from 'abitype';
 import {InternalEnvironment} from '../internal/types.js';
 import {JSONToString, stringToJSON} from '@rocketh/core/json';
@@ -268,6 +275,18 @@ function describeAccountDefinition(accountDef: unknown): string {
 		return `{${entries.join(', ')}}`;
 	}
 	return '<redacted>';
+}
+
+/**
+ * Thrown INSIDE `getAccount` for one account that cannot be resolved, and caught by the loop over
+ * the config's accounts, which collects every one of them into a single `UnresolvableAccountsError`.
+ * Never escapes `createEnvironment`.
+ */
+class AccountResolutionFailure extends Error {
+	constructor(readonly account: UnresolvableAccount) {
+		super(`named account "${account.name}": ${account.reason}`);
+		this.name = 'AccountResolutionFailure';
+	}
 }
 
 function wait(numSeconds: number): Promise<void> {
@@ -627,6 +646,10 @@ export async function createEnvironment<
 	 * `referenceChain` is the list of names followed so far, starting with `name`: a reference to a
 	 * name that is not in `accounts`, or back to one already on the chain, is refused by name
 	 * instead of crashing on `undefined` or recursing forever.
+	 *
+	 * A definition that cannot be resolved throws an `AccountResolutionFailure` describing it (never
+	 * printing it: it can hold keys), which the caller collects so that EVERY such account is
+	 * reported in one error rather than one per run.
 	 */
 	async function getAccount(
 		name: string,
@@ -640,6 +663,8 @@ export async function createEnvironment<
 		if (accountDef === null) {
 			return null;
 		}
+		// Only a chain that actually went through a reference is worth showing.
+		const chain = referenceChain.length > 1 ? {referenceChain} : {};
 		let account: ResolvedAccount | undefined;
 		if (typeof accountDef === 'number') {
 			const accountPerIndex = allRemoteAccounts[accountDef];
@@ -649,37 +674,35 @@ export async function createEnvironment<
 					address: accountPerIndex,
 					signer: provider,
 				};
-			} else if (remoteAccountsError) {
-				throw new Error(
-					`named account "${name}" is configured as index ${accountDef}, which requires the node to list ` +
-						`its accounts, but 'eth_accounts' failed on this provider. Give "${name}" an address or a ` +
-						`signer protocol (for example 'privateKey:0x...') instead of an index.`,
-					{cause: remoteAccountsError},
-				);
 			} else {
-				// An index that the node's list does not reach. Same diagnosis as the failure above
-				// and it deserves the same actionable message: a provider that answers `eth_accounts`
-				// with `[]` (most public RPC endpoints) is indistinguishable, to the user, from one
-				// that rejects the call.
-				throw new Error(
-					`named account "${name}" is configured as index ${accountDef}, but this provider lists ` +
-						`${allRemoteAccounts.length} account(s), so there is nothing at that index. Nodes that hold no ` +
-						`keys (most public RPC endpoints) answer 'eth_accounts' with an empty list. Give "${name}" an ` +
-						`address or a signer protocol (for example 'privateKey:0x...') instead of an index.`,
-				);
+				// Three diagnoses, one remedy: `eth_accounts` failed, it answered `[]` (most public RPC
+				//  endpoints, which hold no keys), or its list does not reach the index. To the user the
+				//  first two are the same situation, and the error says which it was.
+				throw new AccountResolutionFailure({
+					name,
+					reason: remoteAccountsError
+						? 'node-accounts-unavailable'
+						: allRemoteAccounts.length === 0
+							? 'node-has-no-accounts'
+							: 'index-beyond-node-accounts',
+					definition: describeAccountDefinition(accountDef),
+					index: accountDef,
+					...chain,
+				});
 			}
 		} else if (typeof accountDef === 'string') {
 			if (accountDef.startsWith('0x')) {
 				if (accountDef.length === 66) {
 					const privateKeyProtocol = userConfig.signerProtocols?.['privateKey'];
 					if (!privateKeyProtocol) {
-						// Named here rather than left to the generic "cannot get account" below: that path
-						// cannot say WHY, and the only thing it could show is the key itself.
-						throw new Error(
-							`named account "${name}" is configured as a private key, but no 'privateKey' signer protocol ` +
-								`is registered in \`signerProtocols\`. Register the one from @rocketh/signer ` +
-								`(\`signerProtocols: {privateKey}\`). The key itself is not shown.`,
-						);
+						// Named here rather than left to the generic "gives nothing" case: that cannot say
+						// WHY, and the only thing it could show is the key itself.
+						throw new AccountResolutionFailure({
+							name,
+							reason: 'private-key-without-protocol',
+							definition: describeAccountDefinition(accountDef),
+							...chain,
+						});
 					}
 					const namedSigner = await privateKeyProtocol(`privateKey:${accountDef}`);
 					const [address] = await namedSigner.signer.request({method: 'eth_accounts'});
@@ -700,7 +723,13 @@ export async function createEnvironment<
 					const [protocolID, extra] = accountDef.split(':');
 					const protocol = userConfig.signerProtocols?.[protocolID];
 					if (!protocol) {
-						throw new Error(`protocol: ${protocolID} is not supported`);
+						throw new AccountResolutionFailure({
+							name,
+							reason: 'unknown-signer-protocol',
+							definition: describeAccountDefinition(accountDef),
+							protocol: protocolID,
+							...chain,
+						});
 					}
 					const namedSigner = await protocol(accountDef);
 					const [address] = await namedSigner.signer.request({method: 'eth_accounts'});
@@ -711,16 +740,20 @@ export async function createEnvironment<
 				} else {
 					// A reference to another named account.
 					if (!Object.prototype.hasOwnProperty.call(accounts, accountDef)) {
-						throw new Error(
-							`named account "${name}" is configured as ${describeAccountDefinition(accountDef)}, which is not an address, a private key, ` +
-								`a signer protocol ('<protocol>:...') or the name of another account in \`accounts\`.` +
-								(referenceChain.length > 1 ? ` (reference chain: ${referenceChain.join(' -> ')})` : ''),
-						);
+						throw new AccountResolutionFailure({
+							name,
+							reason: 'unknown-reference',
+							definition: describeAccountDefinition(accountDef),
+							...chain,
+						});
 					}
 					if (referenceChain.includes(accountDef)) {
-						throw new Error(
-							`named account "${name}" is part of a reference cycle: ${[...referenceChain, accountDef].join(' -> ')}`,
-						);
+						throw new AccountResolutionFailure({
+							name,
+							reason: 'reference-cycle',
+							definition: describeAccountDefinition(accountDef),
+							referenceChain: [...referenceChain, accountDef],
+						});
 					}
 					const accountFetched = await getAccount(name, accounts, accounts[accountDef], [
 						...referenceChain,
@@ -761,8 +794,21 @@ export async function createEnvironment<
 
 	if (userConfig.accounts) {
 		const accountNames = Object.keys(userConfig.accounts);
+		// Collected rather than thrown at the first one: a config with `deployer: 0` and `admin: 1`
+		//  on a node with no keys has TWO accounts to fix, and reporting one per run makes the user
+		//  discover the second only after fixing the first.
+		const unresolvable: UnresolvableAccount[] = [];
 		for (const accountName of accountNames) {
-			const account = await getAccount(accountName, userConfig.accounts, userConfig.accounts[accountName]);
+			let account: ResolvedAccount | null | undefined;
+			try {
+				account = await getAccount(accountName, userConfig.accounts, userConfig.accounts[accountName]);
+			} catch (err) {
+				if (err instanceof AccountResolutionFailure) {
+					unresolvable.push(err.account);
+					continue;
+				}
+				throw err;
+			}
 			if (account === null) {
 				// Absent on this network by explicit `null`: no entry in `namedAccounts`,
 				//  `namedSigners`, `addressSigners` or `addressSignability`, all of which derive from
@@ -772,17 +818,34 @@ export async function createEnvironment<
 			}
 			if (!account) {
 				// The definition is DESCRIBED, never printed: it can hold private keys for other networks.
-				const definition = userConfig.accounts[accountName];
-				const perNetworkHint =
-					definition && typeof definition === 'object'
-						? ` It has no entry for "${environmentName}" (or chain ${chainId}) and no \`default\`.`
-						: '';
-				throw new Error(
-					`cannot get account for ${accountName} = ${describeAccountDefinition(definition)}.${perNetworkHint}\n` +
-						`Ensure your provider (or hardhat) has some accounts set up for ${environmentName}\n`,
-				);
+				unresolvable.push({
+					name: accountName,
+					reason: 'no-value-for-environment',
+					definition: describeAccountDefinition(userConfig.accounts[accountName]),
+				});
+				continue;
 			}
 			(resolvedAccounts as any)[accountName] = account;
+		}
+		if (unresolvable.length > 0) {
+			const endpoint = endpointOf(rawProvider);
+			throw new UnresolvableAccountsError(
+				{
+					environment: environmentName,
+					chainId,
+					...(endpoint !== undefined ? {endpoint: redactEndpoint(endpoint)} : {}),
+					...(remoteAccountsError === undefined
+						? {nodeAccountCount: allRemoteAccounts.length}
+						: {
+								nodeAccountsError: redactErrorText(
+									remoteAccountsError instanceof Error ? remoteAccountsError.message : String(remoteAccountsError),
+								),
+							}),
+					registeredProtocols: Object.keys(userConfig.signerProtocols ?? {}),
+					accounts: unresolvable,
+				},
+				remoteAccountsError === undefined ? undefined : {cause: remoteAccountsError},
+			);
 		}
 	}
 

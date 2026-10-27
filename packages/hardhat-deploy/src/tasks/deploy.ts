@@ -5,6 +5,7 @@ import {generateForkConfig} from '../helpers.js';
 import {setupLogger} from 'named-logs-console';
 import {HardhatPluginError} from 'hardhat/plugins';
 import {resolveRunFeeDefaults} from 'rocketh';
+import {reportingUnresolvableAccounts} from '../account-errors.js';
 
 interface RunActionArguments {
 	skipPrompts: boolean;
@@ -112,25 +113,29 @@ const runScriptWithHardhat: NewTaskActionFunction<RunActionArguments> = async (a
 		});
 	}
 
-	await loadAndExecuteDeploymentsFromFiles({
-		provider,
-		environment: environment,
-		// This guard STAYS, although core now defaults a fork to not saving, because this task never
-		//  leaves the value undefined: `saveDeployments` above is an explicit boolean by construction
-		//  (it starts at `true`), and an explicit value outranks every default, fork-awareness
-		//  included. So core's rule cannot reach this call site, and dropping the guard would turn a
-		//  `HARDHAT_FORK` run into an explicit `true` and write into the forked network's records.
-		//  It also keeps `--save-deployments true` inert on a fork, exactly as today; making that flag
-		//  the fork escape hatch would be a user-visible change to the flag, not to this task.
-		saveDeployments: isFork ? false : saveDeployments,
-		askBeforeProceeding: skipPrompts ? false : true,
-		tags,
-		defaultPollingInterval,
-		reportGasUse: args.reportGasUsed,
-		extra: {connection},
-		reset: args.reset,
-		onUnknownSigner,
-		...runFees,
-	});
+	// Named accounts that cannot be resolved (above all: an index on a network with no keys
+	//  configured) are reported as a plugin error with the hardhat-side fix, not as a crash.
+	await reportingUnresolvableAccounts(connection, () =>
+		loadAndExecuteDeploymentsFromFiles({
+			provider,
+			environment: environment,
+			// This guard STAYS, although core now defaults a fork to not saving, because this task never
+			//  leaves the value undefined: `saveDeployments` above is an explicit boolean by construction
+			//  (it starts at `true`), and an explicit value outranks every default, fork-awareness
+			//  included. So core's rule cannot reach this call site, and dropping the guard would turn a
+			//  `HARDHAT_FORK` run into an explicit `true` and write into the forked network's records.
+			//  It also keeps `--save-deployments true` inert on a fork, exactly as today; making that flag
+			//  the fork escape hatch would be a user-visible change to the flag, not to this task.
+			saveDeployments: isFork ? false : saveDeployments,
+			askBeforeProceeding: skipPrompts ? false : true,
+			tags,
+			defaultPollingInterval,
+			reportGasUse: args.reportGasUsed,
+			extra: {connection},
+			reset: args.reset,
+			onUnknownSigner,
+			...runFees,
+		}),
+	);
 };
 export default runScriptWithHardhat;
