@@ -626,7 +626,9 @@ describe('captured transactions - capture is unconditional', () => {
 		['a fork run', 'mainnet'],
 	])('captures on %s', async (_label, fork) => {
 		const {env} = await buildEnvironment({
-			accounts: {deployer: NODE_ACCOUNT},
+			// by INDEX: the node's own account. Declared by address it would be impersonated on a
+			//  fork (impersonation wins for a declared address), which is not what this pins.
+			accounts: {deployer: 0},
 			nodeAccounts: [NODE_ACCOUNT],
 			fork,
 		});
@@ -651,7 +653,8 @@ describe('captured transactions - capture is unconditional', () => {
 	 */
 	it('distinguishes an impersonated sender from a node-held one', async () => {
 		const {env} = await buildEnvironment({
-			accounts: {deployer: NODE_ACCOUNT, safe: SAFE_ADDRESS},
+			// the deployer by INDEX (the node's own account), the Safe by ADDRESS
+			accounts: {deployer: 0, safe: SAFE_ADDRESS},
 			nodeAccounts: [NODE_ACCOUNT],
 			autoImpersonate: true,
 			impersonate: 'accept',

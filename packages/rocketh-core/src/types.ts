@@ -268,11 +268,12 @@ export type ChainUserConfig = {
 	 * rocketh holds no key for, typically a Safe. That shortcut also makes the account the one
 	 * paying for gas, which it never is for real (whoever submits the Safe transaction pays), and a
 	 * Safe usually holds no ETH, so the rehearsal fails with "insufficient funds". With this on,
-	 * rocketh raises the account's balance just before such a transaction (`hardhat_setBalance`,
-	 * which anvil and hardhat both accept) and, once it is mined, sets it to what it would be had
-	 * the account paid no gas: the loan and the gas are taken back out, anything the transaction
-	 * itself moved stays. Only DURING the transaction does the account hold more than it has, which
-	 * matters only to a contract that reads its own balance.
+	 * rocketh fills such a transaction's gas limit and fees itself, raises the account's balance by
+	 * exactly the most it can cost in gas (`hardhat_setBalance`, which anvil and hardhat both
+	 * accept) and, once it is mined, sets it to what it would be had the account paid no gas. Only
+	 * gas is lent: value the transaction sends comes from the account's own balance, so a Safe that
+	 * cannot afford it fails as it would for real. Only DURING the transaction does the account hold
+	 * more than it has, by that transaction's gas budget.
 	 *
 	 * Accounts rocketh did not impersonate (local keys, node-held accounts) are never touched.
 	 * Usually set for forks only, in `environments[<network>].whenForked`.
