@@ -112,6 +112,36 @@ await deploy(
 
 It is copied into every [export](../exporting-and-verifying/#linkeddata-is-public), so it is public: never put a secret in it. `bigint` values are stored as strings.
 
+## Calling your contracts: `read`, `execute`, `tx`
+
+The work after a deployment (wiring contracts together, transferring ownership, seeding state) is done with `@rocketh/read-execute`, an extension like `@rocketh/deploy`:
+
+```typescript
+export default deployScript(
+	async ({deploy, read, execute, namedAccounts}) => {
+		const {deployer, admin} = namedAccounts;
+		const token = await deploy('Token', {account: deployer, artifact: artifacts.Token, args: ['Token', 'TKN']});
+
+		// a view call, typed from the ABI
+		const owner = await read(token, {functionName: 'owner'});
+
+		// a transaction, only when it would change something
+		if (owner.toLowerCase() !== admin.toLowerCase()) {
+			await execute(token, {account: deployer, functionName: 'transferOwnership', args: [admin]});
+		}
+	},
+	{tags: ['Token']},
+);
+```
+
+- **`read(deployment, {functionName, args?, account?})`** makes a call and returns the decoded result; `account` is the `msg.sender` of the call. The deployment can be a record or anything with an `address` and an `abi`.
+- **`execute(deployment, {account, functionName, args?, value?, message?, guard?})`** sends a transaction and resolves to its receipt. `account` is required; `message` is how rocketh describes the transaction to a human; the other fields of viem's `writeContract` (`gas`, the fee fields) can be given too. A [`guard`](../execute-guard/) states the on-chain condition under which the call is still needed, and skips it otherwise.
+- **`tx({account, to, data?, value?}, {message?})`** sends a transaction with no ABI involved: a plain transfer, a call built by hand.
+- **`readByName`** and **`executeByName`** take a deployment name instead of a record, for a contract another script deployed (a typo then fails at run time, not at compile time).
+- **`evaluateGuard(guard, target?)`** evaluates a guard without sending anything, to know which privileged steps are still pending.
+
+Everything they send goes through rocketh's broadcast path, so a transaction from an account rocketh cannot sign for (a Safe) is [handed to you](../unknown-signers/) rather than failing, and an interrupted run resumes it rather than sending it twice.
+
 ## Beyond a plain contract
 
 - [Deterministic addresses](../deterministic-addresses/): the same address on every chain, with create2 or create3, and knowing an address before deploying.

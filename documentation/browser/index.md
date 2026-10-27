@@ -58,7 +58,7 @@ deploymentStore.vfs.subscribe((change) => {
 });
 ```
 
-To read records back without running anything, load through the store: `loadDeploymentsFromStore(store, 'deployments', 'sepolia')` from `rocketh`. Records written by a Node run are not visible to the browser: bundle an [export](../exporting-and-verifying/#exporting-deployments) or fetch them.
+To read records back without running anything, load through the store: `loadDeploymentsFromStore(store, 'deployments', 'sepolia')` from `rocketh`. (`loadDeploymentsFromIndexedDB` from `@rocketh/web` is deprecated: despite its name it reads the module's default store, which is in memory.) Records written by a Node run are not visible to the browser: bundle an [export](../exporting-and-verifying/#exporting-deployments) or fetch them.
 
 ## Against an EVM in the tab
 

@@ -21,7 +21,22 @@ npx rocketh-verify -e sepolia sourcify
 npx rocketh-verify -e mychain blockscout --endpoint https://blockscout.example/api/v2
 ```
 
-`-e` comes before the explorer. `ETHERSCAN_API_KEY` can live in `.env` or `.env.local`, which the command loads. Every deployment of the environment is submitted; one that is already verified is reported as such, not as an error. An explorer outside Etherscan's V2 API that speaks its protocol takes `--endpoint`, and `--min-interval <ms>` spaces requests out under a rate limit. `rocketh-verify -e sepolia metadata --out ./metadata` writes the metadata files instead, for verifying by hand. Every option is in [the CLI reference](../reference/cli/#rocketh-verify), and the programmatic API (verifying only some deployments) in the [`@rocketh/verifier` README](https://github.com/wighawag/rocketh/tree/main/packages/rocketh-verifier#readme).
+`-e` comes before the explorer. `ETHERSCAN_API_KEY` can live in `.env` or `.env.local`, which the command loads. Every deployment of the environment is submitted; one that is already verified is reported as such, not as an error. An explorer outside Etherscan's V2 API that speaks its protocol takes `--endpoint`, and `--min-interval <ms>` spaces requests out under a rate limit. `rocketh-verify -e sepolia metadata --out ./metadata` writes the metadata files instead, for verifying by hand. Every option is in [the CLI reference](../reference/cli/#rocketh-verify).
+
+From code, `run` verifies an environment, or some of its deployments:
+
+```typescript
+import {run} from '@rocketh/verifier';
+import {readAndResolveConfig} from '@rocketh/node';
+
+const config = await readAndResolveConfig({});
+await run(config, 'sepolia', {
+	verifier: {type: 'etherscan', apiKey: process.env.ETHERSCAN_API_KEY},
+	deploymentNames: ['Token', 'TokenSale'],
+});
+```
+
+`verifier` is `{type: 'etherscan', apiKey?, endpoint?, license?, forceLicense?, fixMispell?}`, `{type: 'sourcify', endpoint?}` or `{type: 'blockscout', endpoint?}`; `minInterval` (milliseconds) and `logErrorOnFailure` are the other options.
 
 ## Exporting Deployments
 
@@ -77,6 +92,15 @@ const message = await client.readContract({
 	functionName: 'messages',
 	args: ['0x0000000000000000000000000000000000000001'],
 });
+```
+
+The same from code is `run(config, environment, {tots, tojs, tojson, totsm, tojsm, includeBytecode, verify, provider})`, each output a list of paths:
+
+```typescript
+import {run} from '@rocketh/export';
+import {readAndResolveConfig} from '@rocketh/node';
+
+await run(await readAndResolveConfig({}), 'sepolia', {tots: ['./src/contracts.ts']});
 ```
 
 ### Chain properties in the export
@@ -138,4 +162,18 @@ npx rocketh-doc -e sepolia -o ./docs/contracts --except-suffix _Implementation,_
 
 The suffixes are one comma-separated value.
 
-Output is rendered through Handlebars templates, and `-t` points at your own. NatSpec reaches the documentation only when the compiler put it in the artifact (`devdoc` and `userdoc`). See the [`@rocketh/doc` README](https://github.com/wighawag/rocketh/tree/main/packages/rocketh-doc#readme) for the template format and the programmatic API, including `generateDocumentationData` for building the model and rendering it yourself.
+Output is rendered through [Handlebars](https://handlebarsjs.com) templates. The bundled default is `public/default_templates/{{contracts}}.hbs` in the package: a file name containing `{{contracts}}` is expanded once per contract, so one template produces a page per contract. `-t` points at a folder of your own templates.
+
+The text comes from the NatSpec in the artifacts the deployments were built from (`devdoc` and `userdoc`): compiler settings that drop it give pages with the right structure and no prose.
+
+From code, `run(config, environment, {output, template, exceptSuffix})` does what the command does, `runFromFolder(folder, options)` reads a folder of records without a config, and `generateDocumentationData` builds the model only (methods, events and errors, with their signatures, selectors, ABI fragments and NatSpec), to render it with something other than Handlebars:
+
+```typescript
+import {run} from '@rocketh/doc';
+import {readAndResolveConfig} from '@rocketh/node';
+
+await run(await readAndResolveConfig({}), 'sepolia', {
+	output: './docs/contracts',
+	exceptSuffix: ['_Implementation', '_Proxy'],
+});
+```
