@@ -70,7 +70,14 @@ minimumReleaseAgeExclude:
   #   CoreMethods and EIP1193CoreProvider to 0.7.0.
   #
   # Safe to delete any time after 2026-11-02, when all three pass the floor on their own.
-  - '@eip-1193/jsonrpc-provider@0.5.0'
+  # - @eip-1193/jsonrpc-provider 0.6.0 (published 2026-10-27, same release workflow, OIDC
+  #   trusted publishing with provenance). Its only runtime change against 0.5.0: a `null`,
+  #   `false` or `0` JSON-RPC result is returned instead of thrown as 'No Result', which is what
+  #   made `hardhat_impersonateAccount` look refused on every `rocketh --is-fork` run against
+  #   anvil. The rest of the diff is a test and its script. Safe to delete after 2026-11-03.
+  #   Both versions are on ONE line: with pnpm 10.28.1 a second, separate entry for the same
+  #   package did not exempt 0.6.0, while the `||` form does.
+  - '@eip-1193/jsonrpc-provider@0.5.0 || 0.6.0'
   - '@eip-1193/signer@0.4.0'
   - 'eip-1193@0.7.1'
 
