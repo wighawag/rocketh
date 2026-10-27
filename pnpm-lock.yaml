@@ -196,7 +196,7 @@ importers:
         version: link:../../../packages/hardhat-deploy
       hardhat-external-artifacts:
         specifier: ^0.0.6
-        version: 0.0.6(hardhat@3.12.0)(typescript@6.0.3)(zod@3.25.76)
+        version: 0.0.6(hardhat@3.12.0)(typescript@6.0.3)
       ldenv:
         specifier: ^0.5.0
         version: 0.5.0
@@ -445,7 +445,7 @@ importers:
         version: link:../../../packages/hardhat-deploy
       hardhat-external-artifacts:
         specifier: ^0.0.6
-        version: 0.0.6(hardhat@3.12.0)(typescript@6.0.3)(zod@3.25.76)
+        version: 0.0.6(hardhat@3.12.0)(typescript@6.0.3)
       ldenv:
         specifier: ^0.5.0
         version: 0.5.0
@@ -538,8 +538,8 @@ importers:
   packages/rocketh:
     dependencies:
       '@eip-1193/jsonrpc-provider':
-        specifier: ^0.5.0
-        version: 0.5.0
+        specifier: ^0.6.0
+        version: 0.6.0
       '@rocketh/core':
         specifier: workspace:*
         version: link:../rocketh-core
@@ -720,8 +720,8 @@ importers:
   packages/rocketh-export:
     dependencies:
       '@eip-1193/jsonrpc-provider':
-        specifier: ^0.5.0
-        version: 0.5.0
+        specifier: ^0.6.0
+        version: 0.6.0
       '@rocketh/core':
         specifier: workspace:*
         version: link:../rocketh-core
@@ -1878,8 +1878,8 @@ packages:
   '@docsearch/sidepanel-js@4.6.3':
     resolution: {integrity: sha512-grGSmvXzG0if+mrzdIKykvpIAuEQ9u0sEJ2eLRRCaQfJvsWqh2C2/aY04bIzWvDh7myi5rvl8D+tUNsVrjYQ3A==}
 
-  '@eip-1193/jsonrpc-provider@0.5.0':
-    resolution: {integrity: sha512-msmma2jpdvL7P5U0D6NYkKmaWBVxJ9GA1hP0yhx9rkCzp0fhzDLX4S/UosyiyU5nVkWxR1+uZdZuDUPPo/jnUg==}
+  '@eip-1193/jsonrpc-provider@0.6.0':
+    resolution: {integrity: sha512-9+0lRur/WqeV1Gbx9cqnZB6oaL/Io9jkBxDc1YymT9cKdlOeOVGlvjMEtaGlMiSPE25OnX3a7OEX2BDBFJeqyQ==}
 
   '@eip-1193/signer@0.4.0':
     resolution: {integrity: sha512-5gwGs9RN/iykrjqEyjjYv5bOQPN0AajDrI9XEF0p3LlwdcKipMlmhi/AKwiTVJDEId0Rl0avRlVvKLYm3i71pg==}
@@ -5897,7 +5897,7 @@ snapshots:
 
   '@docsearch/sidepanel-js@4.6.3': {}
 
-  '@eip-1193/jsonrpc-provider@0.5.0':
+  '@eip-1193/jsonrpc-provider@0.6.0':
     dependencies:
       eip-1193: 0.7.1
       named-logs: 0.3.2
@@ -7725,7 +7725,7 @@ snapshots:
     optionalDependencies:
       uglify-js: 3.19.3
 
-  hardhat-external-artifacts@0.0.6(hardhat@3.12.0)(typescript@6.0.3)(zod@3.25.76):
+  hardhat-external-artifacts@0.0.6(hardhat@3.12.0)(typescript@6.0.3):
     dependencies:
       '@nomicfoundation/hardhat-utils': 4.1.7
       hardhat: 3.12.0
