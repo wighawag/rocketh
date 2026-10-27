@@ -1,5 +1,20 @@
 # hardhat-deploy
 
+## 2.2.0
+
+### Minor Changes
+
+- 241f899: `addNetworksFromEnv` no longer gives a real network the public test mnemonic (`test test ... junk`) when neither `MNEMONIC_<network>` nor `MNEMONIC` is set. It now follows the rule `addNetworksFromKnownList` already had: only `hardhat`, `localhost`, `memory` and `test` fall back to the test mnemonic, and any other network gets no accounts, so a deploy that needs one stops and names the variable to set instead of signing with a key everyone knows. A dev node configured under another name (for example `ETH_NODE_URI_lan`) now needs its mnemonic set explicitly, such as `MNEMONIC_lan="test test test test test test test test test test test junk"`.
+
+### Patch Changes
+
+- 6e2762e: Named accounts that cannot be resolved are now reported in one actionable error, `UnresolvableAccountsError` (exported by `rocketh` with `formatUnresolvableAccountsMessage` and `redactEndpoint`). It names the environment, the chain id and the endpoint it asked (with any path, query string or credentials redacted), lists every account that cannot be resolved with its reason, and gives the fix for the way the run was started. The `rocketh` CLI prints it and exits with code 1, without a stack trace. hardhat-deploy reports it as a plugin error, with the hardhat-side fix: configure `accounts` for that hardhat network, for example through `MNEMONIC_<network>` with its network helpers.
+- a4e96ad: The `hardhat-deploy init` template now includes `@rocketh/unknown-signer`, so `catchUnknownSigner` is available in a new project's deploy scripts without any setup.
+- Updated dependencies [6e2762e]
+- Updated dependencies [832b78c]
+  - rocketh@0.26.0
+  - @rocketh/node@0.22.3
+
 ## 2.1.1
 
 ### Patch Changes

@@ -1,5 +1,16 @@
 # @rocketh/export
 
+## 0.20.4
+
+### Patch Changes
+
+- 93deb2d: The exported chain no longer carries the remains of viem's function-valued chain fields. For a chain viem gives formatters (Base and the other OP-stack chains, Celo, zkSync), the export used to write `formatters`, `serializers` and the like as empty husks such as `{"block": {"type": "block"}}`, which no viem client accepts as a chain. Every output format (`--ts`, `--js`, `--json`, `--tsm`, `--jsm`) now drops any field whose value held a function, while plain data such as `blockTime`, `contracts`, `rpcUrls`, `properties` and `genesisHash` is exported as before. A config that set those fields to `undefined` to work around this can drop the override.
+- Updated dependencies [6e2762e]
+- Updated dependencies [832b78c]
+  - rocketh@0.26.0
+  - @rocketh/node@0.22.3
+  - @rocketh/core@0.26.0
+
 ## 0.20.3
 
 ### Patch Changes
