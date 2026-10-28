@@ -116,8 +116,8 @@ export function withEnvironment<
  * The SAME error object is rethrown, its message prefixed, rather than a new error wrapping
  * it: a caller may catch a failure by class around a whole run (hardhat-deploy does,
  * `instanceof UnresolvableAccountsError` in `account-errors.ts`), and a wrapper would hide
- * that class. Only a thrown
- * value that is not an `Error` gets a new `Error`, with the value as `cause`.
+ * that class. A new `Error`, with the original as `cause`, is made only for a thrown value
+ * that is not an `Error`, or one whose `message` cannot be assigned.
  */
 function withExtensionSetupContext(key: string, error: unknown): unknown {
 	const context =
@@ -128,10 +128,24 @@ function withExtensionSetupContext(key: string, error: unknown): unknown {
 		return new Error(`${context}: ${String(error)}`, {cause: error});
 	}
 	const original = error.message;
-	error.message = `${context}: ${original}`;
+	// An entry that throws one SHARED error object, for every script, is named once.
+	if (original.startsWith(context)) {
+		return error;
+	}
+	try {
+		error.message = `${context}: ${original}`;
+	} catch {
+		// A read-only `message` (a getter with no setter, as on `DOMException`): wrap instead of
+		//  letting the failed assignment replace the error being reported.
+		return new Error(`${context}: ${original}`, {cause: error});
+	}
 	// The stack was rendered with the old message; keep the two in agreement.
 	if (typeof error.stack === 'string' && original !== '' && error.stack.includes(original)) {
-		error.stack = error.stack.replace(original, error.message);
+		try {
+			error.stack = error.stack.replace(original, error.message);
+		} catch {
+			// a read-only stack is left as it was
+		}
 	}
 	return error;
 }

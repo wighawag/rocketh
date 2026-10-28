@@ -125,6 +125,39 @@ describe('withEnvironment - an entry that throws during setup is named', () => {
 		expect((caught as Error).cause).toBe('plain string');
 	});
 
+	/** An entry that throws one shared error object (once per script) is named once, not once per script. */
+	it('does not prefix a shared error object twice', () => {
+		const shared = new Error('connection not found');
+		const broken = () => {
+			throw shared;
+		};
+		expect(() => withEnvironment(env, {broken})).toThrow(shared);
+		expect(() => withEnvironment(env, {broken})).toThrow(shared);
+		expect(shared.message.match(/extension entry "broken" threw/g)).toHaveLength(1);
+	});
+
+	/**
+	 * An error whose `message` cannot be assigned (a getter with no setter, as on `DOMException`)
+	 * is wrapped, so the failed assignment never replaces the error being reported.
+	 */
+	it('wraps an error whose message is read-only, keeping it as the cause', () => {
+		const readOnly = new Error();
+		Object.defineProperty(readOnly, 'message', {get: () => 'aborted'});
+		let caught: unknown;
+		try {
+			withEnvironment(env, {
+				broken: () => {
+					throw readOnly;
+				},
+			});
+		} catch (error) {
+			caught = error;
+		}
+		expect(caught).not.toBe(readOnly);
+		expect((caught as Error).message).toMatch(/^extension entry "broken" threw.*: aborted$/);
+		expect((caught as Error).cause).toBe(readOnly);
+	});
+
 	/** Only SETUP is named: an error from calling the method itself is the method's own business. */
 	it('leaves an error thrown when a method is CALLED untouched', () => {
 		const failure = new Error('transaction reverted');
