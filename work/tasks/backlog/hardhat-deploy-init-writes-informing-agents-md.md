@@ -8,12 +8,12 @@ covers: [7, 10]
 
 ## What to build
 
-`hardhat-deploy init` copies `packages/hardhat-deploy/templates/basic/` into a new project. Add `templates/basic/AGENTS.md` with the informing text, so an agent opening a new project learns the rocketh skills exist and tells the user, who decides whether to install them. It loads nothing. The user can delete the file.
+`hardhat-deploy init` copies `packages/hardhat-deploy/templates/basic/` into a new project. Add `templates/basic/AGENTS.md` with the informing text, so an agent opening a new project learns the rocketh skills exist and tells the user, who decides whether to install them. It loads nothing. The user can delete the file. It also sits inside this repository as a nested `AGENTS.md`, so an agent editing the template reads it; that is harmless, since it describes the project the template scaffolds, and needs no change.
 
 ## Acceptance criteria
 
 - [ ] The template contains `AGENTS.md` with: "This project deploys with hardhat-deploy v2 and rocketh. If the rocketh skills are not available to you, tell the user they exist and how to install them (`npx skills add wighawag/rocketh`, or the one-line prompt at https://rocketh.dev/documentation/agent-skills/)." and a short, empty section for project-specific notes (who approves a privileged change).
-- [ ] `packages/hardhat-deploy/test/init-template.test.ts` asserts the file is written by `init` and contains the install command.
+- [ ] A test asserts the file is in `templates/basic/`, contains the install command and the docs page URL, and is NOT excluded by the template's own `.gitignore` filter that `init` applies when copying (use `createIgnoreFilter` / `parseGitignore` from `src/utils/gitignore.ts`, as `gitignore.test.ts` does; `generateProject` is private to the bin script, so do not import `cli.ts`).
 - [ ] The file is included in what the package publishes (`files` already lists `templates`; confirm `init` copies it into the new project).
 - [ ] A changeset for `hardhat-deploy` (minor: the scaffold gains a file).
 - [ ] `pnpm typecheck`, `pnpm test` and `pnpm format:check` pass.
@@ -28,7 +28,7 @@ covers: [7, 10]
 
 Goal: the discovery path for new projects, respecting the user's consent: the file informs, it does not load. Read `packages/hardhat-deploy/src/cli.ts` (the `init` command) and `init-template.test.ts` first. Keep the text identical to the fragment on the docs page task, so a user sees one wording. Done means a fresh `init` writes the file and the test proves it.
 
-Read `AGENTS.md`, `CONTEXT.md` and ADR 0017 (`docs/adr/0017-agent-skills-for-users-are-installed-by-the-user-from-one-source.md`) first. The background is spec `agent-skill-for-rocketh-users` (`work/specs/tasked/`) and the research finding `work/notes/findings/ethskills-structure-coverage-and-reuse.md`. The documentation in `documentation/` and `hardhat-deploy/` (published as rocketh.dev) is the source of truth a skill must agree with: when a skill would say something no page says, the page changes first. The repository is public: no names of people, employers or funders. Never write em dashes; write Markdown paragraphs as single lines. A change to a published package needs a changeset (`CONTEXT.md`, Conventions); a docs-only or skills-only change needs none.
+Read `AGENTS.md`, `CONTEXT.md` and ADR 0017 (`docs/adr/0017-agent-skills-for-users-are-installed-by-the-user-from-one-source.md`) first. The background is spec `agent-skill-for-rocketh-users` (`work/specs/tasked/`) and the research finding `work/notes/findings/ethskills-structure-coverage-and-reuse.md`. The documentation in `documentation/` and `hardhat-deploy/` (published as rocketh.dev) is the source of truth a skill must agree with: when a skill would say something no page says, the page changes first. The repository is public: no names of people, employers or funders. Never write em dashes; write Markdown paragraphs as single lines. Changesets (`CONTEXT.md`, Conventions): a change to what a published package ships needs a real one; a change that touches only a package's tests still counts as a changed package for the `verify` gate (`changeset status --since=main`), so it needs an EMPTY changeset; a change outside `packages/` (docs, `skills/`, `work/`) needs none.
 
 FIRST, check this task against current reality (it is a launch snapshot and may have DRIFTED): does it still match the code in `work/tasks/done/`, the relevant ADRs, and the tasks it depends on? If a dependency landed differently than this task assumes, do NOT build on the stale premise: route the task to needs-attention with the discrepancy as the reason (WORK-CONTRACT.md "Drift is a needs-attention signal").
 

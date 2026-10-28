@@ -3,11 +3,10 @@ title: 'Point the skill links at rocketh.dev once the site serves them'
 slug: point-skill-links-at-rocketh-dev
 spec: agent-skill-for-rocketh-users
 blockedBy:
-  [
-    working-with-an-ai-agent-docs-page,
-    hardhat-deploy-init-writes-informing-agents-md,
-    rocketh-website-serves-skill-files,
-  ]
+  - working-with-an-ai-agent-docs-page
+  - hardhat-deploy-init-writes-informing-agents-md
+  - rocketh-website-serves-skill-files
+  - rocketh-deploy-skill-references
 covers: [10]
 ---
 
@@ -17,9 +16,9 @@ Replace every raw GitHub link to a skill (`https://raw.githubusercontent.com/wig
 
 ## Acceptance criteria
 
-- [ ] No raw GitHub skill link remains in `documentation/`, `hardhat-deploy/`, `packages/hardhat-deploy/templates/` or the READMEs (grep to confirm).
+- [ ] No raw GitHub skill link remains in `documentation/`, `hardhat-deploy/`, `skills/` (the sibling-skill URLs inside the skills themselves), `packages/hardhat-deploy/templates/` or the READMEs (grep to confirm).
 - [ ] The init-template test is updated if it asserts the URL.
-- [ ] A changeset for `hardhat-deploy` (patch) since the template changes.
+- [ ] A changeset for `hardhat-deploy` (patch) only if the template changes; none otherwise.
 - [ ] `pnpm test`, `pnpm format:check` pass; `pnpm docs:build` passes when a rocketh-website checkout is available.
 
 ## Blocked by
@@ -27,12 +26,13 @@ Replace every raw GitHub link to a skill (`https://raw.githubusercontent.com/wig
 - `working-with-an-ai-agent-docs-page`
 - `hardhat-deploy-init-writes-informing-agents-md`
 - `rocketh-website-serves-skill-files`
+- `rocketh-deploy-skill-references`
 
 ## Prompt
 
 Goal: a mechanical link switch after the website task lands. Check the URLs actually serve the files first; if they do not, route this task to needs-attention instead of switching. Done means every link points at rocketh.dev and the checks pass.
 
-Read `AGENTS.md`, `CONTEXT.md` and ADR 0017 (`docs/adr/0017-agent-skills-for-users-are-installed-by-the-user-from-one-source.md`) first. The background is spec `agent-skill-for-rocketh-users` (`work/specs/tasked/`) and the research finding `work/notes/findings/ethskills-structure-coverage-and-reuse.md`. The documentation in `documentation/` and `hardhat-deploy/` (published as rocketh.dev) is the source of truth a skill must agree with: when a skill would say something no page says, the page changes first. The repository is public: no names of people, employers or funders. Never write em dashes; write Markdown paragraphs as single lines. A change to a published package needs a changeset (`CONTEXT.md`, Conventions); a docs-only or skills-only change needs none.
+Read `AGENTS.md`, `CONTEXT.md` and ADR 0017 (`docs/adr/0017-agent-skills-for-users-are-installed-by-the-user-from-one-source.md`) first. The background is spec `agent-skill-for-rocketh-users` (`work/specs/tasked/`) and the research finding `work/notes/findings/ethskills-structure-coverage-and-reuse.md`. The documentation in `documentation/` and `hardhat-deploy/` (published as rocketh.dev) is the source of truth a skill must agree with: when a skill would say something no page says, the page changes first. The repository is public: no names of people, employers or funders. Never write em dashes; write Markdown paragraphs as single lines. Changesets (`CONTEXT.md`, Conventions): a change to what a published package ships needs a real one; a change that touches only a package's tests still counts as a changed package for the `verify` gate (`changeset status --since=main`), so it needs an EMPTY changeset; a change outside `packages/` (docs, `skills/`, `work/`) needs none.
 
 FIRST, check this task against current reality (it is a launch snapshot and may have DRIFTED): does it still match the code in `work/tasks/done/`, the relevant ADRs, and the tasks it depends on? If a dependency landed differently than this task assumes, do NOT build on the stale premise: route the task to needs-attention with the discrepancy as the reason (WORK-CONTRACT.md "Drift is a needs-attention signal").
 
