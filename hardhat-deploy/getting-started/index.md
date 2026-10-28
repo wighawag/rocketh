@@ -36,10 +36,10 @@ The step-by-step setup, every file and command included, is the [Getting Started
 1. **The packages.** `hardhat`, `hardhat-deploy`, `rocketh`, `@rocketh/node` (which hardhat-deploy runs on), and the extensions your scripts call, usually `@rocketh/deploy` and `@rocketh/read-execute`:
 
    ```bash
-   pnpm add -D hardhat hardhat-deploy rocketh @rocketh/node @rocketh/deploy @rocketh/read-execute
+   pnpm add -D hardhat hardhat-deploy rocketh @rocketh/node @rocketh/deploy @rocketh/read-execute --allow-build=esbuild --allow-build=@parcel/watcher
    ```
 
-   With pnpm 11 or later, deny the build scripts of esbuild and @parcel/watcher afterwards (`pnpm approve-builds '!esbuild' '!@parcel/watcher'`), or every `pnpm` command in the project stops at `ERR_PNPM_IGNORED_BUILDS`; the README explains why.
+   The `--allow-build` flags settle the dependencies' build scripts, which pnpm 11 requires before it finishes an install; see [Get started without Hardhat](/documentation/getting-started/#the-project).
 
 2. **The plugin**, in `hardhat.config.ts`, and where the [typed artifacts](../typed-artifacts/) go:
 

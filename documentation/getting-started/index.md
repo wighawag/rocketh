@@ -30,7 +30,7 @@ Then install rocketh, its command line (`@rocketh/node`) and the two extensions 
 ::: code-group
 
 ```bash [pnpm]
-pnpm add -D rocketh @rocketh/node @rocketh/deploy @rocketh/read-execute
+pnpm add -D rocketh @rocketh/node @rocketh/deploy @rocketh/read-execute --allow-build=esbuild --allow-build=@parcel/watcher
 ```
 
 ```bash [npm] skip
@@ -39,11 +39,7 @@ npm install -D rocketh @rocketh/node @rocketh/deploy @rocketh/read-execute
 
 :::
 
-With pnpm 11 or later, the install ends with `ERR_PNPM_IGNORED_BUILDS`: pnpm 11 will not finish an install while a dependency's build script is neither allowed nor denied, and every later `pnpm` command in the project fails the same way until you decide. Neither esbuild nor @parcel/watcher needs its script here, so deny both (pnpm records the answer in `pnpm-workspace.yaml`):
-
-```bash skip
-pnpm approve-builds '!esbuild' '!@parcel/watcher'
-```
+The two `--allow-build` flags answer a question pnpm 11 asks: it will not finish an install while a dependency's build script is neither allowed nor denied, and stops at `ERR_PNPM_IGNORED_BUILDS` instead, as does every later `pnpm` command in the project. esbuild and @parcel/watcher are the two here, and their scripts only make sure the native binary each one needs is in place. pnpm records the answer, in `pnpm-workspace.yaml` (pnpm 11) or as `onlyBuiltDependencies` (pnpm 10), so you only give it once.
 
 ## A contract, compiled
 

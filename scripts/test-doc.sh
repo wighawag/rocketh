@@ -13,8 +13,10 @@
 #   stale build tests old code, and fails in ways that look like a broken page (a
 #   checkout built before a dependency was renamed fails on `hardhat deploy` with a
 #   misleading HHE202 peer-dependency error, hiding the real "Cannot find package").
-# - snapshots pnpm-lock.yaml and restores it, and removes the scaffold, whatever the
-#   outcome (ADR 0008).
+# - snapshots pnpm-lock.yaml and pnpm-workspace.yaml and restores them, and removes the
+#   scaffold, whatever the outcome (ADR 0008). The workspace file needs it too: an install
+#   in the scaffold writes its build-script decisions (`pnpm add --allow-build`) into the
+#   workspace root's pnpm-workspace.yaml, rewriting the file without its comments.
 #
 # --outside runs the page in a fresh temporary directory instead, for a page that only
 # ever uses PUBLISHED packages (`pnpm dlx hardhat-deploy init` fetches the released CLI,
@@ -92,6 +94,8 @@ else
 	pnpm build || exit 1
 	lock=$(mktemp)
 	cp pnpm-lock.yaml "$lock"
+	workspace=$(mktemp)
+	cp pnpm-workspace.yaml "$workspace"
 fi
 
 sections=()
@@ -117,7 +121,8 @@ if [ "$outside" = true ]; then
 else
 	rm -rf "$scaffold"
 	cp "$lock" pnpm-lock.yaml
-	rm -f "$lock"
+	cp "$workspace" pnpm-workspace.yaml
+	rm -f "$lock" "$workspace"
 fi
 
 if [ -n "$port" ] && listening "$port"; then

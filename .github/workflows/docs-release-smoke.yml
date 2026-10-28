@@ -1,0 +1,64 @@
+name: Docs against the release
+
+# Runs the documentation pages that only use PUBLISHED packages, the way a reader follows
+# them today. `pnpm dlx hardhat-deploy init` fetches the released CLI, so this tests the
+# last release by construction, which is why it is not on pull requests: a PR fixing the
+# CLI and its page together would fail until it shipped. It runs after every release, once
+# a day (the registry moves under a page without any commit here), and on demand.
+#
+# Each page runs under both pnpm majors a reader may have, since they behave differently
+# (pnpm 11 stops an install at ERR_PNPM_IGNORED_BUILDS where pnpm 10 only warns). The
+# repository itself stays on its pinned pnpm: a pnpm 11 on the PATH switches to the
+# `packageManager` version inside the repository, and is the one the page's commands get
+# in the temporary directory `scripts/test-doc.sh --outside` runs them in.
+
+on:
+  workflow_run:
+    workflows: [release]
+    types: [completed]
+  schedule:
+    - cron: '17 5 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  docs:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        reader-pnpm: ['10', '11']
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: 10.28.1
+
+      - name: Setup Node 22
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # Only ezx is needed from the repository; nothing is built.
+      - name: Install dependencies
+        run: pnpm install --ignore-scripts
+
+      - name: The reader's pnpm ${{ matrix.reader-pnpm }}
+        if: matrix.reader-pnpm != '10'
+        run: |
+          npm install -g "pnpm@${{ matrix.reader-pnpm }}"
+          echo "$(npm prefix -g)/bin" >> "$GITHUB_PATH"
+
+      - name: Get started with hardhat-deploy (hardhat-deploy init)
+        run: pnpm test:docs:hardhat-deploy-init
