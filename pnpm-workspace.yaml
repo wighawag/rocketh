@@ -173,7 +173,7 @@ overrides:
   '@vitest/mocker@<4.1.12': ^4.1.12
   'zod@>=4.0.0 <4.6.6': ^4.6.6
 
-# ONE advisory is ignored, and adding another should stay a last resort: an ignore entry
+# TWO advisories are ignored, and adding another should stay a last resort: an ignore entry
 # is how a hard gate quietly becomes decoration. Each entry states why it cannot be fixed
 # by a floor, why it does not reach users, and its exit condition.
 #
@@ -189,6 +189,26 @@ overrides:
 # The zod 4 copies elsewhere in the tree are floored to ^4.6.6 in `overrides` above.
 # Exit condition: delete this entry when Hardhat accepts zod 4 and hardhat-deploy moves to
 # zod >=4.6.6.
+#
+# GHSA-gcqx-w48m-w2h4 (deepmerge, low, ">= 4.2.0, <= 4.3.1": `mergeObject()` lets a merged
+# input poison the prototype of the returned object). There is NO patched version: 4.3.1 is
+# the latest release of deepmerge. The only path is `packages__rocketh-playground >
+# @sveltejs/vite-plugin-svelte > deepmerge`, and no version of the plugin avoids it: every
+# release up to the latest (7.3.1, checked 2026-10-28) depends on `deepmerge ^4.3.1`. A floor
+# cannot answer it either: the releases outside the range are all OLDER (the newest is 4.1.2),
+# below what the plugin declares, and they predate 4.2.0, whose change (#164) is what stopped a
+# merge from overwriting properties up the prototype chain, so overriding to one would trade a
+# low advisory for an unreviewed downgrade into the older behaviour. Why it does not reach users: the
+# plugin is a devDependency of the playground widget, and it calls deepmerge only at BUILD
+# time (`src/utils/options.js`), to merge the playground's own Svelte plugin options from its
+# `vite.config.ts`, which is repository code rather than untrusted input. The built widget
+# compiles Svelte away and does not contain the plugin, and nothing of it is in a user's
+# deployment: no published `@rocketh/*` runtime dependency reaches deepmerge.
+# Exit condition: delete this entry when deepmerge publishes a patched release (then let the
+# plugin's `^4.3.1` resolve to it, with a floor here if needed) or when
+# @sveltejs/vite-plugin-svelte stops depending on deepmerge (check both when the plugin is
+# upgraded).
 auditConfig:
   ignoreGhsas:
     - GHSA-mrhx-c7xc-m3w5
+    - GHSA-gcqx-w48m-w2h4
