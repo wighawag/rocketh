@@ -18,11 +18,13 @@ Change the discovery so that:
 - folders run in the order `scripts` lists them, each folder's files sorted by their path relative to that folder (subfolders included, as now);
 - `dependencies` between scripts keep their current meaning on top of that order.
 
-This changes behaviour for a project whose `scripts` lists several folders and relies on their files being interleaved by name (`deploy/001`, `extra/002`, `deploy/003`). Ship it with a changeset that says so, and a line in the migration notes.
+This changes behaviour for a project whose `scripts` lists several folders and relies on their files being interleaved by name (`deploy/001`, `extra/002`, `deploy/003`). Ship it with a changeset for `@rocketh/node` that says so; the changeset is where releases are described, so it carries the upgrade note too.
 
-Then make the guide true: the Share contracts between projects page keeps "list their folder before yours", and says that compiled folders may hold declaration and map files, which are skipped. The configuration reference for `scripts` states the order rule.
+Then make the documentation true:
 
-Related, separate: the same guide's "Publishing a contracts project" does not say that what the compiled deploy scripts and `rocketh` folder import (`rocketh`, the `@rocketh/*` extensions, `viem` as the peer of `@rocketh/viem`) must be `dependencies` of the published package. template-ethereum-contracts lists them as `devDependencies`, and installed from its tarball with hoisting off the package fails with `Cannot find package '@rocketh/signer'` (its `examples/deploy-export` branch shows the fix). Worth a sentence on that page, in this task or its own.
+- Deploy scripts, "Which files run, and in what order": today it says that every file not skipped by name is imported as a script, and that scripts run in the alphabetical order of their paths. Both change: only script extensions are imported (declaration and map files are skipped), and folders run in the order they are listed, each in the order of its paths, with dependencies still running first.
+- Share contracts between projects keeps "list their folder before yours", which becomes true, and says that a compiled folder's declaration and map files are skipped.
+- The configuration reference states the order rule for both the top-level `scripts` and `environments.<name>.scripts`.
 
 ## Acceptance criteria
 
@@ -30,9 +32,9 @@ Related, separate: the same guide's "Publishing a contracts project" does not sa
 - [ ] `.mjs`, `.cjs`, `.mts`, `.cts` and `.ts` scripts are still loaded; `_`-prefixed files are still skipped.
 - [ ] With `scripts: ['b', 'a']`, every script of `b` runs before every script of `a`, regardless of file names; within a folder, files keep their path order.
 - [ ] `dependencies` between scripts still override that order where they apply.
-- [ ] Tests cover discovery and ordering, extending the existing traversal tests of the node package.
-- [ ] Changeset for `@rocketh/node` describing the ordering change; migration note.
-- [ ] The sharing-contracts guide and the `scripts` configuration reference match the new behaviour.
+- [ ] Tests cover discovery and ordering at the executor level, alongside the existing discovery tests of the node package (which already cover path order and the `_` filter), plus the traversal tests where the walk itself changes.
+- [ ] Changeset for `@rocketh/node` describing the ordering change and what a project interleaving several folders has to do.
+- [ ] The deploy-scripts page ("Which files run, and in what order"), the sharing-contracts guide, and the configuration reference (top-level `scripts` and `environments.<name>.scripts`) match the new behaviour.
 
 ## Blocked by
 
@@ -42,11 +44,11 @@ Related, separate: the same guide's "Publishing a contracts project" does not sa
 
 > Goal: make rocketh's node executor load only real script files from the `scripts` folders, and run those folders in the order the configuration lists them, so that `scripts: ['node_modules/<pkg>/dist/deploy', 'deploy']` works against a package compiled by `tsc` with declarations and source maps, and runs the package's scripts first.
 >
-> Where to look: the script discovery in the node package's executor (it calls the multi-directory traversal from the package's fs utilities, filters `_`-prefixed basenames, then sorts all paths together), the traversal utilities and their existing tests, the configuration types and resolution of `scripts`, and the documentation pages "Share contracts between projects" and the configuration reference for `scripts`.
+> Where to look: the script discovery in the node package's executor (it calls the multi-directory traversal from the package's fs utilities, filters `_`-prefixed basenames, then sorts all paths together), the traversal utilities and their tests, the node package's script-discovery tests (executor level: path order, the `_` filter), the configuration types and resolution of `scripts`, and three documentation pages: Deploy scripts ("Which files run, and in what order", which states today's rule), Share contracts between projects, and the configuration reference (`scripts` and `environments.<name>.scripts`). The executor that runs the modules keeps the order it is given and only pulls a script's dependencies in first, so the order is decided entirely at discovery.
 >
 > FIRST, check this task against current reality: if discovery already filters by extension or keeps folder order, or the guide no longer documents the folder approach, route the task to needs-attention with the discrepancy instead of building on a stale premise.
 >
-> Done means: the acceptance criteria above pass, with tests at the discovery seam (a temporary folder with the mixed files, two folders listed in reverse name order), a changeset describing the ordering change, and the two documentation pages updated. Record any non-obvious choice (for example how a file directly listed in `scripts`, rather than a folder, is treated, or whether `.json` should ever be allowed) in a `## Decisions` block in your final report.
+> Done means: the acceptance criteria above pass, with tests at the discovery seam (a temporary folder with the mixed files, two folders listed in reverse name order), a changeset describing the ordering change, and the three documentation pages updated. Record any non-obvious choice (for example how a file directly listed in `scripts`, rather than a folder, is treated, or whether `.json` should ever be allowed) in a `## Decisions` block in your final report.
 
 ---
 
