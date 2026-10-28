@@ -49,6 +49,23 @@ pnpm docs:preview   # serve that build
 
 Each builds the playground (`packages/rocketh-playground`) first, so the page shows the widget of this checkout, and points the site at this checkout, so a worktree previews its own content. `ROCKETH_WEBSITE_DIR` names a site checkout somewhere else. `pnpm docs:build` fails on a dead link or an `#anchor` that is not on its page; the deploy workflow runs the same build on a pull request that touches the content.
 
+### Pages that are run as tests
+
+The pages that build a project from scratch are executed with [ezx](https://www.npmjs.com/package/ezx), so they cannot drift from what works:
+
+```bash
+pnpm test:getting-started           # README.md, "Getting Started" (hardhat-deploy, by hand)
+pnpm test:docs:without-hardhat      # documentation/getting-started/ (forge, anvil, the rocketh CLI)
+pnpm test:docs:hardhat-deploy-init  # hardhat-deploy/getting-started/, "With hardhat-deploy init"
+pnpm test:docs                      # all three
+```
+
+They run through `scripts/test-doc.sh`, whose header explains what it guards against: it builds the workspace first, scaffolds inside the repository so the project links to this checkout (ADR 0008) and restores `pnpm-lock.yaml`, kills everything the page started (the anvil node included), and runs `hardhat-deploy init` outside the repository because that page only uses released packages. Each needs network access, and `test:docs:without-hardhat` needs [Foundry](https://getfoundry.sh) (`forge` and `anvil`) and port 8545 free. Where forge cannot install solc itself (NixOS), point it at a solc 0.8.28 binary, for example the one Hardhat caches: `FOUNDRY_SOLC=~/.cache/hardhat-nodejs/compilers-v3/linux-amd64/solc-linux-amd64-v0.8.28+commit.7893614a pnpm test:docs:without-hardhat`.
+
+CI runs the first two on every pull request (`test.yml`). The third tests the last release, so it runs in `docs-release-smoke.yml` instead, after each release and daily, under both pnpm 10 and pnpm 11.
+
+When editing such a page, keep to ezx's conventions: a `bash` block runs, `> file: <path>` before a block writes that file, a word after the language (`bash [npm] skip`) stops a block from running, `> async:` before a block runs it in the background, `bash sleep:2` waits first, and `# set the current directory` before a `cd` makes later blocks run there. The site ignores everything after the language except a `[label]`, so these read normally on rocketh.dev and on GitHub. Two pitfalls: a code block containing a backtick or `${` breaks ezx (it wraps each block in a JavaScript template string), and a `typescript` block without `> file:` is executed as JavaScript.
+
 **Moving or removing a page** keeps its old address working: add the old address to `_redirects.yaml`, at the root of this repository, in the same pull request, forwarded to where the content went (a key with an `#anchor` forwards one section of a split page on its own). The build fails when a target is not a page or lacks the anchor named, and rocketh-website's end-to-end suite checks every address the site has served. An address must never simply disappear: links to it live in npm READMEs, other repositories and search engines.
 
 `.github/workflows/deploy.yml` deploys on every push to `main`, building the commit of rocketh-website it pins in `ROCKETH_WEBSITE_REF`. A change to the site goes live through a pull request here that moves that pin.

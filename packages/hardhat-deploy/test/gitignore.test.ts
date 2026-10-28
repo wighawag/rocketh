@@ -135,7 +135,13 @@ describe('gitignore matcher', () => {
 			}
 			expect(isIgnored('.env.local', false)).toBe(true);
 
-			for (const kept of ['package.json', '.gitignore', 'hardhat.config.ts', 'contracts/Greeter.sol']) {
+			for (const kept of [
+				'package.json',
+				'pnpm-workspace.yaml',
+				'.gitignore',
+				'hardhat.config.ts',
+				'contracts/Greeter.sol',
+			]) {
 				expect(isIgnored(kept, false), `${kept} should be copied`).toBe(false);
 			}
 			// Anchored, so a nested directory of the same name is a real source directory.

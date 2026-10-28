@@ -74,6 +74,17 @@ jobs:
       - name: Run Getting Started
         run: pnpm test:getting-started
 
+      # documentation/getting-started/ builds a project with forge and deploys it to anvil,
+      # through this checkout's packages, like the README's Getting Started above. forge
+      # installs the solc the contract's pragma asks for by itself here.
+      - name: Setup Foundry
+        uses: foundry-rs/foundry-toolchain@dba66c27052e63476d886f22216e119ba7e615bf # v1.9.2
+        with:
+          version: v1.7.1
+
+      - name: Run Get started without Hardhat
+        run: pnpm test:docs:without-hardhat
+
       # Known advisories in the dependency tree, which is mostly build and docs tooling.
       # A hard gate on purpose: the repo keeps security floors in `overrides:` in
       # pnpm-workspace.yaml, so the way to answer this step is to add one there (or
