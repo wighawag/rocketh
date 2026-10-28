@@ -1,0 +1,788 @@
+# Migrating from hardhat-deploy v1, step by step
+
+## Overview
+
+hardhat-deploy v2 is a complete rewrite that requires Hardhat 3.x and introduces significant architectural changes:
+
+- **ESM Modules**: v2 uses native ES modules (`import`/`export`) instead of CommonJS
+- **Rocketh Integration**: v2 integrates with the rocketh ecosystem for deployment management
+- **Configuration Changes**: Named accounts moved from hardhat.config.ts to rocketh/config.ts
+- **Plugin System**: Enhanced extensibility through rocketh extensions
+
+> **A real before and after.** The [template-ethereum-contracts](https://github.com/wighawag/template-ethereum-contracts) repository is a complete v2 project, and two of its branches are frozen on purpose to show a migration as it was done: [`examples/old-template-for-hardhat-deploy-v1-comparison`](https://github.com/wighawag/template-ethereum-contracts/tree/examples/old-template-for-hardhat-deploy-v1-comparison) is the template as it was on v1, and [`examples/old-template-migration-to-v2-by-ai`](https://github.com/wighawag/template-ethereum-contracts/tree/examples/old-template-migration-to-v2-by-ai) is that project migrated to v2. They are not kept up to date with the template (the versions they pin are older than the current ones), so read them for the shape of the changes, and take the current files from the template's `main`.
+
+> **Before you start: check what v2 does NOT have.** This guide shows how to translate the features v2 has. Which v1 capabilities have no v2 equivalent (or a different one), and what to do instead, is listed in ONE place, the [v1-to-v2 capability map](/hardhat-deploy/migration/). Read it first: some of what it lists (a v1 `skip` export, a renamed proxy name, a per-call option) fails silently or only when a deploy script runs.
+
+## AI-Assisted Migration
+
+For users interested in using AI to help with the migration process, we provide a comprehensive [SKILL.md](https://github.com/wighawag/rocketh/blob/main/skills/hardhat-deploy-migration/SKILL.md) file designed specifically for AI assistants. This guide contains detailed instructions and patterns that AI tools can use to understand and execute the migration systematically.
+
+The SKILL file includes:
+
+- Step-by-step migration procedures with code examples
+- Common patterns and transformation rules
+- Troubleshooting guidance
+- Architecture comparisons between v1 and v2
+- Best practices for AI-assisted development
+
+You can share this file with your AI assistant to get help with:
+
+- Converting configuration files
+- Updating deploy scripts
+- Migrating test fixtures
+- Troubleshooting migration issues
+
+## Quick Reference
+
+| Aspect                   | v1 Pattern                                          | v2 Pattern                                                 |
+| ------------------------ | --------------------------------------------------- | ---------------------------------------------------------- |
+| **Hardhat version**      | 2.x                                                 | 3.x (specifically `^3.6.0` or later)                       |
+| **Module system**        | CommonJS (`require`/`module.exports`)               | ESM (`import`/`export`)                                    |
+| **Named accounts**       | `namedAccounts` in hardhat.config.ts                | `rocketh/config.ts`                                        |
+| **Deploy function**      | `deployments.deploy(name, {...})`                   | `deploy(name, {account: ..., artifact: ...})`              |
+| **Deployer param**       | `from: address`                                     | `account: address`                                         |
+| **Solidity config**      | `solidity: "0.8.x"` or `solidity: {version: "..."}` | `solidity: {profiles: {default: {version: "..."}}}`        |
+| **Test fixtures**        | `deployments.createFixture()`                       | Custom fixture with `loadAndExecuteDeploymentsFromFiles()` |
+| **Contract interaction** | `ethers.getContract()`                              | `env.get()` + `env.execute()`                              |
+
+## When to Stay on v1
+
+If you have a production project using hardhat-deploy v1 with Hardhat 2.x, it's often better to stay on v1:
+
+```bash
+npm uninstall hardhat-deploy
+npm install hardhat-deploy@1
+```
+
+v1 continues to receive security fixes but won't get new features.
+
+## Prerequisites Check
+
+Before starting the migration, verify your environment meets these requirements:
+
+### Checklist
+
+```bash
+# Check Node.js version (requires 22+ for v2)
+node --version
+
+# Check Hardhat version (requires 3.x+ for v2)
+npx hardhat --version
+
+# Check if project is using CommonJS or ESM
+grep -q '"type": "module"' package.json && echo "ESM" || echo "CommonJS"
+```
+
+### Required Versions
+
+- **Node.js**: 22 or higher
+- **Hardhat**: 3.x or higher (hardhat-deploy v2 requires `^3.6.0`)
+- **TypeScript**: 5.x (for TypeScript projects)
+
+### Pre-Migration Assessment
+
+Check for these v1 patterns in your project:
+
+```typescript
+// In hardhat.config.ts
+- namedAccounts configuration
+- require() statements
+- module.exports
+- solidity: "0.8.x" format
+
+// In deploy scripts
+- async function (hre) { ... }
+- hre.deployments.deploy()
+- hre.getNamedAccounts()
+- from: parameter
+- log: true parameter
+
+// In tests
+- deployments.createFixture()
+- ethers.getContract()
+- getUnnamedAccounts()
+```
+
+## Step-by-Step Migration
+
+### Step 1: Update Dependencies
+
+Update your [`package.json`](https://github.com/wighawag/template-ethereum-contracts/blob/main/contracts/package.json) to use hardhat 3.x and hardhat-deploy v2:
+
+Install the v2 packages (the current versions are in the template's [`contracts/package.json`](https://github.com/wighawag/template-ethereum-contracts/blob/main/contracts/package.json)):
+
+```bash
+pnpm add -D hardhat@^3 hardhat-deploy@^2 rocketh @rocketh/node @rocketh/deploy @rocketh/read-execute @rocketh/proxy @rocketh/signer viem
+pnpm add -D @nomicfoundation/hardhat-viem @nomicfoundation/hardhat-node-test-runner @nomicfoundation/hardhat-network-helpers @nomicfoundation/hardhat-keystore
+pnpm remove hardhat-deploy-ethers hardhat-deploy-tenderly
+```
+
+**Transformation Rules**:
+
+1. Add `"type": "module"` at the top level
+2. Update `hardhat` to `^3.6.0` or higher (the version hardhat-deploy v2 requires)
+3. Update `hardhat-deploy` to `^2.0.0` or higher
+4. Remove `hardhat-deploy-ethers` and `hardhat-deploy-tenderly`
+5. Add rocketh packages: `rocketh`, `@rocketh/deploy`, `@rocketh/read-execute`, `@rocketh/node`, `@rocketh/signer`
+6. Add optional packages: `@rocketh/proxy`, `@rocketh/export`, `@rocketh/verifier`, `@rocketh/doc`
+7. Add `viem` for contract interactions
+8. Add `earl` for assertions (for node:test)
+9. Add Hardhat 3.x plugins
+
+**Install dependencies**:
+
+```bash
+pnpm install
+```
+
+### Step 2: Convert hardhat.config to ESM
+
+v1 used CommonJS (`require`/`module.exports`), while v2 uses ESM (`import`/`export`).
+
+A v1 config imported the plugin for its side effects and held `namedAccounts`; a v2 config lists the plugin in `plugins` and holds no accounts. The current v2 config is the template's [`contracts/hardhat.config.ts`](https://github.com/wighawag/template-ethereum-contracts/blob/main/contracts/hardhat.config.ts); its core is:
+
+```typescript
+import type {HardhatUserConfig} from 'hardhat/config';
+import HardhatDeploy from 'hardhat-deploy';
+import {addForkConfiguration, addNetworksFromEnv, addNetworksFromKnownList} from 'hardhat-deploy/helpers';
+
+const config: HardhatUserConfig = {
+	plugins: [HardhatDeploy /* and the other Hardhat 3 plugins you use */],
+	solidity: {
+		profiles: {
+			default: {version: '0.8.17'},
+			production: {version: '0.8.17', settings: {optimizer: {enabled: true, runs: 999999}}},
+		},
+	},
+	networks: addForkConfiguration(
+		addNetworksFromKnownList(addNetworksFromEnv({default: {type: 'edr-simulated', chainType: 'l1'}})),
+	),
+	paths: {sources: ['src']},
+	generateTypedArtifacts: {destinations: [{folder: './generated', mode: 'typescript'}]},
+};
+
+export default config;
+```
+
+**Transformation Rules**:
+
+1. Change from `import 'hardhat-deploy'` to `import HardhatDeploy from 'hardhat-deploy'`
+2. Remove `namedAccounts` section entirely
+3. Convert `solidity.compilers` to `solidity.profiles`
+4. Add `plugins` array with imported plugins
+5. Use helper functions from `hardhat-deploy/helpers` for network configuration
+6. Add `generateTypedArtifacts` configuration
+7. Remove `mocha` timeout configuration (not needed in v2)
+8. Remove `external.deployments` configuration: a project you consume is a package dependency instead, see [Consuming another project](/hardhat-deploy/migration/#consuming-another-project)
+9. Delete `utils/network.ts` file (no longer needed)
+
+### Step 2.5: Update tsconfig.json for ESM
+
+The v2 `tsconfig.json` (and the `test/` and `scripts/` ones that extend it) are in the [template](https://github.com/wighawag/template-ethereum-contracts/tree/main/contracts).
+
+**Transformation Rules for tsconfig.json**:
+
+1. Update `module` from `commonjs` to `node16`
+2. Update `target` from `es5` to `es2022`
+3. Update `moduleResolution` from `node` to `node16`
+4. Add `lib: ["es2023"]`
+5. Add `skipLibCheck: true`
+6. Add `sourceMap: true`, `declaration: true`, `declarationMap: true`
+7. Change `include` to only `["deploy", "generated"]`
+8. Create `scripts/tsconfig.json` extending the main config
+9. Create `test/tsconfig.json` extending the main config
+
+### Step 3: Create rocketh Configuration
+
+In v2, named accounts are configured in a separate [`rocketh/config.ts`](https://github.com/wighawag/template-ethereum-contracts/blob/main/contracts/rocketh/config.ts) file.
+
+Create the directory and files:
+
+```bash
+mkdir -p rocketh
+```
+
+**rocketh/config.ts**: the named accounts (`namedAccounts` of v1, now `accounts`, each `{default: <v1 value>, <network>: ...}`), the signer protocols, and the extensions. The file is described in [Get started without Hardhat](/documentation/getting-started/#the-rocketh-folder), and the template's [`contracts/rocketh/config.ts`](https://github.com/wighawag/template-ethereum-contracts/blob/main/contracts/rocketh/config.ts) is a complete one. Every way of writing an account is in [Named accounts and signers](/documentation/named-accounts/).
+
+**An account that does not exist on some networks (`null`):** v1 let a per-network entry in `namedAccounts` be `null`, meaning "this account does not exist on that network". It means the same in v2, so such an entry moves to `rocketh/config.ts` unchanged:
+
+```typescript
+accounts: {
+	deployer: {default: 0},
+	// signs on every network except mainnet, where there is no such account
+	faucetOperator: {default: 1, mainnet: null},
+},
+```
+
+On a network where the entry is `null`, the name is absent: it has no entry in `env.namedAccounts` or `env.namedSigners`, and the run starts. On every other network it resolves as usual. Because the config is typed with `as const satisfies UserConfig`, `env.namedAccounts.faucetOperator` is typed `` `0x${string}` | undefined ``, so a deploy script must handle the absent case, exactly as a v1 script branched on `undefined`:
+
+```typescript
+const {faucetOperator} = env.namedAccounts;
+if (faucetOperator) {
+	// ...
+}
+```
+
+Only an explicit `null` means absent. A name with no entry for the current network and no `default` still refuses to start with `cannot get account for <name>`, so a misspelt network name fails loudly instead of silently dropping the account. If the value is only an address that the run never signs with, `data` is the other option: a network missing there resolves to `undefined` without throwing.
+
+**rocketh/deploy.ts** and **rocketh/environment.ts** are the same in every project; copy them from [Get started with hardhat-deploy](/hardhat-deploy/getting-started/#by-hand).
+
+### Step 4: Convert Deploy Scripts
+
+v1 deploy scripts used a different pattern than v2.
+
+**v1 deploy script example:**
+
+```typescript
+import {HardhatRuntimeEnvironment} from 'hardhat/types';
+import {DeployFunction} from 'hardhat-deploy/types';
+import {parseEther} from 'ethers';
+
+const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
+	const {deployments, getNamedAccounts} = hre;
+	const {deploy} = deployments;
+
+	const {deployer, simpleERC20Beneficiary} = await getNamedAccounts();
+
+	await deploy('SimpleERC20', {
+		from: deployer,
+		args: [simpleERC20Beneficiary, parseEther('1000000000')],
+		log: true,
+		autoMine: true,
+	});
+};
+export default func;
+func.tags = ['SimpleERC20'];
+```
+
+**v2 deploy script example:** (see [template-ethereum-contracts/deploy/001_deploy_greetings_registry.ts](https://github.com/wighawag/template-ethereum-contracts/blob/main/contracts/deploy/001_deploy_greetings_registry.ts))
+
+```typescript
+import {deployScript, artifacts} from '../rocketh/deploy.js';
+import {parseEther} from 'viem';
+
+export default deployScript(
+	async (env) => {
+		const {deployer, simpleERC20Beneficiary} = env.namedAccounts;
+
+		await env.deploy('SimpleERC20', {
+			artifact: artifacts.SimpleERC20,
+			account: deployer,
+			args: [simpleERC20Beneficiary, parseEther('1000000000')],
+		});
+	},
+	{
+		tags: ['SimpleERC20'],
+	},
+);
+```
+
+**Key changes:**
+
+- Remove `HardhatRuntimeEnvironment` and `DeployFunction` imports
+- Import `deployScript` and `artifacts` from `../rocketh/deploy.js`
+- Change `parseEther` from `ethers` to `viem`
+- Wrap function in `deployScript()` call
+- Change parameter from `(hre)` to `(env)`
+- Replace `hre.getNamedAccounts()` with direct `env.namedAccounts` access
+- Replace `hre.deployments.deploy()` with `env.deploy()`
+- Change `from:` to `account:`
+- Add explicit `artifact:` parameter
+- Remove `log:` and `autoMine:` parameters (not needed in v2)
+- Move tags to second argument object
+
+#### Proxy Deployment Example
+
+> **Three built-in proxy names changed**: `EIP173Proxy` is `ERC173Proxy`, `OpenZeppelinTransparentProxy` is `SharedAdminOpenZeppelinTransparentProxy`, and `OptimizedTransparentProxy` is `SharedAdminOptimizedTransparentProxy`. The set is closed, and a name outside it throws `unknown proxy contract <name>` when the deploy script RUNS, not when it compiles. Every other proxy option is mapped in the [capability map](/hardhat-deploy/migration/#proxies).
+
+**v1 proxy deploy script example:**
+
+```typescript
+const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
+	const {deployer} = await hre.getNamedAccounts();
+	const {deploy} = hre.deployments;
+	const useProxy = !hre.network.live;
+
+	await deploy('GreetingsRegistry', {
+		from: deployer,
+		proxy: useProxy && 'postUpgrade',
+		args: [2],
+		log: true,
+		autoMine: true,
+	});
+
+	return !useProxy;
+};
+export default func;
+func.id = 'deploy_greetings_registry';
+func.tags = ['GreetingsRegistry'];
+```
+
+**v2 proxy deploy script example:** (see [template-ethereum-contracts/deploy/001_deploy_greetings_registry.ts](https://github.com/wighawag/template-ethereum-contracts/blob/main/contracts/deploy/001_deploy_greetings_registry.ts))
+
+```typescript
+import {deployScript, artifacts} from '../rocketh/deploy.js';
+
+export default deployScript(
+	async (env) => {
+		const {deployer} = env.namedAccounts;
+		const useProxy = !env.tags.live;
+
+		await env.deployViaProxy(
+			'GreetingsRegistry',
+			{
+				account: deployer,
+				artifact: artifacts.GreetingsRegistry,
+				args: ['2'],
+			},
+			{
+				proxyDisabled: !useProxy,
+				execute: 'postUpgrade',
+			},
+		);
+
+		return !useProxy;
+	},
+	{
+		tags: ['GreetingsRegistry'],
+		id: 'deploy_greetings_registry',
+	},
+);
+```
+
+**`env.tags.live` only works once you declare the tag.** rocketh has no built-in `live`: its only default tag is `testnet`, for a chain its chain information marks as a testnet. Without a declaration `env.tags.live` is falsy on every network, mainnet included, and the script above would deploy behind a proxy in production. v1's `live` was false for `hardhat` and `localhost` and true everywhere else, so tag every chain you deploy to for real in `rocketh/config.ts`:
+
+```typescript
+export const config = {
+	// ...
+	chains: {
+		1: {tags: ['live']},
+		11155111: {tags: ['live', 'testnet']},
+	},
+} as const satisfies UserConfig;
+```
+
+Declaring `tags` for a chain replaces its default tags, so list `testnet` again where a script also relies on it.
+
+### Step 5: Update Tests
+
+v2 uses a different pattern for test fixtures.
+
+**v1 test example:**
+
+```typescript
+import {expect} from 'chai';
+import {ethers, deployments, getUnnamedAccounts, getNamedAccounts} from 'hardhat';
+import {IERC20} from '../typechain-types';
+import {setupUser, setupUsers} from './utils';
+
+const setup = deployments.createFixture(async () => {
+	await deployments.fixture('SimpleERC20');
+	const {simpleERC20Beneficiary} = await getNamedAccounts();
+	const contracts = {
+		SimpleERC20: await ethers.getContract<IERC20>('SimpleERC20'),
+	};
+	const users = await setupUsers(await getUnnamedAccounts(), contracts);
+	return {
+		...contracts,
+		users,
+		simpleERC20Beneficiary: await setupUser(simpleERC20Beneficiary, contracts),
+	};
+});
+
+describe('SimpleERC20', function () {
+	it('transfer fails', async function () {
+		const {users} = await setup();
+		await expect(users[0].SimpleERC20.transfer(users[1].address, 1)).to.be.revertedWith('NOT_ENOUGH_TOKENS');
+	});
+
+	it('transfer succeed', async function () {
+		const {users, simpleERC20Beneficiary, SimpleERC20} = await setup();
+		await simpleERC20Beneficiary.SimpleERC20.transfer(users[1].address, 1);
+
+		await expect(simpleERC20Beneficiary.SimpleERC20.transfer(users[1].address, 1))
+			.to.emit(SimpleERC20, 'Transfer')
+			.withArgs(simpleERC20Beneficiary.address, users[1].address, 1);
+	});
+});
+```
+
+**v2 test example:** (see [template-ethereum-contracts/test/js/GreetingsRegistry.test.ts](https://github.com/wighawag/template-ethereum-contracts/blob/main/contracts/test/js/GreetingsRegistry.test.ts))
+
+```typescript
+import {expect} from 'earl';
+import {describe, it} from 'node:test';
+import {network} from 'hardhat';
+import {EthereumProvider} from 'hardhat/types/providers';
+import {loadAndExecuteDeploymentsFromFiles} from '../rocketh/environment.js';
+import {Abi_SimpleERC20} from '../generated/abis/SimpleERC20.js';
+
+function setupFixtures(provider: EthereumProvider) {
+	return {
+		async deployAll() {
+			const env = await loadAndExecuteDeploymentsFromFiles({
+				provider: provider,
+			});
+
+			const SimpleERC20 = env.get<Abi_SimpleERC20>('SimpleERC20');
+
+			return {
+				env,
+				SimpleERC20,
+				namedAccounts: env.namedAccounts,
+				unnamedAccounts: env.unnamedAccounts,
+			};
+		},
+	};
+}
+
+const {provider, networkHelpers} = await network.connect();
+const {deployAll} = setupFixtures(provider);
+
+describe('SimpleERC20', function () {
+	it('transfer fails', async function () {
+		const {env, SimpleERC20, unnamedAccounts} = await networkHelpers.loadFixture(deployAll);
+
+		await expect(
+			env.execute(SimpleERC20, {
+				account: unnamedAccounts[0],
+				functionName: 'transfer',
+				args: [unnamedAccounts[1], 1n],
+			}),
+		).toBeRejectedWith('NOT_ENOUGH_TOKENS');
+	});
+
+	it('transfer succeed', async function () {
+		const {env, SimpleERC20, unnamedAccounts, namedAccounts} = await networkHelpers.loadFixture(deployAll);
+
+		await env.execute(SimpleERC20, {
+			account: namedAccounts.simpleERC20Beneficiary,
+			functionName: 'transfer',
+			args: [unnamedAccounts[1], 1n],
+		});
+	});
+});
+```
+
+**Key changes:**
+
+- Change test runner from `mocha` to `node:test` (or keep mocha if preferred)
+- Change assertion library from `chai` to `earl` (or keep chai if preferred)
+- Import `network` from 'hardhat'
+- Create custom fixture function using `loadAndExecuteDeploymentsFromFiles()`
+- Replace `deployments.createFixture()` with custom fixture
+- Replace `ethers.getContract()` with `env.get<Abi_Type>()`
+- Import ABI types from generated artifacts
+- Replace `getUnnamedAccounts()` with `env.unnamedAccounts`
+- Replace contract method calls with `env.execute()`
+- Use `BigInt` literals (1n) instead of Numbers (1) for amounts
+- Use `networkHelpers.loadFixture()` instead of direct fixture call
+
+### Step 6: Update Scripts
+
+**v1 script pattern:**
+
+```typescript
+import hre from 'hardhat';
+
+async function main() {
+	const {deployments, getNamedAccounts} = hre;
+	const {deployer} = await getNamedAccounts();
+
+	const MyContract = await deployments.get('MyContract');
+	const contract = await ethers.getContractAt('MyContract', MyContract.address);
+
+	await contract.someFunction();
+}
+
+main().catch((error) => {
+	console.error(error);
+	process.exit(1);
+});
+```
+
+**v2 script pattern:**
+
+```typescript
+import hre from 'hardhat';
+import {loadEnvironmentFromHardhat} from './rocketh/environment.js';
+import {Abi_MyContract} from './generated/abis/MyContract.js';
+
+async function main() {
+	const env = await loadEnvironmentFromHardhat({hre});
+
+	const MyContract = env.get<Abi_MyContract>('MyContract');
+
+	await env.execute(MyContract, {
+		account: env.namedAccounts.deployer,
+		functionName: 'someFunction',
+		args: [],
+	});
+}
+
+main().catch((error) => {
+	console.error(error);
+	process.exit(1);
+});
+```
+
+### Step 7: Update package.json Scripts
+
+The template's [`contracts/package.json`](https://github.com/wighawag/template-ethereum-contracts/blob/main/contracts/package.json) has the current set of v2 scripts: compiling, deploying, a local node, watchers, verification and export. v1's `hardhat node --watch` and `deploy --watch` are gone; their v2 equivalent is described in [Development workflow](/hardhat-deploy/development-workflow/).
+
+**Transformation Rules for Scripts**:
+
+1. Remove `hardhat typechain` (no longer needed, artifacts generated automatically)
+2. Update test command to use `hardhat test` (no need for mocha directly)
+3. Remove `_scripts.js` patterns
+4. Use `ldenv` for environment-aware commands
+5. Add `compile:watch` using `as-soon`
+6. Add `deploy:watch` using `as-soon` and `wait-on`
+7. Use rocketh commands: `rocketh-verify`, `rocketh-export`, `rocketh-doc`
+8. Add `typescript` script for TypeScript compilation
+9. Use `@@MODE` placeholder for network/environment
+
+## Common Migration Patterns
+
+### Pattern 1: Converting Named Accounts
+
+**v1:**
+
+```typescript
+namedAccounts: {
+  deployer: 0,
+  tokenOwner: '0x1234...',
+}
+```
+
+**v2:**
+
+```typescript
+// rocketh/config.ts
+export const config = {
+	accounts: {
+		deployer: {
+			default: 0,
+		},
+		tokenOwner: {
+			default: '0x1234...',
+		},
+	},
+} as const satisfies UserConfig;
+```
+
+### Pattern 2: Converting Deploy Options
+
+**v1:**
+
+```typescript
+await deploy('Contract', {
+	from: deployer,
+	args: [arg1, arg2],
+	log: true,
+	gasLimit: 2000000,
+});
+```
+
+**v2:**
+
+```typescript
+await deploy('Contract', {
+	account: deployer,
+	artifact: artifacts.Contract,
+	args: [arg1, arg2],
+	gas: 2000000n, // v1's gasLimit
+});
+```
+
+### Pattern 3: Converting Proxy Deployment
+
+If the v1 script names a `proxyContract`, translate the name too (three changed, see [Proxies](/hardhat-deploy/migration/#proxies)).
+
+**v1:**
+
+```typescript
+await deploy('MyContract', {
+	from: deployer,
+	proxy: useProxy && 'postUpgrade',
+	args: [initArg],
+});
+```
+
+**v2:**
+
+```typescript
+await env.deployViaProxy(
+	'MyContract',
+	{
+		account: deployer,
+		artifact: artifacts.MyContract,
+		args: [initArg],
+	},
+	{
+		proxyDisabled: !useProxy,
+		execute: 'postUpgrade',
+	},
+);
+```
+
+### Pattern 4: Contract Interaction in Tests
+
+**v1:**
+
+```typescript
+const MyContract = await ethers.getContract('MyContract');
+await MyContract.setValue(42);
+const value = await MyContract.getValue();
+expect(value).to.equal(42);
+```
+
+**v2:**
+
+```typescript
+import {Abi_MyContract} from '../generated/abis/MyContract.js';
+
+const MyContract = env.get<Abi_MyContract>('MyContract');
+await env.execute(MyContract, {
+	account: env.namedAccounts.deployer,
+	functionName: 'setValue',
+	args: [42n],
+});
+const value = await env.read(MyContract, {
+	functionName: 'getValue',
+	args: [],
+});
+expect(value).toEqual(42n);
+```
+
+## When something does not work
+
+A v1 feature that seems to do nothing, or an option that is refused, is most likely one v2 changed or dropped: look it up in the [capability map](/hardhat-deploy/migration/) first. The messages rocketh prints say what to change, and the [migration skill](https://github.com/wighawag/rocketh/blob/main/skills/hardhat-deploy-migration/SKILL.md) can guide an AI assistant through a port.
+
+## Migration Checklist
+
+Use this checklist to verify your migration is complete and working correctly.
+
+### Phase 1: Dependencies
+
+- [ ] Updated package.json with `"type": "module"`
+- [ ] Updated `hardhat` to version 3.x or higher
+- [ ] Updated `hardhat-deploy` to version 2.x or higher
+- [ ] Removed `hardhat-deploy-ethers` and `hardhat-deploy-tenderly`
+- [ ] Added `rocketh` package
+- [ ] Added `@rocketh/deploy`, `@rocketh/read-execute`, `@rocketh/node`
+- [ ] Added `@rocketh/proxy` (if using proxies)
+- [ ] Added optional packages: `@rocketh/export`, `@rocketh/verifier`, `@rocketh/doc`
+- [ ] Added `viem` package
+- [ ] Added Hardhat 3.x plugins
+- [ ] Updated `tsconfig.json` for ESM (module: "node16", moduleResolution: "node16")
+- [ ] Created `scripts/tsconfig.json` with extended configuration
+- [ ] Created `test/tsconfig.json` with extended configuration
+- [ ] Ran `pnpm install` successfully
+
+### Phase 2: Configuration
+
+- [ ] Converted hardhat.config.ts to use `export default`
+- [ ] Removed `namedAccounts` from hardhat.config.ts
+- [ ] Imported `HardhatDeploy` from 'hardhat-deploy'
+- [ ] Added plugins array with all required plugins
+- [ ] Converted solidity config to use profiles
+- [ ] Used helper functions for network configuration
+- [ ] Added `generateTypedArtifacts` configuration
+- [ ] Deleted `utils/network.ts` file
+- [ ] Created `rocketh/config.ts` with named accounts
+- [ ] Added extensions to rocketh/config.ts
+- [ ] Created `rocketh/deploy.ts` with deployScript setup
+- [ ] Created `rocketh/environment.ts` with environment setup
+
+### Phase 3: Deploy Scripts
+
+- [ ] Converted all deploy scripts to use `deployScript` wrapper
+- [ ] Changed from `(hre)` to `(env)` parameter
+- [ ] Replaced `hre.getNamedAccounts()` with `env.namedAccounts`
+- [ ] Changed `from:` to `account:` in all deploy calls
+- [ ] Added explicit `artifact:` parameter to all deploy calls
+- [ ] Removed `log:` and `autoMine:` parameters
+- [ ] Moved tags to second argument object
+- [ ] Converted proxy deployments to use `env.deployViaProxy()`
+- [ ] Updated `hre.network.live` to `env.tags.live`, and declared the `live` tag on every real chain in `rocketh/config.ts` (rocketh has no built-in `live` tag)
+- [ ] Imported artifacts from `../rocketh/deploy.js`
+
+### Phase 4: Tests
+
+- [ ] Changed test runner to `node:test` (or kept mocha if preferred)
+- [ ] Updated assertion library imports
+- [ ] Created custom fixture functions
+- [ ] Replaced `deployments.createFixture()` with custom fixtures
+- [ ] Imported ABI types from generated artifacts
+- [ ] Replaced `ethers.getContract()` with `env.get<Abi_Type>()`
+- [ ] Replaced `getUnnamedAccounts()` with `env.unnamedAccounts`
+- [ ] Converted contract method calls to `env.execute()`
+- [ ] Updated test utilities
+- [ ] Used `networkHelpers.loadFixture()` for fixtures
+
+### Phase 5: Scripts
+
+- [ ] Imported `loadEnvironmentFromHardhat` from rocketh/environment
+- [ ] Imported ABI types from generated artifacts
+- [ ] Replaced direct HRE access with `loadEnvironmentFromHardhat()`
+- [ ] Converted contract method calls to `env.execute()`
+
+### Phase 6: Package.json Scripts
+
+- [ ] Removed `hardhat typechain` command
+- [ ] Updated test command to use `hardhat test`
+- [ ] Removed `_scripts.js` patterns
+- [ ] Added `ldenv` commands for environment-aware operations
+- [ ] Added watch commands using `as-soon`
+- [ ] Added rocketh commands: `rocketh-verify`, `rocketh-export`, `rocketh-doc`
+- [ ] Added TypeScript compilation script
+
+### Phase 7: Verification
+
+- [ ] Ran `npx hardhat compile` successfully
+- [ ] Ran `npx hardhat deploy` on local network successfully
+- [ ] Ran `npx hardhat test` successfully
+- [ ] Verified deployments in `deployments/` directory
+- [ ] Verified generated artifacts in `generated/` directory
+- [ ] Tested on test network (if applicable)
+- [ ] Verified contract interactions work correctly
+- [ ] Checked type errors with `tsc --noEmit`
+
+### Phase 8: Documentation
+
+- [ ] Updated project README with v2-specific instructions
+- [ ] Documented any custom rocketh extensions used
+- [ ] Updated CI/CD configuration if needed
+- [ ] Created migration notes for team members
+
+## Additional Resources
+
+- [hardhat-deploy v2 documentation](/hardhat-deploy/)
+- [Get started with hardhat-deploy](/hardhat-deploy/getting-started/)
+- [The v1-to-v2 capability map](/hardhat-deploy/migration/): what v1 has that v2 does not
+- [Migrating from Hardhat 2](https://hardhat.org/docs/migrate-from-hardhat2), Hardhat's own guide
+- [template-ethereum-contracts](https://github.com/wighawag/template-ethereum-contracts): a complete v2 project
+- The demos in the rocketh repository: [basic](https://github.com/wighawag/rocketh/tree/main/demoes/hardhat-deploy/basic), [diamond](https://github.com/wighawag/rocketh/tree/main/demoes/hardhat-deploy/diamond), [proxies](https://github.com/wighawag/rocketh/tree/main/demoes/hardhat-deploy/proxies), [governance](https://github.com/wighawag/rocketh/tree/main/demoes/hardhat-deploy/governance) (`catchUnknownSigner` against multisig- and timelock-owned upgrades), [router](https://github.com/wighawag/rocketh/tree/main/demoes/hardhat-deploy/router)
+- Issues: the [rocketh repository](https://github.com/wighawag/rocketh/issues)
+
+## Summary
+
+Migrating from hardhat-deploy v1 to v2 involves:
+
+1. **Updating dependencies** to Hardhat 3.x and v2 packages
+2. **Restructuring configuration** into multiple files (hardhat.config.ts, rocketh/\*.ts)
+3. **Converting deploy scripts** to use the new pattern with `deployScript`
+4. **Updating tests** to use the new fixture pattern
+5. **Modernizing scripts** to use `loadEnvironmentFromHardhat`
+6. **Updating package.json scripts** for the new workflow
+
+The migration requires significant changes, but results in:
+
+- Better TypeScript support
+- More modular architecture
+- Enhanced extensibility through rocketh
+- Modern ESM modules
+- Improved developer experience
+
+Take the migration step by step, test each phase thoroughly, and refer to this guide and the [template-ethereum-contracts](https://github.com/wighawag/template-ethereum-contracts) repository for concrete examples of the transformations needed.

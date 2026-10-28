@@ -1,45 +1,76 @@
 # The sidebar of the documentation section of rocketh.dev, in reading order.
-# Transcribed from the VitePress sidebar this site had before it moved to the
-# docs template, so the order and the labels are unchanged. Links are site
-# paths. Read by the site only: GitHub shows the folder as it is.
+# Links are site paths. Read by the site only: GitHub shows the folder as it
+# is. The hardhat-deploy section has its own, in hardhat-deploy/_sidebar.yaml.
 - text: Introduction
   link: /documentation/
-- text: Getting Started
+- text: Start
   collapsed: false
   items:
-    - text: Installation and Setup
-      link: /documentation/installation/
-    - text: Core Concepts
-      link: /documentation/core-concepts/
-    - text: Using rocketh
-      link: /documentation/deploying/
-    - text: Examples
-      link: /documentation/examples/
-- text: Going Further
+    - text: Get started without Hardhat
+      link: /documentation/getting-started/
+- text: Concepts
   collapsed: false
   items:
-    - text: Using hardhat-deploy
-      link: /documentation/hardhat-deploy/
-    - text: Testing Deploy Scripts
-      link: /documentation/testing/
-    - text: Rehearsing on a Fork
-      link: /documentation/fork-runs/
-    - text: Captured Transactions
-      link: /documentation/captured-transactions/
-    - text: Exporting and Verifying
-      link: /documentation/exporting-and-verifying/
-    - text: Handling Unknown Signers
-      link: /documentation/unknown-signers/
-    - text: Guarding Execute Calls
-      link: /documentation/execute-guard/
-    - text: Running Once, and Running Last
+    - text: Deploy scripts, tags and dependencies
+      link: /documentation/deploy-scripts/
+    - text: Running once, and running last
       link: /documentation/script-lifecycle/
+    - text: Environments and chains
+      link: /documentation/environments/
+    - text: Named accounts and signers
+      link: /documentation/named-accounts/
+    - text: Deployment records
+      link: /documentation/deployment-records/
+- text: Guides
+  collapsed: false
+  items:
+    - text: Deploy contracts
+      link: /documentation/deploy-contracts/
+    - text: Deterministic addresses
+      link: /documentation/deterministic-addresses/
+    - text: Upgradeable contracts with proxies
+      link: /documentation/proxies/
+    - text: Diamonds
+      link: /documentation/diamonds/
+    - text: Routers
+      link: /documentation/routers/
+    - text: Rehearse on a fork
+      link: /documentation/fork-runs/
+    - text: A Safe-owned project, end to end
+      link: /documentation/safe-owned-project/
+    - text: Unknown signers
+      link: /documentation/unknown-signers/
+    - text: Guard execute calls
+      link: /documentation/execute-guard/
+    - text: Captured transactions
+      link: /documentation/captured-transactions/
+    - text: Export, verify and document
+      link: /documentation/exporting-and-verifying/
+    - text: Share contracts between projects
+      link: /documentation/sharing-contracts/
+    - text: Use viem
+      link: /documentation/viem/
+    - text: Run deploy scripts in a browser
+      link: /documentation/browser/
+    - text: Production hardening
+      link: /documentation/production-hardening/
 - text: Reference
   collapsed: false
   items:
-    - text: Production Hardening
-      link: /documentation/production-hardening/
-    - text: Architecture Overview
-      link: /documentation/architecture/
-    - text: Migrating from v1
-      link: /documentation/migration/
+    - text: CLI
+      link: /documentation/reference/cli/
+    - text: Configuration
+      link: /documentation/reference/configuration/
+    - text: The environment
+      link: /documentation/reference/environment/
+    - text: Packages
+      link: /documentation/reference/packages/
+- text: Extending rocketh
+  collapsed: false
+  items:
+    - text: Writing an extension
+      link: /documentation/extending/
+    - text: Testing an extension
+      link: /documentation/extending/testing/
+    - text: Architecture
+      link: /documentation/extending/architecture/

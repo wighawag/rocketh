@@ -49,6 +49,8 @@ pnpm docs:preview   # serve that build
 
 Each builds the playground (`packages/rocketh-playground`) first, so the page shows the widget of this checkout, and points the site at this checkout, so a worktree previews its own content. `ROCKETH_WEBSITE_DIR` names a site checkout somewhere else. `pnpm docs:build` fails on a dead link or an `#anchor` that is not on its page; the deploy workflow runs the same build on a pull request that touches the content.
 
+**Moving or removing a page** keeps its old address working: add the old address to `_redirects.yaml`, at the root of this repository, in the same pull request, forwarded to where the content went (a key with an `#anchor` forwards one section of a split page on its own). The build fails when a target is not a page or lacks the anchor named, and rocketh-website's end-to-end suite checks every address the site has served. An address must never simply disappear: links to it live in npm READMEs, other repositories and search engines.
+
 `.github/workflows/deploy.yml` deploys on every push to `main`, building the commit of rocketh-website it pins in `ROCKETH_WEBSITE_REF`. A change to the site goes live through a pull request here that moves that pin.
 
 ## Before you open a pull request

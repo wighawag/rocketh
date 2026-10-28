@@ -1,0 +1,101 @@
+# Old addresses of rocketh.dev pages that moved, each forwarded to where its
+# content lives now. Read by the site (rocketh-website, `redirectsFile` of the
+# template-svelte-docs engine), which writes a forwarding page per address and
+# fails the build when a target is not a page or lacks the anchor named.
+#
+# A key with an `#anchor` forwards that one anchor of an old page on its own,
+# for a page that was split: a reader arriving with it goes to where that
+# section went, every other anchor goes to the page's own target. An anchor
+# that is not listed is kept as the reader gave it.
+#
+# Every address the site served before the restructure is either still a page
+# or listed here; rocketh-website's end-to-end suite checks all of them.
+
+# --- documentation/ -------------------------------------------------------
+
+/documentation/installation/: /documentation/getting-started/
+'/documentation/installation/#installing-rocketh-and-hardhat-deploy': /hardhat-deploy/getting-started/
+'/documentation/installation/#setting-up-your-project': /documentation/getting-started/#the-rocketh-folder
+
+/documentation/core-concepts/: /documentation/deploy-scripts/
+'/documentation/core-concepts/#deployments-and-environments': /documentation/environments/
+'/documentation/core-concepts/#environments-and-chains': /documentation/environments/
+'/documentation/core-concepts/#declaring-a-chain-rocketh-does-not-know': /documentation/environments/#declaring-a-chain-rocketh-does-not-know
+'/documentation/core-concepts/#chains-without-eip-1559': /documentation/environments/#chains-without-eip-1559
+'/documentation/core-concepts/#fees-for-a-whole-run': /documentation/environments/#fees-for-a-whole-run
+'/documentation/core-concepts/#named-accounts': /documentation/named-accounts/
+'/documentation/core-concepts/#named-accounts-on-a-real-network': /documentation/named-accounts/#named-accounts-on-a-real-network
+'/documentation/core-concepts/#deploy-scripts': /documentation/deploy-scripts/
+'/documentation/core-concepts/#tags-and-dependencies': /documentation/deploy-scripts/#tags-running-part-of-the-scripts
+
+/documentation/deploying/: /documentation/deploy-contracts/
+'/documentation/deploying/#the-environment-object': /documentation/reference/environment/
+'/documentation/deploying/#deploying-contracts': /documentation/deploy-contracts/#deploying-a-contract
+'/documentation/deploying/#deploying-proxies': /documentation/proxies/
+'/documentation/deploying/#deploying-diamonds': /documentation/diamonds/
+'/documentation/deploying/#initialization-calls-execute': /documentation/diamonds/#initialization-calls-execute
+'/documentation/deploying/#deterministic-deployments': /documentation/deterministic-addresses/
+
+/documentation/examples/: /documentation/deploy-contracts/
+'/documentation/examples/#basic-deployment': /documentation/deploy-contracts/#deploying-a-contract
+'/documentation/examples/#proxy-deployment': /documentation/proxies/#deploying-behind-a-proxy
+'/documentation/examples/#diamond-deployment': /documentation/diamonds/#deploying-a-diamond
+'/documentation/examples/#deployment-with-dependencies': /documentation/deploy-scripts/#dependencies-running-another-script-first
+
+/documentation/hardhat-deploy/: /hardhat-deploy/getting-started/
+'/documentation/hardhat-deploy/#configuring-hardhat-deploy': /hardhat-deploy/getting-started/#by-hand
+'/documentation/hardhat-deploy/#running-deployments': /hardhat-deploy/deploy-task/
+'/documentation/hardhat-deploy/#when-the-network-has-no-accounts': /documentation/named-accounts/#when-the-network-has-no-accounts
+'/documentation/hardhat-deploy/#using-deployments-in-tests': /hardhat-deploy/tests/
+
+/documentation/testing/: /documentation/extending/testing/
+/documentation/architecture/: /documentation/extending/architecture/
+/documentation/migration/: /hardhat-deploy/migration/
+
+# --- hardhat-deploy/ ------------------------------------------------------
+
+/hardhat-deploy/documentation/introduction/: /hardhat-deploy/
+/hardhat-deploy/documentation/what-is-it-for/: /hardhat-deploy/
+/hardhat-deploy/documentation/in-a-nutshell/: /documentation/#a-deploy-script
+
+/hardhat-deploy/documentation/installation/: /hardhat-deploy/getting-started/
+'/hardhat-deploy/documentation/installation/#using-hardhat-deploy-init': /hardhat-deploy/getting-started/#with-hardhat-deploy-init
+'/hardhat-deploy/documentation/installation/#migrating-from-hardhat-deploy-v1': /hardhat-deploy/migration/
+'/hardhat-deploy/documentation/installation/#migrating-existing-deployment-to-hardhat-deploy': /documentation/deployment-records/#importing-deployments-made-elsewhere
+
+/hardhat-deploy/documentation/command-and-tasks/: /hardhat-deploy/deploy-task/
+'/hardhat-deploy/documentation/command-and-tasks/#2-rocketh-verify': /documentation/reference/cli/#rocketh-verify
+'/hardhat-deploy/documentation/command-and-tasks/#3-rocketh-export': /documentation/reference/cli/#rocketh-export
+
+/hardhat-deploy/documentation/environment/: /documentation/reference/environment/
+
+/hardhat-deploy/documentation/configuration/: /documentation/reference/configuration/
+'/hardhat-deploy/documentation/configuration/#1-namedaccounts-ability-to-name-addresses': /documentation/named-accounts/
+'/hardhat-deploy/documentation/configuration/#2-deterministicdeployment-ability-to-specify-a-deployment-factory': /documentation/deterministic-addresses/#the-factories
+
+/hardhat-deploy/documentation/how-to-deploy-contracts/: /documentation/deploy-contracts/
+'/hardhat-deploy/documentation/how-to-deploy-contracts/#the-deploy-task': /hardhat-deploy/deploy-task/
+'/hardhat-deploy/documentation/how-to-deploy-contracts/#deploy-scripts': /documentation/deploy-scripts/
+'/hardhat-deploy/documentation/how-to-deploy-contracts/#environment-and-functions-provided-by-rocketh-modules': /documentation/reference/environment/#what-the-extensions-add
+'/hardhat-deploy/documentation/how-to-deploy-contracts/#handling-contracts-using-libraries': /documentation/deploy-contracts/#linking-libraries
+
+/hardhat-deploy/documentation/how-to/: /hardhat-deploy/
+/hardhat-deploy/documentation/how-to/setup-first-project/: /hardhat-deploy/getting-started/
+'/hardhat-deploy/documentation/how-to/setup-first-project/#migrating-from-hardhat-deploy-v1': /hardhat-deploy/migration/
+'/hardhat-deploy/documentation/how-to/setup-first-project/#example-comparison': /hardhat-deploy/migration/step-by-step/
+'/hardhat-deploy/documentation/how-to/setup-first-project/#migrating-existing-deployment-to-hardhat-deploy': /documentation/deployment-records/#importing-deployments-made-elsewhere
+/hardhat-deploy/documentation/how-to/migration-from-v1/: /hardhat-deploy/migration/step-by-step/
+'/hardhat-deploy/documentation/how-to/migration-from-v1/#troubleshooting-guide': /hardhat-deploy/migration/step-by-step/#when-something-does-not-work
+/hardhat-deploy/documentation/how-to/configure-named-accounts/: /documentation/named-accounts/
+'/hardhat-deploy/documentation/how-to/configure-named-accounts/#accounts-on-a-real-network': /documentation/named-accounts/#when-the-network-has-no-accounts
+/hardhat-deploy/documentation/how-to/configure-network-helpers/: /hardhat-deploy/networks/
+'/hardhat-deploy/documentation/how-to/configure-network-helpers/#3-addforkconfiguration': /hardhat-deploy/networks/#forking-with-hardhat_fork
+/hardhat-deploy/documentation/how-to/use-tags-and-dependencies/: /documentation/deploy-scripts/#tags-running-part-of-the-scripts
+/hardhat-deploy/documentation/how-to/deploy-with-proxies/: /documentation/proxies/
+/hardhat-deploy/documentation/how-to/deploy-diamond-contracts/: /documentation/diamonds/
+/hardhat-deploy/documentation/how-to/deployment-fixtures-in-tests/: /hardhat-deploy/tests/
+/hardhat-deploy/documentation/how-to/use-fork-testing/: /documentation/fork-runs/#through-hardhat-deploy-hardhat_fork
+'/hardhat-deploy/documentation/how-to/use-fork-testing/#how-fork-testing-works': /hardhat-deploy/networks/#forking-with-hardhat_fork
+/hardhat-deploy/documentation/how-to/use-viem-integration/: /documentation/viem/
+/hardhat-deploy/documentation/how-to/verify-contracts/: /documentation/exporting-and-verifying/#contract-verification
+/hardhat-deploy/documentation/how-to/export-deployments/: /documentation/exporting-and-verifying/#exporting-deployments
