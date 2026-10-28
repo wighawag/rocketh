@@ -81,7 +81,72 @@ const TokenAbi = [
 	},
 ] as const satisfies Abi;
 
+/**
+ * A contract written to sit behind a proxy: no constructor, an initializer the first deployment
+ * calls through the proxy, and a migration step an upgrade calls. `CounterV1` and `CounterV2` are
+ * two versions of the same source, kept side by side as an upgrade story keeps them.
+ */
+const ProxiedAbi = [
+	{
+		type: 'function',
+		name: 'init',
+		inputs: [{type: 'address', name: 'manager'}],
+		outputs: [],
+		stateMutability: 'nonpayable',
+	},
+	{type: 'function', name: 'postUpgrade', inputs: [], outputs: [], stateMutability: 'nonpayable'},
+	{
+		type: 'function',
+		name: 'manager',
+		inputs: [],
+		outputs: [{type: 'address'}],
+		stateMutability: 'view',
+	},
+] as const satisfies Abi;
+
+/** A diamond facet holding a counter. */
+const CounterFacetAbi = [
+	{type: 'function', name: 'increment', inputs: [], outputs: [], stateMutability: 'nonpayable'},
+	{
+		type: 'function',
+		name: 'count',
+		inputs: [],
+		outputs: [{type: 'uint256'}],
+		stateMutability: 'view',
+	},
+] as const satisfies Abi;
+
+/** A diamond facet holding the admin switches, with the initializer the first cut calls. */
+const AdminFacetAbi = [
+	{
+		type: 'function',
+		name: 'initialize',
+		inputs: [{type: 'address', name: 'manager'}],
+		outputs: [],
+		stateMutability: 'nonpayable',
+	},
+	{
+		type: 'function',
+		name: 'setPaused',
+		inputs: [{type: 'bool', name: 'paused'}],
+		outputs: [],
+		stateMutability: 'nonpayable',
+	},
+	{
+		type: 'function',
+		name: 'paused',
+		inputs: [],
+		outputs: [{type: 'bool'}],
+		stateMutability: 'view',
+	},
+] as const satisfies Abi;
+
 export const artifacts = {
 	Registry: contract('Registry', RegistryAbi, 'a1'),
 	Token: contract('Token', TokenAbi, 'a2'),
+	Vault: contract('Vault', ProxiedAbi, 'a3'),
+	CounterV1: contract('CounterV1', ProxiedAbi, 'a4'),
+	CounterV2: contract('CounterV2', ProxiedAbi, 'a5'),
+	CounterFacet: contract('CounterFacet', CounterFacetAbi, 'a6'),
+	AdminFacet: contract('AdminFacet', AdminFacetAbi, 'a7'),
 };

@@ -2,5 +2,7 @@
 	"rocketh": ["setupDeployScripts"],
 	"@rocketh/deploy": ["deploy"],
 	"@rocketh/read-execute": ["execute"],
-	"@rocketh/proxy": ["deployViaProxy"]
+	"@rocketh/proxy": ["deployViaProxy"],
+	"@rocketh/diamond": ["diamond"],
+	"@rocketh/signer": ["privateKey"]
 }
