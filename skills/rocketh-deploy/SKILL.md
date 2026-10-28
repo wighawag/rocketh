@@ -1,13 +1,18 @@
 ---
 name: rocketh-deploy
-description: 'Deploy with rocketh or hardhat-deploy v2: a project with a `rocketh/config.ts`, `deployScript` files, or `rocketh` or `hardhat-deploy` ^2 in package.json (the Hardhat flavor of Scaffold-ETH 2 included). Use when writing or changing a deploy script; when running or re-running a deployment on a network; when upgrading a contract behind a proxy; when a step must run once; when verifying or exporting deployments afterwards.'
+description: 'Deploy with rocketh or hardhat-deploy v2: a project with a `rocketh/config.ts`, `deployScript` files, or `rocketh` or `hardhat-deploy` ^2 in package.json (the Hardhat flavor of Scaffold-ETH 2 included). Use when writing or changing a deploy script; when running or re-running a deployment on a network; when upgrading a contract behind a proxy or a diamond; when a step must run once; when verifying or exporting deployments afterwards.'
 metadata:
   rocketh: '>=0.26.2'
 ---
 
 # Deploying with rocketh and hardhat-deploy v2
 
-rocketh runs a project's deploy scripts and records what they deployed. `hardhat deploy` (hardhat-deploy v2) runs the same scripts through the same executor, so every rule below holds under both; only the command line differs ([The same run with the `rocketh` command](https://rocketh.dev/hardhat-deploy/deploy-task/#the-same-run-with-the-rocketh-command)). The documentation at rocketh.dev says what each function and option does; this skill carries the decisions, each tied to the page that makes it true.
+rocketh runs a project's deploy scripts and records what they deployed. `hardhat deploy` (hardhat-deploy v2) runs the same scripts through the same executor, so every rule below holds under both ([The same run with the `rocketh` command](https://rocketh.dev/hardhat-deploy/deploy-task/#the-same-run-with-the-rocketh-command)). What differs between the two setups (the command line, where a network's endpoint and keys are configured, how the finished check is run) is in one reference per setup. Read the one the project uses before running anything:
+
+- `hardhat.config.ts` lists hardhat-deploy among its plugins: [references/hardhat-deploy.md](references/hardhat-deploy.md).
+- The project runs the `rocketh` command without Hardhat: [references/rocketh-cli.md](references/rocketh-cli.md).
+
+The documentation at rocketh.dev says what each function and option does; this skill carries the decisions, each tied to the page that makes it true.
 
 ## First, the version
 
@@ -45,7 +50,7 @@ export type Accounts = typeof config.accounts;
 export type Data = typeof config.data;
 ```
 
-**Keys and RPC URLs come from the environment, and you never handle them.** Under hardhat-deploy's network helpers, a network's endpoint is `ETH_NODE_URI_<network>` and its accounts `MNEMONIC_<network>` (else `MNEMONIC`); the value `SECRET` makes either read a Hardhat configuration variable instead ([Environment variable patterns](https://rocketh.dev/hardhat-deploy/networks/#environment-variable-patterns), [Secret management](https://rocketh.dev/hardhat-deploy/networks/#secret-management)). Under the `rocketh` command, `rocketh/config.ts` reads them from `process.env` (`privateKey:${process.env.DEPLOYER_PRIVATE_KEY}`), and the command loads `.env` and `.env.local` ([Named accounts on a real network](https://rocketh.dev/documentation/named-accounts/#named-accounts-on-a-real-network), [CLI](https://rocketh.dev/documentation/reference/cli/)). When a run stops because one is missing, name the variable to the user and let them set it. Hard guardrail: never read, print, write or ask for a private key, a mnemonic or an RPC URL carrying a token; refer to it by its variable name (`"$ETH_NODE_URI_sepolia"`).
+**Keys and RPC URLs come from the environment, and you never handle them.** On a real network, a run that cannot resolve an account stops before any script and says what to set ([Named accounts on a real network](https://rocketh.dev/documentation/named-accounts/#named-accounts-on-a-real-network)); which variable holds each endpoint and key depends on the setup, and its reference says. When a run stops because one is missing, name the variable to the user and let them set it. Hard guardrail: never read, print, write or ask for a private key, a mnemonic or an RPC URL carrying a token; refer to it by its variable name.
 
 `linkedData` is public: it is copied into every export and so into the frontend that ships it. Put a prefix, an admin address or a start block there, never a secret ([`linkedData` is public](https://rocketh.dev/documentation/exporting-and-verifying/#linkeddata-is-public)).
 
@@ -131,7 +136,7 @@ export default deployScript(
 
 ## Upgrading a contract
 
-An upgrade is a re-run. Change the contract, compile, and run the same script again: `deployViaProxy`, from `@rocketh/proxy`, deploys the new implementation and upgrades the proxy only when the implementation changed ([Upgrading](https://rocketh.dev/documentation/proxies/#upgrading)). The script keeps its deployment name; an upgrade needs no new script.
+An upgrade is a re-run. Change the contract, compile, and run the same script again: `deployViaProxy`, from `@rocketh/proxy`, deploys the new implementation and upgrades the proxy only when the implementation changed ([Upgrading](https://rocketh.dev/documentation/proxies/#upgrading)). The script keeps its deployment name; an upgrade needs no new script. Who sends the upgrade, what `execute` calls on it, and an upgrade story kept with `upgradeIndex` are in [references/proxies.md](references/proxies.md); a diamond, whose upgrade removes whatever its declared facets no longer produce, is in [references/diamonds.md](references/diamonds.md).
 
 rocketh does not check that the new implementation's storage layout is compatible with the old one: it compares the implementation address in the proxy's EIP-1967 slot and sends the upgrade when it differs, and a diamond cut compares selectors and facets the same way (same section). Before an upgrade on a live network, compare the old and new `storageLayout` (storage variables may only be appended) and tell the user what you found, then _rehearse_ the upgrade on a fork (next section).
 
@@ -145,26 +150,11 @@ Then continue with the skill `rocketh-safe-owned-changes`; when it is not instal
 
 Re-running is how a deployment finishes and how an upgrade happens. A second run is not a recovery: it reads the records and the chain, and sends only what is still needed ([Running once, and running last](https://rocketh.dev/documentation/script-lifecycle/)). A run that stopped halfway is finished by running the same scripts again, unchanged.
 
-**The user says yes to the environment and the chain.** Before any run on a network other than hardhat's in-memory one, tell the user the environment (`--network` under hardhat, `-e` under `rocketh`) and the chain it is, and wait for their yes. rocketh asks as well: it prints the environment, its chain and its tags, then the gas prices, and asks whether to proceed ([Before the run: the confirmation](https://rocketh.dev/documentation/reference/cli/#before-the-run-the-confirmation)). Run it where the user can answer, or, once they said yes to this environment and this chain, add `--skip-prompts`. Without a terminal the run stops with an error naming `--skip-prompts`: that error is a question for the user, not a flag to add on your own.
-
-```bash
-npx hardhat deploy --network sepolia
-npx rocketh -e sepolia
-npx hardhat deploy --network sepolia --skip-prompts
-```
-
-`npx hardhat deploy` with no `--network` runs on hardhat's in-memory network: it asks nothing and saves nothing, a quick check that the scripts run ([The `hardhat deploy` task](https://rocketh.dev/hardhat-deploy/deploy-task/)).
+**The user says yes to the environment and the chain.** Before any run on a network other than hardhat's in-memory one, tell the user the environment and the chain it is, and wait for their yes. rocketh asks as well: it prints the environment, its chain and its tags, then the gas prices, and asks whether to proceed ([Before the run: the confirmation](https://rocketh.dev/documentation/reference/cli/#before-the-run-the-confirmation)). Run it where the user can answer, or, once they said yes to this environment and this chain, add `--skip-prompts`. Without a terminal the run stops with an error naming `--skip-prompts`: that error is a question for the user, not a flag to add on your own. The command that starts a run is in the setup's reference.
 
 `--reset` deletes the environment's deployment records and its run-once ids, so the next run deploys everything again ([Where the record lives](https://rocketh.dev/documentation/script-lifecycle/#where-the-record-lives)). Run it only when the user asked for it; with `--skip-prompts` it deletes without asking.
 
-**When it is finished.** On hardhat's in-memory network, which saves no records, the deployment is finished when the run succeeds. On a live network it is finished when a re-run of the same scripts on a fork of that network sends nothing. rocketh attaches to a fork, it does not start one, so the check needs a node that can fork the network, such as anvil ([From the command line: `--is-fork`](https://rocketh.dev/documentation/fork-runs/#from-the-command-line---is-fork)); `--write-transactions` writes what the run sent, `[]` when it sent nothing ([Getting the list, as a file](https://rocketh.dev/documentation/captured-transactions/#getting-the-list-as-a-file)). The `hardhat deploy` task has no `--write-transactions`, so use the `rocketh` command for this check in a hardhat-deploy project too.
-
-```bash
-anvil --fork-url "$ETH_NODE_URI_sepolia"
-npx rocketh -e sepolia --is-fork --write-transactions ./fork-rerun.json
-```
-
-`fork-rerun.json` holding `[]` is done; delete it and stop anvil afterwards. The check holds only when every privileged `execute` has a `guard`: an unguarded one sends on every run, so the re-run is never empty. Anything else it lists is a step not yet done: say which, and re-run against the network once the user agrees. Without a node that can fork, tell the user the check could not be made.
+**When it is finished.** On hardhat's in-memory network, which saves no records, the deployment is finished when the run succeeds. On a live network it is finished when a re-run of the same scripts on a fork of that network sends nothing. rocketh attaches to a fork, it does not start one, so the check needs a node that can fork the network, such as anvil ([From the command line: `--is-fork`](https://rocketh.dev/documentation/fork-runs/#from-the-command-line---is-fork)), and it writes what the re-run sent to a file, `[]` when it sent nothing ([Getting the list, as a file](https://rocketh.dev/documentation/captured-transactions/#getting-the-list-as-a-file)). The commands for the project's setup are in its reference. The file holding `[]` is done; delete it and stop the fork node afterwards. The check holds only when every privileged `execute` has a `guard`: an unguarded one sends on every run, so the re-run is never empty. Anything else it lists is a step not yet done: say which, and re-run against the network once the user agrees. Without a node that can fork, tell the user the check could not be made.
 
 ## Verifying and exporting afterwards
 

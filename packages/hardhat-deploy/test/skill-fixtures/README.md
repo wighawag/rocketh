@@ -21,6 +21,7 @@ The files are **compiled** by `pnpm typecheck` (nothing here is excluded from `t
   - `*.test.ts`: the tests that run the scripts and assert what the skill claims.
   - `exports.json`: the identifiers the skill attributes to a package, `{"@rocketh/proxy": ["deployViaProxy"]}`. The harness checks each is exported by that package's root. No file is an empty table.
   - anything else the skill needs (baseline prompts in Markdown, for instance).
+  - a subfolder laid out the same way, when a skill's references need a project the skill's own `rocketh/config.ts` does not show (more extensions, say): `rocketh-deploy/upgrades/` is the project of the proxy and diamond references.
 - `_shared/`: the helpers every skill's tests use, which no skill shows:
   - `artifacts.ts`: mock compiled contracts (real ABIs, placeholder bytecode).
   - `node.ts`: `createNode`, the test's node on `createTestEnvironment`, and the way to declare a named account of each signability (`node`, `impersonated`, `unsignable`, and `local` on its own `env`); `sent` lists what was broadcast.
