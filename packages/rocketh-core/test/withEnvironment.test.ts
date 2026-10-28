@@ -65,10 +65,75 @@ describe('withEnvironment - refuses a non-curried root export, naming the key', 
 	});
 
 	/** A legitimate getter that throws must NOT be reported as a bad export shape. */
-	it('lets a genuine error from inside a getter through unchanged', () => {
+	it('lets a genuine error from inside a getter through, not as a bad export shape', () => {
 		const boom = () => {
 			throw new Error('deployment not found');
 		};
 		expect(() => withEnvironment(env, {thing: boom})).toThrow('deployment not found');
+		expect(() => withEnvironment(env, {thing: boom})).not.toThrow(/subpath export/);
+	});
+});
+
+describe('withEnvironment - an entry that throws during setup is named', () => {
+	/**
+	 * Every entry is called with the environment before the deploy script runs, so one that
+	 * throws fails EVERY script, including scripts that never use it. The raw error said nothing
+	 * about extensions; the message now names the entry and says why it ran.
+	 */
+	it('prefixes the error with the entry name and the reason it was called', () => {
+		const getConnection = () => {
+			throw new Error('connection not found');
+		};
+		expect(() => withEnvironment(env, {getConnection})).toThrow(
+			/^extension entry "getConnection" threw while the environment was being set up .*: connection not found$/,
+		);
+	});
+
+	/** The SAME error is rethrown, so a caller catching by class (around a whole run) still can. */
+	it('keeps the error object, its class and its stack in agreement', () => {
+		class AccountsError extends Error {}
+		const original = new AccountsError('cannot resolve deployer');
+		let caught: unknown;
+		try {
+			withEnvironment(env, {
+				broken: () => {
+					throw original;
+				},
+			});
+		} catch (error) {
+			caught = error;
+		}
+		expect(caught).toBe(original);
+		expect(caught).toBeInstanceOf(AccountsError);
+		expect(original.message).toMatch(/^extension entry "broken" threw/);
+		expect(original.stack).toContain(original.message);
+	});
+
+	it('wraps a thrown value that is not an Error, keeping it as the cause', () => {
+		let caught: unknown;
+		try {
+			withEnvironment(env, {
+				broken: () => {
+					throw 'plain string';
+				},
+			});
+		} catch (error) {
+			caught = error;
+		}
+		expect(caught).toBeInstanceOf(Error);
+		expect((caught as Error).message).toMatch(/^extension entry "broken" threw.*: plain string$/);
+		expect((caught as Error).cause).toBe('plain string');
+	});
+
+	/** Only SETUP is named: an error from calling the method itself is the method's own business. */
+	it('leaves an error thrown when a method is CALLED untouched', () => {
+		const failure = new Error('transaction reverted');
+		const enhanced = withEnvironment(env, {
+			send: () => () => {
+				throw failure;
+			},
+		});
+		expect(() => enhanced.send()).toThrow(failure);
+		expect(failure.message).toBe('transaction reverted');
 	});
 });
