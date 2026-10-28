@@ -97,4 +97,5 @@ The network is the environment: its records go to `deployments/sepolia/`, its ac
 - [The `hardhat deploy` task](../deploy-task/): every option.
 - [Tests with Hardhat fixtures](../tests/): the deploy scripts in your tests.
 - [Development workflow](../development-workflow/): a local node, and redeploy on change.
+- [Working with an AI agent](/documentation/agent-skills/): the skills that teach a coding agent to deploy with hardhat-deploy, and how to install them.
 - Already deployed contracts with another tool? [Importing deployments made elsewhere](/documentation/deployment-records/#importing-deployments-made-elsewhere).

@@ -223,3 +223,4 @@ The TypeScript files are loaded as they are: the `rocketh` command runs them wit
 - [Environments and chains](../environments/) and [Named accounts and signers](../named-accounts/): deploying to a real network.
 - [The `rocketh` command](../reference/cli/#rocketh): every option.
 - [Export, verify and document](../exporting-and-verifying/): what a frontend and a block explorer need.
+- [Working with an AI agent](../agent-skills/): the skills that teach a coding agent to deploy with rocketh, and how to install them.
