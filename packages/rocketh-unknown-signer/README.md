@@ -44,3 +44,7 @@ Both helpers take a function (`() => execute(...)`), never a promise. `UnknownSi
 - [A Safe-owned project, end to end](https://rocketh.dev/documentation/safe-owned-project/)
 
 The whole documentation is at [rocketh.dev](https://rocketh.dev), the hardhat-deploy section at [rocketh.dev/hardhat-deploy](https://rocketh.dev/hardhat-deploy/).
+
+## License
+
+[MIT](https://github.com/wighawag/rocketh/blob/main/LICENSE)

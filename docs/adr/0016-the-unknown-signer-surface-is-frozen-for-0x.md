@@ -36,7 +36,7 @@ The CLIs (`@rocketh/node`'s `rocketh`, `hardhat-deploy`'s `deploy` task):
 - Fields ADDED later. Adding an optional field to `UnknownSignerErrorData` or `UnknownSignerContractCall` is not breaking; the optional `abi` on `UnknownSignerContractCall` was added that way. `CaughtUnknownSignerTransaction` is the exception: it stays exactly v1's four keys, since a script may compare or forward it whole.
 - Internal names, and anything not exported from the entry points above.
 
-## Addendum, 2026-10-28: `catchUnknownSigner` is documented for ported scripts only
+## Amendment (2026-10-28): `catchUnknownSigner` is documented for ported scripts only
 
 The promise above is unchanged: `catchUnknownSigner` stays exported, frozen and supported for the whole 0.x line. What changes is where it is taught, and the opening sentence of this ADR, which named it as what Safe- and governance-owned projects build on, no longer describes the recommendation (maintainer decision, 2026-10-28).
 

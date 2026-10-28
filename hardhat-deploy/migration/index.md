@@ -292,6 +292,8 @@ A wrapped action never pops a prompt at you, whatever the ambient policy is, bec
 
 It catches the case where rocketh CANNOT sign, and nothing else: an account the run can sign for, or one the node impersonates, BROADCASTS inside the wrapper ([Deferring is not a "never send" switch](/documentation/unknown-signers/#catchunknownsigner-is-not-a-never-send-switch)).
 
+When the `from` it hands back is a governance contract rather than a multisig, the transaction is not something anyone can send as written: read [When the owner is governance, not a multisig](/documentation/unknown-signers/#when-the-owner-is-governance-not-a-multisig) before acting on it.
+
 ### A caught deferral must never reach an unconditional `return true`
 
 Catching is what lets the script SURVIVE the deferral and run on to its end. If that end is a `return true` and the script declares an `id`, rocketh records it as complete and skips the WHOLE script on every later run, including the privileged step nobody has executed yet:
@@ -379,6 +381,7 @@ export default deployScript(
 		if (deferredTransactions.length === 0) {
 			return;
 		}
+		// `proposeBatch` is yours: a Safe SDK call, an API post, or a file your operators pick up
 		await proposeBatch(deferredTransactions);
 	},
 	{tags: ['ProposeBatch'], runAtTheEnd: true},

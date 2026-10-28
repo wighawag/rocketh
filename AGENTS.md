@@ -35,7 +35,7 @@ rocketh/
 │   ├── rocketh-viem/         # Viem integration
 │   ├── rocketh-web/          # Browser runtime support
 │   ├── rocketh-read-execute/ # Contract read/write utilities
-│   ├── rocketh-unknown-signer/ # catchUnknownSigner for Safe/multisig-owned calls
+│   ├── rocketh-unknown-signer/ # per-call unknown-signer policy; catchUnknownSigner for ported v1 scripts
 │   └── rocketh-test-utils/   # Test utilities and mock helpers
 ├── index.md, documentation/, hardhat-deploy/, public/, _redirects.yaml
 │                             # The docs site's content (rocketh.dev, built by wighawag/rocketh-website)
