@@ -2,7 +2,7 @@
 
 Each pair is a hardhat-deploy v1 file and its rocketh port, side by side: `deploy/01_token.v1.ts` next to `deploy/01_token.ts`. The **rocketh half is compiled** by `pnpm typecheck` and **run** by `pnpm test` (the `*.pairs.test.ts` files here), and every test checks an outcome a reader cares about: the contract that was deployed, which proxy contract landed, the upgrade call that was sent. The **v1 half is reference text**: it is written against hardhat-deploy v1.0.4, whose option types it was checked against, and it is excluded from compilation (`tsconfig.json`) because v1 is not installed here and must not be.
 
-The migration skill, `skills/hardhat-deploy-migration/SKILL.md`, teaches from these files. Its code blocks are copies, each preceded by a `<!-- migration-pair: <file> -->` marker, and `skill.test.ts` fails when a copy and its file differ, or when a pair is neither included nor named by the skill. When you change a pair, copy the file into the skill; when the skill looks wrong, fix the pair first.
+The migration skill, `skills/hardhat-deploy-migration/SKILL.md`, teaches from these files. Its code blocks are copies, each preceded by a `<!-- migration-pair: <file> -->` marker, and `skill.test.ts` fails when a copy and its file differ, or when a pair is neither included nor named by the skill. When you change a pair, copy the file into the skill; when the skill looks wrong, fix the pair first. The checks every skill shares (its rocketh.dev links, the flags of its commands, its frontmatter) are the skill harness's, in `../skill-harness/`; the user skills' code lives in `../skill-fixtures/`.
 
 ## Reading it as a project
 
