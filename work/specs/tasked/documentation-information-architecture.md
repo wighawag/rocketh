@@ -292,3 +292,9 @@ Exceptions: the root `README.md` (it is also the npm README of `rocketh`, copied
 
 - The full per-page audit (overlaps, fixes with evidence, judgement calls, gaps) is `docs/spikes/documentation-information-architecture/audit.md`.
 - The pre-rendered HTML of the live site carries no page content (observation `docs-site-pages-prerender-without-content`). Whatever ships the restructure should confirm pages render server-side, or the restructure is invisible to search.
+
+## Built (2026-10-28)
+
+Carried out directly, without task files, after rocketh.dev moved to the docs template (#220): the content restructure, `_redirects.yaml` and the site pin in #223, the thin package READMEs in #224, the redirects-from-content feature in template-svelte-docs#5 and rocketh-website#1, and the README links in template-ethereum-contracts#23 and #24. Every one of the 40 addresses the site served before still works (10 as pages, 30 forwarding), and rocketh-website's end-to-end suite keeps checking it.
+
+Not done here, on purpose: generated API references (decision 5), a keep-current mechanism for the template's example branches, a "common errors" page (decision 8), and documenting tests against a hardhat fork (the recipe does not work as written). Code issues found while writing are in `work/notes/observations/`.
