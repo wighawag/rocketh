@@ -1,6 +1,6 @@
 {
 	"name": "@rocketh/doc",
-	"version": "0.19.33",
+	"version": "0.19.34",
 	"description": "Generate documentation from EVM contract deployments and NatSpec comments.",
 	"keywords": [
 		"rocketh",

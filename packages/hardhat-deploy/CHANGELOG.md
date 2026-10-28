@@ -1,5 +1,20 @@
 # hardhat-deploy
 
+## 2.3.0
+
+### Minor Changes
+
+- 57f05e2: New subpath `hardhat-deploy/extensions`, hardhat-deploy as a rocketh extension. Spread it into `extensions` (`import * as hardhatExtension from 'hardhat-deploy/extensions'`) and deploy scripts get `env.hardhatConnection`, the Hardhat network connection of the run typed `NetworkConnection | undefined`, and `env.getHardhatConnection()`, which returns it or throws when called in a run without one. Neither breaks a run that has no connection (the `rocketh` command, a test fixture that passes only a provider): the property is `undefined`, and the method only throws in the script that calls it. A fixture passes the connection with `loadAndExecuteDeploymentsFromFiles({provider: connection.provider, extra: {connection}})`. `getHardhatConnection(env)` from the package root is unchanged, apart from an error that now says where the connection comes from; it was never usable as an extension, which is what the subpath is for.
+
+### Patch Changes
+
+- 96471ec: `hardhat-deploy init` now works with pnpm 11. pnpm 11 stops an install at `ERR_PNPM_IGNORED_BUILDS` until each dependency's build script is allowed or denied in `pnpm-workspace.yaml`, so `init --install` (and a `pnpm install` run by hand afterwards) failed for every pnpm 11 user. The scaffolded project now ships a `pnpm-workspace.yaml` that denies the two it pulls in (esbuild and @parcel/watcher, neither of which needs its script), and `--install` no longer passes `--ignore-workspace`, which made pnpm ignore that file. The file also makes the project a workspace root of its own, which is what keeps it out of a parent workspace.
+- b575172: The package READMEs (what npm shows) are now short entry points: what the package is, how to install and wire it, one example, and links to the rocketh.dev pages that document it. Their links are absolute, so they work on npm. hardhat-deploy's README and its `init` template link to the new hardhat-deploy pages.
+- de7c89a: The error a hardhat v2 project gets when it loads hardhat-deploy v2 now links https://rocketh.dev/hardhat-deploy/migration/ (what each v1 capability became, with a link to the step-by-step guide). It linked a `.html` address the site never served.
+- Updated dependencies [b575172]
+  - rocketh@0.26.2
+  - @rocketh/node@0.22.4
+
 ## 2.2.1
 
 ### Patch Changes
