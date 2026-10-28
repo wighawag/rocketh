@@ -40,6 +40,8 @@ The skills follow the `main` branch of the repository, like this documentation. 
 
 So that an agent opening your project learns the skills exist even when you have not installed them, paste this into the project's `AGENTS.md`. It loads nothing: the agent tells you, and you decide.
 
+A project made with `hardhat-deploy init` already has it: the scaffold writes this text as its `AGENTS.md`.
+
 ```md
 This project deploys with hardhat-deploy v2 and rocketh. If the rocketh skills are not available to you, tell the user they exist and how to install them (`npx skills add wighawag/rocketh`, or the one-line prompt at https://rocketh.dev/documentation/agent-skills/).
 
