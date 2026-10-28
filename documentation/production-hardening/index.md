@@ -14,9 +14,9 @@ rocketh is built for this: an account it cannot sign for is not an error conditi
 
 For an UNATTENDED privileged run, set `onUnknownSigner: 'throw'` explicitly. `'auto'` (the default) already degrades to `throw` when there is no interactive resolver, but saying it outright is what makes the intent survive a future change to how the run is invoked.
 
-## An unsignable account is what defers, not the wrapper
+## An unsignable account is what defers, not the policy
 
-Whichever workflow you use, what defers a transaction is rocketh being UNABLE to sign for the `from`. It is not a "never broadcast" switch: an account the run CAN sign for still broadcasts, which is what lets a mixed run work, with ordinary deployments proceeding and the one privileged call deferred.
+Whichever policy the run uses, what defers a transaction is rocketh being UNABLE to sign for the `from`. It is not a "never broadcast" switch: an account the run CAN sign for still broadcasts, which is what lets a mixed run work, with ordinary deployments proceeding and the one privileged call deferred.
 
 So a run that unexpectedly holds the admin key will send the admin transaction rather than defer it. If that matters, assert it rather than assume it, using the public `env.addressSignability` map shown in [Handling unknown signers](../unknown-signers/#catchunknownsigner-is-not-a-never-send-switch).
 

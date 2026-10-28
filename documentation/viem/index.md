@@ -74,7 +74,7 @@ const balance = await viem.publicClient.getBalance({address: deployer});
 
 ## Write with `execute`, read with viem
 
-A transaction written through a viem contract goes through viem's wallet client, not through rocketh's broadcast path. So it gets none of what rocketh adds to a transaction: the [unknown-signer handling](../unknown-signers/) (an account rocketh cannot sign for fails as a provider error, which `catchUnknownSigner` cannot catch), the pending-transaction record that lets an interrupted run resume, the [captured transactions](../captured-transactions/), the gas report and the messages.
+A transaction written through a viem contract goes through viem's wallet client, not through rocketh's broadcast path. So it gets none of what rocketh adds to a transaction: the [unknown-signer handling](../unknown-signers/) (an account rocketh cannot sign for fails as a provider error, never reaching the pause or the `onUnknownSigner` policy), the pending-transaction record that lets an interrupted run resume, the [captured transactions](../captured-transactions/), the gas report and the messages.
 
 For a call that is part of a deployment, use `execute` from `@rocketh/read-execute`:
 

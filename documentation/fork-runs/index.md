@@ -182,7 +182,7 @@ export const config = {
 } as const satisfies UserConfig;
 ```
 
-An explicit `false` still wins, at either level, and that is how you exercise the OTHER path deliberately: with impersonation off, the Safe-owned call is `unsignable` again and the run takes the [unknown-signer](../unknown-signers/) route (pause and ask, or defer through `catchUnknownSigner`). That is worth rehearsing too, since it is what the real run will do.
+An explicit `false` still wins, at either level, and that is how you exercise the OTHER path deliberately: with impersonation off, the Safe-owned call is `unsignable` again and the run takes the [unknown-signer](../unknown-signers/) route (pause and ask, or defer). That is worth rehearsing too, since it is what the real run will do.
 
 ```typescript
 // for one run

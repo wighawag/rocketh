@@ -12,7 +12,7 @@ You go and execute that transaction wherever its authority lives (your Safe, a h
 
 That is the whole workflow. There is no re-run dance, nothing to install, and an upgrade with several privileged steps pauses at each one and finishes them all in a single run.
 
-Because the run never gives up on the step, a script that resolves its privileged calls this way finishes normally, and rocketh watched each transaction land before saving anything. So a [run-once script](../script-lifecycle/) that ends with `return true` is telling the truth on this path. It is the CAUGHT deferral further down, not the pause, that can record a completion nobody earned.
+Because the run never gives up on the step, a script that resolves its privileged calls this way finishes normally, and rocketh watched each transaction land before saving anything. So a [run-once script](../script-lifecycle/) that ends with `return true` is telling the truth on this path. Only a script that catches a deferral and carries on can record a completion nobody earned ([Running once](../script-lifecycle/#never-return-true-on-a-path-where-a-step-was-deferred)).
 
 ### What the pause prints
 
@@ -44,7 +44,7 @@ The ABI comes from the deployment your script passed to `execute`, not from look
 ### At the pause you have two answers
 
 - **Paste the transaction hash.** rocketh looks the transaction up on the network, waits for it to be mined, requires the receipt to report a SUCCESSFUL status, saves state through the same pending-transaction path a normal broadcast uses, records the hash for gas reporting, and returns the receipt to your script. It never sends a transaction of its own.
-- **`cannot sign`** (or just press enter). rocketh prints the full transaction and raises `UnknownSignerError`, which is the [defer workflow](#deferring-instead-of-asking-catchunknownsigner) below. Aborting the prompt (Ctrl-C) does the same.
+- **`cannot sign`** (or just press enter). rocketh prints the full transaction and raises `UnknownSignerError`, which defers the transaction exactly as the `throw` policy does: [A run that threw will hand you the same transaction again](#a-run-that-threw-will-hand-you-the-same-transaction-again) says what to do next. Aborting the prompt (Ctrl-C) does the same.
 
 ### A hash that does not work out is asked again, not fatal
 
@@ -214,121 +214,48 @@ If you enable it against a node that does NOT implement the RPC, the attempt is 
 
 Note that this is a NODE CAPABILITY and `onUnknownSigner` is a POLICY: they are orthogonal, and there is no `'impersonate'` policy value. Impersonation runs first and, when it works, the policy is never reached.
 
-## Deferring instead of asking (`catchUnknownSigner`)
+## What makes the re-run converge
 
-Everything above needs no extra package. `catchUnknownSigner` is the **other** workflow: instead of pausing to ask, the run captures the transaction, hands it back to your script as a value, and stops that branch of work.
+A deferred step did not happen. Whether it was deferred by `throw` in CI or by `cannot sign` at the pause, rocketh did not send it and never saw it land, so it records nothing for it: once the transaction has been executed out of band, the only thing that can tell the next run the work is done is the CHAIN.
 
-You want it in two situations:
-
-- **You are migrating a hardhat-deploy v1 script that already uses it.** This is its main reason to exist, and the migration is nearly mechanical (see the call-shape note below). [`catchUnknownSigner` in a migrated script](/hardhat-deploy/migration/#catch-unknown-signer) states the three things to know when porting one, next to everything else that changes from v1.
-- **You deliberately want the non-interactive flow**: a run that must never block, that collects the transaction to execute out-of-band, and that you will re-run afterwards.
-
-If neither applies, prefer the default interactive flow: it finishes the job in one run instead of two.
-
-It lives in its own package:
-
-```bash
-npm install -D @rocketh/unknown-signer
-```
-
-Register it as an extension in `rocketh/config.ts`, exactly like `@rocketh/deploy` and `@rocketh/read-execute`:
-
-```typescript
-import * as deployExtension from '@rocketh/deploy';
-import * as readExecuteExtension from '@rocketh/read-execute';
-import * as unknownSignerExtension from '@rocketh/unknown-signer';
-
-const extensions = {...deployExtension, ...readExecuteExtension, ...unknownSignerExtension};
-export {extensions};
-```
-
-and then it arrives on the environment your deploy script is handed, with no `env` to thread:
-
-```typescript
-export default deployScript(
-	async ({deploy, execute, catchUnknownSigner, namedAccounts, artifacts}) => {
-		// NOTE the call shape: the action is a FUNCTION, not an already-started promise.
-		//  This is the one mechanical change from a hardhat-deploy v1 script
-		//  (v1: `catchUnknownSigner(execute(...))`), because a promise has already begun
-		//  executing before the wrapper can establish its policy scope. The v1 form is a
-		//  compile error, and a JavaScript caller gets a runtime error naming the fix.
-		const deferred = await catchUnknownSigner(() =>
-			execute(proxy, {account: 'safeOwner', functionName: 'upgradeTo', args: [newImplementation.address]}),
-		);
-
-		if (deferred) {
-			// {from, to, value, data}: execute this on the Safe, then re-run the script.
-		}
-	},
-	{tags: ['Upgrade']},
-);
-```
-
-Outside a deploy script (a test, a standalone script) you have an `Environment` in hand rather than an enhanced one, so call the same functions curried:
-
-```typescript
-import {catchUnknownSigner} from '@rocketh/unknown-signer';
-import {execute} from '@rocketh/read-execute';
-
-const deferred = await catchUnknownSigner(env)(() =>
-	execute(env)(proxy, {account: 'safeOwner', functionName: 'upgradeTo', args: [newImplementation.address]}),
-);
-```
-
-Both forms are the same function: an extension package's root exports only curried `(env) => …` functions, which is precisely what lets the spread above turn them into methods on the environment.
-
-It returns `null` when the action succeeded, and otherwise hardhat-deploy v1's exact shape: every key present even when `undefined`, `value` as a string. The printed block names the method and its arguments, and for an `execute` adds an `abi:` line after them, the same one-function ABI as the pause prints (see [Executing it from a Safe with the Transaction Builder](#executing-it-from-a-safe-with-the-transaction-builder)); the returned object does not carry it. Pass `{log: false}` to suppress the printed block. Nothing is persisted: idempotency comes from on-chain state, so you execute the transaction on your Safe and re-run the idempotent script. One wrapper captures one transaction (the first unsignable one inside it), so deferring several steps means one `catchUnknownSigner` per step. When the `from` it hands back is a governance contract rather than a multisig, read [When the owner is governance, not a multisig](#when-the-owner-is-governance-not-a-multisig) before acting on it.
-
-::: danger A caught deferral must never reach an unconditional `return true`
-Catching is what lets the script SURVIVE the deferral and run on to its end. If that end is a `return true` and the script declares an `id`, rocketh records it as complete and skips the WHOLE script on every later run, including the privileged step nobody has executed yet. Return the outcome instead of asserting one: `return deferred === null` records the script only on the run where nothing was left outstanding. [Running once, and running last](../script-lifecycle/#never-return-true-on-a-path-where-a-step-was-deferred) has the mechanism, and why rocketh documents this rather than refusing it.
-:::
-
-### What closes the loop on the re-run
-
-"Re-run the idempotent script" is doing a lot of work in that sentence, so be precise about what makes the second run converge. rocketh did not send the deferred transaction and never saw one land, so it may not record that the step happened: the only thing that can tell run 2 the work is done is the CHAIN.
-
-That is automatic for some of the steps rocketh guards itself, and it is worth knowing which. `deployViaProxy` compares the proxy's current implementation, read from its EIP-1967 slot, so a re-run after the Safe acted skips the upgrade with nothing declared by you. A DETERMINISTIC `deploy` (create2 or create3) does the same, because it can compute the address it would use and ask the chain whether code is already there. A plain `deploy` cannot: its address depends on the sender's nonce, so it has nothing to ask about and instead compares against the saved deployment RECORD, which a deferred run never wrote. Expect a deferred plain deploy to be offered to you again on the next run. It is NOT automatic for an `execute`, which sends whatever it is handed: without a chain check, run 2 prints the identical privileged transaction and executing it a second time is a real loss for a mint, a transfer, an increment or a governance action carrying its own nonce.
+That is automatic for some of the steps rocketh guards itself, and it is worth knowing which. `deployViaProxy` compares the proxy's current implementation, read from its EIP-1967 slot, so a re-run after the Safe acted skips the upgrade with nothing declared by you. A DETERMINISTIC `deploy` (create2 or create3) does the same, because it can compute the address it would use and ask the chain whether code is already there. A plain `deploy` cannot: its address depends on the sender's nonce, so it has nothing to ask about and instead compares against the saved deployment RECORD, which a deferred run never wrote. Expect a deferred plain deploy to be offered to you again on the next run. It is NOT automatic for an `execute`, which sends whatever it is handed: without a chain check, the re-run prints the identical privileged transaction and executing it a second time is a real loss for a mint, a transfer, an increment or a governance action carrying its own nonce.
 
 [Guarding execute calls](../execute-guard/) is how you state that check: one `guard` option declaring what to read on chain, so the deferred step is SKIPPED once its effect has landed, and the same transaction is never handed to you twice.
 
 ```typescript
-const deferred = await catchUnknownSigner(() =>
-	execute(proxyAdmin, {
-		account: 'safeOwner',
-		functionName: 'upgradeAndCall',
-		args: [proxy.address, newImplementation.address, '0x'],
-		// run 1 defers this; run 2, after the Safe executed it, reads the proxy's
-		// EIP-1967 implementation slot, is satisfied, and skips the step entirely
-		guard: {
-			kind: 'storage',
-			on: proxy,
-			slot: EIP1967_IMPLEMENTATION_SLOT,
-			as: 'address',
-			equals: newImplementation.address,
-		},
-	}),
-);
+await execute(proxyAdmin, {
+	account: 'safeOwner',
+	functionName: 'upgradeAndCall',
+	args: [proxy.address, newImplementation.address, '0x'],
+	// run 1 defers this; run 2, after the Safe executed it, reads the proxy's
+	// EIP-1967 implementation slot, is satisfied, and skips the step entirely
+	guard: {
+		kind: 'storage',
+		on: proxy,
+		slot: EIP1967_IMPLEMENTATION_SLOT,
+		as: 'address',
+		equals: newImplementation.address,
+	},
+});
 ```
 
-The same applies to the `throw` path above, which is what a CI run takes: the guard is what a re-run needs, whichever way the transaction was deferred.
+The guard is what an unattended re-run needs, since nobody is there to paste a hash, and it also spares a run from a terminal a pause for a call that has already landed.
 
-A wrapped action never pops a prompt at you, whatever the ambient policy is, because you already said you would handle the transaction yourself. The one thing that overrides that is an EXPLICIT override written inside the wrapper, because policy frames nest and the innermost one wins, so `catchUnknownSigner(env)(() => withUnknownSignerPolicy(env)('ask', ...))` does prompt. That is deliberate: the guarantee is about the policy you did not state, not about silencing one you wrote yourself a line later.
-
-### When the owner is governance, not a multisig
+## When the owner is governance, not a multisig
 
 The transaction rocketh surfaces always names, as `from`, whoever holds the right on chain: the owner of the proxy, of the admin contract, or of the registry the upgrade goes through. When that is a Safe, you execute the transaction on the Safe as written. When it is a CONTRACT that cannot originate a transaction (a governance executor, a timelock), nobody can send it as written, and the printed block, which reads exactly like the Safe case, is not an instruction to follow literally.
 
 What you can rely on is the `{to, data}` pair: it is the call that contract must end up making. Submit it through your governance process. For a governance executor, that pair is the action a proposal (or payload) carries: `to` is the target, `data` is the calldata, and once governance has approved the proposal and any delay has elapsed, the executor makes that exact call. Until then every re-run surfaces the same transaction again; once the call has landed, a re-run of a step rocketh checks on chain (such as `deployViaProxy` reading the proxy's implementation slot) surfaces nothing. The [registry-owned-by-a-governance-executor matrix entry](https://github.com/wighawag/rocketh/blob/main/packages/rocketh-unknown-signer/test/scenarios.integration.test.ts) shows the whole loop: a registry contract as the proxy admin, owned by an executor that acts after a delay, upgraded through the registry's own setter with `upgradeFunction`.
 
-An OpenZeppelin `TimelockController` you control is different, because the call you send is not the surfaced one: an account holding the timelock's proposer role sends `schedule(...)` to the timelock, then `execute(...)` is sent after the delay, each carrying the surfaced `{to, data}`. rocketh does not translate the surfaced transaction into that pair today. The [Timelock-owned admin matrix entry](https://github.com/wighawag/rocketh/blob/main/packages/rocketh-unknown-signer/test/scenarios.integration.test.ts) pins what you get instead, and the governance demo's [`004_timelock_owned_admin.ts`](https://github.com/wighawag/rocketh/blob/main/demoes/hardhat-deploy/governance/deploy/004_timelock_owned_admin.ts) shows the workaround: suppress the printed block (`{log: false}`) and build the `schedule` / `execute` calls yourself from the deferred `{to, data}`, with a deterministic salt so a re-run finds the same operation again.
+An OpenZeppelin `TimelockController` you control is different, because the call you send is not the surfaced one: an account holding the timelock's proposer role sends `schedule(...)` to the timelock, then `execute(...)` is sent after the delay, each carrying the surfaced `{to, data}`. rocketh does not translate the surfaced transaction into that pair today. The [Timelock-owned admin matrix entry](https://github.com/wighawag/rocketh/blob/main/packages/rocketh-unknown-signer/test/scenarios.integration.test.ts) pins what you get instead. The governance demo's [`004_timelock_owned_admin.ts`](https://github.com/wighawag/rocketh/blob/main/demoes/hardhat-deploy/governance/deploy/004_timelock_owned_admin.ts) shows a workaround, written the way a ported hardhat-deploy v1 script is (it catches the deferral with [`catchUnknownSigner`](#deferring-instead-of-asking-catchunknownsigner)): build the `schedule` / `execute` calls yourself from the deferred `{to, data}`, with a deterministic salt so a re-run finds the same operation again.
 
 rocketh does not build governance proposals. It tells you which call has to happen; turning that into a proposal, a payload or a timelock operation is the governance process's job.
 
-### `catchUnknownSigner` is not a "never send" switch
+## Deferring is not a "never send" switch {#catchunknownsigner-is-not-a-never-send-switch}
 
-It catches the case where rocketh CANNOT sign. It does not make a signable account unsignable: if the run holds a key for that account, or the node signs for it, or auto-impersonation took it on, the transaction is signable and it BROADCASTS inside the wrapper. That is what keeps a mixed run working, where most steps are yours to send and one belongs to a Safe.
+A transaction is deferred when rocketh CANNOT sign for its `from`. No policy makes a signable account unsignable: if the run holds a key for that account, or the node signs for it, or auto-impersonation took it on, the transaction is signable and it BROADCASTS, whatever `onUnknownSigner` says. That is what keeps a mixed run working, where most steps are yours to send and one belongs to a Safe.
 
-So a production run that unexpectedly has the admin key in its environment sends the admin transaction rather than deferring it. If that matters to you, assert it, rather than inferring it from the wrapper:
+So a production run that unexpectedly has the admin key in its environment sends the admin transaction rather than deferring it. If that matters to you, assert it, rather than inferring it from the policy:
 
 ```typescript
 const admin = env.resolveAccount('admin');
@@ -339,11 +266,17 @@ if (env.addressSignability[admin.toLowerCase() as `0x${string}`] !== 'unsignable
 
 `addressSignability` is computed after auto-impersonation runs, keyed by lowercase address, and answers `'local'`, `'node'`, `'impersonated'` or `'unsignable'` (an address never seen during setup answers `'unsignable'` rather than `undefined`, so there is no third case to handle). Rehearsing the whole flow on a fork remains the stronger check, since it proves the transaction works rather than only proving who could have sent it.
 
-For the same reason, neither `catchUnknownSigner` nor `withUnknownSignerPolicy` defeats impersonation: to exercise the unknown-signer path on a fork, set `autoImpersonate: false` for the run ([Impersonation is on by default](../fork-runs/#impersonation-is-on-by-default)).
+For the same reason, no policy, set for the run or for one call, defeats impersonation: to exercise the unknown-signer path on a fork, set `autoImpersonate: false` for the run ([Impersonation is on by default](../fork-runs/#impersonation-is-on-by-default)).
 
 ## Overriding the policy for one call (`withUnknownSignerPolicy`)
 
-The policy applies to the whole run. `withUnknownSignerPolicy` overrides it for a single action, typically to REHEARSE the interactive flow on a fork before doing it on mainnet:
+The policy applies to the whole run. `withUnknownSignerPolicy` overrides it for a single action, typically to REHEARSE the interactive flow on a fork before doing it on mainnet. It is in its own package:
+
+```bash
+npm install -D @rocketh/unknown-signer
+```
+
+Call it curried, as below, or spread the package into `extensions` in `rocketh/config.ts` like `@rocketh/deploy`, and it arrives on the environment your deploy script is handed:
 
 ```typescript
 import {withUnknownSignerPolicy} from '@rocketh/unknown-signer';
@@ -354,12 +287,18 @@ const receipt = await withUnknownSignerPolicy(env)('ask', () =>
 );
 ```
 
-It takes a function for the same reason `catchUnknownSigner` does, returns whatever the action returned, and propagates whatever it threw (so wrapping it in `catchUnknownSigner` still defers). Precedence is one rule: the innermost override wins, then the run parameter, then the chain config, then the top-level config, then the default `'auto'`.
+It takes a function, not a promise, because a promise has already started running by the time it is passed, leaving no moment at which to set the policy. It returns whatever the action returned, and propagates whatever it threw (so under `throw` the deferral still raises `UnknownSignerError`). Precedence is one rule: the innermost override wins, then the run parameter, then the chain config, then the top-level config, then the default `'auto'`.
 
 It accepts the whole policy vocabulary, `'auto'` included, not just `'ask'` and `'throw'`. Per call, `'auto'` means "use this run's capability-aware default for this one action", which is the only way to opt a single call back OUT of a run-level `'throw'` without deciding for it what to do instead.
 
 The override chooses among what the run can do; it cannot exceed it. Asking for `'ask'` where the run cannot ask a human for text still takes the `throw` path and never prompts, so a script that hardcodes the override is still safe in CI.
 
+## `catchUnknownSigner`, for ported hardhat-deploy v1 scripts {#deferring-instead-of-asking-catchunknownsigner}
+
+`@rocketh/unknown-signer` also exports `catchUnknownSigner`, hardhat-deploy v1's wrapper: instead of stopping the run, a deferral is handed back to the script as a value, and the script carries on. It exists so that a v1 script ports with one mechanical change, and it is documented with the migration: [`catchUnknownSigner` in a migrated script](/hardhat-deploy/migration/#catch-unknown-signer).
+
+A new script has no need for it. The pause finishes the job in one run, `throw` with a [guard](#what-makes-the-re-run-converge) converges unattended, and a [fork rehearsal](../fork-runs/) hands you every Safe-owned step as one batch, executed against the real state. The one thing it still does that nothing above does is collect several independent privileged transactions from a single unattended run against the real network, which matters only where a fork rehearsal is not available. And carrying on past a deferral is what makes the one way to lose a step possible: a script that reaches `return true` after a step it deferred ([Running once](../script-lifecycle/#never-return-true-on-a-path-where-a-step-was-deferred)).
+
 ## Stability
 
-This surface is frozen for the whole 0.x line: `catchUnknownSigner` and its return value, `withUnknownSignerPolicy`, `UnknownSignerError` and its `data`, the `throw` / `ask` / `auto` policies and where they are set, and the `--on-unknown-signer` and `--skip-prompts` flags are not removed, renamed or given a different meaning before 1.0. Message wording is not part of it, and optional fields may be added. The exact list is in [ADR 0016](https://github.com/wighawag/rocketh/blob/main/docs/adr/0016-the-unknown-signer-surface-is-frozen-for-0x.md).
+This surface is frozen for the whole 0.x line: `catchUnknownSigner` and its return value, `withUnknownSignerPolicy`, `UnknownSignerError` and its `data`, the `throw` / `ask` / `auto` policies and where they are set, and the `--on-unknown-signer` and `--skip-prompts` flags are not removed, renamed or given a different meaning before 1.0. Message wording is not part of it, and optional fields may be added. `catchUnknownSigner` stays on that list: it is documented for ported scripts, not withdrawn. The exact list is in [ADR 0016](https://github.com/wighawag/rocketh/blob/main/docs/adr/0016-the-unknown-signer-surface-is-frozen-for-0x.md).

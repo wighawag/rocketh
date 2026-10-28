@@ -36,26 +36,26 @@ Framework-agnostic deployment system for EVM smart contracts, and the deployment
 
 ## Packages
 
-| Package                                                                                                           | Description                                                     |
-| ----------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| [`rocketh`](https://github.com/wighawag/rocketh#readme)                                                           | Core deployment environment and execution                       |
-| [`hardhat-deploy`](https://github.com/wighawag/rocketh/tree/main/packages/hardhat-deploy#readme)                  | The Hardhat plugin: `hardhat deploy`, fixtures, typed artifacts |
-| [`@rocketh/core`](https://github.com/wighawag/rocketh/tree/main/packages/rocketh-core#readme)                     | Shared types and utilities                                      |
-| [`@rocketh/deploy`](https://github.com/wighawag/rocketh/tree/main/packages/rocketh-deploy#readme)                 | Standard contract deployment                                    |
-| [`@rocketh/proxy`](https://github.com/wighawag/rocketh/tree/main/packages/rocketh-proxy#readme)                   | Proxy deployment patterns (UUPS, Transparent, ERC173)           |
-| [`@rocketh/diamond`](https://github.com/wighawag/rocketh/tree/main/packages/rocketh-diamond#readme)               | EIP-2535 Diamond proxy support                                  |
-| [`@rocketh/read-execute`](https://github.com/wighawag/rocketh/tree/main/packages/rocketh-read-execute#readme)     | Contract read/write utilities                                   |
-| [`@rocketh/unknown-signer`](https://github.com/wighawag/rocketh/tree/main/packages/rocketh-unknown-signer#readme) | `catchUnknownSigner` for Safe/multisig-owned calls              |
-| [`@rocketh/node`](https://github.com/wighawag/rocketh/tree/main/packages/rocketh-node#readme)                     | Node.js deployment executor                                     |
-| [`@rocketh/verifier`](https://github.com/wighawag/rocketh/tree/main/packages/rocketh-verifier#readme)             | Contract verification (Etherscan, Sourcify)                     |
-| [`@rocketh/export`](https://github.com/wighawag/rocketh/tree/main/packages/rocketh-export#readme)                 | Export deployments for frontend consumption                     |
-| [`@rocketh/doc`](https://github.com/wighawag/rocketh/tree/main/packages/rocketh-doc#readme)                       | Documentation generation                                        |
-| [`@rocketh/signer`](https://github.com/wighawag/rocketh/tree/main/packages/rocketh-signer#readme)                 | Signer utilities                                                |
-| [`@rocketh/router`](https://github.com/wighawag/rocketh/tree/main/packages/rocketh-router#readme)                 | Route-based contract deployment                                 |
-| [`@rocketh/web`](https://github.com/wighawag/rocketh/tree/main/packages/rocketh-web#readme)                       | rocketh in web browser                                          |
-| [`@rocketh/viem`](https://github.com/wighawag/rocketh/tree/main/packages/rocketh-viem#readme)                     | viem clients and contracts from your deployments                |
-| [`@rocketh/test-utils`](https://github.com/wighawag/rocketh/tree/main/packages/rocketh-test-utils#readme)         | Test harness (`createTestEnvironment`, artifacts)               |
-| [`@rocketh/playground`](https://github.com/wighawag/rocketh/tree/main/packages/rocketh-playground#readme)         | Run rocketh deploy scripts in the browser, as a widget          |
+| Package                                                                                                           | Description                                                                    |
+| ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| [`rocketh`](https://github.com/wighawag/rocketh#readme)                                                           | Core deployment environment and execution                                      |
+| [`hardhat-deploy`](https://github.com/wighawag/rocketh/tree/main/packages/hardhat-deploy#readme)                  | The Hardhat plugin: `hardhat deploy`, fixtures, typed artifacts                |
+| [`@rocketh/core`](https://github.com/wighawag/rocketh/tree/main/packages/rocketh-core#readme)                     | Shared types and utilities                                                     |
+| [`@rocketh/deploy`](https://github.com/wighawag/rocketh/tree/main/packages/rocketh-deploy#readme)                 | Standard contract deployment                                                   |
+| [`@rocketh/proxy`](https://github.com/wighawag/rocketh/tree/main/packages/rocketh-proxy#readme)                   | Proxy deployment patterns (UUPS, Transparent, ERC173)                          |
+| [`@rocketh/diamond`](https://github.com/wighawag/rocketh/tree/main/packages/rocketh-diamond#readme)               | EIP-2535 Diamond proxy support                                                 |
+| [`@rocketh/read-execute`](https://github.com/wighawag/rocketh/tree/main/packages/rocketh-read-execute#readme)     | Contract read/write utilities                                                  |
+| [`@rocketh/unknown-signer`](https://github.com/wighawag/rocketh/tree/main/packages/rocketh-unknown-signer#readme) | per-call unknown-signer policy, and `catchUnknownSigner` for ported v1 scripts |
+| [`@rocketh/node`](https://github.com/wighawag/rocketh/tree/main/packages/rocketh-node#readme)                     | Node.js deployment executor                                                    |
+| [`@rocketh/verifier`](https://github.com/wighawag/rocketh/tree/main/packages/rocketh-verifier#readme)             | Contract verification (Etherscan, Sourcify)                                    |
+| [`@rocketh/export`](https://github.com/wighawag/rocketh/tree/main/packages/rocketh-export#readme)                 | Export deployments for frontend consumption                                    |
+| [`@rocketh/doc`](https://github.com/wighawag/rocketh/tree/main/packages/rocketh-doc#readme)                       | Documentation generation                                                       |
+| [`@rocketh/signer`](https://github.com/wighawag/rocketh/tree/main/packages/rocketh-signer#readme)                 | Signer utilities                                                               |
+| [`@rocketh/router`](https://github.com/wighawag/rocketh/tree/main/packages/rocketh-router#readme)                 | Route-based contract deployment                                                |
+| [`@rocketh/web`](https://github.com/wighawag/rocketh/tree/main/packages/rocketh-web#readme)                       | rocketh in web browser                                                         |
+| [`@rocketh/viem`](https://github.com/wighawag/rocketh/tree/main/packages/rocketh-viem#readme)                     | viem clients and contracts from your deployments                               |
+| [`@rocketh/test-utils`](https://github.com/wighawag/rocketh/tree/main/packages/rocketh-test-utils#readme)         | Test harness (`createTestEnvironment`, artifacts)                              |
+| [`@rocketh/playground`](https://github.com/wighawag/rocketh/tree/main/packages/rocketh-playground#readme)         | Run rocketh deploy scripts in the browser, as a widget                         |
 
 ## Installation
 
