@@ -1,243 +1,40 @@
 # @rocketh/web
 
-Browser-compatible deployment execution for Rocketh. This package allows you to run Rocketh deploy scripts directly in web browsers.
-
-## Features
-
-- 🌐 **Browser-First** - Execute deploy scripts in any web browser
-- 💾 **IndexedDB Storage** - Deployments that survive a page reload
-- 🌲 **Observable Deployments** - Watch deployment files appear as a script runs
-- 🔌 **Wallet Integration** - Works with browser wallet providers
-- 🔧 **Full Rocketh Compatibility** - Same API as Node.js environment
+The browser runtime of rocketh: runs your deploy scripts in a web page, against a wallet or an EVM in the tab, with the deployment records kept in memory or in IndexedDB. The scripts are the same ones `@rocketh/node` runs; a browser cannot read a folder, so they are passed as modules.
 
 ## Installation
 
 ```bash
-# Using pnpm
-pnpm add @rocketh/web
-
-# Using npm
-npm install @rocketh/web
-
-# Using yarn
-yarn add @rocketh/web
+pnpm add rocketh @rocketh/web
+# or
+npm install rocketh @rocketh/web
 ```
 
-## Storing Deployments
+`rocketh` is a peer dependency.
 
-Where deployments go is the one thing a browser cannot inherit from Node, so it is a choice you make explicitly. `@rocketh/node` writes to the filesystem; here you pass a store to `setupEnvironment`.
-
-| Store                                      | Survives a reload | Use it for                                   |
-| ------------------------------------------ | ----------------- | -------------------------------------------- |
-| `createVFSDeploymentStore()` (**default**) | no                | one-off runs, playgrounds, tests             |
-| `await createIndexedDBDeploymentStore()`   | yes               | apps that must remember what they deployed   |
-| `createEmptyDeploymentStore()`             | no (discards)     | read-only environments that must not persist |
+## Example
 
 ```typescript
 import {setupEnvironment, createIndexedDBDeploymentStore} from '@rocketh/web';
 import {config, extensions} from './rocketh/config.js';
+import deployGreetingsRegistry from './deploy/001_deploy_greetings_registry.js';
 
-// Async because it loads what IndexedDB already holds before returning,
-// so the environment sees previous deployments rather than racing them in.
-const deploymentStore = await createIndexedDBDeploymentStore();
-
-const {loadAndExecuteDeploymentsFromModules, loadEnvironment} = setupEnvironment(config, extensions, {
-	deploymentStore,
-});
-```
-
-Every store is backed by a small in-memory file system you can read and observe, which is how a UI renders a deployment tree that fills in as a script runs:
-
-```typescript
-deploymentStore.vfs.subscribe((change) => {
-	if (change.type === 'write') {
-		console.log(`wrote ${change.path}`); // deployments/localhost/MyContract.json
-	}
-});
-```
-
-To read deployments back without executing anything, load through the store:
-
-```typescript
-import {loadDeploymentsFromStore} from 'rocketh';
-
-const {deployments} = await loadDeploymentsFromStore(deploymentStore, 'deployments', 'sepolia');
-```
-
-## Usage
-
-### Setting Up the Environment
-
-```typescript
-import {setupEnvironment} from '@rocketh/web';
-import {config, extensions} from './rocketh/config.js';
-
-const {loadAndExecuteDeploymentsFromModules, loadEnvironment} = setupEnvironment(config, extensions);
-```
-
-### Loading an Environment
-
-Use `loadEnvironment` to create an environment without executing deploy scripts:
-
-```typescript
-import {setupEnvironment} from '@rocketh/web';
-import {config, extensions} from './rocketh/config.js';
-
-const {loadEnvironment} = setupEnvironment(config, extensions);
-
-// Connect to a network via the browser provider
-const env = await loadEnvironment({
-	environment: 'mainnet',
-	provider: window.ethereum, // Use browser wallet provider
+const {loadAndExecuteDeploymentsFromModules} = setupEnvironment(config, extensions, {
+	deploymentStore: await createIndexedDBDeploymentStore(),
 });
 
-// Access deployments
-const myContract = env.get('MyContract');
-console.log('Contract address:', myContract.address);
-```
-
-### Executing Deploy Scripts
-
-Use `loadAndExecuteDeploymentsFromModules` to run deploy scripts in the browser:
-
-```typescript
-import {setupEnvironment} from '@rocketh/web';
-import {config, extensions} from './rocketh/config.js';
-import deployMyContract from './deploy/deploy_MyContract.js';
-
-const {loadAndExecuteDeploymentsFromModules} = setupEnvironment(config, extensions);
-
-// Execute deploy scripts
-const env = await loadAndExecuteDeploymentsFromModules([{id: 'deploy_MyContract', module: deployMyContract}], {
-	environment: 'sepolia',
-	provider: window.ethereum,
-});
-```
-
-### Loading Deployments from IndexedDB (deprecated)
-
-`loadDeploymentsFromIndexedDB` is deprecated and misnamed: it reads the store bound to this module (in memory by default), not IndexedDB. To read deployments back, load through the store you built, as in [Storing Deployments](#storing-deployments) (`loadDeploymentsFromStore` from `rocketh`). The old call, for reference:
-
-```typescript
-import {loadDeploymentsFromIndexedDB} from '@rocketh/web';
-
-const {deployments, migrations, chainId, genesisHash} = await loadDeploymentsFromIndexedDB(
-	'deployments',
-	'mainnet',
-	true, // onlyABIAndAddress - load minimal data
-	{
-		chainId: '1',
-		genesisHash: '0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3',
-	},
+const env = await loadAndExecuteDeploymentsFromModules(
+	[{id: '001_deploy_greetings_registry', module: deployGreetingsRegistry}],
+	{environment: 'sepolia', provider: window.ethereum},
 );
 ```
 
-## API Reference
+## Documentation
 
-### `setupEnvironment(config, extensions, options?)`
+- [Run deploy scripts in a browser](https://rocketh.dev/documentation/browser/)
 
-Creates environment helpers for browser deployment.
-
-**Parameters:**
-
-- `config` - Rocketh user configuration
-- `extensions` - Extension functions (e.g., deploy, read, execute)
-- `options.deploymentStore` - Optional: the store this environment uses (see [Storing Deployments](#storing-deployments)). Without it, every `setupEnvironment` call in the page shares one module-level in-memory store.
-
-**Returns:**
-
-- `loadAndExecuteDeploymentsFromModules` - Execute deploy scripts
-- `loadEnvironment` - Load environment without executing scripts
-
-### `loadDeploymentsFromIndexedDB(deploymentsPath, networkName, onlyABIAndAddress?, expectedChain?)`
-
-Deprecated (see above): loads deployments from the module-level store, which is in memory unless you replaced it, not from IndexedDB.
-
-**Parameters:**
-
-- `deploymentsPath` - Path/key for deployments in storage
-- `networkName` - Name of the network/environment
-- `onlyABIAndAddress` - If true, load only essential data
-- `expectedChain` - Optional chain validation
-
-**Returns:**
-
-- `deployments` - Record of deployed contracts
-- `migrations` - Record of executed migrations
-- `chainId` - Chain ID string
-- `genesisHash` - Genesis block hash
-
-## Use Cases
-
-### In-Browser Deployment Tools
-
-Build deployment dashboards that allow users to deploy contracts directly from the browser:
-
-```typescript
-async function deployFromBrowser() {
-	const {loadAndExecuteDeploymentsFromModules} = setupEnvironment(config, extensions);
-
-	try {
-		const env = await loadAndExecuteDeploymentsFromModules(deployModules, {
-			environment: 'sepolia',
-			provider: window.ethereum,
-			tags: ['MyContract'], // Deploy specific tags
-		});
-
-		console.log('Deployment complete!');
-		return env.deployments;
-	} catch (error) {
-		console.error('Deployment failed:', error);
-	}
-}
-```
-
-### DApp Development
-
-Load existing deployments in your DApp frontend:
-
-```typescript
-import {setupEnvironment} from '@rocketh/web';
-import {createPublicClient, custom} from 'viem';
-
-const {loadEnvironment} = setupEnvironment(config, extensions);
-
-async function initializeApp() {
-	const env = await loadEnvironment({
-		environment: 'mainnet',
-		provider: window.ethereum,
-	});
-
-	// Use deployed contracts
-	const token = env.get('Token');
-
-	// Create viem client for interactions
-	const client = createPublicClient({
-		chain: env.network.chain,
-		transport: custom(window.ethereum),
-	});
-
-	// Read contract data
-	const balance = await client.readContract({
-		address: token.address,
-		abi: token.abi,
-		functionName: 'balanceOf',
-		args: [userAddress],
-	});
-}
-```
-
-## Limitations
-
-- **Storage**: deployments persist across a reload only with `createIndexedDBDeploymentStore()`; the default store is in memory. A browser cannot read your `deployments/` folder, so deployments from a Node run must be bundled or fetched from an API.
-- **No File System**: Cannot read deploy scripts from filesystem - scripts must be imported directly.
-
-## Related Packages
-
-- [`rocketh`](../rocketh) - Core deployment environment
-- [`@rocketh/deploy`](../rocketh-deploy) - Standard deployment functions
-- [`@rocketh/node`](../rocketh-node) - Node.js deployment executor
+The whole documentation is at [rocketh.dev](https://rocketh.dev), the hardhat-deploy section at [rocketh.dev/hardhat-deploy](https://rocketh.dev/hardhat-deploy/).
 
 ## License
 
-[MIT](../../LICENSE)
+[MIT](https://github.com/wighawag/rocketh/blob/main/LICENSE)

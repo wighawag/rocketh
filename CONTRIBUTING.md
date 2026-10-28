@@ -53,6 +53,71 @@ Each builds the playground (`packages/rocketh-playground`) first, so the page sh
 
 `.github/workflows/deploy.yml` deploys on every push to `main`, building the commit of rocketh-website it pins in `ROCKETH_WEBSITE_REF`. A change to the site goes live through a pull request here that moves that pin.
 
+## The playground (`@rocketh/playground`)
+
+The widget of the introduction page, built from `packages/rocketh-playground`. What follows is for working on it; its README is for using it.
+
+### How the docs site consumes it
+
+The site ([wighawag/rocketh-website](https://github.com/wighawag/rocketh-website)) imports the built `dist` of this package from the rocketh checkout it renders, never an npm release, so the widget on a page is always the one of the same commit. It has to be built first, which is wired into the docs scripts themselves rather than left to CI, so a fresh clone works:
+
+```jsonc
+"docs:widgets": "nx build @rocketh/playground", // builds this package and its workspace deps
+"docs:dev": "pnpm docs:widgets && tsx scripts/docs-site.ts dev",
+"docs:build": "pnpm docs:widgets && tsx scripts/docs-site.ts build",
+```
+
+Without it, the site's build stops with `rocketh-playground: .../dist/element/rocketh-playground.js does not exist`, rather than deploying a page whose widget never loads.
+
+`docs:widgets` runs ONCE when the dev server starts. While iterating on the core or the components, run `pnpm --filter @rocketh/playground dev` alongside it to rebuild on change.
+
+### Publishing
+
+Published as `@rocketh/playground`. The docs site does not go through the registry (it consumes the build in the rocketh checkout), so a release only matters for outside consumers embedding the widget.
+
+Two things about this repo's release flow bit us once each, and both are worth knowing before you touch versioning here:
+
+- **npm Trusted Publishing (OIDC) cannot create a brand-new package.** npm ties a trusted publisher to an already-existing package, so the first publish of any new package in this repo has to be done by hand (`npm publish --access public`) and the trusted publisher registered on npmjs.com afterwards. Until that is done, `changeset publish` fails the entire release job with `E404 Not Found - PUT /@rocketh%2f<name>`, taking the other packages' release down with it.
+- **An empty changeset sitting on `main` silently blocks publishing.** `changesets/action` takes the version/PR path whenever any changeset file exists. If every one of them is empty it logs `All changesets are empty; not creating PR` and exits WITHOUT publishing, so a package whose version is ahead of the registry stays unpublished with a green release job. The publish path only runs when there are no changeset files at all. So an empty changeset needs a real one alongside it, or it has to be consumed, before anything can ship.
+
+### The contracts it deploys
+
+Two implementations of the same registry, behind one proxy.
+
+| Implementation        | Origin                                                     | Regenerate with          |
+| --------------------- | ---------------------------------------------------------- | ------------------------ |
+| `GreetingsRegistry`   | vendored verbatim from `template-ethereum-contracts@0.0.3` | `pnpm artifact:sync`     |
+| `GreetingsRegistryV2` | ours, in `contracts/`                                      | `pnpm contracts:compile` |
+
+The origins differ on purpose. v1 is kept exactly as published so its provenance stays "the real template contract", bug included. The template has no v2, so that one is ours, and its source lives in `contracts/` precisely so the code the tutorial **shows** is provably the code it **runs**.
+
+`contracts:compile` shells out to `solc` and is **not** an npm dependency, the same way `artifact:sync` shells out to `npm` and `tar`. Artifacts are committed, so you only need solc to change a contract, never to use the package.
+
+#### The bug, and why it stays
+
+v1 passes a `"proxy:"` prefix to its **constructor**, and greetings read back without it. That is not a bug in rocketh or in the proxy, and it is deliberately not fixed: a constructor runs against the _implementation's_ storage, never the proxy's, so the proxy's own `_prefix` slot is never written. v2 fixes it by setting the prefix through a `postUpgrade` call that rocketh makes **through the proxy** during the upgrade.
+
+v2 also only ever **appends** storage variables (`_prefixInitialized` at slot 2, leaving `_prefix` and `messages` where v1 put them). Reordering them, or inserting one above `messages`, would leave the new code reading the old slots and silently reinterpret every greeting anyone had stored.
+
+### Testing
+
+From `packages/rocketh-playground`:
+
+```bash
+pnpm test          # headless, node, runs in CI and in the root `pnpm test`
+pnpm test:browser  # real chromium; needs `pnpm exec playwright install chromium` first
+```
+
+The browser suite is opt-in and lives in its own `vitest.browser.config.ts`, which the root runner does not collect (it globs `packages/*/vitest.config.ts` by exact name). A default test command that fails until you download a browser is one people stop running.
+
+It earns its keep. Every bug this widget has had was found in a browser and none by the headless suite: a keyed-list crash that only appeared on the SECOND run, and a `console.error` from rocketh being painted as a failure.
+
+One lesson is baked into the tests themselves. A widget-level "run it twice" test is nearly worthless here, because both runs print identical text: when the keyed-list bug threw, the render froze on the first run's output and the assertions happily passed against the stale DOM. The regression is therefore pinned at the `Terminal` level, where the two runs say different things and a frozen render is detectable. That test was verified to fail with the bug reintroduced.
+
+### Requirements
+
+`webevm` **0.5.0 or later**. This package was formerly published as `embedded-eth-node`, whose last release under the old name was 0.4.0; `webevm@0.5.0` continues that version line and is otherwise identical. Releases before that answered `eth_estimateGas` with gas _consumed_ rather than a usable limit, which silently reverted the inner `CREATE2` and so broke exactly the deterministic deployment this demonstrates.
+
 ## Before you open a pull request
 
 1. `pnpm test` passes.

@@ -1,104 +1,49 @@
 # @rocketh/unknown-signer
 
-`catchUnknownSigner` for rocketh: wrap a privileged call whose `from` is an account rocketh cannot sign for (a Safe multisig, a hardware wallet left unplugged, an air-gapped or governance key) and get back the exact transaction to execute out-of-band instead of halting the run. This is hardhat-deploy v1's helper, with one deliberate call-shape divergence.
+`catchUnknownSigner` and `withUnknownSignerPolicy` for rocketh. When a transaction's `from` is an account rocketh cannot sign for (a Safe, a timelock, an unplugged hardware wallet), rocketh by default pauses, prints the transaction and checks the hash you paste back, with nothing to install. This package is for the other workflow: `catchUnknownSigner` hands the transaction back as a value and lets the script carry on (hardhat-deploy v1's helper, for migrating a v1 script or a run that must never block), and `withUnknownSignerPolicy` sets the policy for one call.
 
-The package also exports `withUnknownSignerPolicy`, which chooses the unknown-signer policy for ONE call (see below).
+## Installation
 
-## You may not need this package
+```bash
+pnpm add -D @rocketh/unknown-signer
+# or
+npm install --save-dev @rocketh/unknown-signer
+```
 
-Handling an unsignable `from` is built into rocketh. By default (`onUnknownSigner: 'auto'`), a run at a terminal PAUSES: it prints the transaction, waits while you execute it on your Safe, takes back the hash you paste, and continues the same run. One run, no wrapper, nothing to install.
+## Wiring it up
 
-Reach for `catchUnknownSigner` when you specifically want the DEFER workflow instead:
-
-- you are migrating a hardhat-deploy v1 script that already uses it (its main reason to exist), or
-- you want the transaction handed back as a value in a run that must never block, and you will re-run afterwards.
-
-Otherwise the built-in interactive flow finishes the job in one run rather than two.
+`@rocketh/unknown-signer` is an extension: spread it into `extensions` in `rocketh/config.ts`, and your deploy scripts receive its functions.
 
 ```typescript
-import {catchUnknownSigner} from '@rocketh/unknown-signer';
-import {execute} from '@rocketh/read-execute';
+// rocketh/config.ts
+import * as deployExtension from '@rocketh/deploy';
+import * as unknownSignerExtension from '@rocketh/unknown-signer';
 
-const deferred = await catchUnknownSigner(env)(() =>
-	execute(env)(proxy, {account: 'safeOwner', functionName: 'upgradeTo', args: [newImplementation.address]}),
+const extensions = {...deployExtension, ...unknownSignerExtension};
+export {extensions};
+```
+
+## Example
+
+```typescript
+const deferred = await catchUnknownSigner(() =>
+	deployViaProxy('Vault', {account: deployer, artifact: artifacts.Vault, args: []}, {owner: safe}),
 );
-
 if (deferred) {
-	// {from, to, value, data} — execute this on the Safe, then re-run the script.
+	// {from, to, value, data}: execute it on the Safe, then run the script again
 }
 ```
 
-## The one divergence from v1: the action is a thunk
+Unlike v1, the action is a function (`() => deployViaProxy(...)`), never a promise. `UnknownSignerError` is on the `@rocketh/unknown-signer/errors` subpath.
 
-v1 accepted `Promise | (() => Promise)`. Here it is a **function only**:
+## Documentation
 
-```typescript
-// v1
-await catchUnknownSigner(execute(...));
+- [Unknown signers: deferring instead of asking](https://rocketh.dev/documentation/unknown-signers/#deferring-instead-of-asking-catchunknownsigner)
+- [catchUnknownSigner in a migrated script](https://rocketh.dev/hardhat-deploy/migration/#catch-unknown-signer)
+- [A Safe-owned project, end to end](https://rocketh.dev/documentation/safe-owned-project/)
 
-// rocketh
-await catchUnknownSigner(env)(() => execute(...));
-```
+The whole documentation is at [rocketh.dev](https://rocketh.dev), the hardhat-deploy section at [rocketh.dev/hardhat-deploy](https://rocketh.dev/hardhat-deploy/).
 
-A promise argument has already started executing before the wrapper is called, so there is no moment at which to establish the unknown-signer policy for it; accepting one would give you a wrapper that silently does not do its job. The v1 form therefore fails to compile, and a JavaScript caller gets a runtime error naming the fix. The RETURN value is unchanged, so migrating a v1 script is the import plus this one mechanical change.
+## License
 
-## What you get back
-
-`null` when the action ran to completion, otherwise `{from, to, value, data}` — v1's shape exactly: every key present even when `undefined`, `value` as a string, and no `contract` (that exists only to enrich the printed message).
-
-The printed block is v1's layout (`from`, `to`, `method`, each argument on its own line, `value`, `data`) plus, for a call made through `execute`, one `abi:` line after the arguments: the ABI of that one function as a single JSON line, to paste into a Safe's Transaction Builder when it cannot fetch the target's ABI itself. It is printed only; the returned value above does not gain a key.
-
-Pass `{log: false}` to suppress the printed block and only take the returned value.
-
-## One wrapper captures one transaction
-
-The error unwinds the wrapped action, so the FIRST unsignable transaction inside it is the one you get back and everything after it in that action is skipped. Deferring several steps means one `catchUnknownSigner` per step.
-
-## Nothing is persisted
-
-There is no unsigned-transactions file and no other side effect, exactly as in v1. Idempotency comes from on-chain state alone: execute the deferred transaction on your Safe, re-run your idempotent script, and its on-chain state check skips the completed step.
-
-That check is not optional thinking you can skip. Under a deferral rocketh observed nothing, so it may record nothing, and a step with no on-chain check is surfaced again on every run until the chain says otherwise. For a mint, a transfer or any governance action carrying its own nonce, following the printed instructions twice is a loss. `deploy` and `deployViaProxy` bring their own check; for an `execute` you declare one with its `guard` option (`@rocketh/read-execute`), which reads the chain before building anything and skips the call when the effect is already there. See `docs/adr/0012-a-record-asserts-only-what-rocketh-observed.md`.
-
-## Choosing the policy for one call
-
-The run-level policy (`onUnknownSigner`, resolved as run parameter > chain config > top-level config > the default `'auto'`) decides what happens when a `from` is unsignable. `withUnknownSignerPolicy` overrides it for a single action:
-
-```typescript
-import {withUnknownSignerPolicy} from '@rocketh/unknown-signer';
-
-// on a fork whose run-level policy is 'throw': rehearse the interactive flow, once
-const receipt = await withUnknownSignerPolicy(env)('ask', () =>
-	execute(env)(proxy, {account: 'safeOwner', functionName: 'upgradeTo', args: [newImplementation.address]}),
-);
-```
-
-It returns whatever the action returned and propagates whatever it threw, so wrapping it in `catchUnknownSigner` still defers as usual. The action is a thunk for the same reason as above. It is the SAME policy frame `catchUnknownSigner` pushes, so the rule is one rule: the innermost override wins, and with none the run's policy applies.
-
-**Capability is a ceiling, not a default.** Asking for `'ask'` here only chooses among what the run can already do: where the run cannot ask a human for text (CI, a non-TTY shell, the browser) it degrades to `'throw'` and nobody is prompted, so a script that hardcodes the override still runs, un-hangable, in CI.
-
-## Getting at the error type
-
-`UnknownSignerError` is re-exported from a SUBPATH, not from the package root:
-
-```typescript
-import {UnknownSignerError} from '@rocketh/unknown-signer/errors';
-```
-
-The root is deliberately function-only. Its exports are meant to be spread into `extensions` in `rocketh/config.ts`, and every entry there is called as `value(env)` — so a class sitting on the root would be invoked without `new` and refused by name at deploy-script run time. Anything that is not a curried `(env) => …` function therefore lives on a subpath.
-
-## It does not defeat impersonation
-
-The policy frame these wrappers push forces the `throw` path over the interactive `ask` path. It never overrides impersonation: an account the node can sign for, including one `autoImpersonate` took on, is signable and still broadcasts inside the wrapper. To exercise the unknown-signer path on a fork, set `autoImpersonate: false` for the run. See `docs/adr/0006-unknown-signer-seam-and-orthogonal-autoimpersonate.md`.
-
-## Stability
-
-This surface is frozen for the whole 0.x line: `catchUnknownSigner` and its return value, `withUnknownSignerPolicy`, `UnknownSignerError` and its `data`, the `throw` / `ask` / `auto` policies and where they are set, and the `--on-unknown-signer` and `--skip-prompts` flags are not removed, renamed or given a different meaning before 1.0. Message wording is not part of it, and optional fields may be added. The exact list is in [ADR 0016](https://github.com/wighawag/rocketh/blob/main/docs/adr/0016-the-unknown-signer-surface-is-frozen-for-0x.md).
-
-## Worked examples
-
-[`test/scenarios.integration.test.ts`](https://github.com/wighawag/rocketh/blob/main/packages/rocketh-unknown-signer/test/scenarios.integration.test.ts) is written as documentation (linked rather than referenced by path, because the published npm tarball ships `dist` and `src` only): a Safe-governed proxy upgrade, the same mechanism firing for a plain `tx`, a deploy, an `execute` and a value transfer, a run that mixes signable and Safe-only steps, and the full execute-on-the-Safe-then-re-run loop. Each test body reads as a deploy script.
-
-[`test/guarded-convergence.integration.test.ts`](https://github.com/wighawag/rocketh/blob/main/packages/rocketh-unknown-signer/test/guarded-convergence.integration.test.ts) is the same loop for a call rocketh knows nothing about: a proxy upgrade through a ProxyAdmin owned by the Safe, guarded by the author on the proxy's EIP-1967 implementation slot. One script, two runs, unedited: it defers, you execute it on the Safe, and the re-run skips it and completes.
-
-For full documentation, visit [rocketh.dev](https://rocketh.dev).
+[MIT](https://github.com/wighawag/rocketh/blob/main/LICENSE)
