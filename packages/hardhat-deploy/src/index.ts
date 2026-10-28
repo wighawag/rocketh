@@ -6,6 +6,7 @@ import './type-extensions.js';
 import {ArgumentType} from 'hardhat/types/arguments';
 import type {Environment} from 'rocketh/types';
 import type {NetworkConnection} from 'hardhat/types/network';
+import {connectionOrThrow} from './connection.js';
 
 const hardhatPlugin: HardhatPlugin = {
 	id: 'hardhat-deploy',
@@ -100,22 +101,11 @@ export default hardhatPlugin;
  * The Hardhat network connection of the run, THROWING when there is none: for a script that
  * only makes sense under Hardhat. Call it with the environment, `getHardhatConnection(env)`.
  *
- * NOT an extension: do not spread it into `extensions`. `withEnvironment` calls every entry
- * with the environment of every script, so it would throw in every run that has no
- * connection (the `rocketh` command, a test fixture that passes only a provider). The
- * extension is `hardhatConnection` from `hardhat-deploy/extensions`, which returns
- * `undefined` instead.
+ * NOT an extension: do not spread it into `extensions` (it returns the connection, not a
+ * function, so `env.getHardhatConnection()` would not be callable, and in a run without a
+ * connection it would throw before every script). The extension form, which gives
+ * `env.getHardhatConnection()` and `env.hardhatConnection`, is `hardhat-deploy/extensions`.
  */
 export function getHardhatConnection(env: Environment): NetworkConnection<'generic'> {
-	const connection = env.extra?.connection;
-	if (!connection) {
-		throw new Error(
-			'Hardhat deploy connection not found in the environment. It is there when the environment comes from ' +
-				'Hardhat: the `deploy` task, `loadEnvironmentFromHardhat`, or a test fixture that passes ' +
-				'`extra: {connection}`. For a script that also runs without Hardhat, spread ' +
-				'`hardhat-deploy/extensions` into your extensions and read `env.hardhatConnection`, which is ' +
-				'`undefined` there.',
-		);
-	}
-	return connection as NetworkConnection<'generic'>;
+	return connectionOrThrow(env) as NetworkConnection<'generic'>;
 }

@@ -2,11 +2,13 @@
  * The Hardhat connection inside deploy scripts, and in a test fixture.
  *
  * `hardhat-deploy/extensions` is the extension: spread it into `extensions` in
- * `rocketh/config.ts` and a deploy script reads `env.hardhatConnection`, the Hardhat network
- * connection of the run, or `undefined` in a run that has none (the `rocketh` command, a
- * fixture that passes only a provider). `getHardhatConnection(env)` from the package root is
- * the throwing form, for a script that requires Hardhat, and is NOT an extension: the last
- * section shows what spreading it does.
+ * `rocketh/config.ts` and a deploy script gets two things:
+ * - `env.hardhatConnection`, the Hardhat network connection of the run, or `undefined` in a run
+ *   that has none (the `rocketh` command, a fixture that passes only a provider);
+ * - `env.getHardhatConnection()`, the same connection, throwing when there is none, for a
+ *   script that requires Hardhat.
+ * `getHardhatConnection(env)` from the package ROOT is the throwing form without the extension,
+ * and is NOT itself an extension: the last section shows what spreading it does.
  *
  * Everything here is real: a real Hardhat in-memory network (`hre.network.connect()`, as a
  * test does), real rocketh environments on its provider, and deploy scripts run by rocketh's
@@ -164,12 +166,80 @@ describe('hardhat-deploy/extensions: env.hardhatConnection', () => {
 		for (const [name, value] of Object.entries(hardhatExtension)) {
 			expect(typeof value, name).toBe('function');
 		}
-		const source = readFileSync(new URL('../src/extensions.ts', import.meta.url), 'utf8');
-		const imports = source.split('\n').filter((line) => /^\s*import\s/.test(line));
-		expect(imports.length).toBeGreaterThan(0);
-		for (const line of imports) {
-			expect(line).toMatch(/^\s*import type\s/);
+		// The module and the internal helper it imports: any import of a PACKAGE is types only.
+		for (const file of ['../src/extensions.ts', '../src/connection.ts']) {
+			const source = readFileSync(new URL(file, import.meta.url), 'utf8');
+			const imports = source.split('\n').filter((line) => /^\s*import\s/.test(line));
+			expect(imports.length, file).toBeGreaterThan(0);
+			for (const line of imports) {
+				if (/from '\.\/[^']+'/.test(line)) continue;
+				expect(line, file).toMatch(/^\s*import type\s/);
+			}
 		}
+	});
+});
+
+describe('hardhat-deploy/extensions: env.getHardhatConnection()', () => {
+	it('returns the connection to a script that requires Hardhat', async () => {
+		/**
+		 * The method form: for a script that is meaningless without Hardhat. Same extension,
+		 * same spread, called as `env.getHardhatConnection()`.
+		 */
+		const {deployScript} = setupDeployScripts({...hardhatExtension});
+		let seen: NetworkConnection | undefined;
+		const script = deployScript(
+			async (env) => {
+				seen = env.getHardhatConnection();
+			},
+			{tags: ['HardhatOnly']},
+		);
+
+		await runScripts([{id: 'hardhat-only', module: script}], {extra: {connection}});
+
+		expect(seen).toBe(connection);
+	});
+
+	it('throws only when CALLED in a run without a connection, so other scripts still run', async () => {
+		/**
+		 * The check happens when the script calls the method, not while the environment is set
+		 * up: a script that never calls it runs in the `rocketh` command too, and the one that
+		 * does fails with a message saying where the connection comes from.
+		 */
+		const {deployScript} = setupDeployScripts({...hardhatExtension});
+		let otherRan = false;
+		const other = deployScript(
+			async () => {
+				otherRan = true;
+			},
+			{tags: ['Other']},
+		);
+		const hardhatOnly = deployScript(
+			async (env) => {
+				env.getHardhatConnection();
+			},
+			{tags: ['HardhatOnly']},
+		);
+
+		await expect(
+			runScripts(
+				[
+					{id: 'other', module: other},
+					{id: 'hardhat-only', module: hardhatOnly},
+				],
+				{},
+			),
+		).rejects.toThrow(/^Hardhat deploy connection not found in the environment\. .*env\.hardhatConnection/);
+		expect(otherRan).toBe(true);
+	});
+
+	it('is typed as a method returning the connection', () => {
+		const {deployScript} = setupDeployScripts({...hardhatExtension});
+		deployScript(
+			async (env) => {
+				expectTypeOf(env.getHardhatConnection).toEqualTypeOf<() => NetworkConnection>();
+			},
+			{tags: []},
+		);
 	});
 });
 
@@ -191,9 +261,10 @@ describe('getHardhatConnection(env): the throwing form, not an extension', () =>
 
 	it('breaks every run without a connection when spread into extensions', async () => {
 		/**
-		 * What `{...extensions, getHardhatConnection}` does: `withEnvironment` calls each entry
-		 * with the environment before the script body runs, so a run without a connection fails
-		 * on a script that never even asked for it. Use `hardhat-deploy/extensions` instead.
+		 * What `{...extensions, getHardhatConnection}` with the ROOT import does: `withEnvironment`
+		 * calls each entry with the environment before the script body runs, so a run without a
+		 * connection fails on a script that never even asked for it (rocketh names the entry). Use
+		 * `hardhat-deploy/extensions` instead, whose `getHardhatConnection` checks when called.
 		 */
 		const {deployScript} = setupDeployScripts({getHardhatConnection});
 		let ran = false;
@@ -205,7 +276,7 @@ describe('getHardhatConnection(env): the throwing form, not an extension', () =>
 		);
 
 		await expect(runScripts([{id: 'unrelated', module: script}], {})).rejects.toThrow(
-			'Hardhat deploy connection not found in the environment',
+			/^extension entry "getHardhatConnection" threw while the environment was being set up .*: Hardhat deploy connection not found in the environment/,
 		);
 		expect(ran).toBe(false);
 	});

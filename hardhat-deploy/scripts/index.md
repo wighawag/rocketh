@@ -70,21 +70,22 @@ export default deployScript(
 
 The extension comes from `hardhat-deploy/extensions`, not from `hardhat-deploy`: every entry spread into `extensions` is called with the environment, and the package root also exports the Hardhat plugin itself. The subpath loads no part of Hardhat, so the `rocketh` command and a browser build load a `rocketh/config.ts` that spreads it like any other.
 
-### Requiring Hardhat: `getHardhatConnection`
+### Requiring Hardhat: `env.getHardhatConnection()`
 
-For a script that only makes sense under Hardhat, `getHardhatConnection(env)` from `hardhat-deploy` returns the same connection, and throws `Hardhat deploy connection not found in the environment` when there is none:
+For a script that only makes sense under Hardhat, the same extension gives `env.getHardhatConnection()`, a method that returns the connection and throws `Hardhat deploy connection not found in the environment` when there is none:
 
 ```typescript
-import {getHardhatConnection} from 'hardhat-deploy';
 import {deployScript} from '../rocketh/deploy.js';
 
 export default deployScript(
 	async (env) => {
-		const connection = getHardhatConnection(env);
+		const connection = env.getHardhatConnection();
 		console.log(connection.networkName);
 	},
 	{tags: ['HardhatOnly']},
 );
 ```
 
-Call it as a function, with the environment, where it is needed. Do not spread it into `extensions`: every extension is called with the environment for every script, so it would throw in every run that has no connection, including for scripts that never use it.
+It checks when the script calls it, so in a run without a connection only that script fails; the others run as usual.
+
+Without the extension, `getHardhatConnection(env)` from `hardhat-deploy` does the same as a plain function: call it with the environment where it is needed. Do not spread that one into `extensions`. It returns the connection rather than a method, so `env.getHardhatConnection()` would not be callable, and every extension is called with the environment before every script, so in a run without a connection it would fail every script, including those that never use it. The one to spread is `hardhat-deploy/extensions`.

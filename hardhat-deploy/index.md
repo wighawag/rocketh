@@ -34,7 +34,7 @@ Start with [Coming from hardhat-deploy v1](./migration/): what v1 has that v2 do
 - [The `hardhat deploy` task](./deploy-task/): its options, and how they map to the `rocketh` command.
 - [Networks and accounts from the environment](./networks/): `addNetworksFromEnv`, `addNetworksFromKnownList`, `addForkConfiguration`, `HARDHAT_FORK`.
 - [Typed artifacts](./typed-artifacts/): the `artifacts` and `abis` modules generated from each compilation.
-- [Scripts and the Hardhat connection](./scripts/): `loadEnvironmentFromHardhat`, `env.hardhatConnection` (`hardhat-deploy/extensions`), `getHardhatConnection`.
+- [Scripts and the Hardhat connection](./scripts/): `loadEnvironmentFromHardhat`, `env.hardhatConnection` and `env.getHardhatConnection()` (`hardhat-deploy/extensions`).
 - [Development workflow](./development-workflow/): a local node, and redeploy on change (Hot Contract Replacement).
 
 For a complete project to start from, see [template-ethereum-contracts](https://github.com/wighawag/template-ethereum-contracts). The plugin's source and issues are in the [rocketh repository](https://github.com/wighawag/rocketh/tree/main/packages/hardhat-deploy).

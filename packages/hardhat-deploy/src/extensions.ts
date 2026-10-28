@@ -1,6 +1,7 @@
 /**
  * hardhat-deploy as a rocketh EXTENSION: spread this subpath into `extensions` in
- * `rocketh/config.ts` and every deploy script gets `env.hardhatConnection`.
+ * `rocketh/config.ts` and every deploy script gets `env.hardhatConnection` and
+ * `env.getHardhatConnection()`.
  *
  * ```typescript
  * import * as hardhatExtension from 'hardhat-deploy/extensions';
@@ -12,26 +13,33 @@
  * `value(env)`. For the same reason this module may export NOTHING but curried
  * `(env) => …` functions (see `AGENTS.md`).
  *
- * Every import here is `import type`, so loading this module never loads Hardhat: a
- * `rocketh/config.ts` that spreads it still works under the `rocketh` command and in a
- * browser, where there is no Hardhat runtime to load.
+ * `withEnvironment` calls every entry once, with the environment of every script, in every
+ * run, before the script body: so no entry here may throw at that point. Hardhat runs have a
+ * connection (the `deploy` task, `loadEnvironmentFromHardhat`, and a test fixture that passes
+ * `extra: {connection}`); the `rocketh` command, a browser and a fixture that passes only a
+ * provider do not.
+ *
+ * This module only loads Hardhat's TYPES (its one value import is the internal helper next to
+ * it, which imports only types too), so a `rocketh/config.ts` that spreads it still loads
+ * under the `rocketh` command and in a browser.
  */
 import type {Environment} from 'rocketh/types';
 import type {NetworkConnection} from 'hardhat/types/network';
+import {connectionOrThrow, connectionOrUndefined} from './connection.js';
 
 /**
- * The Hardhat network connection of the run, or `undefined` when there is none.
- *
- * A GETTER: as an extension it becomes the property `env.hardhatConnection`, not a method.
- * `withEnvironment` calls it once with the environment of every script, in every run, so it
- * must never throw. Hardhat runs have a connection (the `deploy` task,
- * `loadEnvironmentFromHardhat`, and a test fixture that passes `extra: {connection}`); the
- * `rocketh` command, a browser and a fixture that passes only a provider do not, and a script
- * that can run in both tells them apart by checking for `undefined`.
- *
- * To REQUIRE Hardhat instead (a script that is meaningless without it), call
- * `getHardhatConnection(env)` from `hardhat-deploy`, which throws.
+ * A GETTER, so it becomes the property `env.hardhatConnection`: the connection of the run, or
+ * `undefined` when there is none. For a script that runs with and without Hardhat.
  */
 export function hardhatConnection(env: Environment): NetworkConnection | undefined {
-	return env.extra?.connection as NetworkConnection | undefined;
+	return connectionOrUndefined(env);
+}
+
+/**
+ * A METHOD, `env.getHardhatConnection()`: the connection of the run, THROWING when there is
+ * none. For a script that requires Hardhat. Curried, so the check happens when the script
+ * calls it, never while the environment is set up, and the other scripts keep running.
+ */
+export function getHardhatConnection(env: Environment): () => NetworkConnection {
+	return () => connectionOrThrow(env);
 }
