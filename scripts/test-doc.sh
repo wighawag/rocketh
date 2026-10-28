@@ -77,7 +77,7 @@ if [ -n "$port" ] && listening "$port"; then
 fi
 
 if [ "$outside" = true ]; then
-	workdir=$(mktemp -d)
+	workdir=$(mktemp -d) || exit 1
 	mkdir "$workdir/.config"
 	export XDG_CONFIG_HOME="$workdir/.config"
 	for name in $(compgen -e); do
@@ -92,9 +92,9 @@ else
 		exit 1
 	fi
 	pnpm build || exit 1
-	lock=$(mktemp)
+	lock=$(mktemp) || exit 1
 	cp pnpm-lock.yaml "$lock"
-	workspace=$(mktemp)
+	workspace=$(mktemp) || exit 1
 	cp pnpm-workspace.yaml "$workspace"
 fi
 
@@ -108,10 +108,10 @@ set -m
 (cd "$workdir" && exec "$repo/node_modules/.bin/ezx" --verbose --kill-on-complete "$repo/$page" ${sections[@]+"${sections[@]}"} </dev/null) &
 pgid=$!
 set +m
-trap 'kill -TERM -- -"$pgid" 2>/dev/null' INT TERM
+trap 'kill -TERM -- -"$pgid" 2>/dev/null' HUP INT TERM
 wait "$pgid"
 status=$?
-trap - INT TERM
+trap - HUP INT TERM
 kill -TERM -- -"$pgid" 2>/dev/null
 sleep 1
 kill -KILL -- -"$pgid" 2>/dev/null
