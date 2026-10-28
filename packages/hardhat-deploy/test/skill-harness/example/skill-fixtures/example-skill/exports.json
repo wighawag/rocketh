@@ -1,0 +1,5 @@
+{
+	"rocketh": ["setupDeployScripts"],
+	"@rocketh/deploy": ["deploy"],
+	"@rocketh/read-execute": ["execute", "read"]
+}

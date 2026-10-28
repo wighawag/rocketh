@@ -2345,9 +2345,11 @@ Use the verification extension to verify contracts on block explorers:
 # Verify all deployments
 pnpm verify sepolia
 
-# Verify specific contract
-pnpm rocketh-verify -e sepolia --contract MyContract
+# Or call the command directly: `-e` first, then the explorer (etherscan, sourcify or blockscout)
+ETHERSCAN_API_KEY=<your key> pnpm rocketh-verify -e sepolia etherscan
 ```
+
+Every deployment of the environment is submitted: there is no option to verify one contract on its own, and one already verified is reported as such. See [Exporting, verifying and documenting](https://rocketh.dev/documentation/exporting-and-verifying/#contract-verification).
 
 ### Deployment Export
 
