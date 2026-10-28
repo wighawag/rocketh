@@ -50,8 +50,8 @@ importers:
         specifier: 0.15.1
         version: 0.15.1
       ezx:
-        specifier: ^0.0.18
-        version: 0.0.18
+        specifier: ^0.1.0
+        version: 0.1.0
       murmur-128:
         specifier: ^0.2.1
         version: 0.2.1
@@ -3224,10 +3224,6 @@ packages:
   command-exists@1.2.9:
     resolution: {integrity: sha512-LTQ/SGc+s0Xc0Fu5WaKnR0YiygZkm9eKFvyS+fRsU7/ZWFF8ykFM6Pc9aCVf1+xasOOZpO3BAVgVrKvsqKHV7w==}
 
-  commander@14.0.2:
-    resolution: {integrity: sha512-TywoWNNRbhoD0BXs1P3ZEScW8W5iKrnbithIl0YH+uCmBd0QpPOA8yc82DS3BIE5Ma6FnBVUsJ7wVUDz4dvOWQ==}
-    engines: {node: '>=20'}
-
   commander@14.0.3:
     resolution: {integrity: sha512-H+y0Jo/T1RZ9qPP4Eh1pkcQcLRglraJaSLoyOtHxu6AapkjWVCy2Sit1QQ4x3Dng8qDlSsZEet7g5Pq06MvTgw==}
     engines: {node: '>=20'}
@@ -3433,8 +3429,8 @@ packages:
     resolution: {integrity: sha512-KfYbmpRm0VbLjEvVa9yGwCi9GI34xvi7A/HXYWQO65CSD2u3MczUJSuwXKFIxlGsgBQizV9q5J9NHj4VG0n+pA==}
     engines: {node: '>=12.0.0'}
 
-  ezx@0.0.18:
-    resolution: {integrity: sha512-ivyzeC9ZuAEXwhO7s0UphaiWB+Q8HQY3Z1EpSN3aCd2bP54akUo7mx0pITgA6CY/8e63u1fvCYSVGxg2zqI18w==}
+  ezx@0.1.0:
+    resolution: {integrity: sha512-M6mbVFsz8UdJP/k5oD7e2DZfOeLGrt2s81W0jy6qxwPFq9W+G/IMPXT7zBaMYHX6JBxAO0lzc5KT4k1248QHcQ==}
     engines: {node: '>=18.0.0'}
     hasBin: true
 
@@ -6827,8 +6823,6 @@ snapshots:
 
   command-exists@1.2.9: {}
 
-  commander@14.0.2: {}
-
   commander@14.0.3: {}
 
   commander@15.0.0: {}
@@ -7018,9 +7012,9 @@ snapshots:
 
   expect-type@1.4.0: {}
 
-  ezx@0.0.18:
+  ezx@0.1.0:
     dependencies:
-      commander: 14.0.2
+      commander: 14.0.3
       marked: 17.0.1
       zx: 8.8.5
 
