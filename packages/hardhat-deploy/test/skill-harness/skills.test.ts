@@ -36,8 +36,15 @@ describe('the skills under skills/', () => {
 	});
 });
 
+/** The export-name check builds a TypeScript program over the workspace: generous for a slow runner. */
+const SKILL_CHECK_TIMEOUT_MS = 60_000;
+
 describe.each(skills.map((skill) => [skill.name, skill] as const))('skill %s', (_name, skill) => {
-	it(`passes every check of a ${skill.user ? 'user skill' : 'skill'}`, () => {
-		expect(checkSkill(skill, {surfaces}).map(formatFailure)).toEqual([]);
-	});
+	it(
+		`passes every check of a ${skill.user ? 'user skill' : 'skill'}`,
+		() => {
+			expect(checkSkill(skill, {surfaces}).map(formatFailure)).toEqual([]);
+		},
+		SKILL_CHECK_TIMEOUT_MS,
+	);
 });

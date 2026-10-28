@@ -783,21 +783,23 @@ function workspacePackages(repoRoot: string): Map<string, string> {
 	return packages;
 }
 
-const exportCache = new Map<string, Set<string>>();
+/** Each package's `src/index.ts` entry, and ONE program over all of them, per repository root. */
+type ExportIndex = {entries: Map<string, string>; program: ts.Program; names: Map<string, Set<string>>};
+const exportIndexes = new Map<string, ExportIndex>();
 
 /**
- * The names a workspace package's ROOT (`.`) exports, values and types alike, read by the
- * TypeScript compiler from its `src/index.ts`, so nothing has to be built and a re-export
- * (`export * from`) counts.
+ * Built lazily once per repository root: one TypeScript program over every workspace package's
+ * entry, so a skill naming several packages pays for one program, not one per package.
  */
-export function rootExports(packageName: string, repoRoot: string = REPO_ROOT): Set<string> | undefined {
-	const cached = exportCache.get(packageName);
+function exportIndex(repoRoot: string): ExportIndex {
+	const cached = exportIndexes.get(repoRoot);
 	if (cached) return cached;
-	const dir = workspacePackages(repoRoot).get(packageName);
-	if (!dir) return undefined;
-	const entry = path.join(dir, 'src/index.ts');
-	if (!fs.existsSync(entry)) return undefined;
-	const program = ts.createProgram([entry], {
+	const entries = new Map<string, string>();
+	for (const [name, dir] of workspacePackages(repoRoot)) {
+		const entry = path.join(dir, 'src/index.ts');
+		if (fs.existsSync(entry)) entries.set(name, entry);
+	}
+	const program = ts.createProgram([...entries.values()], {
 		module: ts.ModuleKind.NodeNext,
 		moduleResolution: ts.ModuleResolutionKind.NodeNext,
 		target: ts.ScriptTarget.ESNext,
@@ -805,11 +807,27 @@ export function rootExports(packageName: string, repoRoot: string = REPO_ROOT): 
 		skipLibCheck: true,
 		types: [],
 	});
-	const checker = program.getTypeChecker();
-	const source = program.getSourceFile(entry);
+	const index = {entries, program, names: new Map<string, Set<string>>()};
+	exportIndexes.set(repoRoot, index);
+	return index;
+}
+
+/**
+ * The names a workspace package's ROOT (`.`) exports, values and types alike, read by the
+ * TypeScript compiler from its `src/index.ts`, so nothing has to be built and a re-export
+ * (`export * from`) counts.
+ */
+export function rootExports(packageName: string, repoRoot: string = REPO_ROOT): Set<string> | undefined {
+	const index = exportIndex(repoRoot);
+	const cached = index.names.get(packageName);
+	if (cached) return cached;
+	const entry = index.entries.get(packageName);
+	if (!entry) return undefined;
+	const checker = index.program.getTypeChecker();
+	const source = index.program.getSourceFile(entry);
 	const symbol = source && checker.getSymbolAtLocation(source);
 	const names = new Set(symbol ? checker.getExportsOfModule(symbol).map((s) => s.getName()) : []);
-	exportCache.set(packageName, names);
+	index.names.set(packageName, names);
 	return names;
 }
 
