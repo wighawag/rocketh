@@ -121,6 +121,12 @@ Just create a new `package.json` file with the following content:
 pnpm add -D hardhat @types/node typescript forge-std@github:foundry-rs/forge-std#v1.9.4 hardhat-deploy rocketh @rocketh/node @rocketh/deploy @rocketh/read-execute
 ```
 
+With pnpm 11 or later, that install ends with `ERR_PNPM_IGNORED_BUILDS`: pnpm 11 will not finish an install while a dependency's build script is neither allowed nor denied, and every later `pnpm` command in the project fails the same way until you decide. Neither esbuild nor @parcel/watcher needs its script here, so deny both (pnpm records the answer in `pnpm-workspace.yaml`):
+
+```bash skip
+pnpm approve-builds '!esbuild' '!@parcel/watcher'
+```
+
 ### create a new solidity file
 
 First we create a new directory for our solidity files.
