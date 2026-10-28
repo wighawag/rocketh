@@ -10,6 +10,8 @@ covers: [7, 10]
 
 `hardhat-deploy init` copies `packages/hardhat-deploy/templates/basic/` into a new project. Add `templates/basic/AGENTS.md` with the informing text, so an agent opening a new project learns the rocketh skills exist and tells the user, who decides whether to install them. It loads nothing. The user can delete the file. It also sits inside this repository as a nested `AGENTS.md`, so an agent editing the template reads it; that is harmless, since it describes the project the template scaffolds, and needs no change.
 
+> FORWARD-POINTER (from the drive that landed `working-with-an-ai-agent-docs-page`): `documentation/agent-skills/index.md`, section "A line for your project's AGENTS.md", now carries the fragment. Make `templates/basic/AGENTS.md` the SAME text and the SAME shape as that fragment: the mandated sentence, then a `## Project notes` heading with the HTML-comment placeholder naming who approves a privileged change, so users see one wording. That page deliberately does not yet say that `hardhat-deploy init` writes this file, because it was not true when the page landed. In this task, add one sentence to that section saying a project made with `hardhat-deploy init` already has it. Keep it a single-line paragraph, and run `pnpm docs:build` if a rocketh-website checkout is available.
+
 ## Acceptance criteria
 
 - [ ] The template contains `AGENTS.md` with: "This project deploys with hardhat-deploy v2 and rocketh. If the rocketh skills are not available to you, tell the user they exist and how to install them (`npx skills add wighawag/rocketh`, or the one-line prompt at https://rocketh.dev/documentation/agent-skills/)." and a short, empty section for project-specific notes (who approves a privileged change).
