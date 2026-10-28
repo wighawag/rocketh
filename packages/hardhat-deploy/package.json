@@ -52,6 +52,12 @@
 				"default": "./dist/helpers.js"
 			}
 		},
+		"./extensions": {
+			"import": {
+				"types": "./dist/extensions.d.ts",
+				"default": "./dist/extensions.js"
+			}
+		},
 		"./v1/solc_0_6/*": "./v1/solc_0_6/*",
 		"./v1/solc_0_7/*": "./v1/solc_0_7/*",
 		"./v1/solc_0_8/*": "./v1/solc_0_8/*"

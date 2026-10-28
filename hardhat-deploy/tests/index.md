@@ -59,6 +59,33 @@ describe('GreetingsRegistry', function () {
 
 The test uses the same `read` and `execute` as the deploy scripts, the named accounts (`namedAccounts.deployer`, `namedAccounts.admin`) for the roles the scripts gave them, and `unnamedAccounts` for throwaway users. The template runs these with Hardhat's Node.js test runner (`@nomicfoundation/hardhat-node-test-runner`) and [earl](https://earl.fun) assertions; any runner Hardhat supports works.
 
+## The Hardhat connection in a fixture
+
+A fixture that passes only `provider` gives the deploy scripts no Hardhat connection, so `env.hardhatConnection` is `undefined` in them (see [The Hardhat connection](../scripts/#the-hardhat-connection)). To run them as `hardhat deploy` does, pass the connection as well, in `extra`:
+
+```typescript
+// test/utils/index.ts
+import type {NetworkConnection} from 'hardhat/types/network';
+import {loadAndExecuteDeploymentsFromFiles} from '../../rocketh/environment.js';
+
+export function setupFixtures(connection: NetworkConnection) {
+	return {
+		async deployAll() {
+			const env = await loadAndExecuteDeploymentsFromFiles({provider: connection.provider, extra: {connection}});
+			return {env, namedAccounts: env.namedAccounts};
+		},
+	};
+}
+```
+
+```typescript
+// test/GreetingsRegistry.test.ts
+const connection = await network.connect();
+const {deployAll} = setupFixtures(connection);
+```
+
+The scripts, and the environment the fixture returns, then have `env.hardhatConnection` set to that connection, with your `rocketh/config.ts` spreading `hardhat-deploy/extensions`.
+
 ## Part of the system: `tags`
 
 `loadAndExecuteDeploymentsFromFiles({provider, tags: ['GreetingsRegistry']})` runs only the scripts carrying those tags, and their dependencies, for a test that needs part of the system. Give each fixture its own function, since `loadFixture` snapshots per function.
