@@ -22,6 +22,8 @@ Framework-agnostic deployment system for EVM smart contracts, and the deployment
 
 > 📚 **The documentation is at [rocketh.dev](https://rocketh.dev)**: [Introduction](https://rocketh.dev/documentation/), [get started without Hardhat](https://rocketh.dev/documentation/getting-started/) or [with hardhat-deploy](https://rocketh.dev/hardhat-deploy/getting-started/), guides and reference.
 
+> 🤖 **Deploying through a coding agent?** rocketh publishes skills that teach it to deploy with rocketh and hardhat-deploy v2: [Working with an AI agent](https://rocketh.dev/documentation/agent-skills/) lists them and says how to install them (`npx skills add wighawag/rocketh`).
+
 ## Features
 
 - 🔧 **Framework Agnostic** - Works with any Ethereum development toolchain

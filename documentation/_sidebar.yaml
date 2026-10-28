@@ -8,6 +8,8 @@
   items:
     - text: Get started without Hardhat
       link: /documentation/getting-started/
+    - text: Working with an AI agent
+      link: /documentation/agent-skills/
 - text: Concepts
   collapsed: false
   items:
