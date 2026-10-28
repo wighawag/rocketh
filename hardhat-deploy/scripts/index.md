@@ -39,9 +39,40 @@ With `HARDHAT_FORK=<network>` set as well, the script runs on a fork of that net
 
 `loadEnvironmentFromHardhat` takes `{hre}`, and optionally `connection`, a network connection you already opened, to reuse it.
 
-## The Hardhat connection: `getHardhatConnection`
+## The Hardhat connection
 
-A deploy script normally needs nothing from Hardhat. When one does (a Hardhat plugin's client, the network's name as Hardhat knows it), `getHardhatConnection(env)` from `hardhat-deploy` returns the network connection the run was given:
+A deploy script normally needs nothing from Hardhat. When one does (a Hardhat plugin's client, the network's name as Hardhat knows it), it reads the network connection of the run from `env.hardhatConnection`, after you add hardhat-deploy's extension to the others in `rocketh/config.ts`:
+
+```typescript
+// rocketh/config.ts
+import * as deployExtension from '@rocketh/deploy';
+import * as hardhatExtension from 'hardhat-deploy/extensions';
+
+const extensions = {...deployExtension, ...hardhatExtension};
+```
+
+```typescript
+// deploy/000_debug.ts
+import {deployScript} from '../rocketh/deploy.js';
+
+export default deployScript(
+	async (env) => {
+		const connection = env.hardhatConnection;
+		if (connection) {
+			console.log(connection.networkName);
+		}
+	},
+	{tags: ['Debug']},
+);
+```
+
+`env.hardhatConnection` is a property, not a method, typed `NetworkConnection | undefined`. The connection is there when the environment came from Hardhat: under the `deploy` task, from `loadEnvironmentFromHardhat`, and in a test fixture that passes it (see [Tests](../tests/#the-hardhat-connection-in-a-fixture)). Elsewhere (the `rocketh` command, a fixture that passes only a provider, a browser) it is `undefined`, and the script decides what to do without it, so the same scripts keep running everywhere.
+
+The extension comes from `hardhat-deploy/extensions`, not from `hardhat-deploy`: every entry spread into `extensions` is called with the environment, and the package root also exports the Hardhat plugin itself. The subpath loads no part of Hardhat, so the `rocketh` command and a browser build load a `rocketh/config.ts` that spreads it like any other.
+
+### Requiring Hardhat: `getHardhatConnection`
+
+For a script that only makes sense under Hardhat, `getHardhatConnection(env)` from `hardhat-deploy` returns the same connection, and throws `Hardhat deploy connection not found in the environment` when there is none:
 
 ```typescript
 import {getHardhatConnection} from 'hardhat-deploy';
@@ -52,10 +83,8 @@ export default deployScript(
 		const connection = getHardhatConnection(env);
 		console.log(connection.networkName);
 	},
-	{tags: ['Debug']},
+	{tags: ['HardhatOnly']},
 );
 ```
 
-The connection is there when the environment came from Hardhat: under the `deploy` task and from `loadEnvironmentFromHardhat`. Elsewhere (the `rocketh` command, `loadAndExecuteDeploymentsFromFiles` in a test, a browser) there is none, and `getHardhatConnection` throws `Hardhat deploy connection not found in the environment`. A script that uses it therefore only runs under Hardhat, which is a reason to keep it out of the scripts everything else runs.
-
-Call it as a function, with the environment, where it is needed. Do not spread it into `extensions`: every extension is called with the environment for every script, so it would throw in every run that is not a Hardhat one.
+Call it as a function, with the environment, where it is needed. Do not spread it into `extensions`: every extension is called with the environment for every script, so it would throw in every run that has no connection, including for scripts that never use it.
