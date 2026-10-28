@@ -230,7 +230,7 @@ The upgrade decision is made per proxy, from that proxy's EIP-1967 implementatio
 
 ## `catchUnknownSigner` in a migrated script {#catch-unknown-signer}
 
-`deployments.catchUnknownSigner` is `catchUnknownSigner` from `@rocketh/unknown-signer`, and it returns v1's shape: `null` when the action went through, otherwise `{from, to, value, data}` with every key present and `value` as a string. Three things are worth knowing before you port a script that uses it.
+`deployments.catchUnknownSigner` is `catchUnknownSigner` from `@rocketh/unknown-signer`, and it returns v1's shape: `null` when the action went through, otherwise `{from, to, value, data}` with every key present and `value` as a string. This section is its documentation: rocketh keeps it for ported scripts, and a new script uses rocketh's own handling instead ([Handling unknown signers](/documentation/unknown-signers/)). Three things are worth knowing before you port a script that uses it.
 
 **The action is a function, not a promise.** v1's `catchUnknownSigner(execute(...))` becomes `catchUnknownSigner(() => execute(...))`. This is the one mechanical change. A promise has already started running by the time the wrapper receives it, so there is no moment left at which to establish the policy the wrapped call runs under. Forgetting the arrow is a LOUD error, not a wrapper that quietly fails to defer: TypeScript rejects it, and a JavaScript caller gets a runtime error that names the fix (`Wrap the call in an arrow function: ...`).
 
@@ -244,9 +244,152 @@ await catchUnknownSigner(() => execute(registry, {account: admin, functionName: 
 
 **Wrapping a call means accepting that the step did not happen.** When the wrapper catches, the step was NOT executed, and your script carries on anyway. Anything later in the same script that depends on that step must check the chain before it acts, or must not be there. rocketh unwinds only the wrapped action: `deployViaProxy`'s own post-upgrade `execute` / `onUpgrade` call is part of that action, so it is safe automatically; your NEXT statement is not. This was equally true in v1; it was simply never written down. A [guard](/documentation/execute-guard/) on a later `execute` is how you state the chain check.
 
-**Nothing is persisted.** No unsigned-transactions file, and no change to any deployment. The only thing that tells a later run the step is done is the chain, so the flow is the v1 flow: execute the printed transaction on the Safe, then re-run the script. That is also why a [run-once script](/documentation/script-lifecycle/#never-return-true-on-a-path-where-a-step-was-deferred) must not reach `return true` on a path where a step was deferred.
+**Nothing is persisted.** No unsigned-transactions file, and no change to any deployment. The only thing that tells a later run the step is done is the chain, so the flow is the v1 flow: execute the printed transaction on the Safe, then re-run the script. [What makes the re-run converge](/documentation/unknown-signers/#what-makes-the-re-run-converge) says which steps rocketh checks on chain by itself and which need a guard.
 
-The full behaviour, including the default interactive flow that makes the wrapper unnecessary for a new script, is in [Handling unknown signers](/documentation/unknown-signers/#deferring-instead-of-asking-catchunknownsigner).
+### Setting it up
+
+```bash
+npm install -D @rocketh/unknown-signer
+```
+
+Register it as an extension in `rocketh/config.ts`, exactly like `@rocketh/deploy` and `@rocketh/read-execute`, and it arrives on the environment your deploy script is handed:
+
+```typescript
+import * as deployExtension from '@rocketh/deploy';
+import * as readExecuteExtension from '@rocketh/read-execute';
+import * as unknownSignerExtension from '@rocketh/unknown-signer';
+
+const extensions = {...deployExtension, ...readExecuteExtension, ...unknownSignerExtension};
+export {extensions};
+```
+
+```typescript
+export default deployScript(
+	async ({execute, get, catchUnknownSigner}) => {
+		const deferred = await catchUnknownSigner(() =>
+			execute(get('Vault_ProxyAdmin'), {
+				account: 'safeOwner',
+				functionName: 'upgradeAndCall',
+				args: [get('Vault_Proxy').address, get('Vault_Implementation').address, '0x'],
+			}),
+		);
+
+		if (deferred) {
+			// {from, to, value, data}: execute this on the Safe, then re-run the script.
+		}
+	},
+	{tags: ['Upgrade']},
+);
+```
+
+Outside a deploy script (a test, a standalone script) you have an `Environment` in hand rather than an enhanced one, so call the same function curried: `catchUnknownSigner(env)(() => execute(env)(...))`.
+
+### What it prints, and what it does not do
+
+The printed block names the method and its arguments, and for an `execute` adds an `abi:` line after them, the same one-function ABI the pause prints (see [Executing it from a Safe with the Transaction Builder](/documentation/unknown-signers/#executing-it-from-a-safe-with-the-transaction-builder)); the returned object does not carry it. Pass `{log: false}` to suppress the printed block. One wrapper captures ONE transaction (the first unsignable one inside it), so deferring several steps means one `catchUnknownSigner` per step.
+
+A wrapped action never pops a prompt at you, whatever the ambient policy is, because you already said you would handle the transaction yourself. The one thing that overrides that is an EXPLICIT override written inside the wrapper, because policy frames nest and the innermost one wins, so `catchUnknownSigner(env)(() => withUnknownSignerPolicy(env)('ask', ...))` does prompt.
+
+It catches the case where rocketh CANNOT sign, and nothing else: an account the run can sign for, or one the node impersonates, BROADCASTS inside the wrapper ([Deferring is not a "never send" switch](/documentation/unknown-signers/#catchunknownsigner-is-not-a-never-send-switch)).
+
+### A caught deferral must never reach an unconditional `return true`
+
+Catching is what lets the script SURVIVE the deferral and run on to its end. If that end is a `return true` and the script declares an `id`, rocketh records it as complete and skips the WHOLE script on every later run, including the privileged step nobody has executed yet:
+
+```typescript
+import {deployScript, artifacts} from '../rocketh/deploy.js';
+
+export default deployScript(
+	async ({deploy, get, execute, catchUnknownSigner}) => {
+		const next = await deploy('Vault_Implementation', {account: 'deployer', artifact: artifacts.Vault, args: []});
+		const proxyAdmin = get('Vault_ProxyAdmin');
+
+		const deferred = await catchUnknownSigner(() =>
+			execute(proxyAdmin, {
+				account: 'safeOwner',
+				functionName: 'upgradeAndCall',
+				args: [get('Vault_Proxy').address, next.address, '0x'],
+			}),
+		);
+
+		// WRONG. `deferred` may hold an upgrade nobody has executed yet, and this line
+		//  tells rocketh the script is finished.
+		return true;
+	},
+	{tags: ['Upgrade'], id: 'vault_upgrade_v2'},
+);
+```
+
+Run 1 defers the upgrade, prints it, finishes the script, records `vault_upgrade_v2`. You execute the upgrade on your Safe. You re-run, and the script is skipped in full, so nothing looks at the proxy, nothing reconciles, and no later run ever will. If the Safe transaction was never executed at all, the deployment is quietly left half upgraded.
+
+Return the outcome instead of asserting one:
+
+```typescript
+// records the script only on the run where nothing was left for the Safe to do
+return deferred === null;
+```
+
+A run that deferred returns `false`, records nothing, and comes back to the same call next time. Give that call a [`guard`](/documentation/execute-guard/) as well and the re-run reads the proxy, sees the upgrade has landed, skips the call, reaches `return deferred === null` with `deferred` at `null`, and closes the loop by itself. [Running once](/documentation/script-lifecycle/#never-return-true-on-a-path-where-a-step-was-deferred) has the mechanism, and why rocketh documents this rather than refusing it.
+
+### A batch proposer that collects the deferred transactions
+
+A v1 project that collected every deferred transaction during the run and proposed them as one multisig batch at the end ports to a `runAtTheEnd` script ([Running last](/documentation/script-lifecycle/#runattheend-run-this-script-after-the-others)) reading an array the deploy scripts fill. A module the executor ignores (a leading underscore keeps a file out of the script list) is enough to share it:
+
+```typescript
+// deploy/_deferred.ts
+import type {CaughtUnknownSignerTransaction} from '@rocketh/unknown-signer';
+
+export const deferredTransactions: CaughtUnknownSignerTransaction[] = [];
+```
+
+```typescript
+// deploy/010_upgrade_vault.ts
+import {deployScript} from '../rocketh/deploy.js';
+import {deferredTransactions} from './_deferred.js';
+
+export default deployScript(
+	async ({get, execute, catchUnknownSigner}) => {
+		const proxyAdmin = get('Vault_ProxyAdmin');
+
+		const deferred = await catchUnknownSigner(() =>
+			execute(proxyAdmin, {
+				account: 'safeOwner',
+				functionName: 'upgradeAndCall',
+				args: [get('Vault_Proxy').address, get('Vault_Implementation').address, '0x'],
+			}),
+		);
+
+		if (deferred) {
+			deferredTransactions.push(deferred);
+		}
+
+		return deferred === null;
+	},
+	{tags: ['Upgrade'], id: 'vault_upgrade_v2'},
+);
+```
+
+```typescript
+// deploy/999_propose_the_deferred_batch.ts
+import {deployScript} from '../rocketh/deploy.js';
+import {deferredTransactions} from './_deferred.js';
+
+export default deployScript(
+	async (env) => {
+		if (deferredTransactions.length === 0) {
+			return;
+		}
+		await proposeBatch(deferredTransactions);
+	},
+	{tags: ['ProposeBatch'], runAtTheEnd: true},
+);
+```
+
+Nothing about this collection is persisted by rocketh: a run-scoped array is inspected by your own code and read back by nobody to decide whether a step is needed. rocketh's own route to the same batch is a fork rehearsal, where impersonation makes every Safe-owned step execute against the real state and `--write-transactions` writes them to a file: see [The batch proposer](/documentation/script-lifecycle/#the-batch-proposer-what-runattheend-is-really-for).
+
+### Keeping it, or dropping it
+
+The wrapper ports a v1 script as it was. Once the port works, most scripts can drop it and use rocketh's own handling: from a terminal the run pauses and finishes the job in one run, unattended it defers and stops, a guard makes the re-run converge, and a fork rehearsal produces the whole batch. Keep it where a script must run on past several independent privileged steps in one unattended run against the real network and collect them all, on a chain you cannot rehearse on a fork.
 
 ## The `deployments` API
 

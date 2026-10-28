@@ -95,7 +95,7 @@ Each extension spread into `extensions` in `rocketh/config.ts` adds functions (o
 | `@rocketh/proxy`          | `deployViaProxy`                                                                          | [Proxies](../../proxies/)                   |
 | `@rocketh/diamond`        | `diamond`                                                                                 | [Diamonds](../../diamonds/)                 |
 | `@rocketh/router`         | `deployViaRouter`                                                                         | [Routers](../../routers/)                   |
-| `@rocketh/unknown-signer` | `catchUnknownSigner`, `withUnknownSignerPolicy`                                           | [Unknown signers](../../unknown-signers/)   |
+| `@rocketh/unknown-signer` | `withUnknownSignerPolicy`, `catchUnknownSigner` (v1)                                      | [Unknown signers](../../unknown-signers/)   |
 | `@rocketh/viem`           | `viem` (a property): `publicClient`, `walletClient`, `getContract`, `getWritableContract` | [Use viem](../../viem/)                     |
 
 Outside a deploy script, the loaders that take your extensions (`setupEnvironmentFromFiles(extensions)`, `setupHardhatDeploy(extensions)`, `setupEnvironment(config, extensions)`) return an environment with them already applied; with a bare environment, call the curried form, `deploy(env)(...)`. Writing your own is covered in [Extending rocketh](../../extending/).

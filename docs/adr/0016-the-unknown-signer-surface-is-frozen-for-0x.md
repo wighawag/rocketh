@@ -35,3 +35,13 @@ The CLIs (`@rocketh/node`'s `rocketh`, `hardhat-deploy`'s `deploy` task):
 - How strongly a pasted hash has to match before it is accepted without asking (the evidence tiers in `packages/rocketh/src/environment/pastedTransactionIntent.ts`), and how many times the pause re-asks. These may only get stricter in what they accept silently.
 - Fields ADDED later. Adding an optional field to `UnknownSignerErrorData` or `UnknownSignerContractCall` is not breaking; the optional `abi` on `UnknownSignerContractCall` was added that way. `CaughtUnknownSignerTransaction` is the exception: it stays exactly v1's four keys, since a script may compare or forward it whole.
 - Internal names, and anything not exported from the entry points above.
+
+## Addendum, 2026-10-28: `catchUnknownSigner` is documented for ported scripts only
+
+The promise above is unchanged: `catchUnknownSigner` stays exported, frozen and supported for the whole 0.x line. What changes is where it is taught, and the opening sentence of this ADR, which named it as what Safe- and governance-owned projects build on, no longer describes the recommendation (maintainer decision, 2026-10-28).
+
+rocketh's own handling of an unsignable account now covers what the wrapper was for. From a terminal the run pauses and finishes the job in one run; unattended it defers and stops, and a `guard` makes the re-run converge; a fork rehearsal with `--write-transactions` produces every Safe-owned step as one batch, executed against the real state. Catching a deferral, by contrast, is what lets a script run on to an unconditional `return true` and record a step that never happened, and what lets a run with `--write-transactions` succeed with the privileged calls missing from its file.
+
+So the documentation presents it on the migration page (`hardhat-deploy/migration/`, "`catchUnknownSigner` in a migrated script"), where a v1 script that uses it is ported, and every other page teaches the native path, mentioning the wrapper only where a ported script behaves differently. The one thing it still does that nothing else does, collecting several independent privileged transactions from one unattended run against the real network, is stated there, as the case for keeping it in a script where a fork rehearsal is not available.
+
+It is not marked `@deprecated`: a ported script that uses it is correct, and a deprecation warning in every such script's editor would say otherwise. Its JSDoc says it is kept for ported scripts and points at the native path.

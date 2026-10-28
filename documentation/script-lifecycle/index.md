@@ -40,7 +40,7 @@ skipping /path/to/deploy/003_seed_the_registry.ts as migrations already executed
 Five things about that, only the first of which is obvious.
 
 - **The unit is the WHOLE script**, never a step inside it. The skip happens before your function is entered, so a deploy, a read, a log and a privileged call that share a script are skipped together or not at all.
-- **Only `true` records.** Returning nothing, which is what almost every script does, records nothing and leaves the script re-runnable. So does returning `false`, which is the useful form: `return deferred === null` records the script only on the run where nothing was left outstanding.
+- **Only `true` records.** Returning nothing, which is what almost every script does, records nothing and leaves the script re-runnable. So does returning `false`, which is the useful form: a script returns a condition (`return deferred === null` in a script that catches deferrals, see below) and is recorded only on the run where it held.
 - **`return true` without an `id` is an error**, not a silent no-op: `... return true to not be executed again, but does not provide an id. the script function needs to have the field "id" to be set`.
 - **The `id` is the identity, and it is a key you choose.** It is not the filename: renaming or renumbering the script file changes nothing, while editing the `id` string makes the script run again from scratch, because a different key is being looked up. Two scripts sharing an `id` in one environment means the second one is skipped as soon as the first has recorded it.
 - **It applies to `runAtTheEnd` scripts too.** They go through the same loop and the same lookup.
@@ -59,50 +59,15 @@ That ordering is a rule rather than an accident, and it is written down: a persi
 `return true` is an ASSERTION, made by you, that everything in this script has happened. A script that deferred a privileged call to a Safe and CAUGHT the deferral can reach that line having skipped a step that never happened, and the id it records then skips the whole script for ever.
 :::
 
-`catchUnknownSigner` ([Handling unknown signers](../unknown-signers/#deferring-instead-of-asking-catchunknownsigner)) hands you back the transaction rocketh could not sign for and lets the script keep going. That is exactly what it is for. But the script then runs on to its end, and if its end is an unconditional `return true`:
-
-```typescript
-import {deployScript, artifacts} from '../rocketh/deploy.js';
-
-export default deployScript(
-	async ({deploy, get, execute, catchUnknownSigner}) => {
-		const next = await deploy('Vault_Implementation', {account: 'deployer', artifact: artifacts.Vault, args: []});
-		const proxyAdmin = get('Vault_ProxyAdmin');
-
-		const deferred = await catchUnknownSigner(() =>
-			execute(proxyAdmin, {
-				account: 'safeOwner',
-				functionName: 'upgradeAndCall',
-				args: [get('Vault_Proxy').address, next.address, '0x'],
-			}),
-		);
-
-		// WRONG. `deferred` may hold an upgrade nobody has executed yet, and this line
-		//  tells rocketh the script is finished.
-		return true;
-	},
-	{tags: ['Upgrade'], id: 'vault_upgrade_v2'},
-);
-```
-
-then the sequence is: run 1 defers the upgrade, prints it, finishes the script, records `vault_upgrade_v2`. You execute the upgrade on your Safe. You re-run, and the script is skipped in full, so nothing looks at the proxy, nothing reconciles, and no later run ever will. If the Safe transaction was never executed at all, the deployment is quietly left half upgraded and the tool that was supposed to notice has been told not to look.
-
-The fix is to make the assertion conditional on what actually happened. `catchUnknownSigner` returns `null` when the action went through, so:
-
-```typescript
-// records the script only on the run where nothing was left for the Safe to do
-return deferred === null;
-```
-
-A run that deferred returns `false`, records nothing, and comes back to the same call next time. Give that call a [`guard`](../execute-guard/) as well and the re-run reads the proxy, sees the upgrade has landed, skips the call, reaches `return deferred === null` with `deferred` at `null`, and closes the loop by itself.
-
-**rocketh does not police this, deliberately.** `catchUnknownSigner` is a try/catch, and a hand-written `try {} catch {}` around the same call produces the identical outcome with none of the machinery, so refusing to record a migration for a script that used the supported wrapper would tax the careful user and stop nobody. The decision and the reasoning are in ADR 0012 (see its 2026-08-27 amendment). `return true` with an `id` is a claim you make about your own script, and rocketh has no better information about it than you do.
-
-### Two paths where `return true` is not the hazard
+rocketh's own handling of an account it cannot sign for never gets there, on either path.
 
 **The interactive path does not defer.** When rocketh pauses and you paste the transaction hash, it looks the transaction up, waits for it to be mined, requires a successful receipt and weighs the evidence that it is the call it asked for, all before saving anything ([What rocketh checks before recording anything](../unknown-signers/#what-rocketh-checks-before-recording-anything)). The step really happened and the run really saw it happen, so a script that resolved its privileged calls interactively returns `true` legitimately.
 
-**The plain `throw` path is safe in the way that matters here, and exposed in another.** A deferral that is not caught aborts the run inside your script, one branch before the executor's record site, so nothing is written and the id is never recorded. No step is silently skipped. The cost is the other half of the same mechanism: because nothing was recorded, the re-run reaches that call again and prints the SAME transaction, with no way of knowing you already executed it, and an operator who follows the instructions twice executes a mint, a transfer, an increment or a nonce-bearing governance action twice. The deferral message says so on the spot, and [A run that threw will hand you the same transaction again](../unknown-signers/#a-run-that-threw-will-hand-you-the-same-transaction-again) covers both ways out (paste the hash you already have, or guard the step).
+**The `throw` path is safe in the way that matters here, and exposed in another.** A deferral aborts the run inside your script, one branch before the executor's record site, so nothing is written and the id is never recorded. No step is silently skipped. The cost is the other half of the same mechanism: because nothing was recorded, the re-run reaches that call again and prints the SAME transaction, with no way of knowing you already executed it, and an operator who follows the instructions twice executes a mint, a transfer, an increment or a nonce-bearing governance action twice. The deferral message says so on the spot, and [A run that threw will hand you the same transaction again](../unknown-signers/#a-run-that-threw-will-hand-you-the-same-transaction-again) covers both ways out (paste the hash you already have, or guard the step).
+
+**Catching the deferral is what opens the hazard.** A script that catches it and carries on, which is what a hardhat-deploy v1 script ported with `catchUnknownSigner` does (or any `try {} catch {}` around the call), runs on to its end, and an unconditional `return true` there records a completion nobody earned. Such a script returns the outcome instead of asserting one, `return deferred === null`, so it is recorded only on the run where nothing was left outstanding. The worked example is in [`catchUnknownSigner` in a migrated script](/hardhat-deploy/migration/#catch-unknown-signer).
+
+**rocketh does not police this, deliberately.** `catchUnknownSigner` is a try/catch, and a hand-written `try {} catch {}` around the same call produces the identical outcome with none of the machinery, so refusing to record a migration for a script that used the supported wrapper would tax the careful user and stop nobody. The decision and the reasoning are in ADR 0012 (see its 2026-08-27 amendment). `return true` with an `id` is a claim you make about your own script, and rocketh has no better information about it than you do.
 
 ## Where the record lives
 
@@ -157,13 +122,9 @@ Three consequences worth stating.
 
 ## The batch proposer: what `runAtTheEnd` is really for
 
-The motivating case is a consumer of the work the run could not do itself. In a Safe-owned or governance-owned system the privileged calls are precisely the ones rocketh cannot sign, so a run either stops at each of them or keeps going and leaves them for somebody else to execute. What operators actually want is one place, at the end of the run, that collects all of them and proposes them as a single multisig batch. Two production teams built exactly that on hardhat-deploy v1, by hand. Everything needed to build it on rocketh ships today.
+The motivating case is a consumer of the work the run could not do itself. In a Safe-owned or governance-owned system the privileged calls are precisely the ones rocketh cannot sign, so a run against the real network stops at each of them. What operators actually want is one place, at the end of the run, that collects all of them and proposes them as a single multisig batch. Two production teams built exactly that on hardhat-deploy v1, by hand. Everything needed to build it on rocketh ships today.
 
-There are two sources to consume, and they are complementary rather than alternatives.
-
-### From a fork rehearsal: what the run DID send
-
-Rehearse the upgrade against a [fork](../fork-runs/) and impersonation makes the Safe-owned steps actually EXECUTE, so the run has real transactions rather than instructions. Every transaction a run broadcast is kept, in order, on the environment, and a `runAtTheEnd` script is where you read it:
+The source is a fork rehearsal. Rehearse the upgrade against a [fork](../fork-runs/) and impersonation makes the Safe-owned steps actually EXECUTE, so the run has real transactions rather than instructions. Every transaction a run broadcast is kept, in order, on the environment, and a `runAtTheEnd` script is where you read it:
 
 ```typescript
 // deploy/999_propose_the_batch.ts
@@ -190,70 +151,11 @@ export default deployScript(
 
 [Captured transactions](../captured-transactions/) is the page for that list: what each entry holds, why `signability` is where a batch splits, and why rocketh refuses to group them for you. Two things about it matter here. A `runAtTheEnd` script sees everything broadcast so far in the run, which is every ordinary script plus any `runAtTheEnd` script that ran before it. And the boundary a reader of this page will immediately wonder about: **a DEFERRED transaction produces no captured entry**, because it never happened. The list is what the run DID, not what it still owes.
 
-### From a run that deferred: what the run could NOT send
-
-Which is why the other half is collected by you, at the call sites, out of what `catchUnknownSigner` hands back. A module the executor ignores (a leading underscore keeps a file out of the script list) is enough to share it:
-
-```typescript
-// deploy/_deferred.ts
-import type {CaughtUnknownSignerTransaction} from '@rocketh/unknown-signer';
-
-export const deferredTransactions: CaughtUnknownSignerTransaction[] = [];
-```
-
-```typescript
-// deploy/010_upgrade_vault.ts
-import {deployScript} from '../rocketh/deploy.js';
-import {deferredTransactions} from './_deferred.js';
-
-export default deployScript(
-	async ({get, execute, catchUnknownSigner}) => {
-		const proxyAdmin = get('Vault_ProxyAdmin');
-
-		const deferred = await catchUnknownSigner(() =>
-			execute(proxyAdmin, {
-				account: 'safeOwner',
-				functionName: 'upgradeAndCall',
-				args: [get('Vault_Proxy').address, get('Vault_Implementation').address, '0x'],
-			}),
-		);
-
-		if (deferred) {
-			deferredTransactions.push(deferred);
-		}
-
-		// see the warning above: only claim the script is done when nothing was deferred
-		return deferred === null;
-	},
-	{tags: ['Upgrade'], id: 'vault_upgrade_v2'},
-);
-```
-
-and the consumer is the same shape, reading your array instead of the run's list:
-
-```typescript
-// deploy/999_propose_the_deferred_batch.ts
-import {deployScript} from '../rocketh/deploy.js';
-import {deferredTransactions} from './_deferred.js';
-
-export default deployScript(
-	async (env) => {
-		if (deferredTransactions.length === 0) {
-			return;
-		}
-		await proposeBatch(deferredTransactions);
-	},
-	{tags: ['ProposeBatch'], runAtTheEnd: true},
-);
-```
-
-One `catchUnknownSigner` captures ONE transaction (the first unsignable one inside it), so a script deferring several steps wraps each of them.
-
-Nothing about this collection is persisted by rocketh, and that is deliberate: a run-scoped array is inspected by your own code and read back by nobody to decide whether a step is needed. If you want the durable artifact, take it from the rehearsal instead, where `rocketh -e mainnet --is-fork --write-transactions ./batch.json` writes the captured list to a file once the run succeeds.
+A run against the real network has nothing of the kind to offer: its first step the Safe owns pauses for the hash, or, unattended, defers and stops the run. A hardhat-deploy v1 proposer that collected the deferred transactions during such a run ports with `catchUnknownSigner`, see [A batch proposer that collects the deferred transactions](/hardhat-deploy/migration/#a-batch-proposer-that-collects-the-deferred-transactions). To keep the rehearsal's batch as a file, `rocketh -e mainnet --is-fork --write-transactions ./batch.json` writes the captured list once the run succeeds.
 
 ## See also
 
-- [Handling unknown signers](../unknown-signers/) for the privileged calls behind both halves of the batch story, and for what a deferral does to a run.
+- [Handling unknown signers](../unknown-signers/) for the privileged calls behind the batch, and for what a deferral does to a run.
 - [Captured transactions](../captured-transactions/) for the list a `runAtTheEnd` consumer reads, and for segmenting it into proposals.
 - [Guarding execute calls](../execute-guard/) for making a deferred step converge on the re-run, which is what a run-once script needs underneath it.
 - [Rehearsing a deployment on a fork](../fork-runs/) for the run that turns Safe-owned steps into executed transactions.

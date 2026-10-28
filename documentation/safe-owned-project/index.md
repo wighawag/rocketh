@@ -195,7 +195,7 @@ That convergence comes for free with `deployViaProxy`, `deploy` and `diamond`, w
 ## Where to go from here
 
 - [Rehearse on a fork](../fork-runs/): everything a fork run inherits, the two chain ids, `whenForked`, impersonation.
-- [Unknown signers](../unknown-signers/): the pause, the `onUnknownSigner` policies, deferring with `catchUnknownSigner`, governance-owned calls.
+- [Unknown signers](../unknown-signers/): the pause, the `onUnknownSigner` policies, making the re-run converge, governance-owned calls.
 - [Captured transactions](../captured-transactions/): turning a rehearsal into Safe proposals, and replaying a deployment in a Solidity test.
 - [Guard execute calls](../execute-guard/): making a privileged call converge.
 - [Production hardening](../production-hardening/): the checks before a live privileged change.

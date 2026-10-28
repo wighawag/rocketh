@@ -1,6 +1,9 @@
 # @rocketh/unknown-signer
 
-`catchUnknownSigner` and `withUnknownSignerPolicy` for rocketh. When a transaction's `from` is an account rocketh cannot sign for (a Safe, a timelock, an unplugged hardware wallet), rocketh by default pauses, prints the transaction and checks the hash you paste back, with nothing to install. This package is for the other workflow: `catchUnknownSigner` hands the transaction back as a value and lets the script carry on (hardhat-deploy v1's helper, for migrating a v1 script or a run that must never block), and `withUnknownSignerPolicy` sets the policy for one call.
+`withUnknownSignerPolicy` and `catchUnknownSigner` for rocketh. When a transaction's `from` is an account rocketh cannot sign for (a Safe, a timelock, an unplugged hardware wallet), rocketh handles it with nothing to install: from a terminal it pauses, prints the transaction and checks the hash you paste back; unattended it defers and stops the run, and a `guard` makes the re-run converge. This package adds two helpers on top:
+
+- `withUnknownSignerPolicy` sets the policy (`ask`, `throw`, `auto`) for one call, for example to rehearse the pause on a fork.
+- `catchUnknownSigner` is hardhat-deploy v1's helper, kept for ported v1 scripts: it hands the deferred transaction back as a value and lets the script carry on.
 
 ## Installation
 
@@ -26,24 +29,18 @@ export {extensions};
 ## Example
 
 ```typescript
-const deferred = await catchUnknownSigner(() =>
-	deployViaProxy('Vault', {account: deployer, artifact: artifacts.Vault, args: []}, {owner: safe}),
+// this one call pauses and asks, even though the run's policy is 'throw'
+const receipt = await withUnknownSignerPolicy('ask', () =>
+	execute(proxy, {account: 'safeOwner', functionName: 'upgradeTo', args: [newImplementation.address]}),
 );
-if (deferred) {
-	// {from, to, value, data}: execute it on the Safe, then run the script again
-}
 ```
 
-Unlike v1, the action is a function (`() => deployViaProxy(...)`), never a promise. `UnknownSignerError` is on the `@rocketh/unknown-signer/errors` subpath.
+Both helpers take a function (`() => execute(...)`), never a promise. `UnknownSignerError` is on the `@rocketh/unknown-signer/errors` subpath.
 
 ## Documentation
 
-- [Unknown signers: deferring instead of asking](https://rocketh.dev/documentation/unknown-signers/#deferring-instead-of-asking-catchunknownsigner)
+- [Handling unknown signers](https://rocketh.dev/documentation/unknown-signers/)
 - [catchUnknownSigner in a migrated script](https://rocketh.dev/hardhat-deploy/migration/#catch-unknown-signer)
 - [A Safe-owned project, end to end](https://rocketh.dev/documentation/safe-owned-project/)
 
 The whole documentation is at [rocketh.dev](https://rocketh.dev), the hardhat-deploy section at [rocketh.dev/hardhat-deploy](https://rocketh.dev/hardhat-deploy/).
-
-## License
-
-[MIT](https://github.com/wighawag/rocketh/blob/main/LICENSE)
