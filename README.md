@@ -118,8 +118,10 @@ Just create a new `package.json` file with the following content:
 ### install dependencies
 
 ```bash
-pnpm add -D hardhat @types/node typescript forge-std@github:foundry-rs/forge-std#v1.9.4 hardhat-deploy rocketh @rocketh/node @rocketh/deploy @rocketh/read-execute
+pnpm add -D hardhat @types/node typescript forge-std@github:foundry-rs/forge-std#v1.9.4 hardhat-deploy rocketh @rocketh/node @rocketh/deploy @rocketh/read-execute --allow-build=esbuild --allow-build=@parcel/watcher
 ```
+
+The two `--allow-build` flags answer a question pnpm 11 asks: it will not finish an install while a dependency's build script is neither allowed nor denied, and stops at `ERR_PNPM_IGNORED_BUILDS` instead, as does every later `pnpm` command in the project. esbuild and @parcel/watcher are the two here, and their scripts only make sure the native binary each one needs is in place. pnpm records the answer, in `pnpm-workspace.yaml` (pnpm 11) or as `onlyBuiltDependencies` (pnpm 10), so you only give it once.
 
 ### create a new solidity file
 

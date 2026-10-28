@@ -154,9 +154,11 @@ const runPnpmInstall = async (folderPath: string): Promise<void> => {
 	const {spawn} = await import('child_process');
 
 	return new Promise((resolve, reject) => {
-		// Use --ignore-workspace to ensure dependencies are installed locally
-		// This prevents pnpm from treating the target folder as part of a parent workspace
-		const pnpm = spawn('pnpm', ['install', '--ignore-workspace', `--no-frozen-lockfile`], {
+		// The template's own pnpm-workspace.yaml makes the target folder a workspace root, so pnpm
+		// installs it on its own even inside a parent workspace. Do NOT add --ignore-workspace: it
+		// would also ignore that file's settings, and without its `allowBuilds` pnpm 11 fails the
+		// install with ERR_PNPM_IGNORED_BUILDS.
+		const pnpm = spawn('pnpm', ['install', `--no-frozen-lockfile`], {
 			cwd: folderPath,
 			stdio: 'inherit',
 		});

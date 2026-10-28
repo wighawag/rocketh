@@ -1,0 +1,9 @@
+# This file makes the project a pnpm workspace root of its own, so pnpm does not treat it as
+# part of a workspace it happens to sit in, and it holds the project's pnpm settings.
+#
+# pnpm 11 stops an install at ERR_PNPM_IGNORED_BUILDS until every dependency with a build
+# script is either allowed or denied here. Neither of these needs its script: esbuild gets its
+# binary from a platform package, and @parcel/watcher ships prebuilt binaries.
+allowBuilds:
+  esbuild: false
+  '@parcel/watcher': false

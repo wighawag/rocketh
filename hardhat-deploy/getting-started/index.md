@@ -12,7 +12,7 @@ You need [Node.js](https://nodejs.org) 22 or later and [pnpm](https://pnpm.io).
 pnpm dlx hardhat-deploy init --install my-project
 ```
 
-```bash [npm]
+```bash [npm] skip
 npx hardhat-deploy init --install my-project
 ```
 
@@ -21,6 +21,7 @@ npx hardhat-deploy init --install my-project
 The folder must be empty or not exist; `--install` installs the dependencies with pnpm (without it, run `pnpm install` yourself). Then:
 
 ```bash
+# set the current directory
 cd my-project
 pnpm hardhat compile
 pnpm hardhat deploy
@@ -35,8 +36,10 @@ The step-by-step setup, every file and command included, is the [Getting Started
 1. **The packages.** `hardhat`, `hardhat-deploy`, `rocketh`, `@rocketh/node` (which hardhat-deploy runs on), and the extensions your scripts call, usually `@rocketh/deploy` and `@rocketh/read-execute`:
 
    ```bash
-   pnpm add -D hardhat hardhat-deploy rocketh @rocketh/node @rocketh/deploy @rocketh/read-execute
+   pnpm add -D hardhat hardhat-deploy rocketh @rocketh/node @rocketh/deploy @rocketh/read-execute --allow-build=esbuild --allow-build=@parcel/watcher
    ```
+
+   The `--allow-build` flags settle the dependencies' build scripts, which pnpm 11 requires before it finishes an install; see [Get started without Hardhat](/documentation/getting-started/#the-project).
 
 2. **The plugin**, in `hardhat.config.ts`, and where the [typed artifacts](../typed-artifacts/) go:
 
