@@ -85,8 +85,15 @@ export function withEnvironment<
 					`on \`./errors\`.`,
 			);
 		}
-		// Check if the function is a getter or a regular function
-		const value = func(env);
+		// Check if the function is a getter or a regular function. This call happens for EVERY
+		//  entry before the deploy script runs, so a throw here fails the script whether or not it
+		//  uses that entry, and the raw error says nothing about extensions: name the entry.
+		let value: unknown;
+		try {
+			value = func(env);
+		} catch (error) {
+			throw withExtensionSetupContext(key, error);
+		}
 
 		if (typeof value === 'function') {
 			// Regular function case: Create a function that automatically passes the environment
@@ -101,6 +108,46 @@ export function withEnvironment<
 	}
 
 	return result;
+}
+
+/**
+ * The error an extension entry threw while `withEnvironment` set it up, with the entry named.
+ *
+ * The SAME error object is rethrown, its message prefixed, rather than a new error wrapping
+ * it: a caller may catch a failure by class around a whole run (hardhat-deploy does,
+ * `instanceof UnresolvableAccountsError` in `account-errors.ts`), and a wrapper would hide
+ * that class. A new `Error`, with the original as `cause`, is made only for a thrown value
+ * that is not an `Error`, or one whose `message` cannot be assigned.
+ */
+function withExtensionSetupContext(key: string, error: unknown): unknown {
+	const context =
+		`extension entry "${key}" threw while the environment was being set up ` +
+		`(every extension entry is called with the environment before a deploy script runs, ` +
+		`whether or not the script uses it)`;
+	if (!(error instanceof Error)) {
+		return new Error(`${context}: ${String(error)}`, {cause: error});
+	}
+	const original = error.message;
+	// An entry that throws one SHARED error object, for every script, is named once.
+	if (original.startsWith(context)) {
+		return error;
+	}
+	try {
+		error.message = `${context}: ${original}`;
+	} catch {
+		// A read-only `message` (a getter with no setter, as on `DOMException`): wrap instead of
+		//  letting the failed assignment replace the error being reported.
+		return new Error(`${context}: ${original}`, {cause: error});
+	}
+	// The stack was rendered with the old message; keep the two in agreement.
+	if (typeof error.stack === 'string' && original !== '' && error.stack.includes(original)) {
+		try {
+			error.stack = error.stack.replace(original, error.message);
+		} catch {
+			// a read-only stack is left as it was
+		}
+	}
+	return error;
 }
 
 /**

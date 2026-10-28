@@ -6,6 +6,7 @@ import './type-extensions.js';
 import {ArgumentType} from 'hardhat/types/arguments';
 import type {Environment} from 'rocketh/types';
 import type {NetworkConnection} from 'hardhat/types/network';
+import {connectionOrThrow} from './connection.js';
 
 const hardhatPlugin: HardhatPlugin = {
 	id: 'hardhat-deploy',
@@ -96,9 +97,15 @@ const hardhatPlugin: HardhatPlugin = {
 
 export default hardhatPlugin;
 
+/**
+ * The Hardhat network connection of the run, THROWING when there is none: for a script that
+ * only makes sense under Hardhat. Call it with the environment, `getHardhatConnection(env)`.
+ *
+ * NOT an extension: do not spread it into `extensions` (it returns the connection, not a
+ * function, so `env.getHardhatConnection()` would not be callable, and in a run without a
+ * connection it would throw before every script). The extension form, which gives
+ * `env.getHardhatConnection()` and `env.hardhatConnection`, is `hardhat-deploy/extensions`.
+ */
 export function getHardhatConnection(env: Environment): NetworkConnection<'generic'> {
-	if (!env.extra?.connection) {
-		throw new Error('Hardhat deploy connection not found in the environment');
-	}
-	return env.extra.connection as NetworkConnection<'generic'>;
+	return connectionOrThrow(env) as NetworkConnection<'generic'>;
 }
