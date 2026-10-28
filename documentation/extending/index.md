@@ -85,7 +85,7 @@ Deployment records contain `bigint` values, which `JSON.stringify` refuses. `JSO
 
 ### `UnknownSignerError`
 
-Thrown when a transaction's `from` is an address rocketh cannot get a signature for. Carries the transaction and, where the call site knew it, the contract method and arguments, so the message names the call to run out of band rather than just an address. See [`@rocketh/unknown-signer`](https://www.npmjs.com/package/@rocketh/unknown-signer) for the `catchUnknownSigner` helper built on it.
+Thrown when a transaction's `from` is an address rocketh cannot get a signature for. Carries the transaction and, where the call site knew it, the contract method and arguments, so the message names the call to run out of band rather than just an address. See [`@rocketh/unknown-signer`](https://www.npmjs.com/package/@rocketh/unknown-signer) for the helpers built on it.
 
 ### `TransactionHashTrackerProvider`
 

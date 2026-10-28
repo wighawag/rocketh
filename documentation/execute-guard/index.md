@@ -254,9 +254,9 @@ A guard does not make a privileged call safe. It answers one question, "has the 
 
 What it does do is close the loop. Here is the whole story for a Safe-owned ProxyAdmin, using the script at the top of this page unedited:
 
-1. **Run 1.** The proxy still points at the old implementation, so the guard is not satisfied and the call is still needed. rocketh builds the transaction, cannot sign for the Safe, and defers it: you get `{from, to, value, data}` printed, or returned to you if you wrapped the call in [`catchUnknownSigner`](../unknown-signers/#deferring-instead-of-asking-catchunknownsigner).
+1. **Run 1.** The proxy still points at the old implementation, so the guard is not satisfied and the call is still needed. rocketh builds the transaction, cannot sign for the Safe, and defers it: you get `{from, to, value, data}` printed, and the run stops there (or, from a terminal, pauses for the hash; answer `cannot sign` to take this path).
 2. **Out of band.** You execute that transaction on your Safe. rocketh is not involved and observes nothing.
-3. **Run 2.** The guard reads the implementation slot, finds the new implementation, and skips the step. No transaction is built, the unknown-signer path is never reached, `catchUnknownSigner` returns `null` because there was nothing left to catch, and the run completes instead of aborting.
+3. **Run 2.** The guard reads the implementation slot, finds the new implementation, and skips the step. No transaction is built, the unknown-signer path is never reached, and the run completes instead of aborting.
 
 Run 2 with the Safe still not having acted defers the identical transaction again, which is the point: the skip is earned from chain state, never remembered. That is also the answer to "why not just record that I did it": under a deferral rocketh observed nothing, so it may assert nothing (see the reasoning below).
 

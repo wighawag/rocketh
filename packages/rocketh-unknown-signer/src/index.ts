@@ -291,6 +291,10 @@ export function withUnknownSignerPolicy(env: Environment): WithUnknownSignerPoli
  * out-of-band and return its description. Returns `null` when the action succeeded.
  * Any other error is rethrown unchanged.
  *
+ * Kept for scripts ported from hardhat-deploy v1. A new script uses rocketh's own
+ * handling instead: the pause from a terminal, `throw` plus a `guard` unattended, a fork
+ * rehearsal for the whole batch (https://rocketh.dev/documentation/unknown-signers/).
+ *
  * DECISION — the print goes through `env.showMessage`, not `console.log` as v1 did.
  * `showMessage` is rocketh's user-message channel (the same one the environment uses
  * to announce a deployed address), so the block respects the run's `--log-level` and
