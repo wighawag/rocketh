@@ -17,6 +17,7 @@ Add the `references/` files the core skill points to, each loaded only for the s
 - [ ] Every TypeScript block is a fixture; every flag passes the harness against the right command (`--write-transactions` appears only with `rocketh`).
 - [ ] The proxies reference states the storage-layout rule from the core skill by pointing to it, not repeating it; the diamonds reference tells the agent to read the printed cut plan, removals first, before an upgrade is approved (`documentation/production-hardening/`).
 - [ ] Baseline prompts for each new branch are added next to the fixtures.
+- [ ] An empty changeset is added: this task changes only `packages/hardhat-deploy/test/` inside `packages/` (plus `skills/`, which needs none).
 - [ ] `pnpm typecheck`, `pnpm test` and `pnpm format:check` pass.
 
 ## Blocked by
@@ -25,7 +26,7 @@ Add the `references/` files the core skill points to, each loaded only for the s
 
 ## Prompt
 
-Goal: the setup-specific and pattern-specific depth of rocketh-deploy, behind pointers so the core stays small.
+Goal: the setup-specific and pattern-specific depth of rocketh-deploy, behind pointers so the core stays small. The frontmatter, description and baseline-loading rules below apply to `SKILL.md`; a `references/*.md` file has no frontmatter and is reached only through its link. Fixtures go under `skill-fixtures/rocketh-deploy/`.
 
 How to write the skill (the maintainer's rules for anything an agent reads):
 
@@ -41,7 +42,7 @@ How to write the skill (the maintainer's rules for anything an agent reads):
 
 Sources: `hardhat-deploy/` (deploy-task, networks, tests, typed-artifacts, getting-started), `documentation/reference/cli/`, `documentation/fork-runs/`, `documentation/proxies/`, `documentation/diamonds/`. Done means the four references exist, are reached from the core skill, and pass the harness.
 
-Read `AGENTS.md`, `CONTEXT.md` and ADR 0017 (`docs/adr/0017-agent-skills-for-users-are-installed-by-the-user-from-one-source.md`) first. The background is spec `agent-skill-for-rocketh-users` (`work/specs/tasked/`) and the research finding `work/notes/findings/ethskills-structure-coverage-and-reuse.md`. The documentation in `documentation/` and `hardhat-deploy/` (published as rocketh.dev) is the source of truth a skill must agree with: when a skill would say something no page says, the page changes first. The repository is public: no names of people, employers or funders. Never write em dashes; write Markdown paragraphs as single lines. A change to a published package needs a changeset (`CONTEXT.md`, Conventions); a docs-only or skills-only change needs none.
+Read `AGENTS.md`, `CONTEXT.md` and ADR 0017 (`docs/adr/0017-agent-skills-for-users-are-installed-by-the-user-from-one-source.md`) first. The background is spec `agent-skill-for-rocketh-users` (`work/specs/tasked/`) and the research finding `work/notes/findings/ethskills-structure-coverage-and-reuse.md`. The documentation in `documentation/` and `hardhat-deploy/` (published as rocketh.dev) is the source of truth a skill must agree with: when a skill would say something no page says, the page changes first. The repository is public: no names of people, employers or funders. Never write em dashes; write Markdown paragraphs as single lines. Changesets (`CONTEXT.md`, Conventions): a change to what a published package ships needs a real one; a change that touches only a package's tests still counts as a changed package for the `verify` gate (`changeset status --since=main`), so it needs an EMPTY changeset; a change outside `packages/` (docs, `skills/`, `work/`) needs none.
 
 FIRST, check this task against current reality (it is a launch snapshot and may have DRIFTED): does it still match the code in `work/tasks/done/`, the relevant ADRs, and the tasks it depends on? If a dependency landed differently than this task assumes, do NOT build on the stale premise: route the task to needs-attention with the discrepancy as the reason (WORK-CONTRACT.md "Drift is a needs-attention signal").
 

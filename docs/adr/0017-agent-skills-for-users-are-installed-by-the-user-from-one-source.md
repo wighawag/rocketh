@@ -1,6 +1,6 @@
 # Agent skills for rocketh users are installed by the user, from one source, and every sample in them runs
 
-rocketh ships skills for coding agents that deploy WITH rocketh or hardhat-deploy v2 (`skills/rocketh-deploy/`, `skills/rocketh-safe-owned-changes/`, next to `skills/hardhat-deploy-migration/`). Three decisions shape them, taken by the maintainer on 2026-10-28 in spec `agent-skill-for-rocketh-users`, and each would surprise a reader who did not see the alternatives.
+rocketh ships skills for coding agents that deploy WITH rocketh or hardhat-deploy v2 (`skills/rocketh-deploy/`, `skills/rocketh-safe-owned-changes/`, next to `skills/hardhat-deploy-migration/`). Four decisions shape them, taken by the maintainer on 2026-10-28 in spec `agent-skill-for-rocketh-users`, and each would surprise a reader who did not see the alternatives.
 
 **The user installs them; nothing installs them for the user.** The paths are `npx skills add wighawag/rocketh` and a one-line prompt pointing at the raw `SKILL.md`. There is no package carrying them: a dependency would not reach an agent anyway (no agent loads skills from `node_modules` by itself), and adding instructions to someone's agent environment without their action is not something rocketh does. The `AGENTS.md` that `hardhat-deploy init` writes therefore loads nothing: it tells the agent to tell the user the skills exist and how to install them. A `@rocketh/skills` package stays possible if version-matched copies become important. A Claude Code plugin marketplace file was declined.
 
@@ -10,4 +10,4 @@ rocketh ships skills for coding agents that deploy WITH rocketh or hardhat-deplo
 
 **Every code sample is a fixture that runs.** A skill is a machine for repeating claims, so a sample that stops compiling must fail the build: each TypeScript block in a user skill is a marked copy of a file under `packages/hardhat-deploy/test/skill-fixtures/`, compiled and executed, the mechanism the migration skill's pairs already use, made stricter. Links to rocketh.dev, CLI flags and the export names a skill attributes to a package are checked too.
 
-The skills teach rocketh's native handling of an unsignable account only; `catchUnknownSigner` is documented for ported v1 scripts (ADR 0016, amendment of 2026-10-28).
+The skills teach rocketh's native handling of an unsignable account only; `catchUnknownSigner` is documented for ported v1 scripts (ADR 0016, amendment of 2026-10-28). That is also why the run-once hazard the spec started from (a script reaching `return true` after a step it deferred) is not taught as a trap: on the native path a `throw` aborts before the script returns, and a resolved pause is a step that happened, so the skills state only what `id` plus `return true` means.
