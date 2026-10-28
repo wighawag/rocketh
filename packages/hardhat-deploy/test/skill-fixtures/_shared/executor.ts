@@ -19,6 +19,7 @@ import {createExecutor, enhanceEnvIfNeeded} from 'rocketh';
 import type {
 	DeploymentStore,
 	EIP1193CoreProvider,
+	ForkInput,
 	ModuleObject,
 	PromptExecutor,
 	UnknownSignerPolicy,
@@ -47,8 +48,13 @@ export type ExecuteScriptsParams<
 	/** The node: the `provider` of `createNode` (`./node.ts`). */
 	provider: EIP1193CoreProvider;
 	tags?: string[];
-	/** The environment name, `memory` by default (a dev chain). */
-	environment?: string;
+	/**
+	 * The environment name, `memory` by default (a dev chain), or a fork input (`{fork: 'mainnet'}`),
+	 * which is what `--is-fork` and `HARDHAT_FORK` hand the executor. A fork run is left to rocketh's
+	 * own saving default (it reads the forked network's records and writes none); every other run
+	 * saves, so a re-run can read what the first one wrote.
+	 */
+	environment?: string | ForkInput;
 	deploymentStore?: DeploymentStore;
 	/**
 	 * Whether the run asks the node to impersonate an account it does not hold (rocketh's default
@@ -83,7 +89,7 @@ export async function executeScripts<
 		tags: params.tags,
 		onUnknownSigner: params.onUnknownSigner,
 		autoImpersonate: params.autoImpersonate,
-		saveDeployments: true,
+		saveDeployments: typeof params.environment === 'object' ? undefined : true,
 		reportGasUse: false,
 	});
 	return enhanceEnvIfNeeded<Extensions, Accounts, Data>(env, params.extensions);

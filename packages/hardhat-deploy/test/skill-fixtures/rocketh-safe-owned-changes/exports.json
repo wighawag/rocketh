@@ -1,0 +1,6 @@
+{
+	"rocketh": ["setupDeployScripts"],
+	"@rocketh/deploy": ["deploy"],
+	"@rocketh/read-execute": ["execute"],
+	"@rocketh/unknown-signer": ["catchUnknownSigner"]
+}
