@@ -19,7 +19,7 @@ Write `skills/rocketh-safe-owned-changes/SKILL.md`, loaded on _unsignable_: a st
 - [ ] Rule: a privileged `execute` carries a `guard` (`execute-guard/`); when the owner is a governance contract, the printed `{to, data}` is a proposal's action; for a `TimelockController`, an account with the proposer role sends `schedule(...)` and later `execute(...)` with it, outside rocketh (`unknown-signers/`, "When the owner is governance, not a multisig").
 - [ ] Rule: a stop is resolved by the account that holds the authority; `autoImpersonate` and `onUnknownSigner` stay as the project configured them for a live network; when the admin must stay external, the script asserts it with `env.addressSignability` (`production-hardening/`, `unknown-signers/`).
 - [ ] The rehearsal: `--is-fork` or `HARDHAT_FORK`, `environments.<name>.chain` for a hardhat fork that reports 31337, records read and not written, `--write-transactions` on the `rocketh` command only, `fundImpersonatedAccounts` (`fork-runs/`, step 4 of `safe-owned-project/`).
-- [ ] Every identifier the skill attributes to a package (for example `withUnknownSignerPolicy` from `@rocketh/unknown-signer`, if it is taught) is listed in the harness's export table.
+- [ ] Every identifier the skill attributes to a package (for example `withUnknownSignerPolicy` from `@rocketh/unknown-signer`, if it is taught) is listed in `skill-fixtures/rocketh-safe-owned-changes/exports.json`.
 - [ ] Baseline prompts, one per branch, are written next to the fixtures.
 - [ ] The harness passes on the new skill.
 - [ ] An empty changeset is added: this task changes only `packages/hardhat-deploy/test/` inside `packages/` (plus `skills/`, which needs none).

@@ -6,6 +6,7 @@ blockedBy:
   - working-with-an-ai-agent-docs-page
   - hardhat-deploy-init-writes-informing-agents-md
   - rocketh-website-serves-skill-files
+  - rocketh-deploy-skill-references
 covers: [10]
 ---
 
@@ -25,6 +26,7 @@ Replace every raw GitHub link to a skill (`https://raw.githubusercontent.com/wig
 - `working-with-an-ai-agent-docs-page`
 - `hardhat-deploy-init-writes-informing-agents-md`
 - `rocketh-website-serves-skill-files`
+- `rocketh-deploy-skill-references`
 
 ## Prompt
 

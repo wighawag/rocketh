@@ -3,7 +3,7 @@ title: 'rocketh.dev serves the skill files at /skills/<name>/SKILL.md'
 slug: rocketh-website-serves-skill-files
 spec: agent-skill-for-rocketh-users
 humanOnly: true
-blockedBy: [rocketh-deploy-skill-core, rocketh-safe-owned-changes-skill]
+blockedBy: [rocketh-deploy-skill-core, rocketh-safe-owned-changes-skill, rocketh-deploy-skill-references]
 covers: [10]
 ---
 
@@ -20,6 +20,7 @@ In the separate rocketh-website repository (github.com/wighawag/rocketh-website)
 
 - `rocketh-deploy-skill-core`
 - `rocketh-safe-owned-changes-skill`
+- `rocketh-deploy-skill-references`
 
 ## Prompt
 

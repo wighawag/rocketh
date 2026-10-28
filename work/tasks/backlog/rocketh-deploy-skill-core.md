@@ -20,7 +20,7 @@ Write `skills/rocketh-deploy/SKILL.md`, the skill an agent loads when a project 
 - [ ] Rule: a script with an `id` that returns `true` is recorded and never run again, as a whole; it returns `true` only when everything in it has happened, and a script stays safe to re-run up to that point (`documentation/script-lifecycle/`).
 - [ ] What rocketh does not do: no built-in `live` tag (`environments/`, "Tags"); no storage-layout check on an upgrade (the page added by the blocking task); `rocketh-export` does not touch the chain without `--verify`.
 - [ ] On an unsignable `from` (a pause, `UnknownSignerError`), and for a deployment to a live network that should be rehearsed on a fork first, the body routes to `rocketh-safe-owned-changes` by name AND by its raw URL (`https://raw.githubusercontent.com/wighawag/rocketh/main/skills/rocketh-safe-owned-changes/SKILL.md`), so an agent that loaded this skill through the one-line prompt can follow it.
-- [ ] Every identifier the skill attributes to a package (for example `deploy` from `@rocketh/deploy`) is listed in the harness's export table.
+- [ ] Every identifier the skill attributes to a package (for example `deploy` from `@rocketh/deploy`) is listed in `skill-fixtures/rocketh-deploy/exports.json`.
 - [ ] Baseline prompts, one per branch, are written next to the fixtures.
 - [ ] The harness passes on the new skill: markers, links, flags, frontmatter, `metadata.rocketh`.
 - [ ] An empty changeset is added: this task changes only `packages/hardhat-deploy/test/` inside `packages/` (plus `skills/`, which needs none).

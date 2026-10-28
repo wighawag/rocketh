@@ -16,6 +16,7 @@ Add the `references/` files the core skill points to, each loaded only for the s
 - [ ] The differences between the two setups are stated once, in the reference for each, and the core skill carries none of them.
 - [ ] Every TypeScript block is a fixture; every flag passes the harness against the right command (`--write-transactions` appears only with `rocketh`).
 - [ ] The proxies reference states the storage-layout rule from the core skill by pointing to it, not repeating it; the diamonds reference tells the agent to read the printed cut plan, removals first, before an upgrade is approved (`documentation/production-hardening/`).
+- [ ] Every identifier the references attribute to a package (for example `deployViaProxy` from `@rocketh/proxy`, `diamond` from `@rocketh/diamond`) is listed in `skill-fixtures/rocketh-deploy/exports.json`.
 - [ ] Baseline prompts for each new branch are added next to the fixtures.
 - [ ] An empty changeset is added: this task changes only `packages/hardhat-deploy/test/` inside `packages/` (plus `skills/`, which needs none).
 - [ ] `pnpm typecheck`, `pnpm test` and `pnpm format:check` pass.
