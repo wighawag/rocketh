@@ -80,6 +80,12 @@ minimumReleaseAgeExclude:
   - '@eip-1193/jsonrpc-provider@0.5.0 || 0.6.0'
   - '@eip-1193/signer@0.4.0'
   - 'eip-1193@0.7.1'
+  # - ezx 0.1.0 (published 2026-10-28, by hand by the same author as every earlier release,
+  #   same three dependencies as 0.0.18). It runs the documentation pages tested by
+  #   `pnpm test:docs`, and is what lets a block contain a backtick or `${`: 0.0.18 put block
+  #   text inside a JavaScript template literal unescaped. A devDependency of the root only,
+  #   never shipped. Safe to delete after 2026-11-04.
+  - 'ezx@0.1.0'
 
 # Refuse a version whose TRUST EVIDENCE is weaker than that of earlier releases of
 # the same package. npm records how a version was published (trusted publishing via
