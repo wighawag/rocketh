@@ -34,6 +34,10 @@ npx rocketh -e mainnet --is-fork --write-transactions ./batch.json
 
 A value the command cannot accept (an unknown policy, a fee that is not decimal digits, an empty `--write-transactions` path) is refused before anything runs, with a message and exit code 1. So is a named account that cannot be resolved.
 
+### Before the run: the confirmation
+
+Unless `--skip-prompts` is given, the run first prints the environment, its chain and its tags, then the current range of gas prices, and asks whether to proceed; with `--reset` it asks first whether to delete the environment's deployment records (`packages/rocketh/src/executor/index.ts`). `hardhat deploy` asks the same questions, except on an in-memory network (`type: 'edr-simulated'`, Hardhat's default network), where it asks nothing (`packages/hardhat-deploy/src/tasks/deploy.ts`). With no terminal on stdin there is nobody to answer, so the run stops with an error that repeats the question and names `--skip-prompts`, rather than guessing an answer (`packages/rocketh-node/src/environment/prompt.ts`). `--skip-prompts` skips every one of these questions, so `--reset` with it deletes the records without asking.
+
 ## `hardhat deploy`
 
 From hardhat-deploy (`packages/hardhat-deploy/src/index.ts`). The same run through Hardhat: it compiles first, takes the network (and so the environment) from `--network`, and the accounts from the hardhat network. Its options, how they map to the `rocketh` command, and what it does not have are on [The `hardhat deploy` task](/hardhat-deploy/deploy-task/).
