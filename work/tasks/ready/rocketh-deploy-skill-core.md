@@ -10,6 +10,10 @@ covers: [1, 4, 5, 6, 9, 11]
 
 Write `skills/rocketh-deploy/SKILL.md`, the skill an agent loads when a project uses hardhat-deploy v2 or rocketh (a `rocketh/config.ts`, `deployScript` files, `hardhat-deploy` ^2 or `rocketh` in `package.json`, which includes the Hardhat flavor of Scaffold-ETH 2) and the task is to write, run, re-run or upgrade a deploy script, or to verify or export afterwards. It encodes decision rules, not API reference (the docs are linked, not restated), with its samples as fixtures in `packages/hardhat-deploy/test/skill-fixtures/`. Its `references/` are a separate task, which also adds the links to them; this task writes no link to a file that does not exist yet.
 
+## Requeue note (2026-10-28)
+
+Gate-3 BLOCK on PR #245, for CI only: the skill content itself was reviewed and is approvable, so do not rework the skill, its fixtures or the CLI reference paragraph. CI `test (22)` fails: `packages/hardhat-deploy/test/skill-harness/skills.test.ts` > `skill rocketh-deploy` > `passes every check of a user skill` timed out at vitest's default 5000 ms (it took 6083 ms on the CI runner). The cost is the export-name check: `rootExports()` in `skill-harness/harness.ts` runs a fresh `ts.createProgram` per package, and this skill's `exports.json` names four packages. Fix it in the harness with the smallest change, so every user skill benefits: build ONE TypeScript program over all the workspace packages' `src/index.ts` entries (created lazily once, then queried per package) instead of one program per package, AND give the per-skill test in `skills.test.ts` an explicit generous timeout (for example `60_000` ms) so a slow runner cannot flake it. Record in the Decisions block that this touched the harness, outside `skill-fixtures/rocketh-deploy/`.
+
 ## Acceptance criteria
 
 - [ ] The description names both hardhat-deploy v2 and rocketh and front-loads the leading word; it has one trigger per branch and no "Not for" clause.
