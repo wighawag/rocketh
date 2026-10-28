@@ -29,3 +29,8 @@ Read `AGENTS.md`, `CONTEXT.md` and ADR 0017 (`docs/adr/0017-agent-skills-for-use
 FIRST, check this task against current reality (it is a launch snapshot and may have DRIFTED): does it still match the code in `work/tasks/done/`, the relevant ADRs, and the tasks it depends on? If a dependency landed differently than this task assumes, do NOT build on the stale premise: route the task to needs-attention with the discrepancy as the reason (WORK-CONTRACT.md "Drift is a needs-attention signal").
 
 RECORD non-obvious in-scope decisions in a `## Decisions` block at the end of your FINAL REPORT (the one sanctioned channel; the runner transcribes it into the done record). Do not write the done record, commit message or PR body yourself, and do not open a decisions note. A decision that meets the ADR gate (`work/protocol/ADR-FORMAT.md`) also gets an ADR in `docs/adr/`, named in the block.
+
+## Decisions
+
+- **Where the paragraph goes:** directly after the paragraph that states the append-only rule, so "rocketh does not check that rule for you" refers to the rule just stated. The alternative was a separate note further down the Upgrading section, where it would be read apart from the rule it qualifies. This touches only this page.
+- **The diamond half is one sentence on the proxies page, linking to the diamonds page, rather than an edit to `documentation/diamonds/index.md`:** the acceptance criterion names only `documentation/proxies/index.md`. The diamonds page could get its own sentence later if the skill needs to cite it there.

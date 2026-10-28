@@ -98,6 +98,8 @@ Change the implementation, run the script again, and `deployViaProxy`:
 
 The proxy keeps its address and its storage. An upgrade replaces code, not state, which is why a new implementation may only append storage variables: reordering them, or inserting one above existing ones, makes the new code read the old slots as something else. The [playground](../#try-it-here) shows this with a real upgrade.
 
+rocketh does not check that rule for you. Whether to upgrade is decided by one comparison: the address in the proxy's EIP-1967 implementation slot against the implementation this run resolved. When they differ the upgrade is sent, whatever the new contract's storage looks like, and the compiler's `storageLayout` output is never read. So check the layout yourself before upgrading, for example by diffing the old and new `storageLayout` with a layout-diff tool, and rehearse the upgrade [on a fork](../fork-runs/) so the new code runs against the existing state before it does so for real. A [diamond](../diamonds/) cut is no different: rocketh compares function selectors and facet addresses, never the facets' storage.
+
 The implementation is compared as `deploy` compares any contract (metadata ignored unless you set `strictBytecodeMatch`, see [When does a re-run redeploy?](../deploy-contracts/#when-does-a-re-run-redeploy)). The proxy contract itself is always compared without its metadata, so a recompilation of the bundled proxy never triggers an upgrade.
 
 `deployViaProxy` returns the proxy's record, which has no `newlyDeployed` flag. To know what a run did, compare the record before and after:
