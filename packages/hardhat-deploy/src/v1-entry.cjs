@@ -1,7 +1,9 @@
 // This file serves as a CommonJS entry point for hardhat v2
 // It detects v1 users and shows them a migration message
 
-const MIGRATION_URL = 'https://rocketh.dev/hardhat-deploy/documentation/how-to/migration-from-v1.html';
+// The capability map: it answers "can my project move" and links the step-by-step guide.
+// A folder page is served as /x/; never link a .html address, the site cannot forward one.
+const MIGRATION_URL = 'https://rocketh.dev/hardhat-deploy/migration/';
 const V1_INSTALL_CMD = 'npm install hardhat-deploy@1';
 
 function getHardhatVersion() {
