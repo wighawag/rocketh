@@ -38,6 +38,8 @@ export const config = {
 } as const satisfies UserConfig;
 ```
 
+An endpoint whose URL carries an API key is a secret, like a private key: read it from the environment instead of writing it in the file (`rpcUrl: process.env.SEPOLIA_RPC_URL`), and keep the value in `.env.local`, which the `rocketh` command loads before it reads the config ([CLI](../reference/cli/)).
+
 When you run through `@rocketh/node` (the `rocketh` CLI, or `loadAndExecuteDeploymentsFromFiles`), chain METADATA for a publicly known chain is filled in for you from viem's chain registry: name, native currency, block explorers, multicall3, and so on. Anything you put in `chains[id]` is layered on top field by field, so overriding one value does not mean restating the whole chain.
 
 One deliberate exception: viem's public default RPC (for example `https://<id>.rpc.thirdweb.com`) is NOT copied into the serialized `info.rpcUrls`. Such an endpoint is rate-limited and can stop answering, and `info` is what `@rocketh/export` writes into frontend builds and "add network" data, so a dead public URL would end up shipped in an app. Deploying still falls back to it, so zero-config runs keep working. Set `includeDefaultRPCUrlsInChainInfos: true` at the top level if you actually want it serialized.

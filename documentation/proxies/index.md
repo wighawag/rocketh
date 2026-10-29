@@ -58,7 +58,7 @@ A constructor runs once, against the implementation's own storage, when the impl
 - **Flat**, one call made on the first deployment AND again on every later upgrade: `execute: 'init'`, or `execute: {methodName: 'init', args: [...]}`. Use it only for a call that is safe to repeat.
 - **Explicit**, `{init, onUpgrade}`: `init` is made only when the proxy is first deployed, `onUpgrade` only on an upgrade. Each takes a method name or `{methodName, args}`.
 
-When no `args` are given (the string forms, or `{methodName}` alone), the call receives the deployment's constructor `args`. Without `onUpgrade`, an upgrade calls nothing: if a new implementation needs a migration step, that is where it goes. A value mixing the two forms (`methodName` next to `init` or `onUpgrade`) is refused before anything is deployed, and a method the artifact does not have stops the run.
+When no `args` are given (the string forms, or `{methodName}` alone), the call receives the deployment's constructor `args`. Without `onUpgrade`, an upgrade calls nothing: if a new implementation needs a migration step, that is where it goes. It is then made on every upgrade this call performs, not only the next one, so write the step to be safe to repeat, or replace it with the next version's own step when the contract changes again. A value mixing the two forms (`methodName` next to `init` or `onUpgrade`) is refused before anything is deployed, and a method the artifact does not have stops the run.
 
 The TypeScript type of the explicit form currently requires `init`, so an upgrade step that only needs `onUpgrade` must still name an `init` (one that is never called on that proxy, since it already exists).
 

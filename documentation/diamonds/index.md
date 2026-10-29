@@ -73,7 +73,7 @@ Nothing is refused: the removal block is there so an unintended one is visible w
 - **Flat**, a single call: made on the first deploy AND again on every later cut that changes something, with the same arguments. Use it only for a call that is safe to repeat.
 - **Explicit**, `{init, onUpgrade}` (both optional): `init` is made only when the diamond is first created, `onUpgrade` only on a later cut that changes facets. Each names its own target, so they may call different functions, even on different contracts.
 
-Anything that must run exactly once, like an initializer, belongs in `init`: in the flat form it would run again on every later cut.
+Anything that must run exactly once, like an initializer, belongs in `init`: in the flat form it would run again on every later cut. Likewise `onUpgrade` is made on every later cut that changes facets, not only the next one, so a migration step there must be safe to repeat, or be replaced by the next change's own step.
 
 ```typescript
 await diamond(
