@@ -174,10 +174,12 @@ A rehearsal runs the same scripts against a fork of the real network, with the S
 # the fork, in its own terminal
 anvil --fork-url "$ETH_NODE_URI_mainnet"
 # the rehearsal, with the batch the Safe has to execute
-rocketh -e mainnet --is-fork --write-transactions fork-batch.json
+rocketh -e mainnet --is-fork --write-transactions fork-batch.json --skip-prompts
 # or through hardhat-deploy (no batch file)
 HARDHAT_FORK=mainnet npx hardhat deploy
 ```
+
+`--skip-prompts` skips the gas-price confirmation, which an agent's shell cannot answer; on a fork it skips nothing that matters, since the run writes nothing back and the Safe is impersonated ([step 4](https://rocketh.dev/documentation/safe-owned-project/#4-rehearse-on-a-fork)). Keep `--is-fork` on the command: without it, the same flag would skip the user's yes on a real mainnet run.
 
 A rehearsal on the same anvil node twice finds the first rehearsal's effects already there: restart the node to rehearse from scratch ([step 4](https://rocketh.dev/documentation/safe-owned-project/#4-rehearse-on-a-fork)). After the real execution, read the chain again: a successful receipt says a transaction was mined, not that the intended state was reached ([Rehearse on a fork, then verify](https://rocketh.dev/documentation/production-hardening/#rehearse-on-a-fork-then-verify-the-chain-afterwards)).
 
