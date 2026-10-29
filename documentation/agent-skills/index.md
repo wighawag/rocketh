@@ -6,11 +6,11 @@ Nothing is installed into your agent environment without your action, because ad
 
 ## The skills
 
-| Skill                                                                                                                              | Used when                                                                                                                                                                                      |
-| ---------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`rocketh-deploy`](https://raw.githubusercontent.com/wighawag/rocketh/main/skills/rocketh-deploy/SKILL.md)                         | writing, running or re-running deploy scripts, upgrading a proxy or a diamond, verifying or exporting deployments                                                                              |
-| [`rocketh-safe-owned-changes`](https://raw.githubusercontent.com/wighawag/rocketh/main/skills/rocketh-safe-owned-changes/SKILL.md) | a step's `from` is an account rocketh cannot sign for (a Safe, a timelock, a hardware wallet), a run paused or threw on an unknown signer, or a privileged change is to be rehearsed on a fork |
-| [`hardhat-deploy-migration`](https://raw.githubusercontent.com/wighawag/rocketh/main/skills/hardhat-deploy-migration/SKILL.md)     | porting a hardhat-deploy v1 project to v2                                                                                                                                                      |
+| Skill                                                                                          | Used when                                                                                                                                                                                      |
+| ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`rocketh-deploy`](https://rocketh.dev/skills/rocketh-deploy/SKILL.md)                         | writing, running or re-running deploy scripts, upgrading a proxy or a diamond, verifying or exporting deployments                                                                              |
+| [`rocketh-safe-owned-changes`](https://rocketh.dev/skills/rocketh-safe-owned-changes/SKILL.md) | a step's `from` is an account rocketh cannot sign for (a Safe, a timelock, a hardware wallet), a run paused or threw on an unknown signer, or a privileged change is to be rehearsed on a fork |
+| [`hardhat-deploy-migration`](https://rocketh.dev/skills/hardhat-deploy-migration/SKILL.md)     | porting a hardhat-deploy v1 project to v2                                                                                                                                                      |
 
 Where one skill's scope ends, it points the agent to the next one.
 
@@ -29,7 +29,7 @@ This installs them into the current project. Add `-g` to install them for your u
 With an agent that does not support skills, start the conversation with this line:
 
 ```text
-Read https://raw.githubusercontent.com/wighawag/rocketh/main/skills/rocketh-deploy/SKILL.md and follow it before deploying
+Read https://rocketh.dev/skills/rocketh-deploy/SKILL.md and follow it before deploying
 ```
 
 ## Versions

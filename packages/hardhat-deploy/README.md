@@ -81,7 +81,7 @@ Run it again after changing `GreetingsRegistry` and the proxy is upgraded in pla
 
 The documentation is at [rocketh.dev/hardhat-deploy](https://rocketh.dev/hardhat-deploy/), with a numbered path from setup to production.
 
-Coming from v1? [What changed](https://rocketh.dev/hardhat-deploy/migration/) says what v2 does differently or does not do, and [the step-by-step migration](https://rocketh.dev/hardhat-deploy/migration/step-by-step/) walks a project through the port. To have an AI assistant do the port, give it [the migration skill](https://github.com/wighawag/rocketh/blob/main/skills/hardhat-deploy-migration/SKILL.md).
+Coming from v1? [What changed](https://rocketh.dev/hardhat-deploy/migration/) says what v2 does differently or does not do, and [the step-by-step migration](https://rocketh.dev/hardhat-deploy/migration/step-by-step/) walks a project through the port. To have an AI assistant do the port, give it [the migration skill](https://rocketh.dev/skills/hardhat-deploy-migration/SKILL.md).
 
 Deploying through a coding agent? [Working with an AI agent](https://rocketh.dev/documentation/agent-skills/) lists the skills that teach it to deploy with hardhat-deploy v2 and how to install them (`npx skills add wighawag/rocketh`).
 
