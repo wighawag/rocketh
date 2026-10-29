@@ -2,6 +2,7 @@
 name: example-skill
 description: A throwaway skill that exists only to prove the skill harness on its own tests (packages/hardhat-deploy/test/skill-harness/). It is not a skill to install.
 metadata:
+  internal: true
   rocketh: '>=0.26.2'
 ---
 
