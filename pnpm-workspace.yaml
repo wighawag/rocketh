@@ -86,6 +86,14 @@ minimumReleaseAgeExclude:
   #   text inside a JavaScript template literal unescaped. A devDependency of the root only,
   #   never shipped. Safe to delete after 2026-11-04.
   - 'ezx@0.1.0'
+  # - ipfs-gateway-emulator 5.1.1 (published 2026-10-29, by hand by the same author as every
+  #   earlier release). Its only change against 5.1.0 is its dependency floors, raised to the
+  #   patched @hono/node-server ^2.1.5 (GHSA-rmxm-3fg6-px4f, which fails `pnpm audit` in CI) and
+  #   hono ^4.13.14; no code changed. @rocketh/node depends on it. Safe to delete after 2026-11-05.
+  # - hono 4.13.14 (published 2026-10-25), pulled in by that floor: a patch release of hono
+  #   through its usual release path. Safe to delete after 2026-11-01.
+  - 'ipfs-gateway-emulator@5.1.1'
+  - 'hono@4.13.14'
 
 # Refuse a version whose TRUST EVIDENCE is weaker than that of earlier releases of
 # the same package. npm records how a version was published (trusted publishing via

@@ -72,7 +72,7 @@
 	"devDependencies": {
 		"@types/node": "^26.2.0",
 		"as-soon": "^0.1.6",
-		"ipfs-gateway-emulator": "5.0.0",
+		"ipfs-gateway-emulator": "5.1.1",
 		"rimraf": "^6.1.3",
 		"rocketh": "workspace:*",
 		"typedoc": "^0.28.20",

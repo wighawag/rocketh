@@ -805,8 +805,8 @@ importers:
         specifier: ^0.1.6
         version: 0.1.6
       ipfs-gateway-emulator:
-        specifier: 5.0.0
-        version: 5.0.0
+        specifier: 5.1.1
+        version: 5.1.1
       rimraf:
         specifier: ^6.1.3
         version: 6.1.3
@@ -2104,8 +2104,8 @@ packages:
   '@hapi/topo@6.0.2':
     resolution: {integrity: sha512-KR3rD5inZbGMrHmgPxsJ9dbi6zEK+C3ZwUwTa+eMwWLz7oijWUTWD2pMSNNYJAU6Qq+65NkxXjqHr/7LM2Xkqg==}
 
-  '@hono/node-server@2.1.0':
-    resolution: {integrity: sha512-XovyyCCnBzW+zKu+z/zq8hwNs4KOR5rEMAOxo2f40Q5xoOI37IMm6MIg2COOUtUApo0i6850MTBKH2u4QLGIqg==}
+  '@hono/node-server@2.1.5':
+    resolution: {integrity: sha512-MgP/I06GdvsilDspMk/qmRzpk8LOUStP6jFAbSRi40W09DhoyUn+Mj7eyKICPqeYKybOjVFLVIAQzvu1bfIa7Q==}
     engines: {node: '>=20'}
     peerDependencies:
       hono: ^4.13.11
@@ -3571,8 +3571,8 @@ packages:
     resolution: {integrity: sha512-T2UbfbBEF32wiepXIsMlTW9+dDYC6wMh/t/vYA4tuOMKqWz/n3vr1NFSxQiyP+zk2mXsoMA/i/7qV6LKut1t1A==}
     engines: {node: '>= 0.4'}
 
-  hono@4.13.13:
-    resolution: {integrity: sha512-CQ46U0ZkAGmbT/4UxdzzGJpacP2IeKgY4a5/tOI9AABbpOMfK739wfDXmv1usCk+3RkKj1hQy4/fjhiwa2xlrA==}
+  hono@4.13.14:
+    resolution: {integrity: sha512-yhRLQ21U6qa9Hsu2N7Qcbh8tE+WKEcoErjIo56LeSGiGXGp9sA7UpE86Ui9uexb61KakiGwuHMn2QdV7w6i6kQ==}
     engines: {node: '>=16.9.0'}
 
   html-escaper@2.0.2:
@@ -3611,8 +3611,8 @@ packages:
   inherits@2.0.4:
     resolution: {integrity: sha512-k/vGaX4/Yla3WzyMCvTQOXYeIHvqOKtnqBduzTHpzpQZzAskKMhZ2K+EnBiSM9zGSoIFeMpXKxa4dYeZIQqewQ==}
 
-  ipfs-gateway-emulator@5.0.0:
-    resolution: {integrity: sha512-A2N/DdVOQsTHyoOVpv6hBaSUTCIumyegglnXdSzGrphucmRPqxz16ooB5wzMgcXVwI4u/7l74qnuoah7tcpVhA==}
+  ipfs-gateway-emulator@5.1.1:
+    resolution: {integrity: sha512-7b0wtTiFfPSlS4CfPrDJViMdlPgtlynfR2OZI4UJJh9K/RK434jB8l2XkNsUJOPB9TGgvPjE+sW/Kd37BYwZ+w==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -5780,9 +5780,9 @@ snapshots:
     dependencies:
       '@hapi/hoek': 11.0.7
 
-  '@hono/node-server@2.1.0(hono@4.13.13)':
+  '@hono/node-server@2.1.5(hono@4.13.14)':
     dependencies:
-      hono: 4.13.13
+      hono: 4.13.14
 
   '@jest/diff-sequences@30.0.1': {}
 
@@ -7186,7 +7186,7 @@ snapshots:
     dependencies:
       function-bind: 1.1.2
 
-  hono@4.13.13: {}
+  hono@4.13.14: {}
 
   html-escaper@2.0.2: {}
 
@@ -7219,10 +7219,10 @@ snapshots:
 
   inherits@2.0.4: {}
 
-  ipfs-gateway-emulator@5.0.0:
+  ipfs-gateway-emulator@5.1.1:
     dependencies:
-      '@hono/node-server': 2.1.0(hono@4.13.13)
-      hono: 4.13.13
+      '@hono/node-server': 2.1.5(hono@4.13.14)
+      hono: 4.13.14
 
   is-arrayish@0.2.1: {}
 
