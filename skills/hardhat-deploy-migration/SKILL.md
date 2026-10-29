@@ -2487,4 +2487,4 @@ Take the migration step by step, test each phase thoroughly, and refer to this g
 
 ## After the port
 
-This skill ends when the project runs on v2. For the work after that (writing new deploy scripts, running or re-running a deployment on a network, upgrading a proxy, verifying and exporting), continue with the skill `rocketh-deploy`; when it is not installed, read it from https://raw.githubusercontent.com/wighawag/rocketh/main/skills/rocketh-deploy/SKILL.md, and tell the user how to install the skills ([Working with an AI agent](https://rocketh.dev/documentation/agent-skills/)).
+This skill ends when the project runs on v2. For the work after that (writing new deploy scripts, running or re-running a deployment on a network, upgrading a proxy, verifying and exporting), continue with the skill `rocketh-deploy`; when it is not installed, read it from https://rocketh.dev/skills/rocketh-deploy/SKILL.md, and tell the user how to install the skills ([Working with an AI agent](https://rocketh.dev/documentation/agent-skills/)).

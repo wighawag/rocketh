@@ -15,7 +15,7 @@ hardhat-deploy v2 is a complete rewrite that requires Hardhat 3.x and introduces
 
 ## AI-Assisted Migration
 
-For users interested in using AI to help with the migration process, we provide a comprehensive [SKILL.md](https://github.com/wighawag/rocketh/blob/main/skills/hardhat-deploy-migration/SKILL.md) file designed specifically for AI assistants. This guide contains detailed instructions and patterns that AI tools can use to understand and execute the migration systematically.
+For users interested in using AI to help with the migration process, we provide a comprehensive [SKILL.md](https://rocketh.dev/skills/hardhat-deploy-migration/SKILL.md) file designed specifically for AI assistants. This guide contains detailed instructions and patterns that AI tools can use to understand and execute the migration systematically.
 
 The SKILL file includes:
 
@@ -657,7 +657,7 @@ expect(value).toEqual(42n);
 
 ## When something does not work
 
-A v1 feature that seems to do nothing, or an option that is refused, is most likely one v2 changed or dropped: look it up in the [capability map](/hardhat-deploy/migration/) first. The messages rocketh prints say what to change, and the [migration skill](https://github.com/wighawag/rocketh/blob/main/skills/hardhat-deploy-migration/SKILL.md) can guide an AI assistant through a port.
+A v1 feature that seems to do nothing, or an option that is refused, is most likely one v2 changed or dropped: look it up in the [capability map](/hardhat-deploy/migration/) first. The messages rocketh prints say what to change, and the [migration skill](https://rocketh.dev/skills/hardhat-deploy-migration/SKILL.md) can guide an AI assistant through a port.
 
 ## Migration Checklist
 

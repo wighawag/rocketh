@@ -9,7 +9,7 @@ metadata:
 
 A step is _unsignable_ when its `from` is an account rocketh holds no key for and the node does not sign for: a Safe, a timelock, a governance contract. That is the expected shape of a privileged change, not an error: rocketh builds the transaction, the account that holds the authority executes it, and the deployment finishes when a re-run finds nothing left to do ([Handling unknown signers](https://rocketh.dev/documentation/unknown-signers/)). This skill is the judgement around that loop; the pages it links hold the mechanics.
 
-For everything that is not specific to an unsignable account (which network to touch, secrets, writing and re-running ordinary scripts), use the `rocketh-deploy` skill (`https://raw.githubusercontent.com/wighawag/rocketh/main/skills/rocketh-deploy/SKILL.md`).
+For everything that is not specific to an unsignable account (which network to touch, secrets, writing and re-running ordinary scripts), use the `rocketh-deploy` skill (`https://rocketh.dev/skills/rocketh-deploy/SKILL.md`).
 
 ## First: the version
 

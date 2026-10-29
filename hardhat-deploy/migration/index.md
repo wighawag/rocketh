@@ -1,6 +1,6 @@
 # Coming from hardhat-deploy v1: what changed
 
-hardhat-deploy v2 is hardhat-deploy on top of rocketh. Two other documents teach you how to TRANSLATE a project: the step-by-step [hardhat-deploy migration guide](/hardhat-deploy/migration/step-by-step/), and the [migration skill](https://github.com/wighawag/rocketh/blob/main/skills/hardhat-deploy-migration/SKILL.md) you can hand to an AI assistant. Both assume the feature you use exists on the other side.
+hardhat-deploy v2 is hardhat-deploy on top of rocketh. Two other documents teach you how to TRANSLATE a project: the step-by-step [hardhat-deploy migration guide](/hardhat-deploy/migration/step-by-step/), and the [migration skill](https://rocketh.dev/skills/hardhat-deploy-migration/SKILL.md) you can hand to an AI assistant. Both assume the feature you use exists on the other side.
 
 This page answers the question that decides whether you can move at all: **for every hardhat-deploy v1 capability, what replaces it, or that nothing does and why.** It is the one place that list lives; the other two documents link here rather than repeating it.
 
