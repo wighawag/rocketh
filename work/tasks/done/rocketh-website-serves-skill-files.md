@@ -31,3 +31,9 @@ Read `AGENTS.md`, `CONTEXT.md` and ADR 0017 (`docs/adr/0017-agent-skills-for-use
 FIRST, check this task against current reality (it is a launch snapshot and may have DRIFTED): does it still match the code in `work/tasks/done/`, the relevant ADRs, and the tasks it depends on? If a dependency landed differently than this task assumes, do NOT build on the stale premise: route the task to needs-attention with the discrepancy as the reason (WORK-CONTRACT.md "Drift is a needs-attention signal").
 
 RECORD non-obvious in-scope decisions in a `## Decisions` block at the end of your FINAL REPORT (the one sanctioned channel; the runner transcribes it into the done record). Do not write the done record, commit message or PR body yourself, and do not open a decisions note. A decision that meets the ADR gate (`work/protocol/ADR-FORMAT.md`) also gets an ADR in `docs/adr/`, named in the block.
+
+## Decisions
+
+- **Built by an agent on the maintainer's explicit instruction** (the task is `humanOnly` because it spans the rocketh-website repository and the deploy workflow). The site change is rocketh-website PR #6, merged as `704441d3abace364df3a0e380b8af15428371e52`, which this change pins.
+- **The skills are client-build assets, not pages.** A site-specific Vite plugin (`rocketh-skills` in `web/vite.plugins.ts`) emits every `skills/<name>/SKILL.md` and `skills/<name>/references/*.md` of the rocketh checkout into the build unchanged, so any skill added later is served with no site change. GitHub Pages serves `.md` as `text/markdown; charset=utf-8`. The alternative, a generic "extra raw folder" option in the docs engine, would have had to go to the template first.
+- **The pin also brings in the website commits since the previous pin** (the draft-article change), and a fix to the site's e2e suite, whose `::: containers` test named a page that no longer has a `::: danger` container.
