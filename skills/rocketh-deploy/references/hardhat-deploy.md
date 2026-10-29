@@ -34,7 +34,7 @@ The task has no `--write-transactions`, so the check that a live deployment is f
 ```bash
 npx hardhat compile
 anvil --fork-url "$ETH_NODE_URI_sepolia"
-npx rocketh -e sepolia --is-fork --write-transactions ./fork-rerun.json
+npx rocketh -e sepolia --is-fork --write-transactions ./fork-rerun.json --skip-prompts
 ```
 
 anvil reports the forked chain's id, so the rehearsal takes that network's settings and tags ([Which chain id?](https://rocketh.dev/documentation/fork-runs/#which-chain-id-two-questions-two-answers)). When the endpoint is a Hardhat configuration variable (`SECRET`), the shell holds no URL to give anvil: ask the user to start the fork node themselves, and run the check against it.

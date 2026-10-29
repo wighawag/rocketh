@@ -39,3 +39,8 @@ Read `AGENTS.md`, `CONTEXT.md` and ADR 0017 (`docs/adr/0017-agent-skills-for-use
 FIRST, check this task against current reality (it may have DRIFTED): if the fork commands already carry `--skip-prompts`, or the executor no longer asks on a fork, route the task to needs-attention with the discrepancy as the reason (WORK-CONTRACT.md "Drift is a needs-attention signal").
 
 RECORD non-obvious in-scope decisions in a `## Decisions` block at the end of your FINAL REPORT (the one sanctioned channel; the runner transcribes it into the done record). Do not write the done record, commit message or PR body yourself, and do not open a decisions note.
+
+## Decisions
+
+- **Wording of the Safe skill's added paragraph:** it says the flag "skips nothing that matters" on a fork, because the run writes nothing back and the Safe is impersonated. This follows step 4, which says the same about the unknown-signer policy: `--skip-prompts` also forces `--on-unknown-signer throw`, and that is harmless on a fork. The alternative was to add only the flag with no explanation. I added one paragraph so the agent cannot read it as permission for live runs. It affects only that skill section.
+- **Where the flag goes on the line:** I put `--skip-prompts` at the end of each command rather than next to `-e`, so the change is a minimal diff. This is cosmetic and does not change how the commands behave.

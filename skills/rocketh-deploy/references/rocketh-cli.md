@@ -30,7 +30,7 @@ The run prints the environment, its chain and its tags, and asks; add `--skip-pr
 
 ```bash
 anvil --fork-url "$SEPOLIA_RPC_URL"
-npx rocketh -e sepolia --is-fork --write-transactions ./fork-rerun.json
+npx rocketh -e sepolia --is-fork --write-transactions ./fork-rerun.json --skip-prompts
 ```
 
 `$SEPOLIA_RPC_URL` stands for the variable the config reads the endpoint from. `--is-fork` says the node at `http://127.0.0.1:8545` forks the environment named by `-e`: the run reads that environment's records, impersonates its accounts, and writes no record back ([From the command line: `--is-fork`](https://rocketh.dev/documentation/fork-runs/#from-the-command-line---is-fork)). anvil reports the forked chain's id, so the rehearsal takes that chain's settings and tags with nothing to declare ([What a fork run inherits](https://rocketh.dev/documentation/fork-runs/#what-a-fork-run-inherits-and-the-one-condition)). A fork node on another port is named in `whenForked.rpcUrl` ([Saying what differs](https://rocketh.dev/documentation/fork-runs/#saying-what-differs-whenforked)). Keep `--save-deployments` off this command: on a fork it is the one flag that writes the rehearsal into the live network's records ([A fork does not save](https://rocketh.dev/documentation/fork-runs/#a-fork-does-not-save-and-you-do-not-have-to-remember-that)).
