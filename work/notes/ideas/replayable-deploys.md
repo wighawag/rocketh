@@ -39,3 +39,7 @@ This is about 300 lines of JS, and it is moving out of the template into ethereu
 ## Where it would land
 
 The template's `withGuardRecording`, `scripts/lan/*` and `DeterministicDeploys.test.ts` (jolly-roger, as of commit 923662a1), and ethereum-lan-node's copy of the build scripts once moved, are the reference implementation.
+
+## Update (2026-11-08): captured transactions already exist
+
+`work/specs/tasked/captured-transactions.md` (and `--write-transactions <file>` in `packages/rocketh-node/src/cli-options.ts`) already keeps every transaction a run broadcasts, at the broadcast choke point, and names "a deployment can be replayed" as one of its two consumers. The LAN build's `replayable.ts` rebuilds the same list by scanning the in-process chain's blocks, so most of the "replay as a module" half above is that feature plus two additions: the GUARD of each `execute` in its captured entry (the execution listener above, at the same choke point), and a check that refuses a run whose entries are neither CREATE2 deployments nor guarded calls. Start from that spec rather than from the LAN scripts.
