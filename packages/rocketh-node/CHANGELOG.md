@@ -1,5 +1,13 @@
 # @rocketh/node
 
+## 0.22.5
+
+### Patch Changes
+
+- 82e0eef: Update ipfs-gateway-emulator to 5.1.1, which requires the patched @hono/node-server (GHSA-rmxm-3fg6-px4f).
+- Updated dependencies [93c9c15]
+  - rocketh@0.26.3
+
 ## 0.22.4
 
 ### Patch Changes
