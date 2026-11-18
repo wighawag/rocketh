@@ -1,5 +1,11 @@
 # rocketh
 
+## 0.26.3
+
+### Patch Changes
+
+- 93c9c15: README: link the new "Working with an AI agent" documentation page, which lists the rocketh skills for coding agents and how to install them.
+
 ## 0.26.2
 
 ### Patch Changes
