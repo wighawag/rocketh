@@ -270,7 +270,10 @@ describe('executeDeployScriptModules - run loop', () => {
 	it('throws when a module returns true without an id', async () => {
 		const fn = (async () => true) as any;
 		// no .id set on the module
-		await expect(runModules([{id: 'no-id', module: fn}])).rejects.toThrow('does not provide an id');
+		const run = runModules([{id: 'no-id', module: fn}]);
+		// names the script and says where the id goes
+		await expect(run).rejects.toThrow('deploy script "no-id" returned true');
+		await expect(run).rejects.toThrow('Give it one in the options of deployScript');
 	});
 
 	it('does not record a migration when a module returns undefined', async () => {

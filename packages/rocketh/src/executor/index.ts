@@ -945,7 +945,10 @@ ${describeRunFees(resolvedExecutionParams)}Do you want to proceed (note that gas
 			if (result && typeof result === 'boolean') {
 				if (!deployScript.func.id) {
 					throw new Error(
-						`${deployScript.id} return true to not be executed again, but does not provide an id. the script function needs to have the field "id" to be set`,
+						`deploy script "${deployScript.id}" returned true, which asks rocketh to record it as done and never run it ` +
+							`again, but it has no id to record it under. Give it one in the options of deployScript, ` +
+							`for example {tags: [...], id: 'a-key-you-choose'}, or return nothing if it should run every time. ` +
+							`The script itself ran; the run stops here, and nothing was recorded for it.`,
 					);
 				}
 				internal.recordMigration(deployScript.func.id);
