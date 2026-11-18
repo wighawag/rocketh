@@ -59,6 +59,11 @@ minimumReleaseAgeExclude:
   #   `requeue -m` on a protected main (the note used to be dropped) and keeps a continued
   #   run's decisions in the done record. Safe to delete after 2026-11-23.
   - 'dorfl@0.16.0'
+  # - ipfs-gateway-emulator 5.1.2 (published 2026-11-18, by hand by the same author as every
+  #   earlier release). Its only change against 5.1.1 is its dependency floors, raised to the
+  #   patched @hono/node-server ^2.1.6 and hono ^4.13.16 (the advisories that fail `pnpm audit`
+  #   in CI); no code changed. @rocketh/node depends on it. Safe to delete after 2026-11-25.
+  - 'ipfs-gateway-emulator@5.1.2'
 
 # Refuse a version whose TRUST EVIDENCE is weaker than that of earlier releases of
 # the same package. npm records how a version was published (trusted publishing via
@@ -123,7 +128,10 @@ allowBuilds:
 # hardhat-zod-utils and hardhat-keystore), vite peers (axios, esbuild, postcss
 # via vite 8), nx (smol-toml, undici 7, follow-redirects), ipfs-gateway-emulator (hono) and
 # wait-on (joi). The 2026-10-26 round added changesets (shell-quote, launch-editor), vitest
-# (source-map-js, @vitest/mocker, vite 8) and abitype in the demoes (zod 4). The
+# (source-map-js, @vitest/mocker, vite 8) and abitype in the demoes (zod 4). The 2026-11-18 round
+# raised joi and follow-redirects, and added glob (through rimraf 6, which declares glob ^13: the
+# fix exists only on 14) and minimatch (through nx and glob, declared ^10: the fix exists only
+# on 11), both build tooling; `pnpm build`, `pnpm typecheck` and `pnpm test` pass on them. The
 # `@vue/server-renderer` floor went with vitepress when the docs site left it. Revisit
 # when those ship patched dep trees.
 overrides:
@@ -143,16 +151,18 @@ overrides:
   'markdown-it@<14.3.3': ^14.3.3
   'smol-toml@<1.9.0': ^1.9.0
   'hono@<4.13.11': ^4.13.11
-  'joi@>=18.0.0 <18.2.9': ^18.2.9
+  'joi@>=18.0.0 <18.3.1': ^18.3.1
   'shell-quote@>=1.8.4 <1.11.0': ^1.11.0
   'source-map-js@>=1.0.0 <1.2.2': ^1.2.2
-  'follow-redirects@>=1.16.0 <1.16.1': ^1.16.1
+  'follow-redirects@>=1.16.0 <1.16.2': ^1.16.2
   'launch-editor@<2.14.2': ^2.14.2
   'vite@>=8.0.0 <8.1.6': ^8.1.6
   '@vitest/mocker@<4.1.12': ^4.1.12
   'zod@>=4.0.0 <4.6.6': ^4.6.6
+  'glob@>=9.0.0 <14.0.2': ^14.0.2
+  'minimatch@>=7.0.0 <11.0.1': ^11.0.1
 
-# TWO advisories are ignored, and adding another should stay a last resort: an ignore entry
+# THREE advisories are ignored, and adding another should stay a last resort: an ignore entry
 # is how a hard gate quietly becomes decoration. Each entry states why it cannot be fixed
 # by a floor, why it does not reach users, and its exit condition.
 #
@@ -187,7 +197,19 @@ overrides:
 # plugin's `^4.3.1` resolve to it, with a floor here if needed) or when
 # @sveltejs/vite-plugin-svelte stops depending on deepmerge (check both when the plugin is
 # upgraded).
+#
+# GHSA-fc5q-39xc-vjpf (picomatch, high, "through 4.0.7": a single-branch repeated extglob such
+# as `+(*)` compiles to a regular expression that backtracks exponentially). There is NO
+# patched version: 4.0.7 is the latest release (checked 2026-11-18). It arrives through
+# vite, vitest, nx, changesets, fdir and tinyglobby (build and test tooling), and through ONE
+# runtime path, `rocketh > ldenv > @parcel/watcher`. The attack needs the attacker to supply
+# the GLOB PATTERN. @parcel/watcher compiles picomatch only for the `ignore` globs its caller
+# passes (`wrapper.js`, `normalizeOptions`), and ldenv 0.6.0 subscribes with no `ignore`
+# option at all, so no pattern reaches picomatch on that path. The build tools compile globs
+# from this repository's own configuration. Exit condition: delete this entry when picomatch
+# publishes a patched release (and floor it here if a path still resolves below it).
 auditConfig:
   ignoreGhsas:
     - GHSA-mrhx-c7xc-m3w5
     - GHSA-gcqx-w48m-w2h4
+    - GHSA-fc5q-39xc-vjpf
