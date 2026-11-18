@@ -50,6 +50,27 @@ jobs:
           node-version: 22
           cache: pnpm
 
+      # After a release, wait until the registry serves the version this commit declares. The
+      # `release` workflow can complete before npm lists what it published (2.4.0: release done
+      # 16:44:04, npm published 16:46:56, and this job then installed 2.3.0), so without this the
+      # run meant to test the new release tests the previous one, and passes. Ten minutes, then
+      # fail: a version that never appears means the release did not publish it.
+      - name: Wait for the released hardhat-deploy on npm
+        if: github.event_name == 'workflow_run'
+        run: |
+          expected=$(node -p "require('./packages/hardhat-deploy/package.json').version")
+          for attempt in $(seq 1 40); do
+            published=$(npm view hardhat-deploy version 2>/dev/null || true)
+            if [ "$published" = "$expected" ]; then
+              echo "npm serves hardhat-deploy $published"
+              exit 0
+            fi
+            echo "npm serves hardhat-deploy ${published:-nothing}, waiting for $expected ($attempt/40)"
+            sleep 15
+          done
+          echo "::error::hardhat-deploy $expected is not on npm after 10 minutes"
+          exit 1
+
       # Only ezx is needed from the repository; nothing is built.
       - name: Install dependencies
         run: pnpm install --ignore-scripts
