@@ -63,6 +63,7 @@ const fragments = [
 	' did not succeed: its receipt reports status ',
 	'rocketh requires a successful status before it records anything, so nothing was saved.',
 	'could not be evaluated, so nothing was executed: ',
+	'returned true, which asks rocketh to record it as done and never run it again, but it has no id to record it under.',
 	' mixes the flat form ({methodName, args}) with the explicit {init, onUpgrade} form.',
 	'" is a class, which cannot be called with the environment.',
 	'" threw while the environment was being set up',
