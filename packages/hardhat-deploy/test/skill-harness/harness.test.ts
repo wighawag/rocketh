@@ -57,6 +57,12 @@ function skillOf(text: string, name = 'example-skill', user = true): Skill {
 
 const FRONTMATTER = `---\nname: example-skill\ndescription: An example.\nmetadata:\n  rocketh: '>=0.1.0'\n---\n`;
 
+/**
+ * `checkSkill` and `checkExportNames` build a TypeScript program over the workspace, which took
+ * just over vitest's default 5 s on a CI runner: the same budget `skills.test.ts` gives them.
+ */
+const PROGRAM_CHECK_TIMEOUT_MS = 60_000;
+
 let surfaces: CommandSurfaces;
 beforeAll(async () => {
 	surfaces = await loadCommandSurfaces();
@@ -69,10 +75,14 @@ describe('the throwaway skill passes every check', () => {
 		expect(example.docs.map((doc) => path.basename(doc.file))).toEqual(['SKILL.md', 'run-once.md']);
 	});
 
-	it('passes the per-skill checks and the sample check', () => {
-		expect(checkSkill(example, {surfaces, fixturesRoot: EXAMPLE_FIXTURES}).map(formatFailure)).toEqual([]);
-		expect(checkSamples([example], EXAMPLE_FIXTURES).map(formatFailure)).toEqual([]);
-	});
+	it(
+		'passes the per-skill checks and the sample check',
+		() => {
+			expect(checkSkill(example, {surfaces, fixturesRoot: EXAMPLE_FIXTURES}).map(formatFailure)).toEqual([]);
+			expect(checkSamples([example], EXAMPLE_FIXTURES).map(formatFailure)).toEqual([]);
+		},
+		PROGRAM_CHECK_TIMEOUT_MS,
+	);
 });
 
 describe('which skills are user skills', () => {
@@ -132,11 +142,15 @@ describe('rule: fixture-marker and unmarked-typescript', () => {
 		]);
 	});
 
-	it('is not applied to the migration skill, which may carry unmarked blocks', () => {
-		const migration = discoverSkills().find((skill) => skill.name === 'hardhat-deploy-migration');
-		expect(migration?.user).toBe(false);
-		expect(checkSkill(migration!, {surfaces}).filter((f) => f.rule === 'unmarked-typescript')).toEqual([]);
-	});
+	it(
+		'is not applied to the migration skill, which may carry unmarked blocks',
+		() => {
+			const migration = discoverSkills().find((skill) => skill.name === 'hardhat-deploy-migration');
+			expect(migration?.user).toBe(false);
+			expect(checkSkill(migration!, {surfaces}).filter((f) => f.rule === 'unmarked-typescript')).toEqual([]);
+		},
+		PROGRAM_CHECK_TIMEOUT_MS,
+	);
 });
 
 describe('rule: unused-sample and fixture-folder', () => {
@@ -314,27 +328,35 @@ describe('rule: frontmatter', () => {
 });
 
 describe('rule: export-name', () => {
-	it("passes the throwaway skill's exports.json, and a skill without one has an empty table", () => {
-		expect(checkExportNames(example, EXAMPLE_FIXTURES)).toEqual([]);
-		expect(checkExportNames({...example, name: 'no-fixtures'}, EXAMPLE_FIXTURES)).toEqual([]);
-	});
+	it(
+		"passes the throwaway skill's exports.json, and a skill without one has an empty table",
+		() => {
+			expect(checkExportNames(example, EXAMPLE_FIXTURES)).toEqual([]);
+			expect(checkExportNames({...example, name: 'no-fixtures'}, EXAMPLE_FIXTURES)).toEqual([]);
+		},
+		PROGRAM_CHECK_TIMEOUT_MS,
+	);
 
-	it('fails a name the package root does not export, and a package that is not here', () => {
-		const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'skill-harness-exports-'));
-		try {
-			fs.mkdirSync(path.join(dir, 'example-skill'));
-			fs.writeFileSync(
-				path.join(dir, 'example-skill/exports.json'),
-				JSON.stringify({'@rocketh/proxy': ['deployViaProxy', 'deployProxy'], '@rocketh/nope': ['x']}),
-			);
-			expect(checkExportNames(example, dir).map((f) => `${f.rule}: ${f.message}`)).toEqual([
-				'export-name: @rocketh/proxy does not export `deployProxy` from its root',
-				'export-name: @rocketh/nope is not a package of this repository',
-			]);
-		} finally {
-			fs.rmSync(dir, {recursive: true, force: true});
-		}
-	});
+	it(
+		'fails a name the package root does not export, and a package that is not here',
+		() => {
+			const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'skill-harness-exports-'));
+			try {
+				fs.mkdirSync(path.join(dir, 'example-skill'));
+				fs.writeFileSync(
+					path.join(dir, 'example-skill/exports.json'),
+					JSON.stringify({'@rocketh/proxy': ['deployViaProxy', 'deployProxy'], '@rocketh/nope': ['x']}),
+				);
+				expect(checkExportNames(example, dir).map((f) => `${f.rule}: ${f.message}`)).toEqual([
+					'export-name: @rocketh/proxy does not export `deployProxy` from its root',
+					'export-name: @rocketh/nope is not a package of this repository',
+				]);
+			} finally {
+				fs.rmSync(dir, {recursive: true, force: true});
+			}
+		},
+		PROGRAM_CHECK_TIMEOUT_MS,
+	);
 });
 
 describe('the shared node declares a named account of each signability', () => {
