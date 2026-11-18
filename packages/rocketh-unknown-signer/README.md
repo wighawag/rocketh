@@ -42,6 +42,7 @@ Both helpers take a function (`() => execute(...)`), never a promise. `UnknownSi
 - [Handling unknown signers](https://rocketh.dev/documentation/unknown-signers/)
 - [catchUnknownSigner in a migrated script](https://rocketh.dev/hardhat-deploy/migration/#catch-unknown-signer)
 - [A Safe-owned project, end to end](https://rocketh.dev/documentation/safe-owned-project/)
+- [ADR 0016: the unknown-signer surface is frozen for 0.x](https://github.com/wighawag/rocketh/blob/main/docs/adr/0016-the-unknown-signer-surface-is-frozen-for-0x.md): the stability promise for the 0.x line
 
 The whole documentation is at [rocketh.dev](https://rocketh.dev), the hardhat-deploy section at [rocketh.dev/hardhat-deploy](https://rocketh.dev/hardhat-deploy/).
 
