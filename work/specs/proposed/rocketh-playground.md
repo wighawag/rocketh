@@ -7,7 +7,7 @@ needsAnswers: true
 
 > Launch snapshot: records intent at creation, NOT maintained. Current truth: `docs/adr/` (decisions) + the code; remaining work: `work/tasks/ready/` tasks. (The technical-detail sections below are trimmed by `to-task` once the work is tasked: they move into tasks/ADRs and this spec settles to its durable framing: Problem / Solution / User Stories / Out of Scope.)
 
-Supersedes `work/specs/dropped/editable-deploy-scripts-in-the-docs.md` (dropped in the same change) and an earlier draft of this spec, `playground-app`, that never reached `main`. Sources are cited as repository, path and line, read at rocketh `3f51e9d6`, webevm `7765d7e`, etherfold `a4c312fd`, template-svelte `78d901c`, template-svelte-shadcn `1b91814`. The spikes cited are on rocketh branch `spike/playground-workers` at `9925d284`.
+Supersedes `work/specs/dropped/editable-deploy-scripts-in-the-docs.md` (dropped in the same change) and an earlier draft of this spec, `playground-app`, that never reached `main`. Sources are cited as repository, path and line, read at rocketh `3f51e9d6`, webevm `7765d7e`, etherfold `a4c312fd`, template-svelte `78d901c`, template-svelte-shadcn `1b91814`, template-commit-reveal `a85c37b6`, stratagems `3bc12e8e`. The spikes cited are on rocketh branch `spike/playground-workers` at `9925d284`.
 
 <!-- open-questions -->
 <!--
@@ -96,11 +96,20 @@ What sets it apart from Remix is that the scripts are a real project's scripts, 
 - Chain state survives a reload through `createIndexedDBPersistence` (`packages/webevm/src/persistence.ts:21`).
 - etherfold passes a provider into a worker as a port: a port "whose other end is already served elsewhere, typically by a worker running a node (`webevm`): requests then go worker to worker and this tab relays nothing" (etherfold `packages/browser/src/host/provider.ts:5-21`), built in task `work/tasks/done/a-worker-host-takes-its-provider-and-settings-from-the-tab.md` with `@eip-1193/over-port`.
 
+### Already running in the maintainer's games
+
+The two hardest claims are not new: template-commit-reveal (and stratagems, its descendant) already run real rocketh deploy scripts against webevm in the tab.
+
+- **webevm in a worker, in production.** template-commit-reveal's offline world creates its node in a Worker (`web/src/lib/offline-node.ts:51` and `:81`, `createWorkerNode`), hosted by `createNodeWorkerApi` from `webevm/worker-host` (`web/src/lib/offline-node-host.ts:3`, `:25`), with its IndexedDB persistence built inside the worker (`web/src/lib/offline.ts:826-832`), and covered by its `web/e2e/tests/offline*.e2e.ts` suites. Its turn-preview sandbox reaches a second webevm worker through `providerOverPort` (`web/src/lib/game/simulation/sandbox.ts:318`). stratagems has the same `web/src/lib/embedded/` seam with the node on the page's thread (`web/src/lib/embedded/node.ts:36`).
+- **rocketh deploy scripts against it, unchanged.** Both games deploy their world with `@rocketh/web` (`web/src/lib/embedded/deploy.ts:167-179`: `setupEnvironment`, `loadAndExecuteDeploymentsFromModules`, `autoMine: false`), with the extensions their `contracts/rocketh/config.ts` spreads: `@rocketh/deploy`, `@rocketh/read-execute`, `@rocketh/proxy`, `@rocketh/router`, `@rocketh/viem` (template-commit-reveal `contracts/rocketh/config.ts:422-432`, stratagems `:129-137`).
+
+What the games do NOT do, and the playground does: run the rocketh executor itself inside a worker (both run it on the page's thread), and run scripts the reader edited, transpiled in the tab (both bundle their scripts). That is what the next spike retires.
+
 ### rocketh in the browser
 
 - `@rocketh/web`'s `setupEnvironment(config, extensions, {deploymentStore})` (rocketh `packages/rocketh-web/src/index.ts:138`) takes the provider per run; stores are `createVFSDeploymentStore` (`vfs-deployment-store.ts:31`) and `createIndexedDBDeploymentStore` (`:126`); project files can live in `createPersistentVFS` with `createIndexedDBPersistence` (`persistence.ts:151`, `:39`).
 - Against an EVM in the tab, accounts must be private keys and `autoMine` off (rocketh `documentation/browser/index.md:63-90`); a browser run has no prompt, so an unsignable `from` takes the `throw` path (`:108`).
-- No `src/` of `rocketh`, `@rocketh/core`, `web`, `deploy`, `proxy`, `diamond`, `read-execute`, `viem`, `unknown-signer` or `signer` imports `node:*`, `fs`, `path`, `os` or `child_process` (`git grep` over each `packages/<name>/src` at `3f51e9d6`), so all are expected to run in a worker unchanged; the spike ran `rocketh`, `@rocketh/web`, `@rocketh/deploy` and `@rocketh/signer` there.
+- No `src/` of `rocketh`, `@rocketh/core`, `web`, `deploy`, `proxy`, `diamond`, `read-execute`, `viem`, `unknown-signer` or `signer` imports `node:*`, `fs`, `path`, `os` or `child_process` (`git grep` over each `packages/<name>/src` at `3f51e9d6`), so all are expected to run unchanged; the games above run five of them, the first spike ran `rocketh`, `@rocketh/web`, `@rocketh/deploy` and `@rocketh/signer` on a page, and `@rocketh/diamond` and `@rocketh/unknown-signer` are the ones no browser run has exercised yet (an unsignable `from` throws in a browser, so the second only matters for its `withUnknownSignerPolicy` and `catchUnknownSigner` wrappers).
 
 ### Solidity in the browser
 
@@ -186,7 +195,7 @@ User code runs in the reader's own tab, with the reader's privileges on play.roc
 
 ## The spike to retire the biggest risk first
 
-Two spikes are done (`docs/spikes/playground-workers/` and `docs/spikes/playground-editors/`): solc and webevm each in a worker with one real deploy script took 1.4 s from click to record on headless Chromium, and the editor comparison above. The largest risk left is the runner: running TRANSPILED, reader-edited files through the registry in a worker, with the EVM reached over a port. Defined, not executed:
+Two spikes are done (`docs/spikes/playground-workers/` and `docs/spikes/playground-editors/`): solc and webevm each in a worker with one real deploy script took 1.4 s from click to record on headless Chromium, and the editor comparison above. webevm in a worker under real rocketh deploy scripts is already in production in the games (above). The largest risk left is the runner, the part neither the games nor the spikes have done: running TRANSPILED, reader-edited files through the registry in a worker, with the EVM reached over a port. Defined, not executed:
 
 1. One page, four workers as above. The TypeScript worker transpiles `deploy/01_deploy_counter.ts` and `rocketh/deploy.ts` from the template, unedited, plus the reader's `rocketh/config.ts`.
 2. The runner resolves them through the registry, gets the provider with `providerOverPort` on a port the EVM worker served, and runs them through `@rocketh/web` with an IndexedDB store.
