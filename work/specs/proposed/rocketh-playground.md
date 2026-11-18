@@ -2,30 +2,12 @@
 title: 'rocketh playground: a site where deploy scripts are edited, compiled and run in the browser'
 slug: rocketh-playground
 humanOnly: true
-needsAnswers: true
 ---
 
 > Launch snapshot: records intent at creation, NOT maintained. Current truth: `docs/adr/` (decisions) + the code; remaining work: `work/tasks/ready/` tasks. (The technical-detail sections below are trimmed by `to-task` once the work is tasked: they move into tasks/ADRs and this spec settles to its durable framing: Problem / Solution / User Stories / Out of Scope.)
 
 Supersedes `work/specs/dropped/editable-deploy-scripts-in-the-docs.md` (dropped in the same change) and an earlier draft of this spec, `playground-app`, that never reached `main`. Sources are cited as repository, path and line, read at rocketh `3f51e9d6`, webevm `7765d7e`, etherfold `a4c312fd`, template-svelte `78d901c`, template-svelte-shadcn `1b91814`, template-commit-reveal `a85c37b6`, stratagems `3bc12e8e`. The spikes cited are on rocketh branch `spike/playground-workers` at `9925d284`.
 
-<!-- open-questions -->
-<!--
-  TRANSIENT BLOCK, stripped by the apply rung on full resolution.
-  While the spec has unresolved questions blocking autonomous tasking:
-    1. Set `needsAnswers: true` in the frontmatter above.
-    2. List the questions under the `## Open questions` heading below.
-    3. Clear the flag (and let apply strip this block) once they are answered.
-  Delete the whole fenced block (markers and all) if the spec launches fully resolved.
--->
-
-## Open questions
-
-1. **Creating the repository and the domain.** The site is its own repository (decided) published on GitHub Pages at play.rocketh.dev. Creating `wighawag/rocketh-playground` (or another name), the `CNAME` record for `play.rocketh.dev`, and the Pages setting are the maintainer's to do; tasking waits for them.
-2. **The size cap of a shared link.** A project travels in the URL fragment, compressed. Chromium accepts URLs up to 2 MB, but chat apps and issue trackers cut far shorter links. Proposed cap: 32 KB of compressed fragment, beyond which "Share" offers the zip instead. Which number?
-3. **How the playground follows rocketh releases.** Proposed: a scheduled workflow in the playground repository that bumps its rocketh dependencies when a new version is on npm, runs the playground's own tests and the export test, and opens a pull request (the same reaction to releases rocketh's "Docs against the release" workflow has, `.github/workflows/docs-release-smoke.yml`). Auto-merge when green, or always a human merge?
-
-<!-- /open-questions -->
 
 ## Problem Statement
 
@@ -63,21 +45,23 @@ What sets it apart from Remix is that the scripts are a real project's scripts, 
 ### Autonomy notes (the two gate axes)
 
 - **`humanOnly: true`**: the repository, the domain and the publishing are the maintainer's to create, and the work is product-sized, so a human drives its tasking.
-- **`needsAnswers: true`**: the three questions above (the repository and domain to exist, the share cap, the release-following policy) must be settled before tasks are cut.
+- **`needsAnswers`**: cleared. The three questions the first version left open were answered on 2026-11-18 (see Decisions). The `CNAME` record for play.rocketh.dev and the Pages setting are actions for the maintainer, not questions, and only block publishing.
 
 ## Decisions (maintainer, 2026-11-18)
 
-- **Name and address:** rocketh playground, at play.rocketh.dev.
+- **Name and address:** rocketh playground, at play.rocketh.dev. The repository exists: [wighawag/rocketh-playground](https://github.com/wighawag/rocketh-playground), public, created from template-svelte-shadcn with `stem` pointing at it, AGPL-3.0, its README and AGENTS.md pointing here. The DNS `CNAME` for play.rocketh.dev and the Pages setting are still to be done by the maintainer.
 - **Its own repository, published on GitHub Pages.** A custom subdomain is a `CNAME` record per repository (GitHub docs, "About custom domains and GitHub Pages", "Custom subdomains"), so the playground's repository serves play.rocketh.dev while rocketh's keeps rocketh.dev. GitHub Pages sets no custom headers, and none are needed: webevm uses no `SharedArrayBuffer` (no match in webevm `packages/webevm/src/`), solc runs single-threaded, so COOP/COEP isolation is not required. A Content-Security-Policy, where wanted, is a `<meta>` tag.
 - **It derives from template-svelte-shadcn** through a `stem` remote (offshoot-fanout), for its UI kit (panes, tabs, dialogs; template-svelte-shadcn `README.md`, "What this tier adds"), and inherits the tree's static build (`@sveltejs/adapter-static` with a `404.html` fallback, template-svelte `web/svelte.config.js:37-40`). template-svelte-docs is not used: its Markdown engine has nothing to render here. jolly-roger, which adds the onchain/web3 layer on top of shadcn (the tree in template-svelte-shadcn `README.md`, "Where this sits"), is where to look if a wallet ever enters scope.
 - **Licence:** AGPL-3.0 for the playground's own code. The solc it ships is a separate, unmodified file with its GPL-3.0 licence and a link to its source (GPL-3.0 and AGPL-3.0 are compatible). A project the reader exports is generated from the `hardhat-deploy init` template, which is MIT (rocketh `packages/hardhat-deploy/package.json:14`), and states MIT, so no exported project inherits the AGPL.
-- **It runs published rocketh**, pinned in its `package.json`, never a rocketh checkout: the exported project pins published versions, so the playground must run those same ones. How it follows releases is open question 3.
+- **It runs published rocketh**, pinned in its `package.json`, never a rocketh checkout: the exported project pins published versions, so the playground must run those same ones. How it follows releases is decided below.
 - **The v1 line:** a fixed project layout, run and re-run, logs and records visible, reset, persistence across reloads, zip export, and sharing as a compressed URL fragment with no server. Importing a gist or a repository comes later.
 - **"Open in playground" on rocketh.dev comes right after v1.** rocketh.dev documents `main` (it is built from a rocketh checkout, rocketh `.github/workflows/deploy.yml`) while the playground runs releases, so a sample may use an option the playground's version lacks. The marker is decided: a fence such as ` ```typescript playground=deploy/02_deploy_greeter.ts ` names the file it stands for, only complete files are marked, and the docs build runs each marked sample against the released version and fails on an error, like a dead link.
 - **A real network through an injected wallet** is out of v1 and not out for good. The separate origin is what keeps that door open without exposing rocketh.dev.
 - **The EVM engine:** webevm's default (ethereumjs). revm (the `webevm/revm` subpath, measured 2.7x faster on Chromium for a 100-read frame, adding 413 KB gzipped, webevm `README.md:29` and `:640-643`) only if measurement shows a need.
 - **Editor:** CodeMirror 6 with the TypeScript language service in a worker (`@valtown/codemirror-ts`, `@typescript/vfs`, TypeScript 6). **Dependencies approved:** `codemirror`, `@codemirror/lang-javascript`, `@valtown/codemirror-ts`, `@typescript/vfs`, `typescript` 6, `@replit/codemirror-lang-solidity`, `comlink`, `fflate`.
 - **solc is copied into the build**, one pinned version: the one `hardhat-deploy init`'s template compiles with, 0.8.28 today (rocketh `packages/hardhat-deploy/templates/basic/hardhat.config.ts:21`). The build fetches it once from binaries.soliditylang.org and checks it against the `sha256` in that host's `list.json`.
+- **A shared link carries at most 32 KB of compressed fragment.** Above that, Share offers the zip instead.
+- **Following rocketh releases:** a scheduled workflow in the playground repository bumps its rocketh dependencies when npm has a new version, runs the playground's tests and the export test, and opens a pull request that a human merges. Auto-merge can come later, once the gate has proved itself.
 - **No Solidity imports in v1.** solc's import callback is not wired; the demo compiles from `contracts/` alone.
 
 ## Research (cited)
@@ -176,7 +160,7 @@ Four IndexedDB stores, each provided already: the project files (`createPersiste
 
 ### Export and share
 
-Export writes the template's files (with published versions), the reader's `contracts/` and `deploy/`, and a README naming `pnpm i && pnpm hardhat compile && pnpm hardhat deploy`, zipped with fflate. Deployment records are not exported: their chain only existed in the tab. Share writes the files, compressed, into the URL fragment, within the cap of open question 2.
+Export writes the template's files (with published versions), the reader's `contracts/` and `deploy/`, and a README naming `pnpm i && pnpm hardhat compile && pnpm hardhat deploy`, zipped with fflate. Deployment records are not exported: their chain only existed in the tab. Share writes the files, compressed, into the URL fragment, up to 32 KB; above that it offers the zip.
 
 ## The security boundary
 
@@ -192,7 +176,7 @@ User code runs in the reader's own tab, with the reader's privileges on play.roc
 - **Bundle size and first load.** The compiler is about 95% of a cold load (spike: 6.7 MB of about 7 MB). v1: it loads in its worker while the reader reads the code, with its size shown; the Cache API keeps it after the first visit; a budget test fails a build whose page or worker bundles grow past stated limits.
 - **solc loading.** One pinned version, copied into the build and checked against `list.json`; no runtime dependency on a third-party host.
 - **TS transpile and type checking.** TypeScript 6 in a worker, loaded after the editor is usable (the syntax-only editor shows first); a type error never blocks a run.
-- **Keeping in step with rocketh.** Published versions only, bumped by a pull request per release (open question 3), with the export test and a run of the starting project as the gate.
+- **Keeping in step with rocketh.** Published versions only, bumped by a pull request per release that a human merges, with the export test and a run of the starting project as the gate.
 - **GitHub Pages bandwidth.** Long cache lifetimes on the hashed compiler file; if the soft limit is reached, serving the compiler from another static host is a build setting, not a redesign.
 
 ## The spike to retire the biggest risk first
