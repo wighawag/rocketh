@@ -1,0 +1,21 @@
+{
+	"name": "spike-playground-editors",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"build": "vite build"
+	},
+	"dependencies": {
+		"@codemirror/autocomplete": "6.20.4",
+		"@codemirror/lang-javascript": "6.2.5",
+		"@typescript/vfs": "1.6.6",
+		"@valtown/codemirror-ts": "2.3.1",
+		"codemirror": "6.0.2",
+		"comlink": "4.4.2",
+		"monaco-editor": "0.57.0",
+		"typescript": "6.0.3"
+	},
+	"devDependencies": {
+		"vite": "7.3.7"
+	}
+}

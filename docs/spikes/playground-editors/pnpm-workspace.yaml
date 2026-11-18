@@ -1,0 +1,4 @@
+# Its own root, outside the rocketh workspace.
+packages: []
+allowBuilds:
+  esbuild: false
