@@ -103,6 +103,8 @@ The two hardest claims are not new: template-commit-reveal (and stratagems, its 
 - **webevm in a worker, in production.** template-commit-reveal's offline world creates its node in a Worker (`web/src/lib/offline-node.ts:51` and `:81`, `createWorkerNode`), hosted by `createNodeWorkerApi` from `webevm/worker-host` (`web/src/lib/offline-node-host.ts:3`, `:25`), with its IndexedDB persistence built inside the worker (`web/src/lib/offline.ts:826-832`), and covered by its `web/e2e/tests/offline*.e2e.ts` suites. Its turn-preview sandbox reaches a second webevm worker through `providerOverPort` (`web/src/lib/game/simulation/sandbox.ts:318`). stratagems has the same `web/src/lib/embedded/` seam with the node on the page's thread (`web/src/lib/embedded/node.ts:36`).
 - **rocketh deploy scripts against it, unchanged.** Both games deploy their world with `@rocketh/web` (`web/src/lib/embedded/deploy.ts:167-179`: `setupEnvironment`, `loadAndExecuteDeploymentsFromModules`, `autoMine: false`), with the extensions their `contracts/rocketh/config.ts` spreads: `@rocketh/deploy`, `@rocketh/read-execute`, `@rocketh/proxy`, `@rocketh/router`, `@rocketh/viem` (template-commit-reveal `contracts/rocketh/config.ts:422-432`, stratagems `:129-137`).
 
+That code lives in template-commit-reveal (whose `stem` is jolly-roger; stratagems' `stem` is template-commit-reveal), and neither jolly-roger nor template-svelte-shadcn has it, so the playground copies the pattern rather than inheriting it.
+
 What the games do NOT do, and the playground does: run the rocketh executor itself inside a worker (both run it on the page's thread), and run scripts the reader edited, transpiled in the tab (both bundle their scripts). That is what the next spike retires.
 
 ### rocketh in the browser
