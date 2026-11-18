@@ -41,7 +41,7 @@ Five things about that, only the first of which is obvious.
 
 - **The unit is the WHOLE script**, never a step inside it. The skip happens before your function is entered, so a deploy, a read, a log and a privileged call that share a script are skipped together or not at all.
 - **Only `true` records.** Returning nothing, which is what almost every script does, records nothing and leaves the script re-runnable. So does returning `false`, which is the useful form: a script returns a condition (`return deferred === null` in a script that catches deferrals, see below) and is recorded only on the run where it held.
-- **`return true` without an `id` is an error**, not a silent no-op: `... return true to not be executed again, but does not provide an id. the script function needs to have the field "id" to be set`.
+- **`return true` without an `id` is an error**, not a silent no-op: `deploy script "<its file>" returned true, which asks rocketh to record it as done and never run it again, but it has no id to record it under. ...`, naming the script and where the `id` goes.
 - **The `id` is the identity, and it is a key you choose.** It is not the filename: renaming or renumbering the script file changes nothing, while editing the `id` string makes the script run again from scratch, because a different key is being looked up. Two scripts sharing an `id` in one environment means the second one is skipped as soon as the first has recorded it.
 - **It applies to `runAtTheEnd` scripts too.** They go through the same loop and the same lookup.
 
