@@ -1,5 +1,22 @@
 # hardhat-deploy
 
+## 2.4.0
+
+### Minor Changes
+
+- 879c280: `hardhat-deploy init` now writes an `AGENTS.md` that tells an AI agent the rocketh skills exist and how the user can install them. It loads nothing, and the project can delete or edit it.
+
+### Patch Changes
+
+- 1a77db6: The comment above `@rocketh/unknown-signer` in the `hardhat-deploy init` template now describes how rocketh handles an account it cannot sign for (pause and paste the hash, defer and converge with a `guard`, or a fork rehearsal with `--write-transactions`), and presents `catchUnknownSigner` as the helper for scripts ported from hardhat-deploy v1, matching the documentation.
+- 6609b99: The README links the migration skill at `https://rocketh.dev/skills/hardhat-deploy-migration/SKILL.md`, where rocketh.dev now serves it.
+- 93c9c15: README: link the new "Working with an AI agent" documentation page, which lists the rocketh skills for coding agents and how to install them.
+- Updated dependencies [82e0eef]
+- Updated dependencies [ed820a8]
+- Updated dependencies [93c9c15]
+  - @rocketh/node@0.22.5
+  - rocketh@0.26.3
+
 ## 2.3.0
 
 ### Minor Changes
