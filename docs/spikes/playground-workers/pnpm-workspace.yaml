@@ -1,0 +1,4 @@
+# Its own root, so this throwaway spike installs outside the rocketh workspace.
+packages: []
+allowBuilds:
+  esbuild: false

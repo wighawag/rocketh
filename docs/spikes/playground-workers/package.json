@@ -1,0 +1,24 @@
+{
+	"name": "spike-playground-workers",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "vite",
+		"build": "vite build",
+		"preview": "vite preview"
+	},
+	"dependencies": {
+		"@rocketh/core": "link:../../../packages/rocketh-core",
+		"@rocketh/deploy": "link:../../../packages/rocketh-deploy",
+		"@rocketh/signer": "link:../../../packages/rocketh-signer",
+		"@rocketh/web": "link:../../../packages/rocketh-web",
+		"comlink": "4.4.2",
+		"rocketh": "link:../../../packages/rocketh",
+		"viem": "2.55.13",
+		"webevm": "0.9.1"
+	},
+	"devDependencies": {
+		"typescript": "6.0.3",
+		"vite": "7.3.7"
+	}
+}
