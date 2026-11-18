@@ -1,8 +1,10 @@
 ---
 title: 'Editable Deploy Scripts in the Documentation Playground'
 slug: editable-deploy-scripts-in-the-docs
-needsAnswers: true
 ---
+
+reason: superseded by `work/specs/proposed/rocketh-playground.md` (maintainer, 2026-11-18): editing deploy scripts in the browser moves to a playground site of its own, and the documentation widget stays the fixed four-step story.
+
 
 > Launch snapshot — records intent at creation, NOT maintained. Current truth: `docs/adr/` (decisions) + the code; remaining work: `work/tasks/ready/` tasks.
 
