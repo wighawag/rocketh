@@ -1,5 +1,12 @@
 # @rocketh/unknown-signer
 
+## 0.20.3
+
+### Patch Changes
+
+- 2f7862c: Document `catchUnknownSigner` as the helper for scripts ported from hardhat-deploy v1, and lead the README with rocketh's own handling of unsignable accounts and `withUnknownSignerPolicy`. No behaviour change.
+- 7beac19: The README links ADR 0016, the stability promise for the 0.x line: the surface it lists (`catchUnknownSigner`, `withUnknownSignerPolicy`, their types, `UnknownSignerError`, the policies and the CLI flags) is not removed, renamed or given a different meaning in any 0.x release.
+
 ## 0.20.2
 
 ### Patch Changes
