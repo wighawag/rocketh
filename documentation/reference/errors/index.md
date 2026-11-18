@@ -92,6 +92,14 @@ transaction 0x5c50...e1a7 did not succeed: its receipt reports status 0x0. rocke
 
 The transaction is on chain and reverted, usually out of gas, a failed `require`, or a constructor that threw. Nothing was recorded for it, so the next run tries the step again once you fix the cause. Programmatically it is an `UnsuccessfulTransactionError`.
 
+### A script returned `true` with no `id`
+
+```text
+deploy script "002_set_admin.ts" returned true, which asks rocketh to record it as done and never run it again, but it has no id to record it under.
+```
+
+`return true` makes a script run once, and rocketh records that under the script's `id`, which this one does not have. Add one in the options of `deployScript` (`{tags: ['Admin'], id: 'set_admin'}`), or return nothing if the script should run every time. The script itself ran; nothing was recorded for it. See [A script that returns `true` is never run again](../../script-lifecycle/#a-script-that-returns-true-is-never-run-again).
+
 ### A guard could not answer
 
 ```text
