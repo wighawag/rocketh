@@ -27,7 +27,7 @@ pnpm hardhat compile
 pnpm hardhat deploy
 ```
 
-`hardhat deploy` with no `--network` deploys to Hardhat's in-memory network: nothing is kept, which makes it a quick check that the scripts work. The project also has a test that runs the deploy scripts as a fixture (`pnpm hardhat test`), and a Solidity test.
+`hardhat deploy` with no `--network` deploys to Hardhat's in-memory network: nothing is kept, which makes it a quick check that the scripts work. The project also has a test that runs the deploy scripts as a fixture (`pnpm hardhat test`), and a Solidity test. Its `AGENTS.md` tells a coding agent that the rocketh skills exist and how you can install them ([Working with an AI agent](/documentation/agent-skills/)).
 
 ## By hand
 

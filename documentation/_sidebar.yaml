@@ -67,6 +67,8 @@
       link: /documentation/reference/environment/
     - text: Packages
       link: /documentation/reference/packages/
+    - text: Common errors
+      link: /documentation/reference/errors/
 - text: Extending rocketh
   collapsed: false
   items:

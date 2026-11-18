@@ -37,6 +37,16 @@ Since this surfaces when a deploy script runs rather than at build time, the nam
 
 A _getter_, meaning `(env) => value` returning a non-function, is a supported second shape and becomes a property. The check is on the entry being callable, never on what it returns.
 
+### Every entry runs before every script
+
+Each deploy script gets its environment from the extensions when it starts: every entry is called with the environment then, before the script body, whether or not the script uses it. A getter's value is read at that moment, and an entry that throws there fails every script. rocketh rethrows the same error (so a `catch` by class still works) with the entry named in front of the original message:
+
+```
+extension entry "myEntry" threw while the environment was being set up (every extension entry is called with the environment before a deploy script runs, whether or not the script uses it): <the original message>
+```
+
+So a getter whose value may be missing returns `undefined` rather than throwing, and a check that must fail goes in the function an entry returns, which runs only when a script calls it. `hardhat-deploy/extensions` is built that way: its getter `env.hardhatConnection` is `undefined` in a run without Hardhat, and `env.getHardhatConnection()` throws only in the script that calls it ([The Hardhat connection](/hardhat-deploy/scripts/#the-hardhat-connection)).
+
 ## Doing things through the environment
 
 An extension should reach the chain through the environment rather than around it, so that what it sends gets everything rocketh adds to a transaction:

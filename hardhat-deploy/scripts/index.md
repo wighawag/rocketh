@@ -72,7 +72,7 @@ The extension comes from `hardhat-deploy/extensions`, not from `hardhat-deploy`:
 
 ### Requiring Hardhat: `env.getHardhatConnection()`
 
-For a script that only makes sense under Hardhat, the same extension gives `env.getHardhatConnection()`, a method that returns the connection and throws `Hardhat deploy connection not found in the environment` when there is none:
+For a script that only makes sense under Hardhat, the same extension gives `env.getHardhatConnection()`, a method that returns the connection and, when there is none, throws an error that starts `Hardhat deploy connection not found in the environment` and says where a connection comes from:
 
 ```typescript
 import {deployScript} from '../rocketh/deploy.js';
