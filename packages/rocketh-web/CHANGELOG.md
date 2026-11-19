@@ -1,5 +1,11 @@
 # @rocketh/web
 
+## 0.19.34
+
+### Patch Changes
+
+- 4baa1a4: Drop the unused `tsx` and `ldenv` runtime dependencies. Nothing in the package's source, tests or build imports either, and for a browser package they installed esbuild (through `tsx`) and `@parcel/watcher`'s native binaries (through `ldenv`) for every consumer.
+
 ## 0.19.33
 
 ### Patch Changes
