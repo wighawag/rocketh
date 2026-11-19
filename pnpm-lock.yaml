@@ -1190,12 +1190,6 @@ importers:
       '@rocketh/core':
         specifier: workspace:*
         version: link:../rocketh-core
-      ldenv:
-        specifier: ^0.6.0
-        version: 0.6.0
-      tsx:
-        specifier: ^4.23.12
-        version: 4.23.12
     devDependencies:
       '@rocketh/test-utils':
         specifier: workspace:*
