@@ -14,7 +14,7 @@ That gap is what stands between the fork work that just shipped and the feature 
 
 Everything else that idea asked for is now in place: the guard, the fork descriptor that names the simulated network, fork-aware impersonation, the configuration split, "a fork does not save", and `--is-fork`. This is the remaining piece, and the idea calls it "the actual deliverable, and the only genuinely new thing".
 
-The same list answers a second, unrelated-looking question. A team that deploys with rocketh's TypeScript scripts and tests in Solidity has no way to build a test fixture from their real deployment sequence: the deploy scripts run in JavaScript and Solidity tests cannot call them (`work/notes/ideas/foundry-support-via-forge-deploy.md`, and the field study's finding that Foundry interop has to work Solidity-side). A recorded, ordered, replayable list of transactions is a fixture.
+The same list answers a second, unrelated-looking question. A team that deploys with rocketh's TypeScript scripts and tests in Solidity has no way to build a test fixture from their real deployment sequence: the deploy scripts run in JavaScript and Solidity tests cannot call them (`docs/adr/0018-deploy-scripts-stay-typescript-solidity-reads-deployments.md`, and the field study's finding that Foundry interop has to work Solidity-side). A recorded, ordered, replayable list of transactions is a fixture.
 
 **The two consumers want different halves of the same mechanism, and neither wants a counterfactual.** That is why this is one feature rather than two.
 

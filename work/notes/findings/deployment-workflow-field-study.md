@@ -99,7 +99,7 @@ The barrier is not learning the API, it is getting a large refactor reviewed by 
 
 This is a user-side argument for the fine-grained modular packaging of ADR 0005.
 
-**Foundry interop has to be Solidity-side, not only JS-side.** The initial framing (write deployments in TS, consume typed artifacts from Foundry tests) was put to a respondent who deploys via Solidity batch constructors and was rejected outright for their own use ("i would just use solidity"), while the inverse (a Solidity-side deployment mechanism writing hardhat-deploy-compatible JSON) was endorsed. Another respondent uses both (Foundry for unit/fuzz/invariant, Hardhat for E2E and deployment), so both modes have real constituencies. Relevant to `work/notes/ideas/foundry-support-via-forge-deploy.md`.
+**Foundry interop has to be Solidity-side, not only JS-side.** The initial framing (write deployments in TS, consume typed artifacts from Foundry tests) was put to a respondent who deploys via Solidity batch constructors and was rejected outright for their own use ("i would just use solidity"), while the inverse (a Solidity-side deployment mechanism writing hardhat-deploy-compatible JSON) was endorsed. Another respondent uses both (Foundry for unit/fuzz/invariant, Hardhat for E2E and deployment), so both modes have real constituencies. Relevant to `docs/adr/0018-deploy-scripts-stay-typescript-solidity-reads-deployments.md`.
 
 **The category is a public good, not a business.** A respondent who had run a commercial zero-config Foundry deployment platform shut it down in January 2026, publicly citing no traction and no viable business model. External evidence, from someone with no stake in the outcome.
 
