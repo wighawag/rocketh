@@ -137,7 +137,7 @@ The suggested workaround is to hijack the `ecrecover` precompile so any signatur
 
 ## Transaction capture is wanted twice over
 
-The capture this idea needs (record the transactions a run sent, with enough fidelity to replay them) is also what a Solidity-side test fixture needs: build a deployment from the TypeScript deploy scripts, then exercise it from Foundry tests. That was already a wanted feature (`work/notes/ideas/foundry-support-via-forge-deploy.md`, and the field study's finding that Foundry interop must work Solidity-side rather than JS-side).
+The capture this idea needs (record the transactions a run sent, with enough fidelity to replay them) is also what a Solidity-side test fixture needs: build a deployment from the TypeScript deploy scripts, then exercise it from Foundry tests. That was already a wanted feature (`docs/adr/0018-deploy-scripts-stay-typescript-solidity-reads-deployments.md`, and the field study's finding that Foundry interop must work Solidity-side rather than JS-side).
 
 So capture should be specced for both consumers rather than as a private detail of this idea. If it is built once and serves two features, it is also considerably easier to justify.
 
