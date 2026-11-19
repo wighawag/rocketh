@@ -19,9 +19,15 @@ export type LogSource =
 	| 'step'
 	/** Written by the deploy script via `console.log` / `console.info` / `console.debug`. */
 	| 'script'
-	/** Written by the deploy script via `console.warn`. */
+	/**
+	 * Written by rocketh itself through `named-logs` (`- Executing <script>`, `reusing "<name>"`),
+	 * once the host installed `createLogFactory`'s factory before rocketh loaded. Its warnings
+	 * and errors use `'warning'` and `'error'` like the script's.
+	 */
+	| 'rocketh'
+	/** Written by the deploy script via `console.warn`, or by rocketh's logger at warn level. */
 	| 'warning'
-	/** A failure, either thrown out of the run or written via `console.error`. */
+	/** A failure, either thrown out of the run or written via `console.error` (or rocketh's logger). */
 	| 'error'
 	/** The run finished and everything asserted held. */
 	| 'success';

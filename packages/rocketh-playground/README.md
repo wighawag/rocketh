@@ -30,6 +30,8 @@ Optional attributes: `heading`, `description`.
 
 The EVM and rocketh (~1.6MB) are behind a dynamic import that only runs on the first **Start** press, so a page carrying the widget does not make every reader download an EVM.
 
+The terminal shows rocketh's own transcript (`- Executing ...`, `reusing "..."`) as well as what the scripts print. To get it, the widget installs a `named-logs` factory just before that import, once for the page. It writes only to the terminal of the run in flight, and hands every other line to a factory the page installed before it, if any.
+
 ## Using the core, or your own tutorial
 
 ```typescript
@@ -65,6 +67,33 @@ Two things about `runNextStep` are worth knowing:
 - A failed step **does not advance**, so pressing the button again retries it.
 
 `change` is `new` / `changed` / `unchanged` relative to the previous step, and `changedAtStep` is the 1-based step at which that address last moved. The second exists because the first is transient: the implementation reads `changed` during the upgrade and `unchanged` immediately after, so a UI with only `change` loses the point of the tutorial on the very next click.
+
+### rocketh's own transcript
+
+`playground.logs` gets what the scripts print (`console` is captured during a run) but rocketh's own lines go through [`named-logs`](https://github.com/wighawag/named-logs), and a `named-logs` logger keeps the factory that existed when its module was evaluated: with none, it stays a no-op. So install a factory BEFORE anything imports rocketh, in every realm that runs it (a worker does not see the page's factory). `@rocketh/playground/log` has the log plumbing without rocketh, for exactly that first import:
+
+```typescript
+// log-hook.ts: the FIRST import of the module (or worker) that runs the deploy scripts
+import {createLogFactory, type LogStream} from '@rocketh/playground/log';
+
+export let current: LogStream | undefined;
+export function routeTo(logs: LogStream | undefined) {
+	current = logs;
+}
+// `named-logs` reads this global; with `named-logs` installed, `hook(factory)` does the same.
+(globalThis as {_logFactory?: unknown})._logFactory = createLogFactory(() => current);
+```
+
+```typescript
+import {routeTo} from './log-hook.js'; // first
+import {createPlayground, greetingsRegistryPlayground} from '@rocketh/playground';
+
+const playground = createPlayground(greetingsRegistryPlayground);
+routeTo(playground.logs);
+await playground.runNextStep(); // logs now holds 'rocketh' lines: "- Executing 001_deploy_v1", ...
+```
+
+rocketh's `info` lines get the source `'rocketh'`, its warnings `'warning'` and its errors `'error'`. `debug` lines are dropped unless you pass `{debug: true}`, and `{fallbackTo}` takes a factory installed before this one, which keeps every line logged while no stream is current.
 
 ### A different tutorial
 

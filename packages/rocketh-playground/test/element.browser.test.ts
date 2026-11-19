@@ -125,6 +125,30 @@ describe('<rocketh-playground> - Browser Tests', () => {
 		);
 
 		it(
+			"should show rocketh's own transcript beside the script's output",
+			async () => {
+				/**
+				 * rocketh logs through `named-logs`, not `console`. The widget installs a factory
+				 * before it lazily imports the core (and with it rocketh), so rocketh's lines reach
+				 * the terminal under their own source, ahead of what the script printed.
+				 */
+				const element = await mount();
+
+				await runStep(element);
+
+				const rendered = lines(element);
+				const executing = rendered.findIndex(
+					(line) => line.source === 'rocketh' && line.text.includes('- Executing 001_deploy_v1'),
+				);
+				const printed = rendered.findIndex((line) => line.source === 'script');
+				expect(executing).toBeGreaterThanOrEqual(0);
+				expect(executing).toBeLessThan(printed);
+				expect(rendered.some((line) => line.source === 'script' && line.text.includes('- Executing'))).toBe(false);
+			},
+			STEP_TIMEOUT,
+		);
+
+		it(
 			'should report code size, not merely an address',
 			async () => {
 				/**

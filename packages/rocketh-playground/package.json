@@ -48,6 +48,12 @@
 				"default": "./dist/index.js"
 			}
 		},
+		"./log": {
+			"import": {
+				"types": "./dist/log.d.ts",
+				"default": "./dist/log.js"
+			}
+		},
 		"./element": {
 			"import": {
 				"types": "./element.d.ts",
