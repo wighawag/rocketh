@@ -33,4 +33,4 @@ For a Solidity fixture built from rocketh deploy scripts, today: a live node on 
 
 # The larger half, which none of this addresses
 
-Getting the STATE into the test EVM is only half the problem. The Solidity tests also have to learn the deployed ADDRESSES and ideally the ABIs, which is a separate plumbing problem with its own prior art in `forge-deploy` (see `work/notes/ideas/foundry-support-via-forge-deploy.md`, where bringing that project in, converted to TypeScript and ported in steps, is recorded as maintainer-stated intent). Nothing above solves that, and it should not be designed as part of transaction capture.
+Getting the STATE into the test EVM is only half the problem. The Solidity tests also have to learn the deployed ADDRESSES and ideally the ABIs, which is a separate plumbing problem with its own prior art in `forge-deploy` (see `docs/adr/0018-deploy-scripts-stay-typescript-solidity-reads-deployments.md`, where bringing that project in, converted to TypeScript and ported in steps, is recorded as maintainer-stated intent). Nothing above solves that, and it should not be designed as part of transaction capture.
