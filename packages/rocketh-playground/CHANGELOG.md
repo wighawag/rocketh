@@ -1,5 +1,19 @@
 # @rocketh/playground
 
+## 0.2.0
+
+### Minor Changes
+
+- da795a8: Let a host show rocketh's own transcript (`- Executing ...`, `reusing "..."`) in the log stream. `LogSource` gains `'rocketh'`, and `createLogFactory(target, options?)` builds a `named-logs` factory that writes rocketh's lines into a `LogStream` (warnings as `'warning'`, errors as `'error'`, debug only on request), for a host to install in a realm it owns, such as the worker that runs the deploy scripts, before rocketh loads. A new `@rocketh/playground/log` entry exports the log plumbing without loading rocketh, so that install can be the first import. The terminal renders the new source.
+
+### Patch Changes
+
+- 269f6d7: Fix the `./element` bundle, which the previous `sideEffects` change emptied: the package's own vite build read `"sideEffects": ["./dist/element/**"]` for the element's SOURCE too, so it dropped `src/ui/element.ts`'s bare `import './Playground.svelte'` and shipped a file that registers nothing. `./src/ui/**` is now listed as well, and a test checks that the built bundle calls `customElements.define`.
+- ddf85c2: Declare `"sideEffects": ["./dist/element/**"]`, so a bundle that imports only `captureConsole` / `createLogStream` from the root no longer carries the GreetingsRegistry fixtures and the rocketh extensions they import. `@rocketh/playground/element` stays listed because importing it registers the `<rocketh-playground>` custom element.
+- 1fee76b: Depend on `webevm` `^0.9.1` instead of `^0.5.0`, so a page that also uses a current `webevm` installs one copy rather than two. `createPlaygroundChain` needed no change: the options it passes (`chainId`, `miningConfig: {type: 'auto'}`, `initialBalances`) and the `SlimNode` methods it calls (`request`, `dispose`) are unchanged in 0.9.
+- Updated dependencies [4baa1a4]
+  - @rocketh/web@0.19.34
+
 ## 0.1.7
 
 ### Patch Changes
