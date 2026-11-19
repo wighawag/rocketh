@@ -852,8 +852,8 @@ importers:
         specifier: ^2.55.13
         version: 2.55.13(typescript@6.0.3)(zod@3.25.76)
       webevm:
-        specifier: ^0.5.0
-        version: 0.5.0
+        specifier: ^0.9.1
+        version: 0.9.1
     devDependencies:
       '@sveltejs/vite-plugin-svelte':
         specifier: ^6.2.1
@@ -1190,12 +1190,6 @@ importers:
       '@rocketh/core':
         specifier: workspace:*
         version: link:../rocketh-core
-      ldenv:
-        specifier: ^0.6.0
-        version: 0.6.0
-      tsx:
-        specifier: ^4.23.12
-        version: 4.23.12
     devDependencies:
       '@rocketh/test-utils':
         specifier: workspace:*
@@ -1866,6 +1860,9 @@ packages:
 
   '@eip-1193/jsonrpc-provider@0.6.0':
     resolution: {integrity: sha512-9+0lRur/WqeV1Gbx9cqnZB6oaL/Io9jkBxDc1YymT9cKdlOeOVGlvjMEtaGlMiSPE25OnX3a7OEX2BDBFJeqyQ==}
+
+  '@eip-1193/over-port@0.2.1':
+    resolution: {integrity: sha512-jU9KaHQDLgISkkqsq6LLjxKMFNVvuUiJQDrLb3SHCDfT458b0UEJSRu6mf8USIHJpvXyYqJo3z64gsrKqZ91eg==}
 
   '@eip-1193/signer@0.4.0':
     resolution: {integrity: sha512-5gwGs9RN/iykrjqEyjjYv5bOQPN0AajDrI9XEF0p3LlwdcKipMlmhi/AKwiTVJDEId0Rl0avRlVvKLYm3i71pg==}
@@ -3335,6 +3332,9 @@ packages:
     resolution: {integrity: sha512-ERlT2lk1v8w94p1BaATtuVGCcnwbM9jn57zPxSz0CTwTKQV7N6YdXDxnkCKbQTor+RM4EVa2mY6+vax5uDbgRg==}
     engines: {pnpm: '>=11'}
 
+  eip-1193@0.7.4:
+    resolution: {integrity: sha512-NYtXIpM8dwiMmeJjdRkCzIdpTXU7ANdeO4fW+SpZE3Pia4ljnfXCyY40TZrQ5iJtaUMcJ1aSUsKxtdh0iwFiyw==}
+
   ejs@5.0.1:
     resolution: {integrity: sha512-COqBPFMxuPTPspXl2DkVYaDS3HtrD1GpzOGkNTJ1IYkifq/r9h8SVEFrjA3D9/VJGOEoMQcrlhpntcSUrM8k6A==}
     engines: {node: '>=0.12.18'}
@@ -4573,8 +4573,8 @@ packages:
   wcwidth@1.0.1:
     resolution: {integrity: sha512-XHPEwS0q6TaxcvG85+8EYkbiCux2XtWG2mkc47Ng2A77BQu9+DqIOJldST4HgPkuea7dvKSj5VgX3P1d4rW8Tg==}
 
-  webevm@0.5.0:
-    resolution: {integrity: sha512-vrcXT7rXSjZeH4tmlARciqlLcYniJy6opfCn+mmKNRLu4WhdCSHol1i0R0WQ4RQ2O2tZk05NldzVUEv53BG+jA==}
+  webevm@0.9.1:
+    resolution: {integrity: sha512-esC4SHLultXQ8Mc4GVUbO/wmn8Nz+DKDgXACfI3ZpedeO+K0EKojbV5rPFaECxGQTBnKgdGA1Ao9Ul7sOqcGDQ==}
     peerDependencies:
       comlink: ^4.4.2
     peerDependenciesMeta:
@@ -5546,6 +5546,10 @@ snapshots:
       eip-1193: 0.7.1
       named-logs: 0.3.2
       promise-throttle: 1.1.2
+
+  '@eip-1193/over-port@0.2.1':
+    dependencies:
+      eip-1193: 0.7.4
 
   '@eip-1193/signer@0.4.0(typescript@6.0.3)':
     dependencies:
@@ -6909,6 +6913,8 @@ snapshots:
 
   eip-1193@0.7.1: {}
 
+  eip-1193@0.7.4: {}
+
   ejs@5.0.1: {}
 
   electron-to-chromium@1.5.404: {}
@@ -8215,11 +8221,14 @@ snapshots:
     dependencies:
       defaults: 1.0.4
 
-  webevm@0.5.0:
+  webevm@0.9.1:
     dependencies:
+      '@eip-1193/over-port': 0.2.1
       '@ethereumjs/block': 10.1.2
       '@ethereumjs/common': 10.1.2
       '@ethereumjs/evm': 10.1.2
+      '@ethereumjs/mpt': 10.1.2
+      '@ethereumjs/rlp': 10.1.2
       '@ethereumjs/statemanager': 10.1.2
       '@ethereumjs/tx': 10.1.2
       '@ethereumjs/util': 10.1.2
