@@ -6,7 +6,7 @@ humanOnly: true
 
 > Launch snapshot: records intent at creation, NOT maintained. Current truth: `docs/adr/` (decisions) + the code; remaining work: `work/tasks/ready/` tasks. (The technical-detail sections below are trimmed by `to-task` once the work is tasked: they move into tasks/ADRs and this spec settles to its durable framing: Problem / Solution / User Stories / Out of Scope.)
 
-Supersedes `work/specs/dropped/editable-deploy-scripts-in-the-docs.md` (dropped in the same change) and an earlier draft of this spec, `playground-app`, that never reached `main`. Sources are cited as repository, path and line, read at rocketh `3f51e9d6`, webevm `7765d7e`, etherfold `a4c312fd`, template-svelte `78d901c`, template-svelte-shadcn `1b91814`, template-commit-reveal `a85c37b6`, stratagems `3bc12e8e`. The spikes cited are on rocketh branch `spike/playground-workers` at `9925d284`.
+Supersedes `work/specs/dropped/editable-deploy-scripts-in-the-docs.md` (dropped in the same change) and an earlier draft of this spec, `playground-app`, that never reached `main`. Sources are cited as repository, path and line, read at rocketh `3f51e9d6`, webevm `7765d7e`, etherfold `a4c312fd`, template-svelte `78d901c`, template-svelte-shadcn `1b91814`, template-commit-reveal `a85c37b6`, stratagems `3bc12e8e`. The spikes cited are on rocketh branch `spike/playground-workers` at `9925d284`, and the runner spike is on [wighawag/rocketh-playground](https://github.com/wighawag/rocketh-playground) branch `spike/runner` at `a3ba04f` (`docs/spikes/runner/README.md`).
 
 
 ## Problem Statement
@@ -84,22 +84,22 @@ What sets it apart from Remix is that the scripts are a real project's scripts, 
 
 The two hardest claims are not new: template-commit-reveal (and stratagems, its descendant) already run real rocketh deploy scripts against webevm in the tab.
 
-- **webevm in a worker, in production.** template-commit-reveal's offline world creates its node in a Worker (`web/src/lib/offline-node.ts:51` and `:81`, `createWorkerNode`), hosted by `createNodeWorkerApi` from `webevm/worker-host` (`web/src/lib/offline-node-host.ts:3`, `:25`), with its IndexedDB persistence built inside the worker (`web/src/lib/offline.ts:826-832`), and covered by its `web/e2e/tests/offline*.e2e.ts` suites. Its turn-preview sandbox reaches a second webevm worker through `providerOverPort` (`web/src/lib/game/simulation/sandbox.ts:318`). stratagems has the same `web/src/lib/embedded/` seam with the node on the page's thread (`web/src/lib/embedded/node.ts:36`).
+- **webevm in a worker, in production.** template-commit-reveal's offline world creates its node in a Worker (`web/src/lib/offline-node.ts:51` and `:81`, `createWorkerNode`), hosted by `createNodeWorkerApi` from `webevm/worker-host` (`web/src/lib/offline-node-host.ts:3`, `:25`), with its IndexedDB persistence built inside the worker (`web/src/lib/offline.ts:826-832`), and covered by its `web/e2e/tests/offline*.e2e.ts` suites. Its turn-preview sandbox reaches a second webevm worker through `providerOverPort` (`web/src/lib/game/simulation/sandbox.ts`: the `new Worker` at `:318`, `providerOverPort` at `:322`). stratagems has the same `web/src/lib/embedded/` seam with the node on the page's thread (`web/src/lib/embedded/node.ts:36`).
 - **rocketh deploy scripts against it, unchanged.** Both games deploy their world with `@rocketh/web` (`web/src/lib/embedded/deploy.ts:167-179`: `setupEnvironment`, `loadAndExecuteDeploymentsFromModules`, `autoMine: false`), with the extensions their `contracts/rocketh/config.ts` spreads: `@rocketh/deploy`, `@rocketh/read-execute`, `@rocketh/proxy`, `@rocketh/router`, `@rocketh/viem` (template-commit-reveal `contracts/rocketh/config.ts:422-432`, stratagems `:129-137`).
 
 That code lives in template-commit-reveal (whose `stem` is jolly-roger; stratagems' `stem` is template-commit-reveal), and neither jolly-roger nor template-svelte-shadcn has it, so the playground copies the pattern rather than inheriting it.
 
-What the games do NOT do, and the playground does: run the rocketh executor itself inside a worker (both run it on the page's thread), and run scripts the reader edited, transpiled in the tab (both bundle their scripts). That is what the next spike retires.
+What the games do NOT do, and the playground does: run the rocketh executor itself inside a worker (both run it on the page's thread), and run scripts the reader edited, transpiled in the tab (both bundle their scripts). The runner spike (below) retired that.
 
 ### rocketh in the browser
 
 - `@rocketh/web`'s `setupEnvironment(config, extensions, {deploymentStore})` (rocketh `packages/rocketh-web/src/index.ts:138`) takes the provider per run; stores are `createVFSDeploymentStore` (`vfs-deployment-store.ts:31`) and `createIndexedDBDeploymentStore` (`:126`); project files can live in `createPersistentVFS` with `createIndexedDBPersistence` (`persistence.ts:151`, `:39`).
 - Against an EVM in the tab, accounts must be private keys and `autoMine` off (rocketh `documentation/browser/index.md:63-90`); a browser run has no prompt, so an unsignable `from` takes the `throw` path (`:108`).
-- No `src/` of `rocketh`, `@rocketh/core`, `web`, `deploy`, `proxy`, `diamond`, `read-execute`, `viem`, `unknown-signer` or `signer` imports `node:*`, `fs`, `path`, `os` or `child_process` (`git grep` over each `packages/<name>/src` at `3f51e9d6`), so all are expected to run unchanged; the games above run five of them, the first spike ran `rocketh`, `@rocketh/web`, `@rocketh/deploy` and `@rocketh/signer` on a page, and `@rocketh/diamond` and `@rocketh/unknown-signer` are the ones no browser run has exercised yet (an unsignable `from` throws in a browser, so the second only matters for its `withUnknownSignerPolicy` and `catchUnknownSigner` wrappers).
+- No `src/` of `rocketh`, `@rocketh/core`, `web`, `deploy`, `proxy`, `diamond`, `read-execute`, `viem`, `unknown-signer` or `signer` imports `node:*`, `fs`, `path`, `os` or `child_process` (`git grep` over each `packages/<name>/src` at `3f51e9d6`), so all are expected to run unchanged; the games above run five of them, and the first spike ran `rocketh`, `@rocketh/web`, `@rocketh/deploy` and `@rocketh/signer` on a page. `@rocketh/unknown-signer` is needed for the starting project to load at all: the `hardhat-deploy init` template's `rocketh/config.ts` imports it and spreads it into its extensions (hardhat-deploy@2.4.0 `templates/basic/rocketh/config.ts:58` and `:65`), so without it the unedited template fails on its first import. The runner spike loaded it in a worker and `withEnvironment` called its entries before each script; its `withUnknownSignerPolicy` and `catchUnknownSigner` wrappers are still unexercised in a browser (an unsignable `from` throws there). `@rocketh/diamond` loads in the runner spike's worker, but no browser run has called it yet.
 
 ### Solidity in the browser
 
-- soljson 0.8.30 is 9.6 MB, 6.7 MB brotli over the wire, served with `access-control-allow-origin: *` (spike `docs/spikes/playground-workers/README.md`). It is an emscripten script loaded with `importScripts`, so it needs a classic worker; `Module.cwrap('solidity_compile', ...)` compiles standard JSON with no wrapper library.
+- soljson 0.8.30 is 9.6 MB, 6.7 MB brotli over the wire, served with `access-control-allow-origin: *` (spike `docs/spikes/playground-workers/README.md`). The pinned 0.8.28 (`soljson-v0.8.28+commit.7893614a.js`) is 9.17 MB raw, 6.52 MB gzip (runner spike `docs/spikes/runner/README.md`, "Bundles"). It is an emscripten script loaded with `importScripts`, so it needs a classic worker; `Module.cwrap('solidity_compile', ...)` compiles standard JSON with no wrapper library.
 - The compiler is GPL-3.0 (ethereum/solidity `LICENSE.txt`); the `solc` npm wrapper is MIT (`npm view solc license`).
 - Imports, for later: `@rocketh/proxy` exports its Solidity as `./solc_0_8/*` (rocketh `packages/rocketh-proxy/package.json:58`), and solc's import callback is synchronous, so every imported file must be in memory before the compile.
 - Output to artifacts: the template's `rocketh/deploy.ts` imports `../generated/artifacts/index.js` (rocketh `packages/hardhat-deploy/templates/basic/rocketh/deploy.ts:5`), so the playground generates that module from each compile.
@@ -128,7 +128,7 @@ What the games do NOT do, and the playground does: run the rocketh executor itse
 
 ### The site
 
-- GitHub Pages: published sites at most 1 GB, a soft bandwidth limit of 100 GB a month (GitHub docs, "GitHub Pages limits"). At about 7 MB per cold load, mostly the compiler, that is roughly 14,000 cold first visits a month; caching (below) keeps repeat visits off it.
+- GitHub Pages: published sites at most 1 GB, a soft bandwidth limit of 100 GB a month (GitHub docs, "GitHub Pages limits"). A cold load is about 8.2 MB gzip with the TypeScript worker (988 KB gzip) counted, 80% of it the compiler (runner spike, "Bundles"), so that is about 12,000 cold first visits a month; caching (below) keeps repeat visits off it.
 
 ### Prior art
 
@@ -141,14 +141,14 @@ Remix is a full IDE with a plugin engine, a debugger, static analysis and a desk
 - **The page** (Svelte, the editor's view): never runs user code. It holds the files, sends them out, and renders what comes back.
 - **The TypeScript worker**: the language service for the editor (diagnostics, completion, hover) with rocketh's declarations and the generated artifact types loaded, and the transpiler for a run. In: file contents. Out: diagnostics, completions, transpiled JavaScript.
 - **The compiler worker** (classic, for `importScripts`): holds soljson. In: standard-JSON input. Out: standard-JSON output, from which the page writes `generated/artifacts`.
-- **The EVM worker**: webevm, created with `createWorkerNode`, persisted with `createIndexedDBPersistence`. It serves a `MessagePort` (`serveOn`) to the runner.
-- **The runner worker**: runs the deploy scripts through `@rocketh/web` with the port as its provider (`providerOverPort`), a deployment store in IndexedDB, and `captureConsole` feeding a log stream back. In: transpiled modules and the artifacts. Out: log entries, the store's file changes, the result or the error. Requests go runner to EVM worker directly, not through the page. Stop terminates this worker only; the chain is untouched.
+- **The EVM worker**: webevm, driven from the page with `createWorkerNode` and persisted with `createIndexedDBPersistence`. `createWorkerNode` cannot take the persistence adapter, because webevm's worker-client structured-clones the node's options into the worker and an adapter is an object with methods. So the worker is a module of our own on webevm's `createNodeWorkerApi` that receives a database NAME and builds `createIndexedDBPersistence` itself, as template-commit-reveal `web/src/lib/offline-node-host.ts:25-36` does, rather than webevm's one-line `worker-entry`. It serves a `MessagePort` (`serveOn`) to the runner.
+- **The runner worker**: runs the deploy scripts through `@rocketh/web` with the port as its provider (`providerOverPort`), a deployment store in IndexedDB, and a log stream fed back to the page. `captureConsole` alone gives only what a script prints: rocketh's own transcript (`- Executing ...`, `reusing "Counter"`) goes through `named-logs`, whose module-scope loggers stay no-ops unless a factory is hooked BEFORE rocketh's modules are evaluated. So the runner's first import hooks a `named-logs` factory that writes into the log stream (the runner spike's `src/log-hook.ts`), and `captureConsole` covers the script's own output. In: transpiled modules and the artifacts. Out: log entries, the store's file changes, the result or the error. Requests go runner to EVM worker directly, not through the page. Stop terminates this worker only; the chain is untouched.
 
 Why this split: user code never shares a thread with the page; the compiler and the type checker, the two heavy loads, never block typing; the chain outlives a stopped or crashed run.
 
 ### Module resolution in the runner
 
-A registry maps the project's relative paths to their transpiled modules, `../generated/artifacts/index.js` to the module generated from the last compile, and a fixed list of bare specifiers (`rocketh`, `@rocketh/deploy`, `@rocketh/proxy`, `@rocketh/diamond`, `@rocketh/read-execute`, `@rocketh/viem`, `@rocketh/signer`, `@rocketh/web`, `viem`) to modules bundled into the runner. Any other import fails, naming the specifier and the list.
+A registry maps the project's relative paths to their transpiled modules, `../generated/artifacts/index.js` to the module generated from the last compile, and a fixed list of bare specifiers (`rocketh`, `@rocketh/deploy`, `@rocketh/proxy`, `@rocketh/diamond`, `@rocketh/read-execute`, `@rocketh/viem`, `@rocketh/signer`, `@rocketh/unknown-signer`, `@rocketh/web`, `viem` and its subpaths such as `viem/accounts`) to modules bundled into the runner. `@rocketh/unknown-signer` is on the list because the template's `rocketh/config.ts` spreads it (Research, "rocketh in the browser"); `viem`'s subpaths are allowed by the maintainer's decision. Any other import fails, naming the specifier and the list.
 
 ### Configuration
 
@@ -173,7 +173,7 @@ User code runs in the reader's own tab, with the reader's privileges on play.roc
 
 ## Risks, and how v1 limits each
 
-- **Bundle size and first load.** The compiler is about 95% of a cold load (spike: 6.7 MB of about 7 MB). v1: it loads in its worker while the reader reads the code, with its size shown; the Cache API keeps it after the first visit; a budget test fails a build whose page or worker bundles grow past stated limits.
+- **Bundle size and first load.** The compiler is about 80% of a cold load (runner spike: 6.52 MB of about 8.2 MB gzip, the TypeScript worker being most of the rest at 988 KB). v1: it loads in its worker while the reader reads the code, with its size shown; the Cache API keeps it after the first visit; a budget test fails a build whose page or worker bundles grow past stated limits.
 - **solc loading.** One pinned version, copied into the build and checked against `list.json`; no runtime dependency on a third-party host.
 - **TS transpile and type checking.** TypeScript 6 in a worker, loaded after the editor is usable (the syntax-only editor shows first); a type error never blocks a run.
 - **Keeping in step with rocketh.** Published versions only, bumped by a pull request per release that a human merges, with the export test and a run of the starting project as the gate.
@@ -181,7 +181,9 @@ User code runs in the reader's own tab, with the reader's privileges on play.roc
 
 ## The spike to retire the biggest risk first
 
-Two spikes are done (`docs/spikes/playground-workers/` and `docs/spikes/playground-editors/`): solc and webevm each in a worker with one real deploy script took 1.4 s from click to record on headless Chromium, and the editor comparison above. webevm in a worker under real rocketh deploy scripts is already in production in the games (above). The largest risk left is the runner, the part neither the games nor the spikes have done: running TRANSPILED, reader-edited files through the registry in a worker, with the EVM reached over a port. Defined, not executed:
+Two spikes are done (`docs/spikes/playground-workers/` and `docs/spikes/playground-editors/`): solc and webevm each in a worker with one real deploy script took 1.4 s from click to record on headless Chromium, and the editor comparison above. webevm in a worker under real rocketh deploy scripts is already in production in the games (above). The largest risk left was the runner, the part neither the games nor those spikes had done: running TRANSPILED, reader-edited files through the registry in a worker, with the EVM reached over a port.
+
+**Done.** The runner spike is on [wighawag/rocketh-playground](https://github.com/wighawag/rocketh-playground) branch `spike/runner` (`docs/spikes/runner/README.md`). It passed: the `hardhat-deploy init` template's files (from the published hardhat-deploy@2.4.0 tarball) ran unedited, a second Deploy sent nothing, and a reload restored the chain and the records. What it found is folded into this spec: `@rocketh/unknown-signer` in the registry, the `named-logs` factory for the log stream, and the EVM worker building its own persistence (Implementation Decisions), and the cold-load size (Research, "The site"). The plan it executed:
 
 1. One page, four workers as above. The TypeScript worker transpiles `deploy/01_deploy_counter.ts` and `rocketh/deploy.ts` from the template, unedited, plus the reader's `rocketh/config.ts`.
 2. The runner resolves them through the registry, gets the provider with `providerOverPort` on a port the EVM worker served, and runs them through `@rocketh/web` with an IndexedDB store.
@@ -190,7 +192,7 @@ Two spikes are done (`docs/spikes/playground-workers/` and `docs/spikes/playgrou
 
 ## Testing Decisions
 
-- **Headless first:** compile, transpile, resolve and run are node tests (solc-js and webevm's `createNode` both run in node); so are the failures: a compile error, a syntax error, an unknown import, a throwing script, a revert.
+- **Headless first:** compile, transpile, resolve and run are node tests (solc-js and webevm's `createNode` both run in node); so are the failures: a compile error, a syntax error, an unknown import, a throwing script, a revert. Headless tests may use `fake-indexeddb` (approved by the maintainer) to exercise the IndexedDB stores in node.
 - **The export is tested by installing it:** unzip into a temp folder, `pnpm i`, `pnpm hardhat compile`, `pnpm hardhat deploy` on the in-memory network, as rocketh's `test:docs:hardhat-deploy-init` does for `init`.
 - **The browser suite** (Playwright) covers what only it can: the workers start, Deploy produces records, a reload restores, Stop ends a runaway script, a shared link does not run until Deploy, a type error is shown in the editor.
 - **Bundle budgets** are a test.
