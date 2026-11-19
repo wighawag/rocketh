@@ -35,7 +35,8 @@
 	},
 	"type": "module",
 	"sideEffects": [
-		"./dist/element/**"
+		"./dist/element/**",
+		"./src/ui/**"
 	],
 	"main": "dist/index.js",
 	"module": "dist/index.js",
