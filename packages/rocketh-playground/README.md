@@ -30,8 +30,6 @@ Optional attributes: `heading`, `description`.
 
 The EVM and rocketh (~1.6MB) are behind a dynamic import that only runs on the first **Start** press, so a page carrying the widget does not make every reader download an EVM.
 
-The terminal shows rocketh's own transcript (`- Executing ...`, `reusing "..."`) as well as what the scripts print. To get it, the widget installs a `named-logs` factory just before that import, once for the page. It writes only to the terminal of the run in flight, and hands every other line to a factory the page installed before it, if any.
-
 ## Using the core, or your own tutorial
 
 ```typescript
@@ -93,7 +91,9 @@ routeTo(playground.logs);
 await playground.runNextStep(); // logs now holds 'rocketh' lines: "- Executing 001_deploy_v1", ...
 ```
 
-rocketh's `info` lines get the source `'rocketh'`, its warnings `'warning'` and its errors `'error'`. `debug` lines are dropped unless you pass `{debug: true}`, and `{fallbackTo}` takes a factory installed before this one, which keeps every line logged while no stream is current.
+rocketh's `info` lines get the source `'rocketh'`, its warnings `'warning'` and its errors `'error'`. `debug` lines are dropped unless you pass `{debug: true}`.
+
+This is for a realm you own, typically the worker that runs the deploy scripts, where nothing else installs a factory. On a page that already installed one (a `named-logs-console` script tag, say), installing this would replace it, so don't: the `<rocketh-playground>` widget, a guest on its host's page, does not show rocketh's own lines for that reason.
 
 ### A different tutorial
 

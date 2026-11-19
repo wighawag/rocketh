@@ -117,25 +117,13 @@ describe('createLogFactory', () => {
 		]);
 	});
 
-	it('should keep debug lines when asked, and leave lines outside a run to the factory installed before', () => {
+	it('should keep debug lines when asked', () => {
 		const logs = createLogStream();
-		let target: LogStream | undefined = logs;
-		const seen: string[] = [];
-		const previous = (namespace: string) =>
-			new Proxy({} as never, {
-				get:
-					(_target, method) =>
-					(...args: unknown[]) =>
-						seen.push(`${namespace}.${String(method)}: ${args.join(' ')}`),
-			});
-		const logger = createLogFactory(() => target, {debug: true, fallbackTo: previous})('@rocketh/deploy');
+		const logger = createLogFactory(logs, {debug: true})('@rocketh/deploy');
 
 		logger.debug('detail');
 		logger.info('line');
-		target = undefined;
-		logger.info('outside');
 
 		expect(logs.entries().map((e) => e.text)).toEqual(['detail', 'line']);
-		expect(seen).toEqual(['@rocketh/deploy.info: outside']);
 	});
 });

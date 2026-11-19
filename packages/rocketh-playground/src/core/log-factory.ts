@@ -22,6 +22,11 @@ import {formatConsoleArguments, type LogSource, type LogStream} from './log-stre
  * The package installs nothing itself, and takes no `named-logs` dependency: the factory is
  * matched structurally, so it works with whichever copy of `named-logs` rocketh resolved.
  *
+ * For a realm the host OWNS (typically the worker that runs the deploy scripts), where nothing
+ * else installs a factory. Installing it on a page that already has one would REPLACE the page's
+ * factory for every library loaded afterwards, which is why the `<rocketh-playground>` widget,
+ * a guest on its host's page, does not use it.
+ *
  * WHY not `named-logs-console`: it writes to `console`, and `captureConsole` would then label
  * rocketh's lines `'script'`, as if the reader's script had printed them.
  */
@@ -58,14 +63,6 @@ export type CreateLogFactoryOptions = {
 	 * retries, resolution details), not the transcript a reader follows.
 	 */
 	debug?: boolean;
-	/**
-	 * A factory installed before this one. Its logger receives every call made while no stream is
-	 * current (`target` returned `undefined`), so installing this factory does not silence a
-	 * host's own logging outside a run. While a stream is current the line goes ONLY to the
-	 * stream: a console-backed factory would otherwise also print it to the console that
-	 * `captureConsole` is capturing, and the line would show twice, once as `'script'`.
-	 */
-	fallbackTo?: NamedLogsFactory;
 };
 
 const noop = () => undefined;
@@ -95,42 +92,29 @@ export function createLogFactory(target: LogFactoryTarget, options: CreateLogFac
 		stream.append(source, text);
 	}
 
-	return (namespace, factoryOptions) => {
-		const fallback = options.fallbackTo?.(namespace, factoryOptions);
-		/** `own` while a stream is current, the fallback logger's same method otherwise. */
-		const route = <K extends keyof NamedLogsLogger>(method: K, own: NamedLogsLogger[K]): NamedLogsLogger[K] =>
-			((...args: unknown[]) => {
-				if (resolve()) {
-					(own as (...a: unknown[]) => void)(...args);
-				} else {
-					(fallback?.[method] as ((...a: unknown[]) => void) | undefined)?.(...args);
-				}
-			}) as NamedLogsLogger[K];
+	const lines =
+		(source: LogSource) =>
+		(...data: unknown[]) =>
+			append(source, data);
+	const diagnostic = options.debug ? lines('rocketh') : noop;
 
-		const lines =
-			(source: LogSource) =>
-			(...data: unknown[]) =>
-				append(source, data);
-		const diagnostic = options.debug ? lines('rocketh') : noop;
-
-		return {
-			assert: route('assert', (condition?: boolean, ...data: unknown[]) => {
-				if (!condition) {
-					append('error', data.length > 0 ? data : ['Assertion failed']);
-				}
-			}),
-			error: route('error', lines('error')),
-			warn: route('warn', lines('warning')),
-			info: route('info', lines('rocketh')),
-			log: route('log', lines('rocketh')),
-			debug: route('debug', diagnostic),
-			trace: route('trace', diagnostic),
-			dir: route('dir', (item?: unknown) => append('rocketh', [item])),
-			table: route('table', (tabularData?: unknown) => append('rocketh', [tabularData])),
-			write: route('write', (msg: string) => append('rocketh', [msg])),
-			time: route('time', noop),
-			timeEnd: route('timeEnd', noop),
-			timeLog: route('timeLog', noop),
-		};
-	};
+	return () => ({
+		assert: (condition?: boolean, ...data: unknown[]) => {
+			if (!condition) {
+				append('error', data.length > 0 ? data : ['Assertion failed']);
+			}
+		},
+		error: lines('error'),
+		warn: lines('warning'),
+		info: lines('rocketh'),
+		log: lines('rocketh'),
+		debug: diagnostic,
+		trace: diagnostic,
+		dir: (item?: unknown) => append('rocketh', [item]),
+		table: (tabularData?: unknown) => append('rocketh', [tabularData]),
+		write: (msg: string) => append('rocketh', [msg]),
+		time: noop,
+		timeEnd: noop,
+		timeLog: noop,
+	});
 }

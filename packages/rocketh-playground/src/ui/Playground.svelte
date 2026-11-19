@@ -21,7 +21,6 @@
 	import RunButton from './RunButton.svelte';
 	import Steps from './Steps.svelte';
 	import Terminal from './Terminal.svelte';
-	import {installTranscriptFactory, routeTranscriptTo} from './transcript.js';
 
 	let {
 		heading = 'Deploy and upgrade a contract, right here',
@@ -48,9 +47,6 @@
 		if (playground) {
 			return playground;
 		}
-		// BEFORE the import: rocketh's loggers bind to whatever factory exists when rocketh's
-		// modules are evaluated, and this import is what evaluates them.
-		installTranscriptFactory();
 		const {createPlayground, greetingsRegistryPlayground} = await import('@rocketh/playground');
 		const created = createPlayground(greetingsRegistryPlayground);
 		// Render the deployment store as it fills in, rather than only at the end. This is the
@@ -69,12 +65,7 @@
 		loadError = undefined;
 		try {
 			const active = await ensurePlayground();
-			const stopRouting = routeTranscriptTo(active.logs);
-			try {
-				lastResult = await active.runNextStep();
-			} finally {
-				stopRouting();
-			}
+			lastResult = await active.runNextStep();
 			sync(active);
 		} catch (err) {
 			// `runNextStep` reports a failed step as a result rather than throwing, so reaching

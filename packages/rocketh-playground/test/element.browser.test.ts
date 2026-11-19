@@ -125,30 +125,6 @@ describe('<rocketh-playground> - Browser Tests', () => {
 		);
 
 		it(
-			"should show rocketh's own transcript beside the script's output",
-			async () => {
-				/**
-				 * rocketh logs through `named-logs`, not `console`. The widget installs a factory
-				 * before it lazily imports the core (and with it rocketh), so rocketh's lines reach
-				 * the terminal under their own source, ahead of what the script printed.
-				 */
-				const element = await mount();
-
-				await runStep(element);
-
-				const rendered = lines(element);
-				const executing = rendered.findIndex(
-					(line) => line.source === 'rocketh' && line.text.includes('- Executing 001_deploy_v1'),
-				);
-				const printed = rendered.findIndex((line) => line.source === 'script');
-				expect(executing).toBeGreaterThanOrEqual(0);
-				expect(executing).toBeLessThan(printed);
-				expect(rendered.some((line) => line.source === 'script' && line.text.includes('- Executing'))).toBe(false);
-			},
-			STEP_TIMEOUT,
-		);
-
-		it(
 			'should report code size, not merely an address',
 			async () => {
 				/**
@@ -312,6 +288,28 @@ describe('<rocketh-playground> - Browser Tests', () => {
 			try {
 				await waitFor(() => target.textContent?.includes('PRINTED BEFORE MOUNT') ?? false, 5_000);
 				expect(target.querySelectorAll('.line')).toHaveLength(1);
+			} finally {
+				unmount(component);
+			}
+		});
+
+		it("should render rocketh's own lines under their own source", async () => {
+			// A host that installed `createLogFactory`'s factory gets rocketh's transcript as
+			// `'rocketh'` lines; the terminal must render them, distinct from what a script printed.
+			const logs = createLogStream();
+			logs.append('rocketh', '- Executing 001_deploy_v1');
+			logs.append('script', 'printed by the script');
+
+			const target = document.createElement('div');
+			document.body.appendChild(target);
+			const component = mountComponent(Terminal, {target, props: {logs}});
+
+			try {
+				await waitFor(() => target.querySelectorAll('.line').length === 2, 5_000);
+				const [rocketh, script] = [...target.querySelectorAll('.line')];
+				expect(rocketh?.classList.contains('rocketh')).toBe(true);
+				expect(rocketh?.textContent).toBe('$- Executing 001_deploy_v1');
+				expect(script?.classList.contains('script')).toBe(true);
 			} finally {
 				unmount(component);
 			}
