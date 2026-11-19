@@ -293,6 +293,28 @@ describe('<rocketh-playground> - Browser Tests', () => {
 			}
 		});
 
+		it("should render rocketh's own lines under their own source", async () => {
+			// A host that installed `createLogFactory`'s factory gets rocketh's transcript as
+			// `'rocketh'` lines; the terminal must render them, distinct from what a script printed.
+			const logs = createLogStream();
+			logs.append('rocketh', '- Executing 001_deploy_v1');
+			logs.append('script', 'printed by the script');
+
+			const target = document.createElement('div');
+			document.body.appendChild(target);
+			const component = mountComponent(Terminal, {target, props: {logs}});
+
+			try {
+				await waitFor(() => target.querySelectorAll('.line').length === 2, 5_000);
+				const [rocketh, script] = [...target.querySelectorAll('.line')];
+				expect(rocketh?.classList.contains('rocketh')).toBe(true);
+				expect(rocketh?.textContent).toBe('$- Executing 001_deploy_v1');
+				expect(script?.classList.contains('script')).toBe(true);
+			} finally {
+				unmount(component);
+			}
+		});
+
 		it('should keep scrolling to the newest line as a long transcript grows', async () => {
 			/**
 			 * Four steps produce far more output than one, and the terminal is a fixed height,

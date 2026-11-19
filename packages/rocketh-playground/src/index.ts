@@ -11,6 +11,8 @@ export type {CreateChainOptions, PlaygroundChain} from './core/chain.js';
 export {captureConsole} from './core/console-capture.js';
 export type {CaptureConsoleOptions, ConsoleCapture} from './core/console-capture.js';
 export {createLogStream, formatConsoleArguments} from './core/log-stream.js';
+export {createLogFactory} from './core/log-factory.js';
+export type {CreateLogFactoryOptions, LogFactoryTarget, NamedLogsFactory, NamedLogsLogger} from './core/log-factory.js';
 export type {LogChange, LogEntry, LogListener, LogSource, LogStream} from './core/log-stream.js';
 export {buildUserConfig, createPlayground} from './core/playground.js';
 export type {

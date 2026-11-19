@@ -64,6 +64,8 @@
 				return '·';
 			case 'script':
 				return '>';
+			case 'rocketh':
+				return '$';
 			case 'warning':
 				return '!';
 			case 'error':
@@ -111,6 +113,9 @@
 	}
 	.script {
 		color: #c9d1d9;
+	}
+	.rocketh {
+		color: #79c0ff;
 	}
 	.warning {
 		color: #d29922;
