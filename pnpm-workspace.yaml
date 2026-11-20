@@ -50,6 +50,16 @@ minimumReleaseAgeExclude:
   - 'rocketh'
   - '@rocketh/*'
   - 'hardhat-deploy'
+  # The in-process chain (the playground's, and the one rocketh runs `memory` runs on without
+  # Hardhat) comes from the same maintainer, published from github.com/wighawag/webevm by its
+  # release workflow over OIDC trusted publishing, with an SLSA provenance attestation
+  # (checked for webevm 0.9.1 and 0.10.0, @webevm/devnode 0.1.0, and revm-wasm 0.3.1 and
+  # 0.5.0, webevm's engine, published the same way from github.com/wighawag/revm-wasm). rocketh adopts its
+  # releases as they land, so a week's delay would only hold back our own changes. The
+  # trustPolicy below still refuses a release published with weaker evidence.
+  - 'webevm'
+  - '@webevm/*'
+  - 'revm-wasm'
   # A QUEUE JUMP: one exact version each, checked by hand, so the floor keeps protecting
   # every later release of these packages. Delete each entry once its date has passed.
   #
