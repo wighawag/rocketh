@@ -9,7 +9,7 @@ covers: []
 
 A host that runs deploy scripts in a worker (the rocketh playground app's runner worker) wants rocketh's own transcript in its log stream: `- Executing <script>`, `reusing "<name>" at <address>`, the deploy and proxy progress lines. Those go through `named-logs`, not `console`, so `captureConsole` never sees them, and `LogSource` (`core/log-stream.ts`) has no member for them: its members are `playground`, `step`, `script`, `warning`, `error` and `success`.
 
-It is the host's job to install a `named-logs` factory, in the worker, before any rocketh module is evaluated. That is the intended contract of `named-logs` and stays as it is: a logger created with no factory is a free no-op, and rocketh's loggers are not changed. The page's factory does not reach a worker (each realm has its own `globalThis`), so the worker installs its own, as the first import of its entry. The amended spec `work/specs/proposed/rocketh-playground.md` ("Threads", the runner worker) already says so.
+It is the host's job to install a `named-logs` factory, in the worker, before any rocketh module is evaluated. That is the intended contract of `named-logs` and stays as it is: a logger created with no factory is a free no-op, and rocketh's loggers are not changed. The page's factory does not reach a worker (each realm has its own `globalThis`), so the worker installs its own, as the first import of its entry. The amended spec `rocketh-playground` (now in wighawag/rocketh-playground, `work/specs/proposed/rocketh-playground.md`; "Threads", the runner worker) already says so.
 
 What `@rocketh/playground` adds, so every host does not write the same few lines:
 
