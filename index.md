@@ -5,7 +5,7 @@ layout: home
 hero:
   name: 'rocketh'
   text: 'Framework-agnostic deployment system for EVM smart contracts'
-  tagline: 'Rocketh, as in "it deployeth". Deploy scripts that run anywhere: Node, your tests, even the browser.'
+  tagline: 'Write your deploy scripts once, then run them anywhere: from the CLI, in your tests, even in the browser.'
   image:
     dark: /logo.svg
     light: /logo.svg
