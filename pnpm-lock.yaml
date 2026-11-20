@@ -852,8 +852,8 @@ importers:
         specifier: ^2.55.13
         version: 2.55.13(typescript@6.0.3)(zod@3.25.76)
       webevm:
-        specifier: ^0.9.1
-        version: 0.9.1
+        specifier: ^0.10.0
+        version: 0.10.0
     devDependencies:
       '@sveltejs/vite-plugin-svelte':
         specifier: ^6.2.1
@@ -4182,8 +4182,8 @@ packages:
     resolution: {integrity: sha512-l+sSefzHpj5qimhFSE5a8nufZYAM3sBSVMAPtYkmC+4EH2anSGaEMXSD0izRQbu9nfyQ9y5JrVmp7E8oZrUjvA==}
     engines: {node: '>=8'}
 
-  revm-wasm@0.3.1:
-    resolution: {integrity: sha512-nUEcnoiojMSFhnGGdog3+VvJcnQZ5bbW3Shm8vycoj2E5gQlID0aSVT/Sj+DBxoWiVt2XYv4y6i2xLL2l177ow==}
+  revm-wasm@0.5.0:
+    resolution: {integrity: sha512-UXufrg/6Pl3nmjH3PpMc5eTnu9fCiFjbPko5W9pTu+Sykz42voW9Kol+QBofGtcQ0nnV0nNmTFPbt4Yr6SZRkg==}
 
   rfdc@1.4.1:
     resolution: {integrity: sha512-q1b3N5QkRUWUl7iyylaaj3kOpIT0N2i9MqIEQXP73GVsN9cw3fdx8X63cEmWhJGi2PPCF23Ijp7ktmd39rawIA==}
@@ -4573,8 +4573,8 @@ packages:
   wcwidth@1.0.1:
     resolution: {integrity: sha512-XHPEwS0q6TaxcvG85+8EYkbiCux2XtWG2mkc47Ng2A77BQu9+DqIOJldST4HgPkuea7dvKSj5VgX3P1d4rW8Tg==}
 
-  webevm@0.9.1:
-    resolution: {integrity: sha512-esC4SHLultXQ8Mc4GVUbO/wmn8Nz+DKDgXACfI3ZpedeO+K0EKojbV5rPFaECxGQTBnKgdGA1Ao9Ul7sOqcGDQ==}
+  webevm@0.10.0:
+    resolution: {integrity: sha512-cVgakBFLidGQi4ORo/ORqnQ6AfGWm9g68rVTgYlJM21EnENeicuXvLTdNEtS5t1E8h6l9yaRcrCI3jArXsMZOg==}
     peerDependencies:
       comlink: ^4.4.2
     peerDependenciesMeta:
@@ -7836,7 +7836,7 @@ snapshots:
       onetime: 5.1.2
       signal-exit: 3.0.7
 
-  revm-wasm@0.3.1: {}
+  revm-wasm@0.5.0: {}
 
   rfdc@1.4.1: {}
 
@@ -8221,7 +8221,7 @@ snapshots:
     dependencies:
       defaults: 1.0.4
 
-  webevm@0.9.1:
+  webevm@0.10.0:
     dependencies:
       '@eip-1193/over-port': 0.2.1
       '@ethereumjs/block': 10.1.2
@@ -8234,7 +8234,7 @@ snapshots:
       '@ethereumjs/util': 10.1.2
       '@ethereumjs/vm': 10.1.2
       '@noble/hashes': 2.3.0
-      revm-wasm: 0.3.1
+      revm-wasm: 0.5.0
     transitivePeerDependencies:
       - supports-color
 
