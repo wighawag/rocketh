@@ -1,6 +1,7 @@
 ---
 title: 'An in-process chain for memory runs without Hardhat'
 slug: in-process-chain
+taskedAfter: [environment-accounts]
 ---
 
 > Launch snapshot: records intent at creation, NOT maintained. Current truth: `docs/adr/` (decisions) and the code; remaining work: `work/tasks/ready/` tasks. (The technical-detail sections below are trimmed by `to-task` once the work is tasked: they move into tasks or ADRs, and this spec settles to its durable framing of Problem, Solution, User Stories and Out of Scope.)
@@ -33,6 +34,7 @@ Decided 2026-11-19, from `work/notes/findings/in-process-chain-without-hardhat.m
 - **The dev-node layer is `@webevm/devnode` 0.1.0**, a separate package in the webevm repository (its ADR 0017), not in webevm's core, whose ADRs 0002 and 0004 rule out accounts, signing and impersonation there. It provides anvil's and Hardhat's test accounts funded at genesis (so an index-declared account resolves to the same address as on anvil), `eth_sendTransaction` and the signing methods for them, opt-in `hardhat_` / `anvil_` impersonation over webevm's trusted-sender mode, the core's balance, mining and snapshot methods under their `hardhat_` / `anvil_` / `evm_` names, and `toAllocs(dump)` for `vm.loadAllocs`.
 - **Checked end to end on 2026-11-20** with the published packages (rocketh 0.26.4, `@rocketh/web` 0.19.34, webevm 0.10.0, `@webevm/devnode` 0.1.0, forge 1.7.1): a contract compiled for Prague deployed from `deployer: {default: 0}`, then a call from an account declared by address and impersonated (captured as `intent:node,intent:impersonated`); the dump, passed through `toAllocs`, loaded in a real `forge test` that read the call's effect.
 - **Packaging:** `@rocketh/node` reaches the chain through a dynamic import, declaring `webevm` and `@webevm/devnode` as optional peer dependencies, so a user who never runs in-process installs nothing extra; a `memory` run with no provider and neither installed fails naming the install command. No new rocketh package (a new package needs a manual first publish, CONTEXT.md). Adding the dependencies needs maintainer approval at build time (AGENTS.md), and the workspace's seven-day `minimumReleaseAge` (`pnpm-workspace.yaml`) does not resolve versions published on 2026-11-20 until 2026-11-27 unless they are exempted.
+- **The dev accounts are the environment's local accounts** (spec `environment-accounts`): when the environment declares `localAccounts`, the devnode is created with them, so they are funded at genesis and an index resolves to the same address in-process as on the live network; with none declared it is created with devnode's defaults (anvil's ten). No devnode-specific account option exists in rocketh's config.
 - **Fork runs stay on anvil for now.** Forking inside webevm is a later spec in the webevm repository.
 
 Fixed regardless:
