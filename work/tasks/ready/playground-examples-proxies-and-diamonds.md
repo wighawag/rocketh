@@ -1,28 +1,26 @@
 ---
 title: 'Playground examples: proxies and diamonds'
 slug: playground-examples-proxies-and-diamonds
-needsAnswers: true
 blockedBy: [playground-examples-first-batch]
 covers: []
 ---
 
 Part of spec `open-in-playground`, which lives in github.com/wighawag/rocketh-playground at `work/specs/tasked/open-in-playground.md` (read it from that repository's origin/main; local ~/dev/github/wighawag/rocketh-playground). Spec stories covered: 2, 6, 9.
 
-<!-- open-questions -->
+## Answers (maintainer, 2026-11-20)
 
-## Open questions
-
-1. The diamond sample needs `@rocketh/diamond`, which the `hardhat-deploy init` template does not depend on (its package.json has `@rocketh/proxy` but not `@rocketh/diamond`). The playground's runner resolves it, but the deploy check installs the template, and the playground's Download pins only packages the template already lists. Options: (a) an example may carry a `package.json` dependency addition that both the check and the playground's Download honour; (b) add `@rocketh/diamond` to the init template; (c) leave the diamond sample unmarked for now. Which?
-
-<!-- /open-questions -->
+1. The diamond sample needs `@rocketh/diamond`, which the `hardhat-deploy init` template does not depend on. Decided: dependencies are declared by importing them. The deploy check adds every package an example's files import that the template's `package.json` lacks, at its latest published version, before `pnpm i`. The playground's Download does the same at the version the tab ran (rocketh-playground task `runner-resolves-rocketh-router`). So an example never carries a `package.json`, and the diamond sample is marked.
 
 ## What to build
 
-Mark the proxy and diamond samples, each with an example whose `rocketh/config.ts` registers the extension it needs (the starting config registers `@rocketh/deploy`, `@rocketh/read-execute`, `@rocketh/viem` and `@rocketh/unknown-signer` only): `documentation/index.md` and `documentation/proxies/` (`deployViaProxy` of `GreetingsRegistry`), `hardhat-deploy/migration/step-by-step/` (its `deployViaProxy` sample), and `documentation/diamonds/` (`CounterFacet` / `AdminFacet`, per the answer above). The example's `rocketh/config.ts` is the starting project's with the extension added, so it stays recognisable.
+Mark the proxy and diamond samples, each with an example whose `rocketh/config.ts` registers the extension it needs (the starting config registers `@rocketh/deploy`, `@rocketh/read-execute`, `@rocketh/viem` and `@rocketh/unknown-signer` only): `documentation/index.md` and `documentation/proxies/` (`deployViaProxy` of `GreetingsRegistry`), `hardhat-deploy/migration/step-by-step/` (its `deployViaProxy` sample), and `documentation/diamonds/` (`CounterFacet` / `AdminFacet`).
+
+Extend `pnpm test:docs:playground-examples` with the answer's rule: before installing, add to the copied template's `package.json` every bare package the example's files import that it does not list (in `devDependencies`, where the template keeps its rocketh packages), at its latest published version. An example importing only the template's packages installs exactly as before. The example's `rocketh/config.ts` is the starting project's with the extension added, so it stays recognisable.
 
 ## Acceptance criteria
 
 - [ ] Each sample above is marked with a passing example, or listed in the report with the reason it is not.
+- [ ] The deploy check adds an imported package the template lacks (the diamond example proves it), and leaves `package.json` untouched otherwise.
 - [ ] `pnpm test` and `pnpm test:docs:playground-examples` pass.
 
 ## Blocked by
