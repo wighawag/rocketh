@@ -2,8 +2,9 @@
  * Integration tests for @rocketh/router - route-based contract deployment.
  *
  * `deployViaRouter` deploys one contract per route, merges their ABIs, builds a selector
- * `sigMap`, and deploys a `Router10X60` contract that dispatches calls to the right
- * implementation based on the first 4 bytes of calldata. The merged ABI is saved as
+ * `sigMap`, and deploys a router contract (`Router` unless the caller names another, see
+ * `router-contract.test.ts`) that dispatches calls to the right implementation based on the
+ * first 4 bytes of calldata. The merged ABI is saved as
  * the deployment's ABI so consumers see a single contract interface.
  *
  * These tests use `createTestEnvironment` with `createExampleArtifact` (whose per-template
@@ -23,7 +24,7 @@ import {
 import type {Environment} from '@rocketh/core/types';
 import {decodeAbiParameters, toFunctionSelector} from 'viem';
 import type {Abi} from 'abitype';
-import {Router10X60} from 'solidity-proxy/artifacts/index.js';
+import {Router} from 'solidity-proxy/artifacts/index.js';
 
 const DEPLOYER = STANDARD_NAMED_ACCOUNTS.deployer;
 
@@ -32,11 +33,11 @@ const DEPLOYER = STANDARD_NAMED_ACCOUNTS.deployer;
  * router's RECORDED constructor args rather than from anything this run computed.
  *
  * The only question that matters after a route changes is whether the router on chain
- * names the new route, and the constructor args are where a `Router10X60` keeps that:
+ * names the new route, and the constructor args are where a router keeps that:
  * it is immutable, so there is no storage slot or wiring call to consult instead.
  */
 function recordedRouteAddresses(env: Environment, routerName: string): string[] {
-	const constructor = Router10X60.abi.find((entry) => entry.type === 'constructor');
+	const constructor = Router.abi.find((entry) => entry.type === 'constructor');
 	if (!constructor) {
 		throw new Error('the router artifact has no constructor');
 	}

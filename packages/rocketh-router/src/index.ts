@@ -4,7 +4,7 @@ import '@rocketh/deploy';
 import {mergeArtifacts} from '@rocketh/core/artifacts';
 import {DeployContractParameters} from 'viem';
 import {logs} from 'named-logs';
-import {Router10X60} from 'solidity-proxy/artifacts/index.js';
+import {InlineRouter, Router, Router10X60} from 'solidity-proxy/artifacts/index.js';
 import {deploy, DeployOptions, DeployResult} from '@rocketh/deploy';
 
 const logger = logs('@rocketh/router');
@@ -19,10 +19,35 @@ export type Route<TAbi extends Abi = Abi> = Omit<
 	artifact: Artifact<TAbi>;
 };
 
-export type RouterEnhancedDeploymentConstruction = Omit<
-	DeploymentConstruction<typeof Router10X60.abi>,
-	'artifact' | 'args'
->;
+/**
+ * The ABI of a router `deployViaRouter` can construct: a constructor taking the routes (the
+ * route implementations, the sorted `bytes5` selector map, the fallback). The three bundled
+ * routers each have their own, hence the union: `Router`'s and `InlineRouter`'s constructors
+ * take a `struct Routes` and `Router10X60`'s the same tuple as `struct Router10X60.Routes`,
+ * and `InlineRouter` declares no `fallback` (its dispatch is not compiled Solidity).
+ */
+export type RouterAbi = typeof Router.abi | typeof InlineRouter.abi | typeof Router10X60.abi;
+
+/**
+ * The routers this package bundles, from `solidity-proxy`, by the name a caller gives
+ * `routerContract`:
+ *
+ * - `Router`, the default: up to 256 implementations and as many selectors as the init code
+ *   limit allows, its routes kept in a data contract it creates, so every explorer (Etherscan
+ *   included) can verify it;
+ * - `InlineRouter`: the same limits, its routes appended to its own code, so the cheapest to
+ *   call and to deploy, but verifiable by its creation code only (Sourcify, Blockscout);
+ * - `Router10X60`: the previous default, at most 10 implementations and 60 selectors.
+ */
+export type PredefinedRouterContract = 'Router' | 'InlineRouter' | 'Router10X60';
+
+const predefinedRouters: {[name in PredefinedRouterContract]: Artifact<RouterAbi>} = {
+	Router,
+	InlineRouter,
+	Router10X60,
+};
+
+export type RouterEnhancedDeploymentConstruction = Omit<DeploymentConstruction<RouterAbi>, 'artifact' | 'args'>;
 
 /**
  * Exactly `DeployOptions`, plus the two options that are specific to routing.
@@ -37,11 +62,30 @@ export type RouterEnhancedDeploymentConstruction = Omit<
  */
 export type RouterDeployOptions = DeployOptions & {
 	extraABIs?: Abi[];
-	routerContract?: {
-		type: 'custom';
-		artifact: Artifact<typeof Router10X60.abi>;
-	};
+	/** the router to deploy: one of the bundled routers by name (`Router` by default), or your own */
+	routerContract?:
+		| PredefinedRouterContract
+		| {
+				type: 'custom';
+				artifact: Artifact<RouterAbi>;
+		  };
 };
+
+/** The router artifact `routerContract` names, refused BEFORE anything is deployed when unknown. */
+function routerArtifact(routerContract: RouterDeployOptions['routerContract']): Artifact<RouterAbi> {
+	if (routerContract === undefined) {
+		return Router;
+	}
+	if (typeof routerContract === 'object') {
+		return routerContract.artifact;
+	}
+	if (!Object.hasOwn(predefinedRouters, routerContract)) {
+		throw new Error(
+			`unknown router contract "${routerContract}": expected one of ${Object.keys(predefinedRouters).join(', ')}, or {type: 'custom', artifact}`,
+		);
+	}
+	return predefinedRouters[routerContract];
+}
 
 export type DeployViaRouterFunction = <TAbi extends Abi>(
 	name: string,
@@ -75,6 +119,9 @@ export function deployViaRouter(
 		if (alwaysOverride && skipIfAlreadyDeployed) {
 			throw new Error(`conflicting options: "alwaysOverride" and "skipIfAlreadyDeployed"`);
 		}
+
+		// Resolved first, so a router name nobody bundles fails before any route is deployed.
+		const routerContractArtifact = routerArtifact(options?.routerContract);
 
 		// THE RECORD FOR THE COMPOSITE, read once. Routes save under `${name}_Router_…_Route`
 		//  and the router under `${name}_Router`, so nothing below changes this key.
@@ -169,7 +216,7 @@ export function deployViaRouter(
 			`${name}_Router`,
 			{
 				...params,
-				artifact: options?.routerContract?.artifact || Router10X60,
+				artifact: routerContractArtifact,
 				args: [routeParams],
 			},
 			optionsForRouter,

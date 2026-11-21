@@ -74,6 +74,13 @@ minimumReleaseAgeExclude:
   #   patched @hono/node-server ^2.1.6 and hono ^4.13.16 (the advisories that fail `pnpm audit`
   #   in CI); no code changed. @rocketh/node depends on it. Safe to delete after 2026-11-25.
   - 'ipfs-gateway-emulator@5.1.2'
+  # - solidity-proxy 0.6.0 (published 2026-11-21 by hand by its author, as every earlier release,
+  #   none of which carries provenance either). @rocketh/router's routers come from it: it adds
+  #   `Router` (the new default, routes kept in a data contract, verifiable on every explorer) and
+  #   `InlineRouter`, and fixes `Router10X60` (it misrouted selectors 48 to 59, panicked below its
+  #   smallest selector and refused 0x00000000). Its contracts and tests were reviewed with the
+  #   release. Safe to delete after 2026-11-28.
+  - 'solidity-proxy@0.6.0'
 
 # Refuse a version whose TRUST EVIDENCE is weaker than that of earlier releases of
 # the same package. npm records how a version was published (trusted publishing via
