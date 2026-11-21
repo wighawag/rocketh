@@ -48,6 +48,7 @@
 		"test:docs": "pnpm test:getting-started && pnpm test:docs:without-hardhat && pnpm test:docs:hardhat-deploy-init",
 		"test:docs:without-hardhat": "bash scripts/test-doc.sh --port 8545 documentation/getting-started/index.md my-project",
 		"test:docs:hardhat-deploy-init": "bash scripts/test-doc.sh --outside hardhat-deploy/getting-started/index.md my-project 'With `hardhat-deploy init`'",
+		"test:docs:playground-examples": "bash scripts/test-playground-examples.sh",
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"test:ui": "vitest --ui",

@@ -7,7 +7,9 @@ export default defineConfig({
 		//  `pnpm test` from a package therefore run the exact same setup, instead of
 		//  the root config being the only place where test files are declared (which
 		//  made the per-package `test` scripts find no test file at all).
-		projects: ['packages/*/vitest.config.ts'],
+		//  `scripts/` holds the repository's own checks (the playground examples' equality
+		//  check among them) and is a project the same way.
+		projects: ['packages/*/vitest.config.ts', 'scripts/vitest.config.ts'],
 		coverage: {
 			provider: 'v8',
 			reporter: ['text', 'json', 'html'],

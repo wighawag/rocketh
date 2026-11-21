@@ -6,7 +6,7 @@ A deploy script is a TypeScript (or JavaScript) module that says what should be 
 
 A script default-exports what `deployScript` returns. `deployScript` comes from your `rocketh/deploy.ts` (it is `setupDeployScripts(extensions)` from `rocketh`, bound to your extensions, see [Get started](../getting-started/)), and it takes two arguments: the function to run, and the script's options.
 
-```typescript
+```typescript playground=greetings-registry/deploy/001_deploy_greetings_registry.ts
 // deploy/001_deploy_greetings_registry.ts
 import {deployScript, artifacts} from '../rocketh/deploy.js';
 

@@ -96,3 +96,64 @@ jobs:
       # gate rather than a permanent red.
       - name: Audit dependencies
         run: pnpm audit
+
+  # Deploys the playground examples against the PUBLISHED packages
+  # (`scripts/test-playground-examples.sh`), on a pull request that could change what an
+  # "Open in playground" button opens: one touching `examples/playground/`, a page with a
+  # marked sample, or the check itself. It runs on pull requests on purpose, unlike the other
+  # release checks (docs-release-smoke.yml, which also runs it): the playground runs released
+  # packages, so a sample using an option that is not released yet must fail before it ships.
+  # Whether each marked sample equals its example file is `pnpm test`, in the job above.
+  playground-examples:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # A pull request checks out its merge commit; its first parent is the base branch,
+          # so the diff between the two is what the pull request changes.
+          fetch-depth: 2
+
+      - name: Does this pull request touch an example or a marked page?
+        id: changes
+        run: |
+          run=false
+          while IFS= read -r file; do
+            case "$file" in
+            examples/playground/* | scripts/test-playground-examples.sh | scripts/outside-env.sh)
+              run=true
+              ;;
+            index.md | documentation/*.md | hardhat-deploy/*.md)
+              if [ -f "$file" ] && grep -qE '^ {0,3}(```|~~~).*[[:space:]]playground=' "$file"; then
+                run=true
+              fi
+              ;;
+            esac
+          done < <(git diff --name-only HEAD^1 HEAD)
+          echo "run=$run" >> "$GITHUB_OUTPUT"
+          echo "deploy the playground examples: $run"
+
+      - name: Setup pnpm
+        if: steps.changes.outputs.run == 'true'
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          version: 10.28.1
+
+      - name: Setup Node 22
+        if: steps.changes.outputs.run == 'true'
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # Nothing is built: the check uses only published packages.
+      - name: Install dependencies
+        if: steps.changes.outputs.run == 'true'
+        run: pnpm install --ignore-scripts
+
+      - name: Deploy the playground examples against the release
+        if: steps.changes.outputs.run == 'true'
+        run: pnpm test:docs:playground-examples

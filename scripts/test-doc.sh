@@ -35,7 +35,8 @@
 # resolves the PREVIOUS release, so the check meant to verify a release would skip it. The
 # reasoning is the one pnpm-workspace.yaml gives for the same exemption in the repository.
 # A reader on pnpm 11 does get the previous release for that day; nothing here can change
-# what their pnpm does.
+# what their pnpm does. That setup is `outside_env` in scripts/outside-env.sh, which the
+# playground examples' deploy check (scripts/test-playground-examples.sh) shares.
 #
 # In both modes it:
 #
@@ -86,16 +87,8 @@ fi
 
 if [ "$outside" = true ]; then
 	workdir=$(mktemp -d) || exit 1
-	mkdir -p "$workdir/.config/pnpm"
-	export XDG_CONFIG_HOME="$workdir/.config"
-	# pnpm 11 reads its global settings from config.yaml; pnpm 10 has no release-age floor
-	# by default, so it needs no equivalent.
-	printf '%s\n' 'minimumReleaseAgeExclude:' '  - rocketh' "  - '@rocketh/*'" '  - hardhat-deploy' >"$XDG_CONFIG_HOME/pnpm/config.yaml"
-	for name in $(compgen -e); do
-		case "$name" in
-		[nN][pP][mM]_[cC][oO][nN][fF][iI][gG]_* | [pP][nN][pP][mM]_[cC][oO][nN][fF][iI][gG]_*) unset "$name" ;;
-		esac
-	done
+	. "$repo/scripts/outside-env.sh"
+	outside_env "$workdir" || exit 1
 else
 	workdir=$repo
 	if [ -e "$scaffold" ]; then
