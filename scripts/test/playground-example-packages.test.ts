@@ -114,9 +114,13 @@ describe("this repository's examples", () => {
 		expect(missingPackages(join(examples, 'counter-diamond'), template)).toEqual(['@rocketh/diamond']);
 	});
 
+	it('the router example imports @rocketh/router, which the starting project lacks', () => {
+		expect(missingPackages(join(examples, 'game-router'), template)).toEqual(['@rocketh/router']);
+	});
+
 	it('every other example imports only the starting project packages', () => {
 		const others = readdirSync(examples, {withFileTypes: true})
-			.filter((entry) => entry.isDirectory() && entry.name !== 'counter-diamond')
+			.filter((entry) => entry.isDirectory() && !['counter-diamond', 'game-router'].includes(entry.name))
 			.map((entry) => entry.name);
 		expect(others.length).toBeGreaterThan(0);
 		for (const name of others) expect([name, missingPackages(join(examples, name), template)]).toEqual([name, []]);

@@ -13,7 +13,7 @@ Two options change WHEN a script runs rather than what it does, and both are dec
 
 Give the script an `id` and end it by returning `true`:
 
-```typescript
+```typescript playground=greetings-registry-seed/deploy/003_seed_the_registry.ts
 import {deployScript} from '../rocketh/deploy.js';
 
 export default deployScript(
