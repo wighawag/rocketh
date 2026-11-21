@@ -43,3 +43,8 @@ No changeset: no package changes.
 > The repositories are public: no file, pull request or commit message names a funder, a grant, a milestone or a report; describe a change by what it does for a user. Never write em dashes; do not hard-wrap Markdown prose. Bound every shell command with `timeout`, stop any server you start, and never send a transaction.
 >
 > RECORD non-obvious in-scope decisions you make while building in a `## Decisions` block at the end of your FINAL REPORT. When the task did not specify some behaviour and you had to choose, say what you chose and why. Do not write the done record, the commit message or the PR body yourself.
+
+## Decisions
+
+- **The missing-file check runs once on the scaffolded template, not on each example's copy.** Every copy comes from the same template, so one check before the loop is enough. A missing file fails the whole run straight away, naming the file and both places to update. The other option was to fail each example in turn, which would print the same template problem 14 times as if each example had failed. This only touches `scripts/test-playground-examples.sh`.
+- **The pin is the full 40-character SHA of rocketh-website's main (`780deaf…`).** That commit is what `rocketh-website-bare-base` names, and the full SHA matches the existing pin's format. This only touches `deploy.yml`.
