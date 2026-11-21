@@ -320,7 +320,7 @@ func.tags = ['GreetingsRegistry'];
 
 **v2 proxy deploy script example:** (see [template-ethereum-contracts/deploy/001_deploy_greetings_registry.ts](https://github.com/wighawag/template-ethereum-contracts/blob/main/contracts/deploy/001_deploy_greetings_registry.ts))
 
-```typescript
+```typescript playground=greetings-registry-proxy-migrated/deploy/001_deploy_greetings_registry.ts
 import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(

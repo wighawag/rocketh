@@ -123,7 +123,7 @@ jobs:
           run=false
           while IFS= read -r file; do
             case "$file" in
-            examples/playground/* | scripts/test-playground-examples.sh | scripts/outside-env.sh)
+            examples/playground/* | scripts/test-playground-examples.sh | scripts/outside-env.sh | scripts/playground-example-packages.ts)
               run=true
               ;;
             index.md | documentation/*.md | hardhat-deploy/*.md)

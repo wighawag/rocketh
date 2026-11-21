@@ -21,7 +21,7 @@ export {extensions};
 
 ## Deploying behind a proxy
 
-```typescript
+```typescript playground=greetings-registry-proxy/deploy/001_deploy_greetings_registry.ts
 import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(
