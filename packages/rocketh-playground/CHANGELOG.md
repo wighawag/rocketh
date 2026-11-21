@@ -1,5 +1,11 @@
 # @rocketh/playground
 
+## 0.2.1
+
+### Patch Changes
+
+- 074ee05: The playground runs on webevm 0.10, so its in-browser chain follows mainnet's current hardfork (Osaka) instead of Cancun.
+
 ## 0.2.0
 
 ### Minor Changes
