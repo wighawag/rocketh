@@ -51,7 +51,7 @@ import * as artifacts from '../generated/artifacts/index.js';
 export {artifacts};
 ```
 
-```typescript
+```typescript playground=greetings-registry-typed/deploy/001_deploy_greetings_registry.ts
 // deploy/001_deploy_greetings_registry.ts
 import {deployScript, artifacts} from '../rocketh/deploy.js';
 

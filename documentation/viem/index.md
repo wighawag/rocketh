@@ -32,7 +32,7 @@ export {extensions};
 
 `env.viem.getContract` takes a deployment, or a deployment name with the ABI type as its generic (a name alone says nothing about the type):
 
-```typescript
+```typescript playground=greetings-registry-viem/deploy/001_deploy_greetings_registry.ts
 import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(

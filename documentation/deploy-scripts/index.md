@@ -24,6 +24,8 @@ export default deployScript(
 );
 ```
 
+A sample with an "Open in playground" button opens it in the [playground](https://play.rocketh.dev), in your browser: the playground's starting project (the one `hardhat-deploy init` creates) with the sample's script and the contracts it needs written over it, on a fresh chain, with nothing run until you press Deploy. The playground runs the latest release of rocketh and hardhat-deploy, and takes up a new release within a day of it, so for up to a day after a release it can lag behind what a page describes.
+
 The second argument is required, and holds four optional keys:
 
 | Option         | What it does                                                                                                             |

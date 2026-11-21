@@ -6,7 +6,7 @@ It is an extension: spread it into `extensions` in `rocketh/config.ts`, as in [G
 
 ## Deploying a contract
 
-```typescript
+```typescript playground=greetings-registry-execute/deploy/001_deploy_greetings_registry.ts
 import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(
@@ -66,7 +66,7 @@ Use it when you need the deployed contract to correspond to one exact compilatio
 
 A contract that calls an external library is deployed with the library's address linked into its bytecode. Deploy the library first, then pass `libraries`, a map from each library's name to its address (several can be given):
 
-```typescript
+```typescript playground=linked-library/deploy/001_deploy_example.ts
 import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(
