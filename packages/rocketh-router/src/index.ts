@@ -198,7 +198,15 @@ export function deployViaRouter(
 
 		const unorderedSigMap: `0x${string}`[] = [];
 		for (const entry of sigJSMap) {
-			// we add +1 to index as 0 indicate no implementation
+			// `index` is the entry's position in `namedAbis`: the routes first, so the same as its
+			//  implementation's position in `implementations`, then the extra ABIs, which no
+			//  implementation serves. Their functions are declared in the record only: routing one
+			//  would name an implementation that does not exist, which `Router` and `InlineRouter`
+			//  refuse at construction (INVALID_IMPLEMENTATION_INDEX) and `Router10X60` sent to the
+			//  zero address.
+			if (entry[1].index >= implementations.length) {
+				continue;
+			}
 			unorderedSigMap.push((entry[0] + entry[1].index.toString(16).padStart(2, '0')) as `0x${string}`);
 		}
 
