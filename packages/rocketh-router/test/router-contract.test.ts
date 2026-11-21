@@ -33,7 +33,8 @@ import {
 	NODE_HELD_ACCOUNTS,
 } from '@rocketh/test-utils';
 import type {Environment} from '@rocketh/core/types';
-import {decodeAbiParameters} from 'viem';
+import {decodeAbiParameters, toFunctionSelector} from 'viem';
+import type {Abi} from 'abitype';
 import {InlineRouter, Router, Router10X60} from 'solidity-proxy/artifacts/index.js';
 
 const ROUTES = () => [
@@ -108,6 +109,34 @@ describe('@rocketh/router - the router contract', () => {
 			expect(env.get('MyRouter_Router').bytecode).toBe(artifact.bytecode);
 		});
 	}
+
+	/**
+	 * `extraABIs` widen the RECORD's ABI (events, errors, a debug interface), but no route
+	 * implements their functions, so they have no implementation to route to. `Router` and
+	 * `InlineRouter` refuse an entry whose index names no implementation
+	 * (`INVALID_IMPLEMENTATION_INDEX`, at construction), and `Router10X60` sent such a call to
+	 * the zero address, where a delegatecall succeeds and does nothing.
+	 */
+	it('routes no selector of an extra ABI: every entry names one of the implementations', async () => {
+		const env = await freshEnvironment();
+		const EXTRA_ABI = [
+			{type: 'function', name: 'extraFunction', inputs: [], outputs: [{type: 'uint256'}], stateMutability: 'view'},
+			{type: 'event', name: 'ExtraEvent', inputs: []},
+		] as const satisfies Abi;
+
+		await deployViaRouter(env)('MyRouter', {account: 'deployer'}, ROUTES(), {extraABIs: [EXTRA_ABI as Abi]});
+
+		const routes = recordedRoutes(env, 'MyRouter_Router');
+		expect(routes.sigMap.map((entry) => entry.slice(0, 10))).toEqual(
+			[toFunctionSelector('getValue0()'), toFunctionSelector('getValue1()')].sort(),
+		);
+		for (const entry of routes.sigMap) {
+			expect(Number(BigInt(entry) & 0xffn)).toBeLessThan(routes.implementations.length);
+		}
+		// the record still declares it
+		const names = (env.get('MyRouter').abi as Abi).filter((f) => f.type === 'function').map((f) => f.name);
+		expect(names).toContain('extraFunction');
+	});
 
 	it('refuses a router name it does not know, before deploying anything', async () => {
 		const env = await freshEnvironment();
