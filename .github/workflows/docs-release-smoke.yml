@@ -6,6 +6,11 @@ name: Docs against the release
 # CLI and its page together would fail until it shipped. It runs after every release, once
 # a day (the registry moves under a page without any commit here), and on demand.
 #
+# It also deploys the playground examples (examples/playground/) against the release. Those
+# run on pull requests too (test.yml), since the playground only runs released packages and
+# a sample that needs an unreleased option must not ship; here they catch the registry
+# moving under them.
+#
 # Each page runs under both pnpm majors a reader may have, since they behave differently
 # (pnpm 11 stops an install at ERR_PNPM_IGNORED_BUILDS where pnpm 10 only warns). The
 # repository itself stays on its pinned pnpm: a pnpm 11 on the PATH switches to the
@@ -83,3 +88,9 @@ jobs:
 
       - name: Get started with hardhat-deploy (hardhat-deploy init)
         run: pnpm test:docs:hardhat-deploy-init
+
+      # Every playground example (examples/playground/), deployed against the same release:
+      # the playground runs released packages, and the registry moves under an example without
+      # any commit here.
+      - name: Playground examples (examples/playground/)
+        run: pnpm test:docs:playground-examples

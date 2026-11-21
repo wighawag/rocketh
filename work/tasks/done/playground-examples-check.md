@@ -40,3 +40,15 @@ No changeset if no package changes.
 > The repositories are public: no file, pull request or commit message names a funder, a grant, a milestone or a report; describe a change by what it does for a user. Never write em dashes; do not hard-wrap Markdown prose. Bound every shell command with `timeout`, stop any server you start, and never send a transaction.
 >
 > RECORD non-obvious in-scope decisions you make while building in a `## Decisions` block at the end of your FINAL REPORT. When the task did not specify some behaviour and you had to choose, say what you chose and why. Do not write the done record, the commit message or the PR body yourself.
+
+## Decisions
+
+- **Example name `greetings-registry`**, named after the contract rather than the page. Examples can be shared by several pages, the way the spec's own sample is named `proxies`. The alternative was `deploy-scripts`. Later example tasks will reuse this naming.
+- **The sample's first line, `// deploy/001_deploy_greetings_registry.ts`, is kept in the example file.** Byte equality requires it, and removing it would change what readers see on the page. The alternative was to drop it from both.
+- **The equality check lives in `scripts/`, with its own vitest project** (`scripts/vitest.config.ts`, added to the root `vitest.config.ts` projects). Putting it under a package would have counted as a package change and required a changeset. This changes the root test config, which `AGENTS.md` does not list under "ask first". Note that `scripts/` is not type-checked by `pnpm typecheck`, same as before.
+- **The equality check also refuses markers it cannot parse** (empty, absolute, or with `.`/`..` parts). This is a refusal the task did not name. I added it so a marker cannot read a file outside its example folder.
+- **The deploy check takes optional example names** (`pnpm test:docs:playground-examples greetings-registry`) and fails when there are no examples or a named one does not exist.
+- **Each example runs in a full `cp -a` copy of the installed starting project**, not a hard-linked one. A copy takes about a second and 238 MB, and is deleted after each example. It also stays safe once the later task makes the check run `pnpm i` inside the copy.
+- **CI trigger scope.** The `test.yml` job diffs the merge commit against its first parent (`fetch-depth: 2`). It also triggers on changes to `scripts/test-playground-examples.sh` and `scripts/outside-env.sh`, which the task did not name. A page counts as "marked" if its version in the pull request contains a marked fence. It is a separate job, so it does not slow the main test job, and it only runs on pull requests, not on pushes to main.
+- **The `docs-release-smoke.yml` step uses the default `if`**, so it does not run when the hardhat-deploy-init step before it fails. Both depend on the same release, so a failure there would make this step fail for the same reason.
+- **`pnpm test:docs` (the "all three" aggregate) does not include the new check.** The check tests the release, like `test:docs:hardhat-deploy-init`, and its own CI wiring covers it.
