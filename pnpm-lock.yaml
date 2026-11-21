@@ -987,8 +987,8 @@ importers:
         specifier: ^0.4.1
         version: 0.4.1
       solidity-proxy:
-        specifier: ^0.5.2
-        version: 0.5.2
+        specifier: ^0.6.0
+        version: 0.6.0
       viem:
         specifier: ^2.55.13
         version: 2.55.13(typescript@6.0.3)(zod@3.25.76)
@@ -4265,8 +4265,8 @@ packages:
     engines: {node: '>=8.0.0'}
     hasBin: true
 
-  solidity-proxy@0.5.2:
-    resolution: {integrity: sha512-whVFwFoC8uMFlsmQEOBKyP15mOxQFOqqnSU0BbspkrXaGEfVvqMzOR73gkLmSRP3uGEaEuKMyJaRyMVO7gbxYA==}
+  solidity-proxy@0.6.0:
+    resolution: {integrity: sha512-Xkn1ao4Bq4MMVDSW+DUwcmulZnE+zYk3g0njjBxNd1RQBuyd4iwv7GrOECockuljnLVdR3qzLdiPq8vp457q4g==}
 
   source-map-js@1.2.2:
     resolution: {integrity: sha512-KGj/8Y43x35aZVDtt+J4mK1hoLGHULMYfSkODJNQjNDC3oW1PqPoxMwo0pLUsWM/UEGzON/NxeHywEfNXNP3Vw==}
@@ -7952,7 +7952,7 @@ snapshots:
     transitivePeerDependencies:
       - debug
 
-  solidity-proxy@0.5.2: {}
+  solidity-proxy@0.6.0: {}
 
   source-map-js@1.2.2: {}
 

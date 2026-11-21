@@ -80,13 +80,29 @@ Behind a proxy the router is the implementation, so the names start with `<name>
 
 `options` takes the options of `deploy` (`deterministic`, `linkedData`, `libraries` and the re-deployment controls) plus:
 
-| Option           | What it does                                                                                                                                  |
-| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `extraABIs`      | more ABIs to merge into the record, for events or errors no route declares (a debug interface, say)                                           |
-| `routerContract` | `{type: 'custom', artifact}`: your own router contract, taking `(address fallbackImplementation, address[] implementations, bytes6[] sigMap)` |
+| Option           | What it does                                                                                                                                                                                                                                                                              |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `extraABIs`      | more ABIs to merge into the record, for events or errors no route declares (a debug interface, say); a function they declare is recorded but not routed, since no route implements it                                                                                                     |
+| `routerContract` | which router to deploy: `'Router'` (the default), `'InlineRouter'` or `'Router10X60'` (see [the routers](#the-routers)), or `{type: 'custom', artifact}`, your own, whose constructor takes the same `(address[] implementations, bytes5[] sigMap, address fallbackImplementation)` tuple |
 
 The re-deployment controls apply at the level that keeps the router consistent. By default every route and the router are compared on code and constructor arguments and redeployed only when they differ. `skipIfAlreadyDeployed` applies to the whole: when a record exists under `name`, nothing is deployed, routes included, since skipping only some routes would deploy code the router cannot reach. `alwaysOverride` and `strictBytecodeMatch` apply to each contract, except that `strictBytecodeMatch` is not applied to the bundled router itself, so a metadata difference in it never cascades into an upgrade of the proxy in front of it.
 
+## The routers
+
+`@rocketh/router` deploys one of three routers from [`solidity-proxy`](https://github.com/wighawag/solidity-proxy), all immutable and all constructed with the same routes:
+
+| `routerContract`     | Limits                                   | Verification                                       | Dispatch, gas |
+| -------------------- | ---------------------------------------- | -------------------------------------------------- | ------------- |
+| `'Router'` (default) | 256 routes, as many selectors as fit (1) | every explorer, Etherscan included                 | about 6,800   |
+| `'InlineRouter'`     | 256 routes, as many selectors as fit (1) | by its creation code only: Sourcify and Blockscout | about 3,800   |
+| `'Router10X60'`      | 10 routes, 60 selectors                  | every explorer                                     | about 6,300   |
+
+(1) About 1,460 selectors on a chain with the init code limit (EIP-3860, from Shanghai on), since the routes are part of the constructor's arguments; about 4,800 on a chain without it.
+
+`Router` keeps its routes in a data contract it creates at construction, so its own code is exactly its compiled code. `InlineRouter` appends them to its own code, which saves reading another contract on every call and makes it the cheapest to deploy, but its deployed code then matches no compiled output, which is what Etherscan compares. The dispatch figures are solidity-proxy's: the mean a routed call costs above the transaction's 21,000, over 60 selectors and 10 routes, to a route that does almost nothing.
+
+Changing the router changes its bytecode, so the next run deploys a new one and, behind a proxy, upgrades the proxy to it, as a changed route does. Moving to `@rocketh/router` 0.21 does that once for every router an earlier version deployed, whichever one you name: the default is now `Router`, and `Router10X60` itself was rebuilt by solidity-proxy 0.5.3 (three fixes, and compiled for `london`).
+
 ## How the router finds a route
 
-The router holds a sorted array of `bytes6` entries: a 4-byte function selector followed by the 2-byte (1-based) index of the route that implements it. A call looks its selector up and is delegated to that route. `deployViaRouter` deploys it with no fallback implementation, and two routes declaring the same function are refused when their ABIs are merged, before anything is deployed.
+The router holds a sorted array of `bytes5` entries: a 4-byte function selector followed by the 1-byte index of the route that implements it, in the order the routes are given. A call looks its selector up with a binary search and is delegated to that route. `deployViaRouter` deploys it with no fallback implementation, so a selector no route declares reverts with `UNKNOWN_METHOD`, and two routes declaring the same function are refused when their ABIs are merged, before anything is deployed.
