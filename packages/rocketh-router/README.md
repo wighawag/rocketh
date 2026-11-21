@@ -49,6 +49,21 @@ export default deployScript(
 
 This needs `@rocketh/proxy` in `extensions` too.
 
+## The router contract
+
+The router is [`solidity-proxy`](https://github.com/wighawag/solidity-proxy)'s `Router` unless you name another with `routerContract`:
+
+- `'Router'` (the default): up to 256 routes and as many selectors as the init code limit allows, its routes kept in a data contract, so every block explorer, Etherscan included, can verify it;
+- `'InlineRouter'`: the same limits and the cheapest to call and deploy, its routes appended to its own code, so it verifies by its creation code only (Sourcify, Blockscout);
+- `'Router10X60'`: the previous default, at most 10 routes and 60 selectors;
+- `{type: 'custom', artifact}`: your own, constructed with the same routes.
+
+```typescript
+await deployViaRouter('Game', {account: deployer}, routes, {routerContract: 'InlineRouter'});
+```
+
+The three are also shipped as JSON under `@rocketh/router/artifacts/`, for `hardhat-external-artifacts`' `modules`.
+
 ## Documentation
 
 - [Routers](https://rocketh.dev/documentation/routers/)
