@@ -6,7 +6,8 @@
 #
 # In a fresh temporary directory it scaffolds the starting project once with the released
 # CLI (`pnpm dlx hardhat-deploy init --install`, the template the playground starts from) and
-# then, for each example, makes a clean copy of it, writes the example's files over the copy,
+# then, for each example, makes a clean copy of it, removes the starting project's Counter sample
+# from the copy (the bare base, see COUNTER_FILES below), writes the example's files over it,
 # adds to its package.json every package the example imports that the starting project lacks,
 # at its latest published version, and installs it (an example declares a package by importing
 # it, see scripts/playground-example-packages.ts), then runs `pnpm hardhat compile` and
@@ -88,11 +89,28 @@ add_imported_packages() {
 	step "$run" pnpm install --no-frozen-lockfile
 }
 
+# The bare base an "Open in playground" link on rocketh.dev opens an example on: the starting
+# project without its Counter sample. The playground defines it as `bareProject()` in
+# rocketh-playground's web/src/lib/playground/project/template.ts (its COUNTER_SAMPLE_PATHS):
+# the starting project without contracts/Counter.sol and deploy/01_deploy_counter.ts, so an
+# example keeps rocketh/config.ts and rocketh/deploy.ts unless it has its own. The template's
+# Counter tests go too, as the playground's Download leaves them out of a project without
+# Counter (test/Counter.ts expects a Counter deployment). A change to this list is made in both.
+# Each file must be in the template: a template that renamed or removed one fails here, so the
+# change is noticed rather than absorbed.
+COUNTER_FILES=(contracts/Counter.sol deploy/01_deploy_counter.ts contracts/Counter.t.sol test/Counter.ts)
+
 template="$workdir/starting-project"
 if ! (cd "$workdir" && timeout 900 pnpm dlx hardhat-deploy init --install "$(basename "$template")" </dev/null); then
 	echo "test-playground-examples: could not scaffold the starting project with the published hardhat-deploy init" >&2
 	exit 1
 fi
+for file in "${COUNTER_FILES[@]}"; do
+	if [ ! -f "$template/$file" ]; then
+		echo "test-playground-examples: the published hardhat-deploy init template has no $file, which the bare base removes; update COUNTER_FILES here and bareProject() in rocketh-playground" >&2
+		exit 1
+	fi
+done
 
 failed=()
 for name in "${names[@]}"; do
@@ -101,6 +119,11 @@ for name in "${names[@]}"; do
 	# A clean copy of the starting project, installed (cp -a keeps pnpm's relative symlinks).
 	cp -a "$template/." "$run/" || {
 		failed+=("$name (copying the starting project)")
+		continue
+	}
+	# The bare base: the copy without the Counter sample, checked above to be in the template.
+	(cd "$run" && rm -- "${COUNTER_FILES[@]}") || {
+		failed+=("$name (removing the starting project's Counter sample)")
 		continue
 	}
 	cp -R "$examples/$name/." "$run/" || {
