@@ -21,7 +21,7 @@ export {extensions};
 
 The `diamond` function from `@rocketh/diamond` allows you to deploy contracts using the Diamond pattern. The second argument says who deploys; `facets`, the set of facets the diamond should end up with, goes in the third, with the other options. The standard cut, loupe and ownership facets are added for you, so do not list them (`defaultCutFacet: false` or `defaultOwnershipFacet: false` leaves out the cut or the ownership facet; the loupe facet is always added):
 
-```typescript
+```typescript playground=counter-diamond/deploy/001_deploy_my_diamond.ts
 import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(

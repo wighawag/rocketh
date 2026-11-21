@@ -7,8 +7,11 @@
 # In a fresh temporary directory it scaffolds the starting project once with the released
 # CLI (`pnpm dlx hardhat-deploy init --install`, the template the playground starts from) and
 # then, for each example, makes a clean copy of it, writes the example's files over the copy,
-# and runs `pnpm hardhat compile` and `pnpm hardhat deploy` on Hardhat's in-memory network: a
-# fresh chain, with the starting config's accounts. The install is done once and the copy
+# adds to its package.json every package the example imports that the starting project lacks,
+# at its latest published version, and installs it (an example declares a package by importing
+# it, see scripts/playground-example-packages.ts), then runs `pnpm hardhat compile` and
+# `pnpm hardhat deploy` on Hardhat's in-memory network: a fresh chain, with the starting
+# config's accounts. The install is done once and the copy
 # carries it (a full copy, node_modules included, about a second), then is removed, so no
 # example sees another's files, install or build output.
 #
@@ -46,6 +49,12 @@ for name in "${names[@]}"; do
 	fi
 done
 
+tsx="$repo/node_modules/.bin/tsx"
+if [ ! -x "$tsx" ]; then
+	echo "test-playground-examples: $tsx is missing; run pnpm install in the repository first" >&2
+	exit 1
+fi
+
 workdir=$(mktemp -d) || exit 1
 trap 'rm -rf "$workdir"' EXIT
 . "$repo/scripts/outside-env.sh"
@@ -57,6 +66,26 @@ step() {
 	shift
 	echo "test-playground-examples: ($(basename "$dir")) $*"
 	(cd "$dir" && timeout 900 "$@" </dev/null)
+}
+
+# An example declares a package by importing it (it carries no package.json): every package its
+# files import that the starting project's package.json lacks is added to that package.json's
+# devDependencies, at its latest published version, and installed. An example importing only
+# the starting project's packages leaves package.json as it is, and installs nothing.
+add_imported_packages() {
+	local name=$1 run=$2 missing pkg version
+	local specs=()
+	missing=$("$tsx" "$repo/scripts/playground-example-packages.ts" missing "$examples/$name" "$run/package.json") || return 1
+	[ -z "$missing" ] && return 0
+	for pkg in $missing; do
+		version=$(cd "$run" && timeout 120 pnpm view "$pkg" version </dev/null) || return 1
+		[ -n "$version" ] || return 1
+		echo "test-playground-examples: ($name) imports $pkg, which the starting project lacks: adding $pkg@^$version"
+		specs+=("$pkg@^$version")
+	done
+	"$tsx" "$repo/scripts/playground-example-packages.ts" add "$run/package.json" "${specs[@]}" || return 1
+	# --no-frozen-lockfile: package.json changed, and pnpm freezes the lockfile by default in CI.
+	step "$run" pnpm install --no-frozen-lockfile
 }
 
 template="$workdir/starting-project"
@@ -78,7 +107,9 @@ for name in "${names[@]}"; do
 		failed+=("$name (writing its files)")
 		continue
 	}
-	if ! step "$run" pnpm hardhat compile; then
+	if ! add_imported_packages "$name" "$run"; then
+		failed+=("$name (adding the packages it imports)")
+	elif ! step "$run" pnpm hardhat compile; then
 		failed+=("$name (pnpm hardhat compile)")
 	elif ! step "$run" pnpm hardhat deploy; then
 		failed+=("$name (pnpm hardhat deploy)")

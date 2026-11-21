@@ -19,7 +19,7 @@ Where Hardhat's [Ignition](https://hardhat.org/ignition) asks you to describe a 
 
 ## A deploy script
 
-```typescript
+```typescript playground=greetings-registry-proxy-intro/deploy/001_deploy_greetings_registry.ts
 // deploy/001_deploy_greetings_registry.ts
 import {deployScript, artifacts} from '../rocketh/deploy.js';
 
