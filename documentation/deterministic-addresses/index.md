@@ -46,7 +46,7 @@ Deterministic deployments of `@rocketh/proxy` implementations (`deterministicImp
 
 `computeDeterministicAddress` returns the address a deterministic `deploy` will land on, without sending anything. Give it the artifact, the constructor arguments and the same `account`, `deterministic` (and `libraries`) the `deploy` call will get. This is what lets two contracts reference each other:
 
-```typescript
+```typescript playground=create3-pair/deploy/001_deploy_a_and_b.ts
 import {zeroAddress} from 'viem';
 import {deployScript, artifacts} from '../rocketh/deploy.js';
 
