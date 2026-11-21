@@ -9,6 +9,8 @@ Part of spec `bare-starting-project`, which lives in github.com/wighawag/rocketh
 
 Staged in `work/tasks/backlog/` on purpose: it is blocked, in other repositories, by rocketh-playground's `project-link-bare-base` and by `rocketh-website-bare-base` (built in rocketh-website, filed on rocketh-playground's board), which a `blockedBy` here cannot express. Promote it once both are merged AND play.rocketh.dev has served `project-link-bare-base` for at least a day: the playground that was live before it refuses a link carrying `base` and drops it from the URL, and a returning visitor's service worker serves a cached build on the first load, so this wait is what protects the rollout (spec, "Order of landing").
 
+> **The day's wait is dropped (2026-11-21).** The maintainer dropped the wait for play.rocketh.dev to serve `project-link-bare-base` for at least a day, which this task's staging paragraph above and spec `bare-starting-project` ("Order of landing", step 3) still describe: the playground's service worker updates a returning visitor's cached build when they visit, not with time, so a day protects almost no one. Do not stop for it: the promotion that put this task in `work/tasks/ready/` approves the `deploy.yml` pin move as it stands. The blockers that remain hold as of 2026-11-21: `project-link-bare-base` is merged (rocketh-playground `bcf5326`) and play.rocketh.dev serves it (a bare link opens there without the Counter sample), and `rocketh-website-bare-base` is merged (rocketh-website `780deaf`, the commit to pin; both tasks are in rocketh-playground's `work/tasks/done/`).
+
 ## What to build
 
 "Open in playground" links will open an example without the starting project's Counter sample (rocketh-website's `base: "bare"`). This task makes rocketh match, in ONE pull request, so the page, the link and the check never disagree on rocketh.dev, which deploys this repository's content as soon as it lands:
@@ -29,7 +31,7 @@ No changeset: no package changes.
 
 ## Blocked by
 
-- rocketh-playground `project-link-bare-base` (other repository), served on play.rocketh.dev for at least a day.
+- rocketh-playground `project-link-bare-base` (other repository), served on play.rocketh.dev.
 - `rocketh-website-bare-base` (rocketh-website, filed on rocketh-playground's board).
 
 ## Prompt
