@@ -1,1 +1,1 @@
-- [ ] automate artifacts/\*.json export like in @rocketh/proxy
+- [x] automate artifacts/\*.json export like in @rocketh/proxy (`pnpm generate:artifacts`, from solidity-proxy; `test/artifacts.test.ts` fails on drift)
