@@ -9,7 +9,7 @@
 	"observationTriage": "auto",
 	"surfaceBlockers": true,
 	"review": true,
-	"integration": "merge",
+	"integration": "propose",
 	"tasksLandIn": "ready",
 	"specsLandIn": "ready",
 	"untrustedTasksLandIn": "ready",
