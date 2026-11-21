@@ -1,0 +1,21 @@
+---
+status: accepted
+---
+
+# An index names the environment's local account, and core rocketh signs for it
+
+A named account given by index (`deployer: 0`) meant the node's own `eth_accounts[i]`, which works on a dev node and fails on every public RPC endpoint, so a project configured its live-network accounts elsewhere: per-account `privateKey:` strings (plus a registered `privateKey` protocol) outside Hardhat, the hardhat network's `accounts` inside it. We decided that an environment may declare its **local accounts** (`localAccounts`: a mnemonic or a list of keys, in the shape Hardhat and `@webevm/devnode` use, as a chain setting layered through `chains`, `overrides` and `whenForked`, with `null` meaning "none here"), that index `i` then means local account `i`, signed by CORE rocketh as a `signerOnly` signer, and that with nothing declared it still means the node's account. One `rocketh/config.ts` then works on every chain, under every command and in every runtime (spec `environment-accounts`).
+
+## Considered Options
+
+- **A dev-node layer in front of the RPC**, as Hardhat's local-accounts provider and `@webevm/devnode` do: answer `eth_accounts` with derived accounts and sign `eth_sendTransaction` in a wrapper. Rejected. rocketh already signs locally (`signerOnly`: it fills the transaction, signs, and sends it raw), so a wrapper would be a second home for nonce, gas, fee and transaction-type filling, the rules for which live in rocketh's broadcast path. It would also make a locally signed account look node-held (`remote`), and signability, captured transactions (`intent:node`) and the unknown-signer and fork logic all reason from that distinction. And devnode's layer is built on webevm's node (`SlimNode`, `senderMode: 'trusted'`), which is right for the in-process chain and wrong on the way to mainnet.
+- **Keeping key handling out of core**, with `@rocketh/signer` providing the source and `@rocketh/node` and hardhat-deploy registering it by default. Rejected: the setting is declared in core's types, so a config that type-checks would fail in a browser or a test unless something registered it, which is the `private-key-without-protocol` trap made common. The cost of the alternative is small: `viem` already ships in every rocketh bundle (`@rocketh/core` imports it at runtime), and `viem/accounts` is imported dynamically, only when a local key has to be resolved, so the browser-capable core (ADR 0002) carries nothing for a user who never declares one. As a consequence, a bare private key and a `privateKey:` string resolve without registration too; a registered `privateKey` protocol still wins.
+- **A signer protocol per account** (the status quo, and a `mnemonic:` protocol beside `privateKey:`). Kept for external signers (a hardware wallet, a KMS), rejected as the common case: it repeats every account for every live network and an index still cannot work there.
+- **Replacing Hardhat's account mechanism.** Rejected: the hardhat network's accounts are, to rocketh, a node that holds keys, like anvil, so they stay the fallback and an existing hardhat-deploy project changes nothing. The declared setting wins when both exist.
+- **Naming it `accounts`**, as Hardhat's network config and devnode do. Rejected: the top-level `accounts` of `rocketh/config.ts` already means the named accounts. `localAccounts` is viem's term for exactly this, an account whose key the client holds.
+
+## Consequences
+
+- "Index" no longer means "the node's account" unconditionally; `CONTEXT.md` and the named-accounts page must say which applies.
+- rocketh does not fund local accounts on a node it did not create; on a dev node with a different mnemonic they start empty.
+- A fork inherits the forked environment's local accounts, as `HARDHAT_FORK` already inherits the forked network's mnemonic, so a rehearsal deploys from the production addresses and signs with the production keys unless `whenForked: {localAccounts: null}` says otherwise.
