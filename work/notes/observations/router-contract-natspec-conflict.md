@@ -1,0 +1,3 @@
+# deployViaRouter refuses routes whose contract-level NatSpec differs, with a bare message
+
+Noticed 2026-11-21 while building the `game-router` playground example. `mergeArtifacts` (`packages/rocketh-core/src/artifacts.ts`) throws `UserDoc notice conflict ` (and `DevDoc title conflict `) when two routes carry different contract-level `@notice` (or `@title` with an `@author`), so routes each documented with their own `/// @notice` fail at deploy time with a message naming neither the routes nor the fix. `documentation/routers/` says the record carries "the merged NatSpec" but does not mention this constraint.

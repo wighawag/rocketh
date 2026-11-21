@@ -24,7 +24,7 @@ export {extensions};
 
 The usual shape is a game, a protocol or any system whose logic has outgrown one contract: every route receives the same configuration, the router puts them together, and `deployViaProxy` makes the router the proxy's implementation by producing it in its `artifact` function:
 
-```typescript
+```typescript playground=game-router/deploy/001_deploy_game.ts
 import {deployScript, artifacts} from '../rocketh/deploy.js';
 
 export default deployScript(

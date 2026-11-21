@@ -33,7 +33,7 @@ module.exports.tags = ['MyContract'];
 
 In v2:
 
-```typescript
+```typescript playground=my-contract/deploy/00_deploy_my_contract.ts
 // deploy/00_deploy_my_contract.ts
 import {deployScript, artifacts} from '../rocketh/deploy.js';
 

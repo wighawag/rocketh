@@ -257,7 +257,7 @@ func.tags = ['SimpleERC20'];
 
 **v2 deploy script example:** (see [template-ethereum-contracts/deploy/001_deploy_greetings_registry.ts](https://github.com/wighawag/template-ethereum-contracts/blob/main/contracts/deploy/001_deploy_greetings_registry.ts))
 
-```typescript
+```typescript playground=simple-erc20/deploy/001_deploy_simple_erc20.ts
 import {deployScript, artifacts} from '../rocketh/deploy.js';
 import {parseEther} from 'viem';
 
