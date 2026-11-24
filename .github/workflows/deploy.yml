@@ -46,7 +46,7 @@ on:
 env:
   # The rocketh-website commit this site is built from. Move it in a pull
   # request that says what it was verified against.
-  ROCKETH_WEBSITE_REF: 89af3d087ef04d93da9b4b68b686fc3409e3eef5
+  ROCKETH_WEBSITE_REF: fd65b4b79e6702c7b0825cf78aaa8124be526043
 
 # Nothing at workflow level: each job grants its own scopes.
 permissions: {}
