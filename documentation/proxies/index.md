@@ -174,6 +174,47 @@ When the admin or proxy upgrades through a method that is not `upgradeTo` / `upg
 
 Its `args` may only hold the placeholders `{proxy}`, `{implementation}`, `{data}` (the `execute` calldata, or `0x`) and `{admin}`.
 
+### OpenZeppelin 5's transparent proxy {#openzeppelin-5-transparent-proxy}
+
+OpenZeppelin 5's `TransparentUpgradeableProxy` takes no admin. Its constructor, `(logic, initialOwner, data)`, deploys a `ProxyAdmin` owned by `initialOwner` and writes that admin's address into the proxy's admin slot; upgrades then go through that ProxyAdmin's `upgradeAndCall`. Deploy it as a `custom` proxy and say that it creates its admin:
+
+```typescript
+await deployViaProxy(
+	'Vault',
+	{account: deployer, artifact: artifacts.Vault, args: []},
+	{
+		owner: admin,
+		proxyContract: {
+			type: 'custom',
+			artifact: artifacts.TransparentUpgradeableProxy,
+			createsProxyAdmin: true,
+			proxyAdminArtifact: artifacts.ProxyAdmin, // the admin the proxy creates, for its record
+		},
+		execute: {init: 'initialize'},
+	},
+);
+```
+
+The same call, with the same options, serves every run:
+
+- **The first run** deploys the implementation and the proxy, and no admin: `owner` goes to the constructor as `initialOwner`, and once the proxy is deployed rocketh reads its admin slot and records the ProxyAdmin it created as `Vault_ProxyAdmin` (name it with `proxyAdminName`).
+- **A later run** upgrades through that ProxyAdmin with `upgradeAndCall`, from its owner, with the same refusals as any admin contract. A ProxyAdmin owned by a Safe goes through the [unknown-signer](/documentation/unknown-signers/) flow.
+- **A proxy deployed before the record existed**, by a hardhat-deploy v1 script for instance, gets its record on the next run, read from the slot the same way. Give `proxyAdminName` the name your v1 script saved it under, if it did.
+
+The two artifacts are OpenZeppelin's, compiled in your project so they carry their compiler metadata, which is what [verification](/documentation/exporting-and-verifying/#contract-verification) submits. Hardhat only compiles files your sources import, so list them in `hardhat.config.ts`, with `@openzeppelin/contracts` installed:
+
+```typescript
+solidity: {
+	// ...
+	npmFilesToBuild: [
+		'@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol',
+		'@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol',
+	],
+},
+```
+
+hardhat-deploy then generates `artifacts.TransparentUpgradeableProxy` and `artifacts.ProxyAdmin` with your own contracts. Prefer that to the prebuilt JSON in `@openzeppelin/contracts/build/`, which has no metadata, so a proxy deployed from it cannot be verified by `rocketh-verify`.
+
 Beacon proxies are not built in; [one implementation behind many proxies](/hardhat-deploy/migration/#one-implementation-behind-many-proxies) shows the alternative.
 
 ## Options
