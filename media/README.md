@@ -2,13 +2,14 @@
 
 Brand sources for the rocketh site. Everything published under `public/` is either copied or generated from here, so edit these files rather than the ones in `public/`.
 
-| Source                                 | Published as                        | How                                 |
-| -------------------------------------- | ----------------------------------- | ----------------------------------- |
-| `logo.svg`                             | `public/logo.svg`                   | straight copy                       |
-| `logo.svg` + `build.py`                | `public/preview.png`                | `python3 media/build.py preview`    |
-| `logo.svg` + `build.py`                | `public/icon.png`                   | `python3 media/build.py icon`       |
-| `logo.svg` + `hardhat-pilot.svg`       | `public/hardhat-deploy-logo.svg`    | `python3 media/build.py hd-logo`    |
-| `hardhat-deploy-logo.svg` + `build.py` | `public/hardhat-deploy-preview.png` | `python3 media/build.py hd-preview` |
+| Source                                 | Published as                                                             | How                                   |
+| -------------------------------------- | ------------------------------------------------------------------------ | ------------------------------------- |
+| `logo.svg`                             | `public/logo.svg`                                                        | straight copy                         |
+| `logo.svg` + `build.py`                | `public/preview.png`                                                     | `python3 media/build.py preview`      |
+| `logo.svg` + `build.py`                | `public/icon.png`                                                        | `python3 media/build.py icon`         |
+| `logo.svg` + `hardhat-pilot.svg`       | `public/hardhat-deploy-logo.svg`                                         | `python3 media/build.py hd-logo`      |
+| `hardhat-deploy-logo.svg` + `build.py` | `public/hardhat-deploy-preview.png`                                      | `python3 media/build.py hd-preview`   |
+| `hardhat-deploy-logo.svg` + `build.py` | `public/articles/2026-11-24-rocketh-the-successor-to-hardhat-deploy.png` | `python3 media/build.py article-card` |
 
 ## Regenerating
 
@@ -18,6 +19,7 @@ python3 media/build.py preview      # rocketh social card
 python3 media/build.py icon         # favicon
 python3 media/build.py hd-logo      # hardhat-deploy mark
 python3 media/build.py hd-preview   # hardhat-deploy social card
+python3 media/build.py article-card # the announcement article's card
 ```
 
 Requires Python with [Pillow](https://python-pillow.org/), and Inkscape on `PATH` (used only to raster `logo.svg`). Fonts are loaded by path from `media/fonts/`, so nothing needs to be installed system-wide and the output does not depend on the machine's font configuration. The script is deterministic: repeated runs produce a byte-identical PNG.
