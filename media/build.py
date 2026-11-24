@@ -43,6 +43,9 @@ OUT_PNG = ROOT / "public" / "preview.png"
 OUT_ICON = ROOT / "public" / "icon.png"
 OUT_HD_LOGO = ROOT / "public" / "hardhat-deploy-logo.svg"
 OUT_HD_PNG = ROOT / "public" / "hardhat-deploy-preview.png"
+# The announcement article lives in rocketh-website, but a page's social card
+# must be a public file of the CONTENT, which is this repository.
+OUT_ARTICLE_PNG = ROOT / "public" / "articles" / "2026-11-24-rocketh-the-successor-to-hardhat-deploy.png"
 
 W, H = 1280, 640                  # matches the previous card's aspect
 BG = "#12141a"
@@ -54,6 +57,7 @@ WORD = "rocketh"
 TAG = "A deployment system for EVM Smart Contracts"
 HD_WORD = "hardhat-deploy"
 HD_TAG = "A Hardhat Plugin For Replicable Deployments And Easy Testing"
+ARTICLE_TAG = "The successor to hardhat-deploy"
 
 # Porthole placement, in the logo's AUTHORING coords (inside the outer matrix).
 # The Ethereum mark sits at translate(79,14) scale(0.3597) over 256x417 artwork,
@@ -334,11 +338,21 @@ def build_hd_logo():
           f"pilot net tilt {net:+.2f} deg")
 
 
+def build_article_card():
+    """The announcement article's card: the hardhat-deploy mark (the rocket with
+    the Hardhat pilot) under the rocketh wordmark, since the article is about
+    rocketh as the successor to hardhat-deploy."""
+    if not OUT_HD_LOGO.exists():
+        build_hd_logo()
+    build_card(OUT_HD_LOGO, WORD, ARTICLE_TAG, OUT_ARTICLE_PNG)
+
+
 TARGETS = {
     "preview": build_preview,
     "icon": build_icon,
     "hd-logo": build_hd_logo,
     "hd-preview": build_hd_preview,
+    "article-card": build_article_card,
 }
 
 if __name__ == "__main__":
