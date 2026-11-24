@@ -1,0 +1,5 @@
+---
+'@rocketh/proxy': minor
+---
+
+`deployViaProxy` now deploys and upgrades a proxy whose constructor creates its own admin, such as OpenZeppelin 5's `TransparentUpgradeableProxy`, with the same options on every run: `proxyContract: {type: 'custom', artifact, createsProxyAdmin: true, proxyAdminArtifact}`. The first run passes `owner` to the constructor and deploys no admin; once the proxy is deployed, the ProxyAdmin it created is read from its EIP-1967 admin slot and recorded (as `<name>_ProxyAdmin`, or under `proxyAdminName`). Later runs upgrade through that admin with `upgradeAndCall`, from its owner, with the same refusals as any admin contract, so a Safe-owned one goes through the unknown-signer flow. A proxy deployed before the record existed, by a hardhat-deploy v1 script for instance, gets its record on its next run. Before, the upgrade was refused because the admin slot held the created ProxyAdmin rather than the owner, and the only way round it was a script with different options on the first deploy and on later ones.

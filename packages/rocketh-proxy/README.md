@@ -1,6 +1,6 @@
 # @rocketh/proxy
 
-`deployViaProxy` for rocketh deploy scripts: deploys your implementation behind a proxy and records the pair under one name with the implementation's ABI. Run it again after changing the implementation and it upgrades the proxy in place. ERC-173 (the default), UUPS, OpenZeppelin-compatible and optimized transparent proxies, your own admin contract or proxy, upgrade stories with `upgradeIndex`, and upgrades owned by a Safe.
+`deployViaProxy` for rocketh deploy scripts: deploys your implementation behind a proxy and records the pair under one name with the implementation's ABI. Run it again after changing the implementation and it upgrades the proxy in place. ERC-173 (the default), UUPS, OpenZeppelin-compatible and optimized transparent proxies, OpenZeppelin 5's transparent proxy (whose ProxyAdmin the proxy creates: `proxyContract: {type: 'custom', artifact, createsProxyAdmin: true, proxyAdminArtifact}`), your own admin contract or proxy, upgrade stories with `upgradeIndex`, and upgrades owned by a Safe.
 
 ## Installation
 

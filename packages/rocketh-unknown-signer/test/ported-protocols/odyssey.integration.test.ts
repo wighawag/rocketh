@@ -45,12 +45,14 @@
  * whose addresses differ from `Deployer3`'s and which no Safe gates. The batch file becomes
  * an in-run list read by the `runAtTheEnd` proposer, as for the other two ports.
  *
- * WHAT DOES NOT PORT: Odyssey's PROXIES. `deployUpgradable` (`helpers/deploy-helpers.ts:34-51`,
+ * Odyssey's PROXIES. `deployUpgradable` (`helpers/deploy-helpers.ts:34-51`,
  * `helpers/deploy3.ts:40-137`) uses OpenZeppelin 5.0.1's `TransparentUpgradeableProxy`
  * (`lib/openzeppelin-contracts/package.json`), whose constructor creates its OWN `ProxyAdmin`
  * (`TransparentUpgradeableProxy.sol:78-79`), owned by `owner`, and upgrades through that
- * admin's `upgradeAndCall`. `deployViaProxy` has no proxy kind for it. The last two tests PIN
- * what happens when you try, and the two-shape workaround that does work today.
+ * admin's `upgradeAndCall`. The helper saves that admin from the slot by hand after the first
+ * deploy. `deployViaProxy` does it with a `custom` proxy and `createsProxyAdmin: true`, with
+ * the same options on every run; the last three tests show it, including a proxy deployed
+ * before the record existed, and the refusal without the flag.
  */
 
 import {describe, it, expect} from 'vitest';
@@ -479,7 +481,7 @@ describe('ported: Odyssey strategy deployment (Safe-gated create3 factory, regis
 });
 
 // ============================================================================
-// What does not port: an OpenZeppelin 5 transparent proxy, whose admin the proxy creates
+// An OpenZeppelin 5 transparent proxy, whose admin the proxy creates
 // ============================================================================
 
 /** OpenZeppelin 5's `TransparentUpgradeableProxy(logic, initialOwner, data)`: no public functions. */
@@ -521,25 +523,40 @@ const v5 = {
 /** The address the v5 proxy constructor gives the `ProxyAdmin` it creates. */
 const CREATED_PROXY_ADMIN = '0x3f6da0a118b3a0ddfdbab4690cc96b2cf73b488d';
 
+/**
+ * A chain where deploying the v5 proxy does what its constructor does: point the
+ * implementation slot at `_logic` and create a ProxyAdmin, owned by the Safe, whose address
+ * it writes into the admin slot (`_admin = address(new ProxyAdmin(initialOwner))`).
+ */
 function v5Chain() {
-	return createChain({
+	const chain: ReturnType<typeof createChain> = createChain({
 		call(to, data) {
 			if (to === CREATED_PROXY_ADMIN && data.startsWith('0x8da5cb5b')) {
 				return encodeAbiParameters([{type: 'address'}], [SAFE]);
 			}
 			return undefined;
 		},
+		onTransaction(tx) {
+			const creationCode = v5.TransparentUpgradeableProxy.bytecode;
+			if (!tx.createdAddress || !tx.data?.startsWith(creationCode)) return;
+			const logic = `0x${tx.data.slice(creationCode.length + 24, creationCode.length + 64)}`;
+			chain.setAddress(tx.createdAddress, IMPLEMENTATION_SLOT, logic);
+			chain.setAddress(tx.createdAddress, ADMIN_SLOT, CREATED_PROXY_ADMIN);
+			chain.setCode(CREATED_PROXY_ADMIN);
+		},
 	});
+	return chain;
 }
 
 /**
- * The registry behind an OpenZeppelin 5 proxy, deployed through `deployViaProxy`.
- * `proxyAdminName` is the variable: absent, or naming a recorded ProxyAdmin.
+ * The registry behind an OpenZeppelin 5 proxy, deployed through `deployViaProxy`, with the
+ * same options on every run. `createsProxyAdmin: false` is the v1-era shape: a plain `custom`
+ * proxy, with no record of the admin it created.
  */
 function registryViaV5Proxy(
 	artifact: Artifact<typeof REGISTRY_IMPL_ABI>,
 	out: {deferred?: CaughtUnknownSignerTransaction | null},
-	proxyAdminName?: string,
+	{createsProxyAdmin = true}: {createsProxyAdmin?: boolean} = {},
 ) {
 	return deployScript(async ({deployViaProxy, catchUnknownSigner, namedAccounts}) => {
 		const {owner, deployer} = namedAccounts as {owner: `0x${string}`; deployer: `0x${string}`};
@@ -549,11 +566,14 @@ function registryViaV5Proxy(
 				{account: deployer, artifact, args: []},
 				{
 					owner,
-					proxyContract: {
-						type: 'custom',
-						artifact: v5.TransparentUpgradeableProxy,
-						...(proxyAdminName ? {proxyAdminName} : {}),
-					},
+					proxyContract: createsProxyAdmin
+						? {
+								type: 'custom',
+								artifact: v5.TransparentUpgradeableProxy,
+								createsProxyAdmin: true,
+								proxyAdminArtifact: v5.ProxyAdmin,
+							}
+						: {type: 'custom', artifact: v5.TransparentUpgradeableProxy},
 					execute: {init: 'initialize'},
 				},
 			),
@@ -561,53 +581,28 @@ function registryViaV5Proxy(
 	});
 }
 
-/** The first deploy, and what the v5 constructor did on chain. */
-async function deployV5Proxy(world: World) {
-	const {env} = await run(world, OPTIMISM);
-	await registryViaV5Proxy(v5.PositionRegistry, {})(env);
-	const proxy = env.get(`${REGISTRY}_Proxy`).address;
-	world.chain.setAddress(proxy, IMPLEMENTATION_SLOT, env.get(`${REGISTRY}_Implementation`).address);
-	// the v5 constructor: `_admin = address(new ProxyAdmin(initialOwner))`
-	world.chain.setAddress(proxy, ADMIN_SLOT, CREATED_PROXY_ADMIN);
-	return {env, proxy};
-}
-
-describe('PIN: an OpenZeppelin 5 transparent proxy (Odyssey `helpers/deploy3.ts:40-137`) through deployViaProxy', () => {
-	it('PIN: deploys, but REFUSES the upgrade, because the admin slot holds the proxy-created ProxyAdmin, not the owner', async () => {
+describe('An OpenZeppelin 5 transparent proxy (Odyssey `helpers/deploy3.ts:40-137`) through deployViaProxy', () => {
+	it('one call, same options: deploys the proxy, records the ProxyAdmin it created, and defers the upgrade to the Safe', async () => {
 		/**
-		 * `deployViaProxy` with `{type: 'custom'}` and no admin contract compares the EIP-1967
-		 * admin slot with the OWNER (`packages/rocketh-proxy/src/index.ts:613-619`). An
-		 * OpenZeppelin 5 proxy put a fresh ProxyAdmin there, so the upgrade throws. This is the
-		 * gap staged as `work/tasks/backlog/openzeppelin-5-transparent-proxy-kind.md`.
+		 * `createsProxyAdmin: true` tells `deployViaProxy` that the proxy's constructor creates
+		 * its admin: the owner (the Safe) goes to the constructor as `initialOwner`, and the
+		 * created ProxyAdmin is read from the admin slot and recorded as `<name>_ProxyAdmin`.
+		 * The upgrade then goes to that ProxyAdmin as `upgradeAndCall` (the proxy has no
+		 * `upgradeTo`), from the Safe that owns it, so it is deferred. Odyssey's v1 helper did
+		 * the same by hand, with different code on the first deploy and on later ones.
 		 */
 		const world = createWorld(v5Chain());
-		await deployV5Proxy(world);
-
-		const {env} = await run(world, OPTIMISM);
-		await expect(registryViaV5Proxy(v5.PositionRegistryV2, {})(env)).rejects.toThrow(
-			`To change owner/admin, you need to call the proxy directly, it currently is ${CREATED_PROXY_ADMIN}`,
-		);
-	});
-
-	it('the workaround that works today: record the created ProxyAdmin from the slot (as Odyssey does) and name it', async () => {
-		/**
-		 * Odyssey's v1 helper saves `<alias>_ProxyAdmin` from the admin slot after the first
-		 * deploy (`helpers/deploy3.ts:88-94`). With that record named as `proxyAdminName`, the
-		 * upgrade passes the checks and goes to the ProxyAdmin as `upgradeAndCall` (the proxy has
-		 * no `upgradeTo`), from the Safe that owns it, so it is deferred. It needs the script to
-		 * pass DIFFERENT options on the first deploy and on later ones, which is the gap.
-		 */
-		const world = createWorld(v5Chain());
-		const first = await deployV5Proxy(world);
-		await first.env.save(`${REGISTRY}_ProxyAdmin`, {
-			...v5.ProxyAdmin,
-			address: CREATED_PROXY_ADMIN,
-			argsData: '0x',
-		});
+		const first = await run(world, OPTIMISM);
+		await registryViaV5Proxy(v5.PositionRegistry, {})(first.env);
+		const proxy = first.env.get(`${REGISTRY}_Proxy`).address;
+		expect(first.env.get(`${REGISTRY}_ProxyAdmin`).address.toLowerCase()).toBe(CREATED_PROXY_ADMIN);
+		// the constructor got the Safe as `initialOwner`; no ProxyAdmin was deployed by rocketh
+		expect(first.env.get(`${REGISTRY}_Proxy`).argsData.toLowerCase()).toContain(SAFE.slice(2).toLowerCase());
+		expect(sent(first.provider).some((tx) => tx.data?.startsWith(v5.ProxyAdmin.bytecode))).toBe(false);
 
 		const {env} = await run(world, OPTIMISM);
 		const out: {deferred?: CaughtUnknownSignerTransaction | null} = {};
-		await registryViaV5Proxy(v5.PositionRegistryV2, out, `${REGISTRY}_ProxyAdmin`)(env);
+		await registryViaV5Proxy(v5.PositionRegistryV2, out)(env);
 
 		expect(out.deferred).toStrictEqual({
 			from: SAFE,
@@ -617,8 +612,53 @@ describe('PIN: an OpenZeppelin 5 transparent proxy (Odyssey `helpers/deploy3.ts:
 			data: encodeFunctionData({
 				abi: PROXY_ADMIN_V5_ABI,
 				functionName: 'upgradeAndCall',
-				args: [first.proxy, env.get(`${REGISTRY}_Implementation`).address, '0x'],
+				args: [proxy, env.get(`${REGISTRY}_Implementation`).address, '0x'],
 			}),
 		});
+	});
+
+	it('a proxy deployed without the record (the v1-era shape) gets it on the next run, and its upgrade is deferred the same way', async () => {
+		/**
+		 * A project migrating from v1 has proxies whose ProxyAdmin rocketh never recorded.
+		 * Adding `createsProxyAdmin` is enough: the next run reads the admin slot, records the
+		 * admin, and the upgrade proceeds as above.
+		 */
+		const world = createWorld(v5Chain());
+		const first = await run(world, OPTIMISM);
+		await registryViaV5Proxy(v5.PositionRegistry, {}, {createsProxyAdmin: false})(first.env);
+		const proxy = first.env.get(`${REGISTRY}_Proxy`).address;
+		expect(first.env.getOrNull(`${REGISTRY}_ProxyAdmin`)).toBeNull();
+
+		const {env} = await run(world, OPTIMISM);
+		const out: {deferred?: CaughtUnknownSignerTransaction | null} = {};
+		await registryViaV5Proxy(v5.PositionRegistryV2, out)(env);
+
+		expect(env.get(`${REGISTRY}_ProxyAdmin`).address.toLowerCase()).toBe(CREATED_PROXY_ADMIN);
+		expect(out.deferred).toStrictEqual({
+			from: SAFE,
+			to: CREATED_PROXY_ADMIN,
+			value: '0x0',
+			data: encodeFunctionData({
+				abi: PROXY_ADMIN_V5_ABI,
+				functionName: 'upgradeAndCall',
+				args: [proxy, env.get(`${REGISTRY}_Implementation`).address, '0x'],
+			}),
+		});
+	});
+
+	it('without `createsProxyAdmin`, the upgrade is refused: the admin slot holds the created ProxyAdmin, not the owner', async () => {
+		/**
+		 * A plain `custom` proxy compares the admin slot with the OWNER. That is right for a
+		 * proxy that takes its admin as a constructor argument, and is why an OpenZeppelin 5
+		 * proxy needs the flag.
+		 */
+		const world = createWorld(v5Chain());
+		const first = await run(world, OPTIMISM);
+		await registryViaV5Proxy(v5.PositionRegistry, {}, {createsProxyAdmin: false})(first.env);
+
+		const {env} = await run(world, OPTIMISM);
+		await expect(registryViaV5Proxy(v5.PositionRegistryV2, {}, {createsProxyAdmin: false})(env)).rejects.toThrow(
+			`To change owner/admin, you need to call the proxy directly, it currently is ${CREATED_PROXY_ADMIN}`,
+		);
 	});
 });

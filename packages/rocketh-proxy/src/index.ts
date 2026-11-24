@@ -1,7 +1,7 @@
 import {Abi, AbiFunction} from 'abitype';
 import type {Artifact, DeploymentConstruction, Deployment, Environment} from '@rocketh/core/types';
 import type {EIP1193Account} from 'eip-1193';
-import {encodeFunctionData, zeroAddress} from 'viem';
+import {encodeAbiParameters, encodeFunctionData, zeroAddress} from 'viem';
 import {logs} from 'named-logs';
 import {deploy, DeployOptions} from '@rocketh/deploy';
 import {
@@ -108,6 +108,35 @@ type DeployMutuallyExclusiveOptions = {alwaysOverride?: boolean} | {strictByteco
 export type ProxyAdminContractOptions =
 	{proxyAdminName?: string; proxyAdminArtifact?: undefined} | {proxyAdminName: string; proxyAdminArtifact: Artifact};
 
+/**
+ * A `custom` proxy whose CONSTRUCTOR CREATES its own admin contract, as OpenZeppelin 5's
+ * `TransparentUpgradeableProxy(logic, initialOwner, data)` does: it deploys a `ProxyAdmin`
+ * owned by `initialOwner` and writes that admin's address into the EIP-1967 admin slot.
+ *
+ * - `createsProxyAdmin: true` says so. rocketh then deploys NO admin of its own: the
+ *   `{admin}` constructor argument receives the `owner` (which is what such a constructor
+ *   wants), and once the proxy is deployed rocketh reads the admin slot and records the
+ *   admin the proxy created.
+ * - `proxyAdminArtifact`: the artifact of the admin the proxy creates (OpenZeppelin 5's
+ *   `ProxyAdmin`), for that record's ABI. It is not deployed by rocketh.
+ * - `proxyAdminName`: the name of that record. Defaults to `<name>_ProxyAdmin`. A proxy
+ *   deployed before this record existed (by a hardhat-deploy v1 script, say) gets it on its
+ *   next run, read from the slot the same way.
+ *
+ * The record's `argsData` is the owner encoded as one `address`, the constructor of
+ * OpenZeppelin 5's `ProxyAdmin(initialOwner)`; for an admin recorded on a later run its
+ * construction was not observed, and `argsData` is `0x`. A slot holding an address with no
+ * code (the owner of a proxy that does not create its admin) is refused, not recorded.
+ *
+ * From then on the upgrade goes through that admin exactly as for any admin contract: from
+ * its `owner()`, with the same refusals, by `upgradeAndCall` (the proxy has no `upgradeTo`).
+ */
+export type ProxyAdminCreatedByProxyOptions = {
+	createsProxyAdmin: true;
+	proxyAdminArtifact: Artifact;
+	proxyAdminName?: string;
+};
+
 /** The values an `upgradeFunction` argument template can place. */
 export type UpgradeArgTemplate = '{proxy}' | '{implementation}' | '{data}' | '{admin}';
 
@@ -171,7 +200,7 @@ export type ProxyDeployOptions = Omit<
 					type: 'custom';
 					artifact: Artifact;
 					args?: ('{implementation}' | '{admin}' | '{data}')[]; // default to  ['{implementation}', '{admin}', '{data}']
-			  } & ProxyAdminContractOptions);
+			  } & (({createsProxyAdmin?: false} & ProxyAdminContractOptions) | ProxyAdminCreatedByProxyOptions));
 	};
 
 export type ImplementationDeployer<TAbi extends Abi> = (
@@ -307,6 +336,8 @@ export function deployViaProxy(
 		}
 
 		let viaAdminContract: {proxyAdminName: string; proxyAdminArtifact: Artifact} | undefined;
+		// Set for a proxy that creates its own admin (see ProxyAdminCreatedByProxyOptions).
+		let adminCreatedByProxy: {proxyAdminName: string; proxyAdminArtifact: Artifact} | undefined;
 
 		let proxyArgsTemplate = ['{implementation}', '{admin}', '{data}'];
 		let proxyArtifact: Artifact = ERC173Proxy;
@@ -316,7 +347,12 @@ export function deployViaProxy(
 			if (typeof options.proxyContract !== 'string' && options.proxyContract.type === 'custom') {
 				proxyArtifact = options.proxyContract.artifact;
 				proxyArgsTemplate = options.proxyContract.args || ['{implementation}', '{admin}', '{data}'];
-				if (options.proxyContract.proxyAdminName || options.proxyContract.proxyAdminArtifact) {
+				if (options.proxyContract.createsProxyAdmin) {
+					adminCreatedByProxy = {
+						proxyAdminName: options.proxyContract.proxyAdminName || `${name}_ProxyAdmin`,
+						proxyAdminArtifact: options.proxyContract.proxyAdminArtifact,
+					};
+				} else if (options.proxyContract.proxyAdminName || options.proxyContract.proxyAdminArtifact) {
 					viaAdminContract = resolveAdminContract(name, options.proxyContract);
 				}
 			} else {
@@ -410,6 +446,83 @@ export function deployViaProxy(
 					owner: `0x${string}`;
 			  }
 			| undefined;
+		/**
+		 * Record the admin a proxy created in its constructor, read from the proxy's EIP-1967
+		 * admin slot (ADR 0012: rocketh records the address it OBSERVED there, after the proxy's
+		 * deployment landed). `construction` is known only when this run deployed the proxy.
+		 */
+		const recordAdminCreatedByProxy = async (
+			created: {proxyAdminName: string; proxyAdminArtifact: Artifact},
+			proxyAddress: `0x${string}`,
+			construction?: Pick<Deployment<Abi>, 'transaction' | 'receipt'> & {initialOwner: `0x${string}`},
+		): Promise<Deployment<Abi>> => {
+			const adminSlotData = await env.network.provider.request({
+				method: 'eth_getStorageAt',
+				params: [proxyAddress, EIP1967_ADMIN_SLOT, 'latest'],
+			});
+			const createdAdmin = `0x${adminSlotData.substr(-40)}` as `0x${string}`;
+			if (createdAdmin === zeroAddress) {
+				throw new Error(
+					`${name} is declared with createsProxyAdmin, but the admin slot of ${proxyName} (${proxyAddress}) is empty: this proxy did not create an admin contract. Remove createsProxyAdmin for a proxy that takes its admin as a constructor argument.`,
+				);
+			}
+			// A proxy that takes its admin as a constructor argument holds the OWNER there, often an
+			//  account with no code. Recording the admin artifact at that address would assert a
+			//  contract that is not there (ADR 0012), so it is refused before the admin record is written.
+			const adminCode = await env.network.provider.request({
+				method: 'eth_getCode',
+				params: [createdAdmin, 'latest'],
+			});
+			if (!adminCode || adminCode === '0x') {
+				throw new Error(
+					`${name} is declared with createsProxyAdmin, but the admin slot of ${proxyName} (${proxyAddress}) holds ${createdAdmin}, which has no code: this proxy did not create an admin contract. Remove createsProxyAdmin for a proxy that takes its admin as a constructor argument.`,
+				);
+			}
+			return env.save<Abi>(created.proxyAdminName, {
+				...created.proxyAdminArtifact,
+				address: createdAdmin,
+				// the admin's constructor argument, `initialOwner` (OpenZeppelin 5's `ProxyAdmin(address)`),
+				//  is only known when this run passed it. An adopted admin's construction was not
+				//  observed, so its arguments are left empty rather than guessed (ADR 0015 amendment).
+				argsData: construction ? encodeAbiParameters([{type: 'address'}], [construction.initialOwner]) : '0x',
+				...(construction?.transaction ? {transaction: construction.transaction} : {}),
+				...(construction?.receipt ? {receipt: construction.receipt} : {}),
+			});
+		};
+
+		if (adminCreatedByProxy && existingDeployment) {
+			// The admin is the proxy's own. It is only looked up once the proxy exists: before
+			//  that, the constructor gets the owner and creates it.
+			let createdAdmin = env.getOrNull<Abi>(adminCreatedByProxy.proxyAdminName);
+			if (!createdAdmin) {
+				const proxyDeployment = env.getOrNull<Abi>(proxyName);
+				if (proxyDeployment) {
+					createdAdmin = await recordAdminCreatedByProxy(adminCreatedByProxy, proxyDeployment.address);
+				}
+			}
+			if (createdAdmin) {
+				const currentProxyAdminOwner = await _read(
+					{address: createdAdmin.address, abi: DefaultProxyAdmin.abi},
+					{functionName: 'owner'},
+				);
+				if (currentProxyAdminOwner === zeroAddress) {
+					throw new Error(
+						`The Proxy Admin (${adminCreatedByProxy.proxyAdminName}) belongs to no-one. The Proxy cannot be upgraded anymore`,
+					);
+				}
+				if (currentProxyAdminOwner.toLowerCase() !== expectedOwner.toLowerCase()) {
+					throw new Error(
+						`To change owner/admin, you need to call transferOwnership on ${adminCreatedByProxy.proxyAdminName}`,
+					);
+				}
+				proxyAdmin = createdAdmin.address;
+				proxyAdminContract = {
+					deployment: createdAdmin,
+					owner: currentProxyAdminOwner.toLowerCase() as `0x${string}`,
+				};
+			}
+		}
+
 		if (viaAdminContract) {
 			const proxyAdminOwner = expectedOwner;
 			const proxyAdminName = viaAdminContract.proxyAdminName;
@@ -554,6 +667,14 @@ export function deployViaProxy(
 				linkedData: toJSONCompatibleLinkedData(options?.linkedData),
 			});
 
+			if (adminCreatedByProxy) {
+				await recordAdminCreatedByProxy(adminCreatedByProxy, proxy.address, {
+					initialOwner: proxyAdmin,
+					transaction: proxy.transaction,
+					receipt: proxy.receipt,
+				});
+			}
+
 			// logger.info(`saving as ${name}`);
 		} else {
 			const proxyDeployment = env.getOrNull<typeof proxyArtifact.abi>(proxyName);
@@ -656,7 +777,7 @@ export function deployViaProxy(
 					const target: Deployment<Abi> = proxyAdminContract
 						? proxyAdminContract.deployment
 						: (existingDeployment as unknown as Deployment<Abi>);
-					const targetName = proxyAdminContract ? viaAdminContract!.proxyAdminName : name;
+					const targetName = proxyAdminContract ? (viaAdminContract ?? adminCreatedByProxy)!.proxyAdminName : name;
 					if (!target.abi.some((v) => v.type === 'function' && v.name === methodName)) {
 						throw new Error(
 							`upgradeFunction.methodName "${methodName}" is not a function of ${targetName}, so ${name} cannot be upgraded through it`,
